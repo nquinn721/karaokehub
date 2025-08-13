@@ -1,0 +1,123 @@
+import { HeaderComponent } from '@components/HeaderComponent';
+import { Box, CssBaseline } from '@mui/material';
+import { authStore } from '@stores/index';
+import { ThemeProvider } from '@theme/ThemeProvider';
+import { observer } from 'mobx-react-lite';
+import React from 'react';
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+
+// Pages
+import AdminDashboardPage from './pages/AdminDashboardPage';
+import AuthError from './pages/AuthError';
+import AuthSuccess from './pages/AuthSuccess';
+import DashboardPage from './pages/DashboardPage';
+import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import ParserReviewPage from './pages/ParserReviewPage';
+import ProfilePage from './pages/ProfilePage';
+import RegisterPage from './pages/RegisterPage';
+import SettingsPage from './pages/SettingsPage';
+
+// Protected Route component
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return authStore.isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+};
+
+// Public Route component (redirect to dashboard if authenticated)
+const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return !authStore.isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" />;
+};
+
+const App: React.FC = observer(() => {
+  return (
+    <ThemeProvider>
+      <CssBaseline />
+      <Router>
+        <Box
+          sx={{
+            minHeight: '100vh',
+            backgroundColor: 'background.default',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <HeaderComponent />
+
+          <Box component="main" sx={{ flex: 1, p: 3 }}>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<HomePage />} />
+              <Route
+                path="/login"
+                element={
+                  <PublicRoute>
+                    <LoginPage />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/register"
+                element={
+                  <PublicRoute>
+                    <RegisterPage />
+                  </PublicRoute>
+                }
+              />
+
+              {/* Auth callback routes */}
+              <Route path="/auth/success" element={<AuthSuccess />} />
+              <Route path="/auth/error" element={<AuthError />} />
+
+              {/* Protected Routes */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <SettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute>
+                    <AdminDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/parser"
+                element={
+                  <ProtectedRoute>
+                    <ParserReviewPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Catch all route */}
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </Box>
+        </Box>
+      </Router>
+    </ThemeProvider>
+  );
+});
+
+export default App;

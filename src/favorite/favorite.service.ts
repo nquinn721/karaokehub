@@ -1,0 +1,59 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { DayOfWeek } from '../show/show.entity';
+import { Favorite } from './favorite.entity';
+
+export interface CreateFavoriteDto {
+  userId: string;
+  showId: string;
+  day: DayOfWeek;
+}
+
+@Injectable()
+export class FavoriteService {
+  constructor(
+    @InjectRepository(Favorite)
+    private favoriteRepository: Repository<Favorite>,
+  ) {}
+
+  async create(createFavoriteDto: CreateFavoriteDto): Promise<Favorite> {
+    const favorite = this.favoriteRepository.create(createFavoriteDto);
+    return await this.favoriteRepository.save(favorite);
+  }
+
+  async findAll(): Promise<Favorite[]> {
+    return await this.favoriteRepository.find({
+      relations: ['user', 'show', 'show.vendor', 'show.kj'],
+    });
+  }
+
+  async findByUser(userId: string): Promise<Favorite[]> {
+    return await this.favoriteRepository.find({
+      where: { userId },
+      relations: ['show', 'show.vendor', 'show.kj'],
+    });
+  }
+
+  async findByShow(showId: string): Promise<Favorite[]> {
+    return await this.favoriteRepository.find({
+      where: { showId },
+      relations: ['user', 'show'],
+    });
+  }
+
+  async findByUserAndShow(userId: string, showId: string): Promise<Favorite> {
+    return await this.favoriteRepository.findOne({
+      where: { userId, showId },
+      relations: ['user', 'show'],
+    });
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.favoriteRepository.delete(id);
+  }
+
+  async removeByUserAndShow(userId: string, showId: string): Promise<void> {
+    await this.favoriteRepository.delete({ userId, showId });
+  }
+}
