@@ -70,6 +70,11 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_GEMINI_API_KEY
                   key: latest
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_OPENAI_API_KEY
+                  key: latest
             # Ollama configuration (disabled in Cloud Run by default)
             # Uncomment and set these if you deploy a separate Ollama service:
             # - name: ENABLE_OLLAMA

@@ -60,20 +60,20 @@ export class ParserController {
       success: true,
       message: 'Website parsed and data saved successfully',
       data: {
-        vendor: result.savedEntities.vendor.name,
-        kjsCount: result.savedEntities.kjs.length,
-        showsCount: result.savedEntities.shows.length,
+        vendor: result.savedEntities?.vendor?.name || 'Unknown',
+        kjsCount: result.savedEntities?.kjs?.length || 0,
+        showsCount: result.savedEntities?.shows?.length || 0,
         confidence: {
-          vendor: result.parsedData.vendor.confidence,
+          vendor: result.parsedData?.vendor?.confidence || 0,
           avgKjConfidence:
-            result.parsedData.kjs.length > 0
+            result.parsedData?.kjs?.length > 0
               ? Math.round(
                   result.parsedData.kjs.reduce((sum, kj) => sum + kj.confidence, 0) /
                     result.parsedData.kjs.length,
                 )
               : 0,
           avgShowConfidence:
-            result.parsedData.shows.length > 0
+            result.parsedData?.shows?.length > 0
               ? Math.round(
                   result.parsedData.shows.reduce((sum, show) => sum + show.confidence, 0) /
                     result.parsedData.shows.length,
@@ -134,23 +134,23 @@ export class SimpleTestController {
         success: true,
         message: "Steve's DJ website parsed successfully",
         data: {
-          vendor: result.savedEntities.vendor?.name || result.parsedData.vendor.name,
+          vendor: result.savedEntities.vendor?.name || result.parsedData.vendor?.name || 'Unknown Vendor',
           kjsCount: result.savedEntities.kjs.length,
           showsCount: result.savedEntities.shows.length,
-          parsedKjsCount: result.parsedData.kjs.length,
-          parsedShowsCount: result.parsedData.shows.length,
+          parsedKjsCount: result.parsedData.kjs?.length || 0,
+          parsedShowsCount: result.parsedData.shows?.length || 0,
           status: result.savedEntities.vendor ? 'saved' : 'pending_review',
           confidence: {
-            vendor: result.parsedData.vendor.confidence,
+            vendor: result.parsedData.vendor?.confidence || 0,
             avgKjConfidence:
-              result.parsedData.kjs.length > 0
+              result.parsedData.kjs?.length > 0
                 ? Math.round(
                     result.parsedData.kjs.reduce((sum, kj) => sum + kj.confidence, 0) /
                       result.parsedData.kjs.length,
                   )
                 : 0,
             avgShowConfidence:
-              result.parsedData.shows.length > 0
+              result.parsedData.shows?.length > 0
                 ? Math.round(
                     result.parsedData.shows.reduce((sum, show) => sum + show.confidence, 0) /
                       result.parsedData.shows.length,
@@ -158,7 +158,16 @@ export class SimpleTestController {
                 : 0,
           },
         },
-        rawShows: result.parsedData.shows, // Include raw show data for debugging
+        rawShows: result.parsedData.shows || [], // Include raw show data for debugging
+        // Debug info
+        debug: {
+          parsedData: result.parsedData,
+          savedEntities: {
+            vendor: result.savedEntities.vendor,
+            kjsCount: result.savedEntities.kjs.length,
+            showsCount: result.savedEntities.shows.length,
+          }
+        }
       };
     } catch (error) {
       return {

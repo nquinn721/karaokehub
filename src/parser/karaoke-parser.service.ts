@@ -1,8 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { load } from 'cheerio';
-const NodeCache = require('node-cache');
+import NodeCache from 'node-cache';
 import fetch from 'node-fetch';
 import { Ollama } from 'ollama';
 import OpenAI from 'openai';
@@ -60,12 +61,13 @@ export class KaraokeParserService {
     private showRepository: Repository<Show>,
     @InjectRepository(ParsedSchedule)
     private parsedScheduleRepository: Repository<ParsedSchedule>,
+    private configService: ConfigService,
   ) {
     // Initialize cache (TTL: 24 hours)
     this.cache = new NodeCache({ stdTTL: 86400, checkperiod: 3600 });
 
     // Initialize Gemini AI (primary)
-    const geminiApiKey = process.env.GEMINI_API_KEY;
+    const geminiApiKey = this.configService.get<string>('GEMINI_API_KEY');
     if (geminiApiKey) {
       this.genAI = new GoogleGenerativeAI(geminiApiKey);
       this.logger.log('Gemini AI initialized successfully');
@@ -76,7 +78,7 @@ export class KaraokeParserService {
     }
 
     // Initialize OpenAI (fallback)
-    const openaiApiKey = process.env.OPENAI_API_KEY;
+    const openaiApiKey = this.configService.get<string>('OPENAI_API_KEY');
     if (openaiApiKey) {
       this.openai = new OpenAI({ apiKey: openaiApiKey });
       this.logger.log('OpenAI initialized successfully as fallback');
@@ -86,12 +88,13 @@ export class KaraokeParserService {
     }
 
     // Initialize Ollama (local models - highest priority when available)
-    const ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
-    const ollamaModel = process.env.OLLAMA_MODEL || 'deepseek-r1:8b';
+    const ollamaHost = this.configService.get<string>('OLLAMA_HOST') || 'http://localhost:11434';
+    const ollamaModel = this.configService.get<string>('OLLAMA_MODEL') || 'deepseek-r1:8b';
 
     // Only initialize Ollama in development or when explicitly configured
     const enableOllama =
-      process.env.NODE_ENV !== 'production' || process.env.ENABLE_OLLAMA === 'true';
+      this.configService.get<string>('NODE_ENV') !== 'production' || 
+      this.configService.get<string>('ENABLE_OLLAMA') === 'true';
 
     if (enableOllama) {
       try {
@@ -164,13 +167,14 @@ export class KaraokeParserService {
     this.logger.log(`Starting to parse website: ${url}`);
 
     try {
-      // Check cache first
+      // Check cache first (temporarily disabled for debugging)
       const cacheKey = `parsed_${Buffer.from(url).toString('base64')}`;
-      const cached = this.cache.get(cacheKey) as ParsedKaraokeData;
-      if (cached) {
-        this.logger.log(`Returning cached result for ${url}`);
-        return cached;
-      }
+      // const cached = this.cache.get(cacheKey) as ParsedKaraokeData;
+      // if (cached) {
+      //   this.logger.log(`Returning cached result for ${url}`);
+      //   return cached;
+      // }
+      this.logger.log(`Cache disabled for debugging - parsing fresh data for ${url}`);
 
       // Fetch the webpage content
       const response = await fetch(url);
@@ -413,16 +417,23 @@ ${content}
 
   // Smart AI provider selection with quota management (Ollama > Gemini > OpenAI)
   private async analyzeWithSmartAI(content: string): Promise<any> {
-    // Try Ollama first (local, unlimited, free)
+    this.logger.log('🔍 Analyzing with Smart AI - checking providers...');
+    
+    // Try Ollama first (local, unlimited, free) - re-enabled with better model
     if (this.ollama) {
       try {
+        this.logger.log('🦙 Trying Ollama (local model)...');
         const result = await this.analyzeWithOllama(content);
-        this.logger.log('Used Ollama (local model - no quota used)');
+        this.logger.log('✅ Used Ollama (local model - no quota used)');
         return result;
       } catch (error) {
-        this.logger.warn('Ollama failed, falling back to cloud AI:', error.message);
+        this.logger.warn('❌ Ollama failed, falling back to cloud AI:', error.message);
+        this.logger.warn('❌ Full Ollama error:', error);
       }
+    } else {
+      this.logger.log('⚠️ Ollama not available');
     }
+    // this.logger.log('🔧 Ollama temporarily disabled for debugging - trying cloud AI directly');
 
     // Fallback to Gemini if available and quota not exhausted
     if (
@@ -431,30 +442,36 @@ ${content}
       this.dailyGeminiCalls < this.MAX_DAILY_GEMINI_CALLS
     ) {
       try {
+        this.logger.log('💎 Trying Gemini AI...');
         this.dailyGeminiCalls++;
         const result = await this.analyzeWithGemini(content);
         this.logger.log(
-          `Used Gemini AI (call ${this.dailyGeminiCalls}/${this.MAX_DAILY_GEMINI_CALLS})`,
+          `✅ Used Gemini AI (call ${this.dailyGeminiCalls}/${this.MAX_DAILY_GEMINI_CALLS})`,
         );
         return result;
       } catch (error) {
-        this.logger.warn('Gemini AI failed, switching to OpenAI fallback:', error.message);
+        this.logger.warn('❌ Gemini AI failed, switching to OpenAI fallback:', error.message);
         if (error.message.includes('quota') || error.message.includes('limit')) {
           this.geminiQuotaExhausted = true;
         }
       }
+    } else {
+      this.logger.log('⚠️ Gemini not available or quota exhausted');
     }
 
     // Final fallback to OpenAI
     if (this.openai) {
       try {
+        this.logger.log('🤖 Trying OpenAI as final fallback...');
         const result = await this.analyzeWithOpenAI(content);
-        this.logger.log('Used OpenAI as final fallback');
+        this.logger.log('✅ Used OpenAI as final fallback');
         return result;
       } catch (error) {
-        this.logger.error('OpenAI also failed:', error);
+        this.logger.error('❌ OpenAI also failed:', error);
         throw error;
       }
+    } else {
+      this.logger.log('⚠️ OpenAI not available');
     }
 
     throw new Error('No AI providers available or all failed');
@@ -491,8 +508,13 @@ ${content}
 
   // Ollama local AI method (highest priority - free and unlimited)
   private async analyzeWithOllama(content: string): Promise<any> {
-    const model = process.env.OLLAMA_MODEL || 'llama3.1:8b';
-    const prompt = this.buildAIPrompt(content);
+    const model = this.configService.get<string>('OLLAMA_MODEL') || 'deepseek-r1:8b';
+    this.logger.log(`🦙 Using Ollama model: ${model}`);
+    
+    // Special prompt for reasoning models like deepseek-r1
+    const prompt = model.includes('deepseek-r1') 
+      ? this.buildReasoningModelPrompt(content)
+      : this.buildAIPrompt(content);
 
     const response = await this.ollama.chat({
       model,
@@ -504,19 +526,39 @@ ${content}
       },
     });
 
+    this.logger.log(`🦙 Ollama response received: ${JSON.stringify(response, null, 2)}`);
+
     const text = response.message?.content;
     if (!text) {
       throw new Error('Empty response from Ollama');
     }
 
-    // Parse JSON response (same as other AI providers)
+    this.logger.log(`🦙 Ollama response text: ${text.substring(0, 500)}...`);
+
+    // For reasoning models, extract JSON after <think> tags
     try {
+      // First try to extract JSON after reasoning
+      if (text.includes('</think>')) {
+        const afterThinking = text.split('</think>')[1];
+        const jsonMatch = afterThinking.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          this.logger.log(`✅ Successfully parsed Ollama JSON response (after reasoning)`);
+          return parsed;
+        }
+      }
+      
+      // Fallback to regular JSON extraction
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonMatch[0]);
+        this.logger.log(`✅ Successfully parsed Ollama JSON response`);
+        return parsed;
+      } else {
+        this.logger.warn(`⚠️ No JSON found in Ollama response, using fallback`);
       }
     } catch (parseError) {
-      this.logger.warn('Failed to parse Ollama response as JSON, using fallback parsing');
+      this.logger.warn('❌ Failed to parse Ollama response as JSON, using fallback parsing:', parseError.message);
     }
 
     return this.fallbackParsing(text);
@@ -674,6 +716,51 @@ ${content}
       seen.add(key);
       return true;
     });
+  }
+
+  private buildReasoningModelPrompt(content: string): string {
+    return `
+You are an expert at parsing HTML content from karaoke and DJ service websites to extract structured schedule information.
+
+<think>
+Think through this step by step:
+1. Identify the vendor/business name from the HTML content
+2. Look for KJ/DJ names mentioned in the content
+3. Find venue names, dates, and times for karaoke shows
+4. Extract recurring schedules if present
+</think>
+
+Parse the following webpage content and extract karaoke/DJ information. Return ONLY valid JSON with this exact structure:
+
+{
+  "vendor": {
+    "name": "business name",
+    "website": "website url", 
+    "description": "brief description",
+    "confidence": 85
+  },
+  "kjs": [
+    {
+      "name": "KJ/DJ Name",
+      "confidence": 90,
+      "context": "additional info"
+    }
+  ],
+  "shows": [
+    {
+      "venue": "Venue Name",
+      "date": "recurring",
+      "time": "19:00",
+      "kjName": "KJ Name",
+      "description": "Every Monday",
+      "confidence": 80
+    }
+  ]
+}
+
+WEBPAGE CONTENT:
+${content}
+    `;
   }
 
   // Centralized AI prompt building
@@ -1410,12 +1497,15 @@ ${allLinks.map((link) => `<a href="${link.href}">${link.text}</a> (from ${link.p
       // Use the enhanced content with the existing AI analysis
       let aiResult;
       try {
+        this.logger.log('🤖 Starting AI analysis...');
         aiResult = await this.analyzeWithSmartAI(contentForAI);
+        this.logger.log(`🤖 AI analysis completed. Result: ${JSON.stringify(aiResult, null, 2)}`);
+        
         if (!aiResult) {
           throw new Error('AI analysis returned null/undefined');
         }
       } catch (error) {
-        this.logger.error('AI analysis failed, using fallback data:', error);
+        this.logger.error('❌ AI analysis failed, using fallback data:', error);
         aiResult = {
           vendor: {
             name: "Steve's DJ",
