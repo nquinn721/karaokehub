@@ -1,5 +1,4 @@
 import {
-  faBars,
   faCog,
   faSignOutAlt,
   faUser,
@@ -89,7 +88,15 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               onClick={() => uiStore.toggleSidebar()}
               sx={{ mr: 2 }}
             >
-              <FontAwesomeIcon icon={faBars} />
+              <img 
+                src="/images/karaoke-hub-logo.png" 
+                alt="KaraokeHub Logo"
+                style={{ 
+                  width: '32px', 
+                  height: '32px',
+                  objectFit: 'contain'
+                }}
+              />
             </IconButton>
           )}
 
@@ -100,13 +107,17 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
             sx={{
               flexGrow: 1,
               fontWeight: 600,
-              color:
-                theme.palette.mode === 'light'
-                  ? theme.palette.primary.contrastText // White text on solid primary
-                  : theme.palette.primary.main, // Keep original gradient in dark mode
               cursor: 'pointer',
+              background: theme.palette.mode === 'light'
+                ? 'linear-gradient(135deg, #1976d2 0%, #9c27b0 50%, #f44336 100%)'
+                : 'linear-gradient(135deg, #64b5f6 0%, #ba68c8 50%, #ef5350 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
               '&:hover': {
                 opacity: 0.8,
+                transform: 'scale(1.02)',
+                transition: 'all 0.2s ease-in-out',
               },
             }}
           >

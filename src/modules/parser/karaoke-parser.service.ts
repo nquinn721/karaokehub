@@ -513,6 +513,8 @@ ${content}
       // Define key pages to crawl for show information
       const pagesToCrawl = [
         baseUrl, // Homepage
+        `${baseUrl}/karaoke-schedule`, // Main karaoke schedule page
+        `${baseUrl}/music-bingo-trivia`, // Music bingo schedule page
         `${baseUrl}/schedule`,
         `${baseUrl}/calendar`,
         `${baseUrl}/events`,
