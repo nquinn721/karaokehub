@@ -147,6 +147,55 @@ export class ParserStore {
     return this.pendingReviews.find((item) => item.id === id);
   }
 
+  async approveSelectedItems(
+    id: string,
+    selectedItems: {
+      vendor?: boolean;
+      kjIds?: string[];
+      showIds?: string[];
+    },
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await apiStore.patch(`/admin/parser/approve-selected/${id}`, selectedItems);
+
+      // Remove from pending reviews or refresh list
+      await this.fetchPendingReviews();
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to approve selected items';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async approveAllItems(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await apiStore.patch(`/admin/parser/approve-all/${id}`);
+
+      // Remove from pending reviews
+      runInAction(() => {
+        this.pendingReviews = this.pendingReviews.filter((item) => item.id !== id);
+      });
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to approve all items';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
   async parseAndSaveWebsite(
     url: string,
     autoApprove: boolean = false,
@@ -207,6 +256,9 @@ export class ParserStore {
       this.setError(null);
 
       const response = await apiStore.post('/admin/parser/parse-stevesdj');
+
+      // Refresh pending reviews after parsing
+      await this.fetchPendingReviews();
 
       return {
         success: true,

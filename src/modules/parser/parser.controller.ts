@@ -24,6 +24,25 @@ export class ParserController {
     return { success: true, message: 'Data approved and saved successfully' };
   }
 
+  @Patch('approve-selected/:id')
+  async approveSelectedItems(
+    @Param('id') id: string, 
+    @Body() selectedItems: {
+      vendor?: boolean;
+      kjIds?: string[];
+      showIds?: string[];
+    }
+  ) {
+    await this.parserService.approveSelectedItems(id, selectedItems);
+    return { success: true, message: 'Selected items approved and saved successfully' };
+  }
+
+  @Patch('approve-all/:id')
+  async approveAllItems(@Param('id') id: string) {
+    await this.parserService.approveAllItems(id);
+    return { success: true, message: 'All items approved and saved successfully' };
+  }
+
   @Patch('reject/:id')
   async rejectParsedData(@Param('id') id: string, @Body() body: { reason?: string }) {
     await this.parserService.rejectParsedData(id, body.reason);
@@ -70,11 +89,14 @@ export class ParserController {
     const result = await this.parserService.parseStevesdj();
     return {
       success: true,
-      message: "Steve's DJ website parsed and data saved successfully",
+      message: "Steve's DJ website parsed and data saved for review",
       data: {
-        vendor: result.savedEntities.vendor.name,
+        vendor: result.savedEntities.vendor?.name || result.parsedData.vendor.name,
         kjsCount: result.savedEntities.kjs.length,
         showsCount: result.savedEntities.shows.length,
+        parsedKjsCount: result.parsedData.kjs.length,
+        parsedShowsCount: result.parsedData.shows.length,
+        status: result.savedEntities.vendor ? 'saved' : 'pending_review',
         confidence: {
           vendor: result.parsedData.vendor.confidence,
           avgKjConfidence:
@@ -111,9 +133,12 @@ export class SimpleTestController {
         success: true,
         message: "Steve's DJ website parsed successfully",
         data: {
-          vendor: result.savedEntities.vendor.name,
+          vendor: result.savedEntities.vendor?.name || result.parsedData.vendor.name,
           kjsCount: result.savedEntities.kjs.length,
           showsCount: result.savedEntities.shows.length,
+          parsedKjsCount: result.parsedData.kjs.length,
+          parsedShowsCount: result.parsedData.shows.length,
+          status: result.savedEntities.vendor ? 'saved' : 'pending_review',
           confidence: {
             vendor: result.parsedData.vendor.confidence,
             avgKjConfidence:

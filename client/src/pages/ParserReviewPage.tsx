@@ -49,6 +49,11 @@ const ParserReviewPage: React.FC = observer(() => {
   const [reviewComments, setReviewComments] = useState('');
   const [parseResults, setParseResults] = useState<ParseResults | null>(null);
   const [parseResultsDialogOpen, setParseResultsDialogOpen] = useState(false);
+  
+  // Granular approval state
+  const [selectedVendor, setSelectedVendor] = useState(false);
+  const [selectedKjs, setSelectedKjs] = useState<string[]>([]);
+  const [selectedShows, setSelectedShows] = useState<string[]>([]);
 
   // Redirect non-admin users
   if (!authStore.isAdmin) {
@@ -95,6 +100,10 @@ const ParserReviewPage: React.FC = observer(() => {
     if (review) {
       setSelectedReview(reviewId);
       setEditedData({ ...review.aiAnalysis });
+      // Reset selections when switching reviews
+      setSelectedVendor(false);
+      setSelectedKjs([]);
+      setSelectedShows([]);
     }
   };
 
@@ -105,6 +114,38 @@ const ParserReviewPage: React.FC = observer(() => {
     if (result.success) {
       setSelectedReview(null);
       setEditedData(null);
+    }
+  };
+
+  const handleApproveSelected = async () => {
+    if (!selectedReview) return;
+
+    const selectedItems = {
+      vendor: selectedVendor,
+      kjIds: selectedKjs,
+      showIds: selectedShows,
+    };
+
+    const result = await parserStore.approveSelectedItems(selectedReview, selectedItems);
+    if (result.success) {
+      setSelectedReview(null);
+      setEditedData(null);
+      setSelectedVendor(false);
+      setSelectedKjs([]);
+      setSelectedShows([]);
+    }
+  };
+
+  const handleApproveAll = async () => {
+    if (!selectedReview) return;
+
+    const result = await parserStore.approveAllItems(selectedReview);
+    if (result.success) {
+      setSelectedReview(null);
+      setEditedData(null);
+      setSelectedVendor(false);
+      setSelectedKjs([]);
+      setSelectedShows([]);
     }
   };
 
@@ -256,13 +297,24 @@ const ParserReviewPage: React.FC = observer(() => {
                   >
                     <Typography variant="h6">Review Details</Typography>
                     <Stack direction="row" spacing={1}>
-                      <IconButton
-                        color="success"
-                        onClick={handleApprove}
-                        disabled={parserStore.isLoading}
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={handleApproveSelected}
+                        disabled={parserStore.isLoading || (!selectedVendor && selectedKjs.length === 0 && selectedShows.length === 0)}
+                        startIcon={<FontAwesomeIcon icon={faCheck} />}
                       >
-                        <FontAwesomeIcon icon={faCheck} />
-                      </IconButton>
+                        Approve Selected
+                      </Button>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={handleApproveAll}
+                        disabled={parserStore.isLoading}
+                        startIcon={<FontAwesomeIcon icon={faCheck} />}
+                      >
+                        Approve All
+                      </Button>
                       <IconButton
                         color="error"
                         onClick={() => handleReject('Rejected during review')}
@@ -281,6 +333,12 @@ const ParserReviewPage: React.FC = observer(() => {
                       variant="h6"
                       sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}
                     >
+                      <Checkbox
+                        checked={selectedVendor}
+                        onChange={(e) => setSelectedVendor(e.target.checked)}
+                        size="small"
+                        color="primary"
+                      />
                       <FontAwesomeIcon icon={faUsers} />
                       Vendor Information
                     </Typography>
@@ -351,6 +409,24 @@ const ParserReviewPage: React.FC = observer(() => {
                     <Stack spacing={1}>
                       {editedData.kjs?.map((kj: any, index: number) => (
                         <Paper key={index} sx={{ p: 2 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <Checkbox
+                              checked={selectedKjs.includes(`kj-${index}`)}
+                              onChange={(e) => {
+                                const kjId = `kj-${index}`;
+                                if (e.target.checked) {
+                                  setSelectedKjs([...selectedKjs, kjId]);
+                                } else {
+                                  setSelectedKjs(selectedKjs.filter(id => id !== kjId));
+                                }
+                              }}
+                              size="small"
+                              color="primary"
+                            />
+                            <Typography variant="subtitle2" flexGrow={1}>
+                              Select KJ: {kj.name}
+                            </Typography>
+                          </Box>
                           <TextField
                             label="KJ Name"
                             value={kj.name || ''}

@@ -439,6 +439,174 @@ ${content}
     this.logger.log(`Rejected parsed data for schedule ${parsedScheduleId}: ${reason}`);
   }
 
+  // Enhanced approval methods for granular control
+  async approveSelectedItems(
+    parsedScheduleId: string,
+    selectedItems: {
+      vendor?: boolean;
+      kjIds?: string[];
+      showIds?: string[];
+    }
+  ): Promise<{
+    vendor?: Vendor;
+    kjs: KJ[];
+    shows: Show[];
+  }> {
+    const parsedSchedule = await this.parsedScheduleRepository.findOne({
+      where: { id: parsedScheduleId },
+    });
+
+    if (!parsedSchedule) {
+      throw new Error('Parsed schedule not found');
+    }
+
+    const aiAnalysis = parsedSchedule.aiAnalysis;
+    const result = {
+      vendor: undefined as Vendor | undefined,
+      kjs: [] as KJ[],
+      shows: [] as Show[],
+    };
+
+    // Create or find vendor if selected
+    if (selectedItems.vendor && aiAnalysis.vendor) {
+      let vendor = await this.vendorRepository.findOne({
+        where: { name: aiAnalysis.vendor.name },
+      });
+
+      if (!vendor) {
+        vendor = new Vendor();
+        vendor.name = aiAnalysis.vendor.name;
+        vendor.website = aiAnalysis.vendor.website || parsedSchedule.url;
+        vendor.owner = 'Auto-parsed';
+        vendor.description = aiAnalysis.vendor.description || `Parsed from ${parsedSchedule.url}`;
+        vendor.isActive = true;
+        vendor = await this.vendorRepository.save(vendor);
+        this.logger.log(`Created vendor: ${vendor.name}`);
+      }
+      result.vendor = vendor;
+    }
+
+    // Get existing vendor if not selected but needed for KJs/shows
+    let vendor = result.vendor;
+    if (!vendor && (selectedItems.kjIds?.length || selectedItems.showIds?.length)) {
+      vendor = await this.vendorRepository.findOne({
+        where: { name: aiAnalysis.vendor.name },
+      });
+      if (!vendor) {
+        throw new Error('Vendor must be approved first to create KJs and shows');
+      }
+    }
+
+    // Create selected KJs
+    if (selectedItems.kjIds?.length && vendor) {
+      for (const kjId of selectedItems.kjIds) {
+        const kjData = aiAnalysis.kjs.find((kj, index) => index.toString() === kjId);
+        if (kjData) {
+          const existingKj = await this.kjRepository.findOne({
+            where: { name: kjData.name, vendorId: vendor.id },
+          });
+
+          if (!existingKj) {
+            const kj = new KJ();
+            kj.name = kjData.name;
+            kj.vendorId = vendor.id;
+            kj.isActive = true;
+            const savedKj = await this.kjRepository.save(kj);
+            result.kjs.push(savedKj);
+            this.logger.log(`Created KJ: ${kj.name}`);
+          } else {
+            result.kjs.push(existingKj);
+          }
+        }
+      }
+    }
+
+    // Create selected shows
+    if (selectedItems.showIds?.length && vendor) {
+      for (const showId of selectedItems.showIds) {
+        const showData = aiAnalysis.shows.find((show, index) => index.toString() === showId);
+        if (showData) {
+          // Find the KJ if specified
+          let kj: KJ | null = null;
+          if (showData.kjName) {
+            kj = await this.kjRepository.findOne({
+              where: { name: showData.kjName, vendorId: vendor.id },
+            });
+          }
+
+          const show = new Show();
+          show.venue = showData.venue;
+          show.date = this.parseDate(showData.date);
+          show.time = showData.time;
+          show.vendorId = vendor.id;
+          show.kjId = kj?.id || null;
+          show.isActive = true;
+          show.notes = showData.description;
+
+          // Handle image URL if present
+          if (showData.imageUrl) {
+            show.imageUrl = showData.imageUrl;
+          }
+
+          const savedShow = await this.showRepository.save(show);
+          result.shows.push(savedShow);
+          this.logger.log(`Created show: ${show.venue} on ${show.date}`);
+        }
+      }
+    }
+
+    // Check if all items have been processed
+    const totalSelectedItems = 
+      (selectedItems.vendor ? 1 : 0) +
+      (selectedItems.kjIds?.length || 0) +
+      (selectedItems.showIds?.length || 0);
+
+    const totalAvailableItems = 
+      1 + // vendor
+      aiAnalysis.kjs.length +
+      aiAnalysis.shows.length;
+
+    // If all items were selected, remove the parsed schedule record
+    if (totalSelectedItems === totalAvailableItems) {
+      await this.parsedScheduleRepository.remove(parsedSchedule);
+      this.logger.log(`Removed parsed schedule ${parsedScheduleId} - all items processed`);
+    } else {
+      // Update status to partially processed
+      parsedSchedule.status = ParseStatus.APPROVED;
+      await this.parsedScheduleRepository.save(parsedSchedule);
+    }
+
+    return result;
+  }
+
+  async approveAllItems(parsedScheduleId: string): Promise<{
+    vendor?: Vendor;
+    kjs: KJ[];
+    shows: Show[];
+  }> {
+    const parsedSchedule = await this.parsedScheduleRepository.findOne({
+      where: { id: parsedScheduleId },
+    });
+
+    if (!parsedSchedule) {
+      throw new Error('Parsed schedule not found');
+    }
+
+    const aiAnalysis = parsedSchedule.aiAnalysis;
+    
+    // Approve everything
+    const selectedItems = {
+      vendor: true,
+      kjIds: aiAnalysis.kjs.map((_, index) => index.toString()),
+      showIds: aiAnalysis.shows.map((_, index) => index.toString()),
+    };
+
+    const result = await this.approveSelectedItems(parsedScheduleId, selectedItems);
+
+    this.logger.log(`Approved all items for parsed schedule ${parsedScheduleId}`);
+    return result;
+  }
+
   async parseAndSaveWebsite(
     url: string,
     autoApprove: boolean = false,
@@ -589,7 +757,7 @@ ${content}
   async parseStevesdj(): Promise<{
     parsedData: ParsedKaraokeData;
     savedEntities: {
-      vendor: Vendor;
+      vendor: Vendor | null;
       kjs: KJ[];
       shows: Show[];
     };
@@ -718,7 +886,7 @@ ${content}
         parsedAt: new Date(),
       };
       parsedSchedule.aiAnalysis = aiResult;
-      parsedSchedule.status = ParseStatus.APPROVED; // Auto-approve for Steve's DJ
+      parsedSchedule.status = ParseStatus.PENDING_REVIEW; // Put in pending reviews instead of auto-approving
 
       await this.parsedScheduleRepository.save(parsedSchedule);
 
@@ -738,9 +906,16 @@ ${content}
         `Enhanced parsing found: ${parsedData.kjs.length} KJs and ${parsedData.shows.length} shows`,
       );
 
-      // Now use the existing parseAndSaveWebsite logic to create entities
-      // But we'll create them manually since we have custom data
-      return await this.createEntitiesFromParsedData(parsedData);
+      // Return the parsed data without creating entities immediately
+      // The entities will be created when the admin approves the data
+      return {
+        parsedData,
+        savedEntities: {
+          vendor: null, // No entities created yet - waiting for approval
+          kjs: [],
+          shows: [],
+        },
+      };
     } catch (error) {
       this.logger.error(`Error in enhanced Steve's DJ parsing:`, error);
       throw error;
