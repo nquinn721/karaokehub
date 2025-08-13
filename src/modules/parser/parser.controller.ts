@@ -97,3 +97,41 @@ export class ParserController {
     };
   }
 }
+
+// Temporary test endpoint without authentication
+@Controller('test-parser')
+export class TestParserController {
+  constructor(private readonly parserService: KaraokeParserService) {}
+
+  @Post('parse-stevesdj')
+  async parseStevesdj() {
+    const result = await this.parserService.parseStevesdj();
+    return {
+      success: true,
+      message: "Steve's DJ website parsed and data saved successfully",
+      data: {
+        vendor: result.savedEntities.vendor.name,
+        kjsCount: result.savedEntities.kjs.length,
+        showsCount: result.savedEntities.shows.length,
+        confidence: {
+          vendor: result.parsedData.vendor.confidence,
+          avgKjConfidence:
+            result.parsedData.kjs.length > 0
+              ? Math.round(
+                  result.parsedData.kjs.reduce((sum, kj) => sum + kj.confidence, 0) /
+                    result.parsedData.kjs.length,
+                )
+              : 0,
+          avgShowConfidence:
+            result.parsedData.shows.length > 0
+              ? Math.round(
+                  result.parsedData.shows.reduce((sum, show) => sum + show.confidence, 0) /
+                    result.parsedData.shows.length,
+                )
+              : 0,
+        },
+      },
+      entities: result.savedEntities,
+    };
+  }
+}

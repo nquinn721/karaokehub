@@ -167,16 +167,22 @@ You are an expert at parsing karaoke and DJ service websites to extract structur
    - Look for addresses or location details
    - Pay special attention to schedule tables, lists, or structured data
    - If you see "Multiple locations" or similar, try to extract individual venue names
+   - SPECIFICALLY look for formats like "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve ALIBI BEACH LOUNGE"
+   - Parse formats that start with day of week (SUNDAYS, MONDAYS, etc.) followed by time ranges and venue names
+   - Extract venue names that appear after time ranges or DJ/KJ names
+   - Look for patterns like "DAY + KARAOKE + TIME + with + DJ/KJ + VENUE"
    - Confidence level for each (0-100)
 
 IMPORTANT PARSING GUIDELINES:
 - Prioritize recurring weekly karaoke schedules over one-time events
-- Look for venue names like "Joe's Bar", "Main Street Grill", "VFW Post 123", etc.
+- Look for venue names like "Joe's Bar", "Main Street Grill", "VFW Post 123", "ALIBI BEACH LOUNGE", etc.
 - Times are often in evening hours (6PM-11PM range)
 - If times are ranges like "7PM-11PM", use "19:00" for time field
-- Days should be full day names (Monday, Tuesday, etc.)
+- Days should be full day names (Monday, Tuesday, etc.) but may appear as "SUNDAYS", "MONDAYS" etc.
 - If no specific date, use "recurring" for weekly shows
 - Focus on actual venue names, not generic descriptions
+- EXAMPLE FORMAT to look for: "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve ALIBI BEACH LOUNGE"
+  This should extract: venue="ALIBI BEACH LOUNGE", day="Sunday", time="19:00", kjName="DJ Steve"
 
 Please return the response as a valid JSON object with this exact structure:
 {
@@ -576,6 +582,26 @@ ${content}
 
       // Prepare enhanced content for AI analysis with specific rules for Steve's DJ
       const contentForAI = this.prepareContentForAI(pageTitle, combinedContent, allLinks, baseUrl);
+      
+      // Debug: Log key information about the content being analyzed
+      this.logger.log(`Content for AI analysis: ${contentForAI.length} characters`);
+      this.logger.log(`Content includes "SUNDAYS": ${contentForAI.includes('SUNDAYS') ? 'YES' : 'NO'}`);
+      this.logger.log(`Content includes "ALIBI": ${contentForAI.includes('ALIBI') ? 'YES' : 'NO'}`);
+      this.logger.log(`Content includes "7:00PM": ${contentForAI.includes('7:00PM') ? 'YES' : 'NO'}`);
+      this.logger.log(`Content includes "BEACH LOUNGE": ${contentForAI.includes('BEACH LOUNGE') ? 'YES' : 'NO'}`);
+      this.logger.log(`Content includes "karaoke" (case-insensitive): ${contentForAI.toLowerCase().includes('karaoke') ? 'YES' : 'NO'}`);
+      
+      // Log content from karaoke-schedule page specifically
+      const karaokeScheduleContent = combinedContent.split('--- Content from ')[1]?.split('---')[0] || '';
+      if (karaokeScheduleContent.includes('/karaoke-schedule')) {
+        const schedulePageContent = combinedContent.split('--- Content from https://stevesdj.com/karaoke-schedule ---')[1]?.split('--- Content from ')[0] || '';
+        this.logger.log(`[KARAOKE-SCHEDULE PAGE] Content length: ${schedulePageContent.length}`);
+        this.logger.log(`[KARAOKE-SCHEDULE PAGE] First 1500 chars: ${schedulePageContent.substring(0, 1500)}`);
+        this.logger.log(`[KARAOKE-SCHEDULE PAGE] Contains SUNDAYS: ${schedulePageContent.includes('SUNDAYS')}`);
+        this.logger.log(`[KARAOKE-SCHEDULE PAGE] Contains ALIBI: ${schedulePageContent.includes('ALIBI')}`);
+      }
+      
+      this.logger.log(`Content preview (first 500 chars): ${contentForAI.substring(0, 500)}`);
       
       // Use the enhanced content with the existing AI analysis
       const aiResult = await this.analyzeWithGemini(contentForAI);
