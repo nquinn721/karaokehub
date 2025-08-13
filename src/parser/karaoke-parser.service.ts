@@ -133,7 +133,7 @@ ${html.substring(0, 50000)} ${html.length > 50000 ? '...[truncated]' : ''}
 
   private async analyzeWithGemini(content: string): Promise<any> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
       const prompt = `
 You are an expert at parsing HTML content from karaoke and DJ service websites to extract structured schedule information. 
