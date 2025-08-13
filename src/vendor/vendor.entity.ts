@@ -7,7 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { KJ } from '../kj/kj.entity';
-import { ParsedSchedule } from '../parser/parsed-schedule.entity';
+import { ParsedSchedule } from '../modules/parser/parsed-schedule.entity';
 import { Show } from '../show/show.entity';
 
 @Entity('vendors')

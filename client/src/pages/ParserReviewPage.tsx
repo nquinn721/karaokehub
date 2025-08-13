@@ -49,7 +49,7 @@ const ParserReviewPage: React.FC = observer(() => {
   const [reviewComments, setReviewComments] = useState('');
   const [parseResults, setParseResults] = useState<ParseResults | null>(null);
   const [parseResultsDialogOpen, setParseResultsDialogOpen] = useState(false);
-  
+
   // Granular approval state
   const [selectedVendor, setSelectedVendor] = useState(false);
   const [selectedKjs, setSelectedKjs] = useState<string[]>([]);
@@ -122,8 +122,10 @@ const ParserReviewPage: React.FC = observer(() => {
 
     const selectedItems = {
       vendor: selectedVendor,
-      kjIds: selectedKjs,
-      showIds: selectedShows,
+      // Convert kj-0, kj-1 to actual indices for the backend
+      kjIds: selectedKjs.map((id) => id.replace('kj-', '')),
+      // Convert show-0, show-1 to actual indices for the backend
+      showIds: selectedShows.map((id) => id.replace('show-', '')),
     };
 
     const result = await parserStore.approveSelectedItems(selectedReview, selectedItems);
@@ -301,7 +303,12 @@ const ParserReviewPage: React.FC = observer(() => {
                         variant="outlined"
                         size="small"
                         onClick={handleApproveSelected}
-                        disabled={parserStore.isLoading || (!selectedVendor && selectedKjs.length === 0 && selectedShows.length === 0)}
+                        disabled={
+                          parserStore.isLoading ||
+                          (!selectedVendor &&
+                            selectedKjs.length === 0 &&
+                            selectedShows.length === 0)
+                        }
                         startIcon={<FontAwesomeIcon icon={faCheck} />}
                       >
                         Approve Selected
@@ -417,7 +424,7 @@ const ParserReviewPage: React.FC = observer(() => {
                                 if (e.target.checked) {
                                   setSelectedKjs([...selectedKjs, kjId]);
                                 } else {
-                                  setSelectedKjs(selectedKjs.filter(id => id !== kjId));
+                                  setSelectedKjs(selectedKjs.filter((id) => id !== kjId));
                                 }
                               }}
                               size="small"
@@ -469,6 +476,24 @@ const ParserReviewPage: React.FC = observer(() => {
                     <Stack spacing={2}>
                       {editedData.shows?.map((show: any, index: number) => (
                         <Paper key={index} sx={{ p: 2 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                            <Checkbox
+                              checked={selectedShows.includes(`show-${index}`)}
+                              onChange={(e) => {
+                                const showId = `show-${index}`;
+                                if (e.target.checked) {
+                                  setSelectedShows([...selectedShows, showId]);
+                                } else {
+                                  setSelectedShows(selectedShows.filter((id) => id !== showId));
+                                }
+                              }}
+                              size="small"
+                              color="primary"
+                            />
+                            <Typography variant="subtitle2" flexGrow={1}>
+                              Select Show: {show.venue} - {show.date} {show.time}
+                            </Typography>
+                          </Box>
                           <Grid container spacing={2}>
                             <Grid item xs={12} sm={6}>
                               <TextField

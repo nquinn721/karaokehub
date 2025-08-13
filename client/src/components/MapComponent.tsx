@@ -134,8 +134,8 @@ export const MapComponent: React.FC = observer(() => {
               >
                 {/* User Location Marker */}
                 {userLocation && (
-                  <Marker 
-                    position={userLocation} 
+                  <Marker
+                    position={userLocation}
                     icon={`data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
                         <circle cx="12" cy="12" r="8" fill="${theme.palette.info.main}" stroke="#fff" stroke-width="2"/>
@@ -169,8 +169,8 @@ export const MapComponent: React.FC = observer(() => {
                       showStore.setSelectedShow(null);
                     }}
                   >
-                    <Box 
-                      sx={{ 
+                    <Box
+                      sx={{
                         maxWidth: 280,
                         p: 1,
                         backgroundColor: theme.palette.background.paper,
@@ -178,64 +178,58 @@ export const MapComponent: React.FC = observer(() => {
                         boxShadow: theme.shadows[3],
                       }}
                     >
-                      <Typography 
-                        variant="h6" 
-                        gutterBottom 
-                        sx={{ 
+                      <Typography
+                        variant="h6"
+                        gutterBottom
+                        sx={{
                           color: theme.palette.text.primary,
-                          fontWeight: 600 
+                          fontWeight: 600,
                         }}
                       >
                         {showStore.selectedShow.vendor?.name}
                       </Typography>
-                      <Typography 
-                        variant="body2" 
+                      <Typography
+                        variant="body2"
                         gutterBottom
-                        sx={{ 
+                        sx={{
                           color: theme.palette.text.secondary,
-                          mb: 1.5 
+                          mb: 1.5,
                         }}
                       >
                         {showStore.selectedShow.address}
                       </Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <FontAwesomeIcon 
-                          icon={faMicrophone} 
-                          style={{ 
+                        <FontAwesomeIcon
+                          icon={faMicrophone}
+                          style={{
                             fontSize: '14px',
-                            color: theme.palette.primary.main 
-                          }} 
+                            color: theme.palette.primary.main,
+                          }}
                         />
-                        <Typography 
-                          variant="body2"
-                          sx={{ color: theme.palette.text.primary }}
-                        >
+                        <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
                           Host: {showStore.selectedShow.kj?.name}
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        <FontAwesomeIcon 
-                          icon={faLocationDot} 
-                          style={{ 
+                        <FontAwesomeIcon
+                          icon={faLocationDot}
+                          style={{
                             fontSize: '14px',
-                            color: theme.palette.secondary.main 
-                          }} 
+                            color: theme.palette.secondary.main,
+                          }}
                         />
-                        <Typography 
-                          variant="body2"
-                          sx={{ color: theme.palette.text.primary }}
-                        >
+                        <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
                           {formatTime(showStore.selectedShow.startTime)} -{' '}
                           {formatTime(showStore.selectedShow.endTime)}
                         </Typography>
                       </Box>
                       {showStore.selectedShow.description && (
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
+                        <Typography
+                          variant="body2"
+                          sx={{
                             mt: 1,
                             color: theme.palette.text.secondary,
-                            fontStyle: 'italic'
+                            fontStyle: 'italic',
                           }}
                         >
                           {showStore.selectedShow.description}

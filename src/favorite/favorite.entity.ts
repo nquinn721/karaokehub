@@ -23,6 +23,7 @@ export class Favorite {
   @Column({
     type: 'enum',
     enum: DayOfWeek,
+    nullable: true,
   })
   day: DayOfWeek;
 

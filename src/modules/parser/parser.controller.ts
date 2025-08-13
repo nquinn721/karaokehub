@@ -26,12 +26,13 @@ export class ParserController {
 
   @Patch('approve-selected/:id')
   async approveSelectedItems(
-    @Param('id') id: string, 
-    @Body() selectedItems: {
+    @Param('id') id: string,
+    @Body()
+    selectedItems: {
       vendor?: boolean;
       kjIds?: string[];
       showIds?: string[];
-    }
+    },
   ) {
     await this.parserService.approveSelectedItems(id, selectedItems);
     return { success: true, message: 'Selected items approved and saved successfully' };

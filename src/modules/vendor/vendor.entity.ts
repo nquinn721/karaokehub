@@ -6,7 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { ParsedSchedule } from '../../parser/parsed-schedule.entity';
+import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { KJ } from '../kj/kj.entity';
 import { Show } from '../show/show.entity';
 
