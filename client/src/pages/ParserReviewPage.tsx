@@ -107,16 +107,6 @@ const ParserReviewPage: React.FC = observer(() => {
     }
   };
 
-  const handleApprove = async () => {
-    if (!selectedReview || !editedData) return;
-
-    const result = await parserStore.approveParsedData(selectedReview, editedData);
-    if (result.success) {
-      setSelectedReview(null);
-      setEditedData(null);
-    }
-  };
-
   const handleApproveSelected = async () => {
     if (!selectedReview) return;
 
