@@ -24,11 +24,8 @@ export const MapComponent: React.FC = observer(() => {
   const theme = useTheme();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
-  const [initialCenter, setInitialCenter] = useState<{ lat: number; lng: number }>({
-    lat: 40.7128,
-    lng: -74.006,
-  }); // Default to NYC
-  const [initialZoom, setInitialZoom] = useState<number>(13);
+  const initialCenter = { lat: 40.7128, lng: -74.006 }; // Default to NYC
+  const initialZoom = 13;
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const showListRef = useRef<HTMLDivElement>(null);
 
@@ -58,10 +55,10 @@ export const MapComponent: React.FC = observer(() => {
             lng: position.coords.longitude,
           };
           setUserLocation(location);
-          setInitialCenter(location);
           // If map is already loaded, pan to user location
           if (mapInstance) {
             mapInstance.panTo(location);
+            mapInstance.setZoom(14); // Zoom in on user location
           }
         },
         (error) => {
