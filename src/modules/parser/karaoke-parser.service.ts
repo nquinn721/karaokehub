@@ -217,17 +217,59 @@ WEBPAGE CONTENT TO ANALYZE:
 ${content}
       `;
 
+      // DEBUG: Log what content we're sending to AI
+      console.log('=== CONTENT SENT TO AI ===');
+      console.log('Content length:', content.length);
+      console.log('Content preview (first 1000 chars):', content.substring(0, 1000));
+      console.log('Contains "SUNDAYS":', content.includes('SUNDAYS'));
+      console.log('Contains "KARAOKE":', content.includes('KARAOKE'));
+      console.log('Contains "ALIBI":', content.includes('ALIBI'));
+      console.log('Contains "7:00PM":', content.includes('7:00PM'));
+      console.log('=======================');
+
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
+
+      // DEBUG: Log the raw AI response
+      console.log('=== RAW AI RESPONSE FROM GEMINI ===');
+      console.log('Length:', text.length);
+      console.log('First 500 characters:', text.substring(0, 500));
+      console.log('Contains "SUNDAYS":', text.includes('SUNDAYS'));
+      console.log('Contains "KARAOKE":', text.includes('KARAOKE'));
+      console.log('Contains "ALIBI":', text.includes('ALIBI'));
+      console.log('Contains "7:00PM":', text.includes('7:00PM'));
+      console.log('===============================');
 
       // Try to parse JSON response
       try {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
+          const parsedResponse = JSON.parse(jsonMatch[0]);
+          
+          // DEBUG: Log the parsed response structure
+          console.log('=== PARSED AI RESPONSE ===');
+          console.log('Vendor:', parsedResponse.vendor?.name);
+          console.log('KJs count:', parsedResponse.kjs?.length);
+          console.log('Shows count:', parsedResponse.shows?.length);
+          console.log('Shows data:');
+          parsedResponse.shows?.forEach((show, index) => {
+            console.log(`  Show ${index + 1}:`, {
+              venue: show.venue,
+              day: show.day,
+              time: show.time,
+              kjName: show.kjName
+            });
+          });
+          console.log('========================');
+          
+          return parsedResponse;
         }
       } catch (parseError) {
+        console.log('=== JSON PARSING FAILED ===');
+        console.log('Error:', parseError.message);
+        console.log('Raw text to parse:', text);
+        console.log('========================');
         this.logger.warn('Failed to parse AI response as JSON, using fallback parsing');
       }
 

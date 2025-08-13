@@ -26,7 +26,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       // Connection pool settings for MySQL2 (compatible options only)
       connectionLimit: 5, // Reduced for Cloud Run
       acquireTimeout: 30000, // 30 seconds
-      connectTimeout: 20000, // 20 seconds  
+      connectTimeout: 20000, // 20 seconds
       // Additional MySQL2 settings
       queueLimit: 0,
       reconnect: true,

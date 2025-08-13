@@ -6,7 +6,7 @@ import { KaraokeParserService } from './modules/parser/karaoke-parser.service';
 export class AppController {
   constructor(
     private readonly appService: AppService,
-    private readonly parserService: KaraokeParserService
+    private readonly parserService: KaraokeParserService,
   ) {}
 
   @Get('api')

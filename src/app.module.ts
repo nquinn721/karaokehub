@@ -11,7 +11,6 @@ import { getDatabaseConfig } from './config/database.config';
 import { FavoriteModule } from './favorite/favorite.module';
 import { KJModule } from './kj/kj.module';
 import { ParserModule } from './modules/parser/parser.module';
-import { KaraokeParserService } from './modules/parser/karaoke-parser.service';
 import { ShowModule } from './show/show.module';
 import { UserModule } from './user/user.module';
 import { VendorModule } from './vendor/vendor.module';
