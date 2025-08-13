@@ -9,12 +9,9 @@ SERVICE_NAME="karaokehub"
 REGION="us-east1"
 IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}"
 
-# Build and push Docker image
-echo "🔨 Building Docker image..."
-docker build -t ${IMAGE_NAME} .
-
-echo "📤 Pushing image to Google Container Registry..."
-docker push ${IMAGE_NAME}
+# Build and push Docker image using Cloud Build
+echo "🔨 Building Docker image using Cloud Build..."
+gcloud builds submit --tag ${IMAGE_NAME}
 
 # Deploy to Cloud Run
 echo "🌐 Deploying to Cloud Run..."

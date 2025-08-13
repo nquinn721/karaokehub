@@ -31,7 +31,7 @@ export const MapComponent: React.FC = observer(() => {
   const showListRef = useRef<HTMLDivElement>(null);
 
   // Google Maps API key from environment variable
-  const API_KEY = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY;
+  const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   if (!API_KEY) {
     console.error(

@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Favorite } from '../favorite/favorite.entity';
+import { Favorite } from '../../favorite/favorite.entity';
 import { KJ } from '../kj/kj.entity';
 import { Vendor } from '../vendor/vendor.entity';
 

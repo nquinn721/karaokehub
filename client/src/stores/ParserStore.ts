@@ -146,7 +146,7 @@ export class ParserStore {
   getPendingReviewById(id: string): ParsedScheduleItem | undefined {
     return this.pendingReviews.find((item) => item.id === id);
   }
-  led;
+
   async parseAndSaveWebsite(
     url: string,
     autoApprove: boolean = false,

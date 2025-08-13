@@ -10,7 +10,7 @@ import { ShowController } from '../show/show.controller';
 import { Show } from '../show/show.entity';
 import { ShowService } from '../show/show.service';
 import { UserController } from '../user/user.controller';
-import { User } from '../user/user.entity';
+import { User } from '../entities/user.entity';
 import { UserService } from '../user/user.service';
 import { VendorController } from '../vendor/vendor.controller';
 import { Vendor } from '../vendor/vendor.entity';

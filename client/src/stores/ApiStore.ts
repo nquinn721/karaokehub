@@ -30,7 +30,7 @@ class ApiStore {
     globalAxiosInstance = instance;
   } // Environment detection
   private get isDevelopment(): boolean {
-    return process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
+    return import.meta.env.DEV || window.location.hostname === 'localhost';
   }
 
   // Dynamic base URL based on environment
