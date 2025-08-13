@@ -1,0 +1,53 @@
+# Ignore node_modules and build artifacts
+node_modules/
+dist/
+client/dist/
+client/node_modules/
+
+# Ignore git files
+.git/
+.gitignore
+
+# Ignore environment files (secrets should use Secret Manager)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Ignore logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore deployment artifacts
+*.tgz
+*.tar.gz
+
+# Ignore documentation
+docs/
+README.md
+
+# Ignore database files
+data/
+*.sqlite
+*.db
+
+# Ignore test files
+__tests__/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
