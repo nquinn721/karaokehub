@@ -3,15 +3,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { load } from 'cheerio';
-import NodeCache from 'node-cache';
 import fetch from 'node-fetch';
-import { Ollama } from 'ollama';
 import OpenAI from 'openai';
 import { Repository } from 'typeorm';
 import { KJ } from '../kj/kj.entity';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
 import { ParsedSchedule, ParseStatus } from './parsed-schedule.entity';
+const NodeCache = require('node-cache');
 
 export interface ParsedKaraokeData {
   vendor: {
@@ -46,7 +45,6 @@ export class KaraokeParserService {
   private readonly logger = new Logger(KaraokeParserService.name);
   private readonly genAI: GoogleGenerativeAI | null;
   private readonly openai: OpenAI | null;
-  private readonly ollama: Ollama | null;
   private readonly cache: any; // NodeCache instance
   private geminiQuotaExhausted = false;
   private dailyGeminiCalls = 0;
@@ -64,7 +62,7 @@ export class KaraokeParserService {
     private configService: ConfigService,
   ) {
     // Initialize cache (TTL: 24 hours)
-    this.cache = new NodeCache({ stdTTL: 86400, checkperiod: 3600 });
+    this.cache = new (NodeCache as any)({ stdTTL: 86400, checkperiod: 3600 });
 
     // Initialize Gemini AI (primary)
     const geminiApiKey = this.configService.get<string>('GEMINI_API_KEY');
@@ -87,39 +85,12 @@ export class KaraokeParserService {
       this.openai = null;
     }
 
-    // Initialize Ollama (local models - highest priority when available)
-    const ollamaHost = this.configService.get<string>('OLLAMA_HOST') || 'http://localhost:11434';
-    const ollamaModel = this.configService.get<string>('OLLAMA_MODEL') || 'deepseek-r1:8b';
+    // Using Gemini and OpenAI cloud providers only
+    this.logger.log('AI providers initialized - using Gemini and OpenAI cloud providers');
 
-    // Only initialize Ollama in development or when explicitly configured
-    const enableOllama =
-      this.configService.get<string>('NODE_ENV') !== 'production' || 
-      this.configService.get<string>('ENABLE_OLLAMA') === 'true';
-
-    if (enableOllama) {
-      try {
-        this.ollama = new Ollama({ host: ollamaHost });
-        // Test if Ollama is available (async, don't block startup)
-        this.testOllamaConnection(ollamaModel).catch((error) => {
-          this.logger.warn('Ollama connection test failed, disabling Ollama:', error.message);
-          // Don't set to null here to avoid TypeScript issues, just log the failure
-        });
-      } catch (error) {
-        this.logger.warn('Ollama initialization failed - local AI disabled:', error.message);
-        this.ollama = null;
-      }
-    } else {
-      this.logger.log(
-        'Ollama disabled in production environment (set ENABLE_OLLAMA=true to override)',
-      );
-      this.ollama = null;
-    }
-
-    if (!this.genAI && !this.openai && !this.ollama) {
-      this.logger.error('No AI providers available - Gemini, OpenAI, and Ollama are all disabled');
-      throw new Error(
-        'At least one AI provider (GEMINI_API_KEY, OPENAI_API_KEY, or Ollama) is required',
-      );
+    if (!this.genAI && !this.openai) {
+      this.logger.error('No AI providers available - Both Gemini and OpenAI are disabled');
+      throw new Error('At least one AI provider (GEMINI_API_KEY or OPENAI_API_KEY) is required');
     }
 
     // Reset daily call counter at midnight
@@ -138,29 +109,6 @@ export class KaraokeParserService {
         24 * 60 * 60 * 1000,
       );
     }, msUntilMidnight);
-  }
-
-  // Test Ollama connection and log available models
-  private async testOllamaConnection(defaultModel: string): Promise<void> {
-    try {
-      const models = await this.ollama.list();
-      this.logger.log(
-        `Ollama connected successfully. Available models: ${models.models.map((m) => m.name).join(', ')}`,
-      );
-
-      // Check if the default model is available
-      const hasDefaultModel = models.models.some((m) => m.name === defaultModel);
-      if (!hasDefaultModel) {
-        this.logger.warn(
-          `Default model '${defaultModel}' not found. Available: ${models.models.map((m) => m.name).join(', ')}`,
-        );
-      } else {
-        this.logger.log(`Using Ollama model: ${defaultModel}`);
-      }
-    } catch (error) {
-      this.logger.warn('Failed to connect to Ollama:', error.message);
-      throw error;
-    }
   }
 
   async parseWebsite(url: string): Promise<ParsedKaraokeData> {
@@ -415,27 +363,14 @@ ${content}
     }
   }
 
-  // Smart AI provider selection with quota management (Ollama > Gemini > OpenAI)
+  // Smart AI provider selection with quota management (Gemini > OpenAI)
   private async analyzeWithSmartAI(content: string): Promise<any> {
     this.logger.log('🔍 Analyzing with Smart AI - checking providers...');
-    
-    // Try Ollama first (local, unlimited, free) - re-enabled with better model
-    if (this.ollama) {
-      try {
-        this.logger.log('🦙 Trying Ollama (local model)...');
-        const result = await this.analyzeWithOllama(content);
-        this.logger.log('✅ Used Ollama (local model - no quota used)');
-        return result;
-      } catch (error) {
-        this.logger.warn('❌ Ollama failed, falling back to cloud AI:', error.message);
-        this.logger.warn('❌ Full Ollama error:', error);
-      }
-    } else {
-      this.logger.log('⚠️ Ollama not available');
-    }
-    // this.logger.log('🔧 Ollama temporarily disabled for debugging - trying cloud AI directly');
 
-    // Fallback to Gemini if available and quota not exhausted
+    // Using cloud AI providers only
+    this.logger.log('📡 Using cloud AI providers - Gemini primary, OpenAI fallback');
+
+    // Try Gemini first if available and quota not exhausted
     if (
       this.genAI &&
       !this.geminiQuotaExhausted &&
@@ -505,65 +440,6 @@ ${content}
 
     return this.fallbackParsing(text);
   }
-
-  // Ollama local AI method (highest priority - free and unlimited)
-  private async analyzeWithOllama(content: string): Promise<any> {
-    const model = this.configService.get<string>('OLLAMA_MODEL') || 'deepseek-r1:8b';
-    this.logger.log(`🦙 Using Ollama model: ${model}`);
-    
-    // Special prompt for reasoning models like deepseek-r1
-    const prompt = model.includes('deepseek-r1') 
-      ? this.buildReasoningModelPrompt(content)
-      : this.buildAIPrompt(content);
-
-    const response = await this.ollama.chat({
-      model,
-      messages: [{ role: 'user', content: prompt }],
-      options: {
-        temperature: 0.1,
-        top_p: 0.9,
-        num_predict: 2000,
-      },
-    });
-
-    this.logger.log(`🦙 Ollama response received: ${JSON.stringify(response, null, 2)}`);
-
-    const text = response.message?.content;
-    if (!text) {
-      throw new Error('Empty response from Ollama');
-    }
-
-    this.logger.log(`🦙 Ollama response text: ${text.substring(0, 500)}...`);
-
-    // For reasoning models, extract JSON after <think> tags
-    try {
-      // First try to extract JSON after reasoning
-      if (text.includes('</think>')) {
-        const afterThinking = text.split('</think>')[1];
-        const jsonMatch = afterThinking.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          this.logger.log(`✅ Successfully parsed Ollama JSON response (after reasoning)`);
-          return parsed;
-        }
-      }
-      
-      // Fallback to regular JSON extraction
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        this.logger.log(`✅ Successfully parsed Ollama JSON response`);
-        return parsed;
-      } else {
-        this.logger.warn(`⚠️ No JSON found in Ollama response, using fallback`);
-      }
-    } catch (parseError) {
-      this.logger.warn('❌ Failed to parse Ollama response as JSON, using fallback parsing:', parseError.message);
-    }
-
-    return this.fallbackParsing(text);
-  }
-
   // Cheerio-based parsing (no AI quota usage)
   private parseWithCheerio(html: string, url: string): ParsedKaraokeData {
     const $ = load(html);
@@ -716,51 +592,6 @@ ${content}
       seen.add(key);
       return true;
     });
-  }
-
-  private buildReasoningModelPrompt(content: string): string {
-    return `
-You are an expert at parsing HTML content from karaoke and DJ service websites to extract structured schedule information.
-
-<think>
-Think through this step by step:
-1. Identify the vendor/business name from the HTML content
-2. Look for KJ/DJ names mentioned in the content
-3. Find venue names, dates, and times for karaoke shows
-4. Extract recurring schedules if present
-</think>
-
-Parse the following webpage content and extract karaoke/DJ information. Return ONLY valid JSON with this exact structure:
-
-{
-  "vendor": {
-    "name": "business name",
-    "website": "website url", 
-    "description": "brief description",
-    "confidence": 85
-  },
-  "kjs": [
-    {
-      "name": "KJ/DJ Name",
-      "confidence": 90,
-      "context": "additional info"
-    }
-  ],
-  "shows": [
-    {
-      "venue": "Venue Name",
-      "date": "recurring",
-      "time": "19:00",
-      "kjName": "KJ Name",
-      "description": "Every Monday",
-      "confidence": 80
-    }
-  ]
-}
-
-WEBPAGE CONTENT:
-${content}
-    `;
   }
 
   // Centralized AI prompt building
@@ -1015,7 +846,7 @@ ${content}
     // Create or find vendor if selected
     if (selectedItems.vendor && aiAnalysis.vendor) {
       this.logger.log(`Processing vendor: ${aiAnalysis.vendor.name}`);
-      
+
       let vendor = await this.vendorRepository.findOne({
         where: { name: aiAnalysis.vendor.name },
       });
@@ -1028,7 +859,7 @@ ${content}
         vendor.owner = 'Auto-parsed';
         vendor.description = aiAnalysis.vendor.description || `Parsed from ${parsedSchedule.url}`;
         vendor.isActive = true;
-        
+
         try {
           vendor = await this.vendorRepository.save(vendor);
           this.logger.log(`✅ Created vendor: ${vendor.name} (ID: ${vendor.id})`);
@@ -1049,11 +880,13 @@ ${content}
       vendor = await this.vendorRepository.findOne({
         where: { name: aiAnalysis.vendor.name },
       });
-      
+
       if (vendor) {
         this.logger.log(`Found existing vendor: ${vendor.name} (ID: ${vendor.id})`);
       } else {
-        this.logger.warn(`Vendor not found: ${aiAnalysis.vendor.name} - cannot create KJs/shows without vendor`);
+        this.logger.warn(
+          `Vendor not found: ${aiAnalysis.vendor.name} - cannot create KJs/shows without vendor`,
+        );
       }
       if (!vendor) {
         throw new Error('Vendor must be approved first to create KJs and shows');
@@ -1063,12 +896,12 @@ ${content}
     // Create selected KJs
     if (selectedItems.kjIds?.length && vendor) {
       this.logger.log(`Creating ${selectedItems.kjIds.length} KJs for vendor ${vendor.name}`);
-      
+
       for (const kjId of selectedItems.kjIds) {
         const kjData = aiAnalysis.kjs.find((kj, index) => index.toString() === kjId);
         if (kjData) {
           this.logger.log(`Processing KJ: ${JSON.stringify(kjData)}`);
-          
+
           const existingKj = await this.kjRepository.findOne({
             where: { name: kjData.name, vendorId: vendor.id },
           });
@@ -1078,7 +911,7 @@ ${content}
             kj.name = kjData.name;
             kj.vendorId = vendor.id;
             kj.isActive = true;
-            
+
             try {
               const savedKj = await this.kjRepository.save(kj);
               result.kjs.push(savedKj);
@@ -1095,19 +928,21 @@ ${content}
           this.logger.warn(`KJ data not found for ID: ${kjId}`);
         }
       }
-      
-      this.logger.log(`Successfully processed ${result.kjs.length} KJs out of ${selectedItems.kjIds.length} attempted`);
+
+      this.logger.log(
+        `Successfully processed ${result.kjs.length} KJs out of ${selectedItems.kjIds.length} attempted`,
+      );
     }
 
     // Create selected shows
     if (selectedItems.showIds?.length && vendor) {
       this.logger.log(`Creating ${selectedItems.showIds.length} shows for vendor ${vendor.name}`);
-      
+
       for (const showId of selectedItems.showIds) {
         const showData = aiAnalysis.shows.find((show, index) => index.toString() === showId);
         if (showData) {
           this.logger.log(`Processing show: ${JSON.stringify(showData)}`);
-          
+
           // Find the KJ if specified
           let kj: KJ | null = null;
           if (showData.kjName) {
@@ -1144,7 +979,9 @@ ${content}
           try {
             const savedShow = await this.showRepository.save(show);
             result.shows.push(savedShow);
-            this.logger.log(`✅ Created show: ${show.venue} on ${show.date || 'recurring'} at ${show.time} (ID: ${savedShow.id})`);
+            this.logger.log(
+              `✅ Created show: ${show.venue} on ${show.date || 'recurring'} at ${show.time} (ID: ${savedShow.id})`,
+            );
           } catch (error) {
             this.logger.error(`❌ Failed to save show: ${show.venue}`, error);
             // Continue with other shows even if one fails
@@ -1153,8 +990,10 @@ ${content}
           this.logger.warn(`Show data not found for ID: ${showId}`);
         }
       }
-      
-      this.logger.log(`Successfully created ${result.shows.length} shows out of ${selectedItems.showIds.length} attempted`);
+
+      this.logger.log(
+        `Successfully created ${result.shows.length} shows out of ${selectedItems.showIds.length} attempted`,
+      );
     }
 
     // Check if all items have been processed - always remove the record when approving all items
@@ -1500,7 +1339,7 @@ ${allLinks.map((link) => `<a href="${link.href}">${link.text}</a> (from ${link.p
         this.logger.log('🤖 Starting AI analysis...');
         aiResult = await this.analyzeWithSmartAI(contentForAI);
         this.logger.log(`🤖 AI analysis completed. Result: ${JSON.stringify(aiResult, null, 2)}`);
-        
+
         if (!aiResult) {
           throw new Error('AI analysis returned null/undefined');
         }
@@ -1510,11 +1349,11 @@ ${allLinks.map((link) => `<a href="${link.href}">${link.text}</a> (from ${link.p
           vendor: {
             name: "Steve's DJ",
             website: baseUrl,
-            description: "Karaoke and entertainment services (fallback)",
-            confidence: 0.3
+            description: 'Karaoke and entertainment services (fallback)',
+            confidence: 0.3,
           },
           kjs: [],
-          shows: []
+          shows: [],
         };
       }
 
@@ -1536,8 +1375,8 @@ ${allLinks.map((link) => `<a href="${link.href}">${link.text}</a> (from ${link.p
         vendor: aiResult.vendor || {
           name: "Steve's DJ",
           website: baseUrl,
-          description: "Karaoke and entertainment services",
-          confidence: 0.5
+          description: 'Karaoke and entertainment services',
+          confidence: 0.5,
         },
         kjs: aiResult.kjs || [],
         shows: aiResult.shows || [],

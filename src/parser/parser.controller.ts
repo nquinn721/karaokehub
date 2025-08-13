@@ -134,7 +134,8 @@ export class SimpleTestController {
         success: true,
         message: "Steve's DJ website parsed successfully",
         data: {
-          vendor: result.savedEntities.vendor?.name || result.parsedData.vendor?.name || 'Unknown Vendor',
+          vendor:
+            result.savedEntities.vendor?.name || result.parsedData.vendor?.name || 'Unknown Vendor',
           kjsCount: result.savedEntities.kjs.length,
           showsCount: result.savedEntities.shows.length,
           parsedKjsCount: result.parsedData.kjs?.length || 0,
@@ -166,8 +167,8 @@ export class SimpleTestController {
             vendor: result.savedEntities.vendor,
             kjsCount: result.savedEntities.kjs.length,
             showsCount: result.savedEntities.shows.length,
-          }
-        }
+          },
+        },
       };
     } catch (error) {
       return {
