@@ -6,6 +6,7 @@ COPY client/package*.json ./
 RUN npm ci
 
 COPY client/ ./
+ENV DOCKER_BUILD=true
 RUN npm run build
 
 # Multi-stage build for NestJS server

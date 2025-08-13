@@ -1,10 +1,10 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { User } from '../entities/user.entity';
 import { Favorite } from '../favorite/favorite.entity';
 import { KJ } from '../kj/kj.entity';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { Show } from '../show/show.entity';
-import { User } from '../entities/user.entity';
 import { Vendor } from '../vendor/vendor.entity';
 
 export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => {

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { UserService } from '../user/user.service';
 import { CreateUserDto, LoginDto } from './dto/auth.dto';
 
@@ -21,16 +21,43 @@ export class AuthService {
     private userService: UserService,
   ) {}
 
-  async register(createUserDto: CreateUserDto): Promise<{ user: User; token: string }> {
+  async register(
+    createUserDto: CreateUserDto,
+  ): Promise<{ user: User; token: string; message?: string }> {
     const { email, password, name } = createUserDto;
 
     // Check if user exists
     const existingUser = await this.userService.findByEmail(email);
     if (existingUser) {
-      throw new Error('User already exists');
+      // If user exists but doesn't have a password (OAuth user), allow them to set one
+      if (!existingUser.password) {
+        console.log(
+          `User ${email} exists but has no password (OAuth user), allowing password assignment`,
+        );
+
+        // Hash the new password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Update the user with the new password and name if provided
+        const updatedUser = await this.userService.update(existingUser.id, {
+          password: hashedPassword,
+          name: name || existingUser.name, // Update name if provided, otherwise keep existing
+        });
+
+        // Generate JWT token
+        const token = this.generateToken(updatedUser);
+
+        return {
+          user: updatedUser,
+          token,
+        };
+      } else {
+        // User exists and already has a password
+        throw new Error('User already exists with a password. Please use login instead.');
+      }
     }
 
-    // Hash password
+    // Hash password for new user
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
@@ -101,11 +128,17 @@ export class AuthService {
   }
 
   async validateUser(payload: any): Promise<User> {
-    const user = await this.userService.findOne(payload.sub);
-    if (!user) {
-      throw new Error('User not found');
+    try {
+      const user = await this.userService.findOne(payload.sub);
+      if (!user) {
+        console.warn(`JWT validation failed: User with ID ${payload.sub} not found`);
+        throw new Error('User not found');
+      }
+      return user;
+    } catch (error) {
+      console.error('JWT validation error:', error.message);
+      throw error;
     }
-    return user;
   }
 
   generateToken(user: User): string {

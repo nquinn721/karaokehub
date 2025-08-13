@@ -12,12 +12,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
+      ignoreExpiration: configService.get('NODE_ENV') === 'development', // Don't expire tokens in development
       secretOrKey: configService.get<string>('JWT_SECRET'),
     });
   }
 
   async validate(payload: any) {
-    return await this.authService.validateUser(payload);
+    try {
+      return await this.authService.validateUser(payload);
+    } catch (error) {
+      // In development, we can be more lenient with invalid tokens
+      if (this.configService.get('NODE_ENV') === 'development') {
+        console.warn('JWT validation failed in development mode, allowing request to continue');
+        return null; // This will make the request unauthorized but not crash
+      }
+      throw error;
+    }
   }
 }

@@ -6,8 +6,8 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { DayOfWeek, Show } from '../show/show.entity';
 import { User } from '../entities/user.entity';
+import { DayOfWeek, Show } from '../show/show.entity';
 
 @Entity('favorites')
 export class Favorite {

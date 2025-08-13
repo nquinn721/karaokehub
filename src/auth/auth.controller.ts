@@ -30,6 +30,7 @@ export class AuthController {
         success: true,
         user: result.user,
         token: result.token,
+        message: result.message || 'Registration successful',
       };
     } catch (error) {
       throw new HttpException(error.message || 'Registration failed', HttpStatus.BAD_REQUEST);
@@ -149,5 +150,100 @@ export class AuthController {
       message: 'You are now an admin!',
       user,
     };
+  }
+
+  // Logout endpoint (client should clear token)
+  @Post('logout')
+  async logout() {
+    return {
+      success: true,
+      message: 'Logged out successfully. Please clear your token.',
+    };
+  }
+
+  // Development only - create a test user
+  @Post('create-test-user')
+  async createTestUser() {
+    if (process.env.NODE_ENV !== 'development') {
+      throw new HttpException(
+        'This endpoint is only available in development',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    try {
+      const testUser = {
+        email: 'test@example.com',
+        name: 'Test User',
+        password: 'password123',
+      };
+
+      const result = await this.authService.register(testUser);
+      return {
+        success: true,
+        message: 'Test user created successfully',
+        user: result.user,
+        token: result.token,
+      };
+    } catch (error) {
+      // If user already exists, try to login instead
+      if (error.message.includes('already exists')) {
+        const loginResult = await this.authService.login({
+          email: 'test@example.com',
+          password: 'password123',
+        });
+        return {
+          success: true,
+          message: 'Test user already exists, logged in successfully',
+          user: loginResult.user,
+          token: loginResult.token,
+        };
+      }
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  // Development only - create a test OAuth user
+  @Post('create-test-oauth-user')
+  async createTestOAuthUser() {
+    if (process.env.NODE_ENV !== 'development') {
+      throw new HttpException(
+        'This endpoint is only available in development',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    try {
+      // Create an OAuth user (without password)
+      const oauthUser = await this.userService.create({
+        email: 'oauth@example.com',
+        name: 'OAuth Test User',
+        provider: 'google',
+        providerId: 'google-123456',
+        avatar: 'https://example.com/avatar.jpg',
+      });
+
+      const token = this.authService.generateToken(oauthUser);
+
+      return {
+        success: true,
+        message: 'Test OAuth user created successfully',
+        user: oauthUser,
+        token,
+      };
+    } catch (error) {
+      if (error.message.includes('already exists') || error.code === 'ER_DUP_ENTRY') {
+        // User already exists, just return them
+        const existingUser = await this.userService.findByEmail('oauth@example.com');
+        const token = this.authService.generateToken(existingUser);
+        return {
+          success: true,
+          message: 'OAuth user already exists, logged in successfully',
+          user: existingUser,
+          token,
+        };
+      }
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
   }
 }
