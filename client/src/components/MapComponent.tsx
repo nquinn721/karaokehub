@@ -28,6 +28,7 @@ export const MapComponent: React.FC = observer(() => {
     lat: 40.7128,
     lng: -74.006,
   }); // Default to NYC
+  const [mapZoom, setMapZoom] = useState<number>(13);
   const showListRef = useRef<HTMLDivElement>(null);
 
   // Google Maps API key from environment variable
@@ -36,6 +37,13 @@ export const MapComponent: React.FC = observer(() => {
   if (!API_KEY) {
     console.error(
       'Google Maps API key not found. Please set VITE_GOOGLE_MAPS_API_KEY in your .env file',
+    );
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          Google Maps API key is not configured. Please contact the administrator.
+        </Alert>
+      </Box>
     );
   }
 
@@ -58,6 +66,13 @@ export const MapComponent: React.FC = observer(() => {
     }
   }, []);
 
+  // Reset map view when shows load
+  useEffect(() => {
+    if (showStore.showsWithCoordinates.length > 0 && !userLocation) {
+      resetMapView();
+    }
+  }, [showStore.showsWithCoordinates.length, userLocation]);
+
   const handleDayChange = (day: DayOfWeek) => {
     showStore.setSelectedDay(day);
   };
@@ -78,9 +93,40 @@ export const MapComponent: React.FC = observer(() => {
   const handleShowClick = (show: any) => {
     showStore.setSelectedShow(show);
     setSelectedMarkerId(show.id);
-    // Center map on the show
+    // Center map on the show with higher zoom
     if (show.lat && show.lng) {
       setMapCenter({ lat: show.lat, lng: show.lng });
+      setMapZoom(15); // Zoom in when focusing on a specific show
+    }
+  };
+
+  const handleMapCenterChanged = () => {
+    // Allow natural map interactions - don't force center updates
+    // This allows users to pan the map freely
+  };
+
+  const handleMapZoomChanged = () => {
+    // Allow natural zoom interactions
+    // This allows users to zoom in/out freely
+  };
+
+  // Reset map view to show all markers
+  const resetMapView = () => {
+    if (showStore.showsWithCoordinates.length > 0) {
+      // Calculate bounds to show all shows
+      const bounds = {
+        north: Math.max(...showStore.showsWithCoordinates.map(s => s.lat!)),
+        south: Math.min(...showStore.showsWithCoordinates.map(s => s.lat!)),
+        east: Math.max(...showStore.showsWithCoordinates.map(s => s.lng!)),
+        west: Math.min(...showStore.showsWithCoordinates.map(s => s.lng!)),
+      };
+      
+      // Center on the middle of all shows
+      const centerLat = (bounds.north + bounds.south) / 2;
+      const centerLng = (bounds.east + bounds.west) / 2;
+      
+      setMapCenter({ lat: centerLat, lng: centerLng });
+      setMapZoom(12);
     }
   };
 
@@ -122,15 +168,19 @@ export const MapComponent: React.FC = observer(() => {
             <APIProvider apiKey={API_KEY}>
               <Map
                 style={{ width: '100%', height: '100%' }}
-                defaultCenter={mapCenter}
                 center={mapCenter}
-                defaultZoom={13}
-                zoom={13}
+                zoom={mapZoom}
                 gestureHandling={'greedy'}
                 disableDefaultUI={false}
                 clickableIcons={true}
                 streetViewControl={false}
                 fullscreenControl={true}
+                zoomControl={true}
+                mapTypeControl={false}
+                scaleControl={false}
+                rotateControl={false}
+                onCenterChanged={handleMapCenterChanged}
+                onZoomChanged={handleMapZoomChanged}
               >
                 {/* User Location Marker */}
                 {userLocation && (

@@ -7,7 +7,17 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from '../entities/user.entity';
-import { DayOfWeek, Show } from '../show/show.entity';
+import { Show } from '../show/show.entity';
+
+export enum DayOfWeek {
+  MONDAY = 'monday',
+  TUESDAY = 'tuesday',
+  WEDNESDAY = 'wednesday',
+  THURSDAY = 'thursday',
+  FRIDAY = 'friday',
+  SATURDAY = 'saturday',
+  SUNDAY = 'sunday',
+}
 
 @Entity('favorites')
 export class Favorite {

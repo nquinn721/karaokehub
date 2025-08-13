@@ -1,13 +1,6 @@
 import { faCalendarDay } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Box, Button, Card, CardContent, Typography, useTheme } from '@mui/material';
 import React from 'react';
 
 export enum DayOfWeek {
@@ -52,8 +45,8 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
   const days = Object.values(DayOfWeek);
 
   return (
-    <Card 
-      sx={{ 
+    <Card
+      sx={{
         mb: 3,
         background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.action.hover} 100%)`,
         boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
@@ -63,18 +56,18 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
     >
       <CardContent sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
-          <FontAwesomeIcon 
-            icon={faCalendarDay} 
-            style={{ 
-              marginRight: '12px', 
+          <FontAwesomeIcon
+            icon={faCalendarDay}
+            style={{
+              marginRight: '12px',
               color: theme.palette.primary.main,
-              fontSize: '1.25rem'
-            }} 
+              fontSize: '1.25rem',
+            }}
           />
-          <Typography 
-            variant="h6" 
+          <Typography
+            variant="h6"
             component="h3"
-            sx={{ 
+            sx={{
               fontWeight: 600,
               background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
               backgroundClip: 'text',
@@ -85,14 +78,16 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
             Select Day
           </Typography>
         </Box>
-        
-        <Box sx={{ 
-          display: 'flex', 
-          flexWrap: 'wrap',
-          justifyContent: 'center', 
-          gap: 1.5, 
-          mb: 3 
-        }}>
+
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            gap: 1.5,
+            mb: 3,
+          }}
+        >
           {days.map((day) => {
             const isSelected = selectedDay === day;
             return (
@@ -110,7 +105,7 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   position: 'relative',
                   overflow: 'hidden',
-                  ...(isSelected 
+                  ...(isSelected
                     ? {
                         background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
                         boxShadow: `0 4px 20px ${theme.palette.primary.main}40`,
@@ -121,7 +116,7 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
                           background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`,
                           boxShadow: `0 6px 24px ${theme.palette.primary.main}50`,
                           transform: 'translateY(-3px)',
-                        }
+                        },
                       }
                     : {
                         borderColor: theme.palette.divider,
@@ -132,9 +127,8 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
                           backgroundColor: theme.palette.primary.main + '08',
                           transform: 'translateY(-1px)',
                           boxShadow: `0 4px 16px ${theme.palette.primary.main}20`,
-                        }
-                      }
-                  ),
+                        },
+                      }),
                   '&::before': {
                     content: '""',
                     position: 'absolute',
@@ -144,7 +138,7 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
                     bottom: 0,
                     borderRadius: 3,
                     padding: '1px',
-                    background: isSelected 
+                    background: isSelected
                       ? `linear-gradient(135deg, ${theme.palette.primary.light}, ${theme.palette.secondary.main})`
                       : 'transparent',
                     mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
@@ -154,10 +148,12 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
                   },
                 }}
               >
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
+                <Box
+                  sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{
                       fontSize: { xs: '0.7rem', sm: '0.75rem' },
                       lineHeight: 1,
                       fontWeight: 'inherit',
@@ -171,18 +167,20 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
             );
           })}
         </Box>
-        
-        <Box sx={{ 
-          textAlign: 'center',
-          p: 2,
-          borderRadius: 2,
-          backgroundColor: theme.palette.action.hover,
-          border: `1px solid ${theme.palette.divider}`,
-        }}>
-          <Typography 
-            variant="body2" 
+
+        <Box
+          sx={{
+            textAlign: 'center',
+            p: 2,
+            borderRadius: 2,
+            backgroundColor: theme.palette.action.hover,
+            border: `1px solid ${theme.palette.divider}`,
+          }}
+        >
+          <Typography
+            variant="body2"
             color="text.secondary"
-            sx={{ 
+            sx={{
               fontWeight: 500,
               '& strong': {
                 background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
@@ -190,7 +188,7 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 fontWeight: 600,
-              }
+              },
             }}
           >
             Showing karaoke shows for <strong>{dayFullLabels[selectedDay]}</strong>

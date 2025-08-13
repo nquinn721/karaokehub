@@ -28,7 +28,7 @@ export const NotificationDialog: React.FC<NotificationDialogProps> = ({
   type,
   title,
   message,
-  actionText = 'OK'
+  actionText = 'OK',
 }) => {
   const theme = useTheme();
 
@@ -49,10 +49,10 @@ export const NotificationDialog: React.FC<NotificationDialogProps> = ({
   const { icon, color } = getIcon();
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="sm" 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
       fullWidth
       PaperProps={{
         sx: {
@@ -60,10 +60,10 @@ export const NotificationDialog: React.FC<NotificationDialogProps> = ({
         },
       }}
     >
-      <DialogTitle 
-        sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
           gap: 2,
           pb: 2,
         }}
@@ -81,12 +81,7 @@ export const NotificationDialog: React.FC<NotificationDialogProps> = ({
       </DialogContent>
 
       <DialogActions sx={{ p: 3, pt: 1 }}>
-        <Button 
-          onClick={onClose} 
-          variant="contained" 
-          size="large"
-          sx={{ px: 4 }}
-        >
+        <Button onClick={onClose} variant="contained" size="large" sx={{ px: 4 }}>
           {actionText}
         </Button>
       </DialogActions>

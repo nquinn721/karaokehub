@@ -16,9 +16,9 @@ spec:
     spec:
       containerConcurrency: 80
       timeoutSeconds: 300
-      serviceAccountName: karaokehub-service-account@karaokehub.iam.gserviceaccount.com
+      serviceAccountName: karaokehub-service-account@heroic-footing-460117-k8.iam.gserviceaccount.com
       containers:
-        - image: gcr.io/karaokehub/karaokehub:latest
+        - image: gcr.io/heroic-footing-460117-k8/karaokehub:latest
           ports:
             - containerPort: 8080
           resources:

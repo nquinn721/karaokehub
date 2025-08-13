@@ -1,13 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as cheerio from 'cheerio';
-import { JSDOM } from 'jsdom';
 import fetch from 'node-fetch';
 import { Repository } from 'typeorm';
-import { KJ } from '../../kj/kj.entity';
-import { Show } from '../../show/show.entity';
-import { Vendor } from '../../vendor/vendor.entity';
+import { KJ } from '../kj/kj.entity';
+import { Show } from '../show/show.entity';
+import { Vendor } from '../vendor/vendor.entity';
 import { ParsedSchedule, ParseStatus } from './parsed-schedule.entity';
 
 export interface ParsedKaraokeData {
@@ -71,31 +69,20 @@ export class KaraokeParserService {
       // Fetch the webpage content
       const response = await fetch(url);
       const html = await response.text();
-      const $ = cheerio.load(html);
 
-      // Extract text content and clean it
-      const title = $('title').text() || '';
-      const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
-      const links = $('a[href]')
-        .map((_, el) => ({
-          text: $(el).text().trim(),
-          href: $(el).attr('href'),
-        }))
-        .get();
+      // Truncate HTML if it's too large for Gemini (roughly 100KB limit)
+      const truncatedHtml = html.length > 100000 ? html.substring(0, 100000) + '...' : html;
 
-      // Prepare content for AI analysis
-      const contentForAI = this.prepareContentForAI(title, bodyText, links, url);
-
-      // Use Gemini AI to parse karaoke information
+      // Use Gemini AI to parse karaoke information directly from HTML
+      const contentForAI = this.prepareContentForAI(truncatedHtml, url);
       const aiResult = await this.analyzeWithGemini(contentForAI);
 
       // Save raw parsed data
       const parsedSchedule = new ParsedSchedule();
       parsedSchedule.url = url;
       parsedSchedule.rawData = {
-        title,
-        content: bodyText.substring(0, 5000), // Limit content size
-        links: links.slice(0, 20), // Limit links
+        title: this.extractTitleFromHtml(html),
+        content: truncatedHtml.substring(0, 5000), // Limit content size for storage
         parsedAt: new Date(),
       };
       parsedSchedule.aiAnalysis = aiResult;
@@ -109,8 +96,8 @@ export class KaraokeParserService {
         shows: aiResult.shows,
         rawData: {
           url,
-          title,
-          content: bodyText.substring(0, 1000),
+          title: this.extractTitleFromHtml(html),
+          content: truncatedHtml.substring(0, 1000),
           parsedAt: new Date(),
         },
       };
@@ -125,19 +112,23 @@ export class KaraokeParserService {
     }
   }
 
-  private prepareContentForAI(title: string, bodyText: string, links: any[], url: string): string {
-    const linkText = links.map((link) => `${link.text}: ${link.href}`).join('\n');
+  private prepareContentForAI(html: string, url: string): string {
+    // Extract a basic title from HTML using regex (simple fallback)
+    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+    const title = titleMatch ? titleMatch[1] : 'No title found';
 
     return `
 URL: ${url}
 TITLE: ${title}
 
-CONTENT:
-${bodyText.substring(0, 3000)}
-
-LINKS:
-${linkText.substring(0, 1000)}
+RAW HTML CONTENT:
+${html.substring(0, 50000)} ${html.length > 50000 ? '...[truncated]' : ''}
     `.trim();
+  }
+
+  private extractTitleFromHtml(html: string): string {
+    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+    return titleMatch ? titleMatch[1].trim() : 'No title found';
   }
 
   private async analyzeWithGemini(content: string): Promise<any> {
@@ -145,11 +136,15 @@ ${linkText.substring(0, 1000)}
       const model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
 
       const prompt = `
-You are an expert at parsing karaoke and DJ service websites to extract structured schedule information. Focus on finding:
+You are an expert at parsing HTML content from karaoke and DJ service websites to extract structured schedule information. 
+
+IMPORTANT: You will receive raw HTML content that may include tags, scripts, styles, and formatting. Focus on finding the actual content within the HTML and ignore structural elements.
+
+Focus on finding:
 
 1. VENDOR INFORMATION:
-   - Business/company name that runs karaoke shows
-   - Website URL
+   - Business/company name that runs karaoke shows (look in <title>, <h1>, business contact info)
+   - Website URL (from the provided URL)
    - Brief description of the business
    - Confidence level (0-100)
 
@@ -166,8 +161,25 @@ You are an expert at parsing karaoke and DJ service websites to extract structur
    - Look for recurring weekly schedules, not just one-time events
    - Match KJs/DJs to specific shows if mentioned
    - Look for addresses or location details
-   - Pay special attention to schedule tables, lists, or structured data
+   - Pay special attention to schedule tables, lists, or structured data within HTML
    - If you see "Multiple locations" or similar, try to extract individual venue names
+   - Look for venue names like "Joe's Bar", "Main Street Grill", "VFW Post 123", "ALIBI BEACH LOUNGE", etc.
+   - Times are often in evening hours (6PM-11PM range)
+   - If times are ranges like "7PM-11PM", use "19:00" for time field
+   - Days should be full day names (Monday, Tuesday, etc.) but may appear as "SUNDAYS", "MONDAYS" etc.
+   - If no specific date, use "recurring" for weekly shows
+   - Focus on actual venue names, not generic descriptions
+   - EXAMPLE FORMAT to look for: "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve ALIBI BEACH LOUNGE"
+     This should extract: venue="ALIBI BEACH LOUNGE", day="Sunday", time="19:00", kjName="DJ Steve"
+
+PARSING NOTES FOR HTML:
+- Ignore <script>, <style>, <nav>, <footer> content
+- Focus on <body>, <main>, <div>, <table> content
+- Table rows (<tr>) often contain schedule information
+- Links (<a href="">) may point to venue websites or contact pages
+- Pay attention to structured data and repeated patterns
+
+Please return the response as a valid JSON object with this exact structure:
    - SPECIFICALLY look for formats like "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve ALIBI BEACH LOUNGE"
    - Parse formats that start with day of week (SUNDAYS, MONDAYS, etc.) followed by time ranges and venue names
    - Extract venue names that appear after time ranges or DJ/KJ names
@@ -284,28 +296,32 @@ ${content}
 
   private extractCleanText(html: string): string {
     try {
-      // Parse HTML and extract readable text using JSDOM
-      const dom = new JSDOM(html);
-      const document = dom.window.document;
-
-      // Remove script, style, and other non-content elements
-      const elementsToRemove = document.querySelectorAll(
-        'script, style, head, nav, footer, .nav, .menu, .header',
-      );
-      elementsToRemove.forEach((el) => el.remove());
-
-      // Get the text content
-      let textContent = document.body.textContent || document.body.innerText || '';
-
-      // Clean up the text - normalize whitespace but preserve line breaks where meaningful
-      textContent = textContent
-        .replace(/\s*\n\s*/g, ' ') // Replace newlines with spaces
-        .replace(/\s{2,}/g, ' ') // Replace multiple spaces with single space
-        .replace(/\s*([.!?])\s*/g, '$1\n') // Add line breaks after sentences
-        .replace(/([A-Z]{2,})\s+([A-Z]{2,})/g, '$1\n$2') // Break up consecutive all-caps words
-        .replace(/(\d+:\d+[AP]M)\s*-\s*(\d+:\d+[AP]M)/g, '$1-$2') // Keep time ranges together
-        .replace(/([A-Z]+DAY[S]?)\s+(KARAOKE)/g, '$1 $2') // Keep day+karaoke together
-        .replace(/(with\s+DJ\s+\w+)\s+([A-Z][A-Z\s]+)/g, '$1\n$2') // Break line after DJ name
+      // Simple HTML to text conversion using regex (no JSDOM needed)
+      let textContent = html
+        // Remove script, style, and other non-content elements
+        .replace(/<script[^>]*>.*?<\/script>/gis, '')
+        .replace(/<style[^>]*>.*?<\/style>/gis, '')
+        .replace(/<head[^>]*>.*?<\/head>/gis, '')
+        .replace(/<nav[^>]*>.*?<\/nav>/gis, '')
+        .replace(/<footer[^>]*>.*?<\/footer>/gis, '')
+        // Remove all remaining HTML tags
+        .replace(/<[^>]*>/g, ' ')
+        // Decode HTML entities
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#x27;/g, "'")
+        .replace(/&#x2F;/g, '/')
+        // Clean up whitespace
+        .replace(/\s*\n\s*/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .replace(/\s*([.!?])\s*/g, '$1\n')
+        .replace(/([A-Z]{2,})\s+([A-Z]{2,})/g, '$1\n$2')
+        .replace(/(\d+:\d+[AP]M)\s*-\s*(\d+:\d+[AP]M)/g, '$1-$2')
+        .replace(/([A-Z]+DAY[S]?)\s+(KARAOKE)/g, '$1 $2')
+        .replace(/(with\s+DJ\s+\w+)\s+([A-Z][A-Z\s]+)/g, '$1\n$2')
         .trim();
 
       return textContent;
@@ -797,20 +813,21 @@ ${content}
 
           if (response.status === 200) {
             const html = await response.text();
-            const $ = cheerio.load(html);
 
             if (!pageTitle) {
-              pageTitle = $('title').text() || "Steve's DJ Website";
+              pageTitle = this.extractTitleFromHtml(html) || "Steve's DJ Website";
             }
 
             const bodyText = this.extractCleanText(html);
-            const links = $('a[href]')
-              .map((_, el) => ({
-                text: $(el).text().trim(),
-                href: $(el).attr('href'),
-                page: url,
-              }))
-              .get();
+            // Extract links using regex instead of cheerio
+            const linkMatches = [
+              ...html.matchAll(/<a[^>]*href\s*=\s*["']([^"']*)["'][^>]*>([^<]*)<\/a>/gi),
+            ];
+            const links = linkMatches.map((match) => ({
+              text: match[2].trim(),
+              href: match[1],
+              page: url,
+            }));
 
             combinedContent += `\n\n--- Content from ${url} ---\n${bodyText}`;
             allLinks.push(...links);
@@ -832,8 +849,18 @@ ${content}
       );
       this.logger.log(`Total links found: ${allLinks.length}`);
 
-      // Prepare enhanced content for AI analysis with specific rules for Steve's DJ
-      const contentForAI = this.prepareContentForAI(pageTitle, combinedContent, allLinks, baseUrl);
+      // Prepare enhanced content for AI analysis - combine all content into HTML-like format
+      const combinedHtml = `<html>
+<head><title>${pageTitle}</title></head>
+<body>
+${combinedContent}
+
+Links found:
+${allLinks.map((link) => `<a href="${link.href}">${link.text}</a> (from ${link.page})`).join('\n')}
+</body>
+</html>`;
+
+      const contentForAI = this.prepareContentForAI(combinedHtml, baseUrl);
 
       // Debug: Log key information about the content being analyzed
       this.logger.log(`Content for AI analysis: ${contentForAI.length} characters`);

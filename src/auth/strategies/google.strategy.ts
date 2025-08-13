@@ -10,10 +10,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     private configService: ConfigService,
     private authService: AuthService,
   ) {
+    const baseUrl = configService.get<string>('FRONTEND_URL') || 'http://localhost:8000';
+    
     super({
       clientID: configService.get<string>('GOOGLE_CLIENT_ID'),
       clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET'),
-      callbackURL: '/api/auth/google/callback',
+      callbackURL: `${baseUrl}/api/auth/google/callback`,
       scope: ['email', 'profile'],
     });
   }

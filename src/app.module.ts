@@ -10,7 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { getDatabaseConfig } from './config/database.config';
 import { FavoriteModule } from './favorite/favorite.module';
 import { KJModule } from './kj/kj.module';
-import { ParserModule } from './modules/parser/parser.module';
+import { ParserModule } from './parser/parser.module';
 import { ShowModule } from './show/show.module';
 import { UserModule } from './user/user.module';
 import { VendorModule } from './vendor/vendor.module';
@@ -41,7 +41,7 @@ import { WebSocketModule } from './websocket/websocket.module';
 
     // Serve static files (React app)
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'dist', 'client'),
+      rootPath: join(__dirname, '..', 'client', 'dist'),
       exclude: ['/api*', '/socket.io*'],
     }),
 

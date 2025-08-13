@@ -1,6 +1,10 @@
 # Multi-stage build for React client
 FROM node:20-alpine AS client-builder
 
+# Accept build argument for Google Maps API key
+ARG VITE_GOOGLE_MAPS_API_KEY
+ENV VITE_GOOGLE_MAPS_API_KEY=${VITE_GOOGLE_MAPS_API_KEY}
+
 WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm ci
@@ -17,7 +21,7 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-COPY --from=client-builder /app/client/dist ./dist/client
+COPY --from=client-builder /app/client/dist ./client/dist
 RUN npm run build
 
 # Production image
@@ -34,8 +38,10 @@ RUN adduser -S nestjs -u 1001
 
 # Copy built application
 COPY --from=server-builder --chown=nestjs:nodejs /app/dist ./dist
+COPY --from=server-builder --chown=nestjs:nodejs /app/client/dist ./client/dist
 COPY --from=server-builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=server-builder --chown=nestjs:nodejs /app/package*.json ./
+COPY --from=server-builder --chown=nestjs:nodejs /app/public ./public
 
 USER nestjs
 

@@ -3,7 +3,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { User } from '../entities/user.entity';
 import { Favorite } from '../favorite/favorite.entity';
 import { KJ } from '../kj/kj.entity';
-import { ParsedSchedule } from '../modules/parser/parsed-schedule.entity';
+import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
 
@@ -12,7 +12,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
   const host =
     isProduction && process.env.INSTANCE_CONNECTION_NAME
       ? 'localhost' // Use localhost when Cloud SQL Proxy is available
-      : configService.get('DATABASE_HOST');
+      : configService.get('DATABASE_HOST') || 'localhost'; // fallback for missing config
 
   return {
     type: 'mysql',
@@ -28,22 +28,26 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     charset: 'utf8mb4',
     extra: {
       // For Cloud SQL Proxy connection (when Cloud Run connects to Cloud SQL)
-      ...(isProduction && process.env.INSTANCE_CONNECTION_NAME && {
-        socketPath: `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}`,
-      }),
+      ...(isProduction &&
+        process.env.INSTANCE_CONNECTION_NAME && {
+          socketPath: `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}`,
+        }),
       // Connection pool settings for MySQL2 (compatible options only)
       connectionLimit: 5, // Reduced for Cloud Run
       connectTimeout: 20000, // 20 seconds for connection
+      acquireTimeout: 20000, // 20 seconds to acquire connection
+      timeout: 20000, // Query timeout
       // Additional MySQL2 settings
       queueLimit: 0,
       reconnect: true,
       dateStrings: false,
       // SSL settings for Cloud SQL (only for direct connections)
-      ...(isProduction && !process.env.INSTANCE_CONNECTION_NAME && {
-        ssl: {
-          rejectUnauthorized: false, // Cloud SQL uses self-signed certificates
-        },
-      }),
+      ...(isProduction &&
+        !process.env.INSTANCE_CONNECTION_NAME && {
+          ssl: {
+            rejectUnauthorized: false, // Cloud SQL uses self-signed certificates
+          },
+        }),
     },
     // Migration settings
     migrations: ['dist/migrations/*.js'],

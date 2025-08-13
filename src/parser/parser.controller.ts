@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { AdminGuard } from '../../auth/guards/admin.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
 import { KaraokeParserService } from './karaoke-parser.service';
 
 @Controller('admin/parser')

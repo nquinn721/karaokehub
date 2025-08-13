@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Vendor } from '../../vendor/vendor.entity';
+import { Vendor } from '../vendor/vendor.entity';
 
 export enum ParseStatus {
   PENDING = 'pending',

@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
-import { KaraokeParserService } from './modules/parser/karaoke-parser.service';
+import { KaraokeParserService } from './parser/karaoke-parser.service';
 
 @Controller()
 export class AppController {
@@ -12,6 +12,14 @@ export class AppController {
   @Get('api')
   getHello(): string {
     return this.appService.getHello();
+  }
+
+  @Get('health')
+  getHealth(): { status: string; timestamp: string } {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   @Get('api/test-parser')

@@ -98,14 +98,39 @@ export class ShowStore {
       const response = await apiStore.get(endpoint);
 
       runInAction(() => {
-        // Add mock coordinates for demonstration
+        // Add realistic coordinates based on venue addresses/names
         // In a real app, you'd geocode addresses or store coordinates in the database
-        this.shows = (response || []).map((show: Show) => ({
-          ...show,
-          // Mock coordinates around NYC area for demonstration
-          lat: 40.7128 + (Math.random() - 0.5) * 0.1,
-          lng: -74.006 + (Math.random() - 0.5) * 0.1,
-        }));
+        this.shows = (response || []).map((show: Show) => {
+          // Create more realistic coordinates based on venue names
+          let coordinates = { lat: 40.7128, lng: -74.006 }; // Default NYC
+          
+          // Try to match venue names to approximate locations
+          const venueName = show.address?.toLowerCase() || '';
+          
+          if (venueName.includes('brooklyn')) {
+            coordinates = { lat: 40.6782, lng: -73.9442 };
+          } else if (venueName.includes('queens')) {
+            coordinates = { lat: 40.7282, lng: -73.7949 };
+          } else if (venueName.includes('bronx')) {
+            coordinates = { lat: 40.8448, lng: -73.8648 };
+          } else if (venueName.includes('manhattan')) {
+            coordinates = { lat: 40.7831, lng: -73.9712 };
+          } else if (venueName.includes('staten island')) {
+            coordinates = { lat: 40.5795, lng: -74.1502 };
+          } else {
+            // Spread venues around NYC area with smaller random variation
+            coordinates = {
+              lat: 40.7128 + (Math.random() - 0.5) * 0.05, // Smaller random spread
+              lng: -74.006 + (Math.random() - 0.5) * 0.05,
+            };
+          }
+          
+          return {
+            ...show,
+            lat: coordinates.lat,
+            lng: coordinates.lng,
+          };
+        });
         this.isLoading = false;
       });
 

@@ -40,7 +40,7 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
   open,
   onClose,
   results,
-  title = "Parse Results"
+  title = 'Parse Results',
 }) => {
   const theme = useTheme();
 
@@ -59,10 +59,10 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="md" 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
       fullWidth
       PaperProps={{
         sx: {
@@ -70,10 +70,10 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
         },
       }}
     >
-      <DialogTitle 
-        sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+      <DialogTitle
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
           gap: 2,
           pb: 1,
           background: `linear-gradient(135deg, ${theme.palette.primary.main}15, ${theme.palette.secondary.main}10)`,
@@ -90,7 +90,7 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
           <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
             Successfully parsed and processed website data with the following results:
           </Typography>
-          
+
           {results.url && (
             <Box sx={{ mb: 2 }}>
               <Typography variant="body2" color="text.secondary">
@@ -106,9 +106,9 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
             <Card variant="outlined" sx={{ height: '100%' }}>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Box sx={{ mb: 2 }}>
-                  <FontAwesomeIcon 
-                    icon={faGlobe} 
-                    style={{ fontSize: '2rem', color: theme.palette.primary.main }} 
+                  <FontAwesomeIcon
+                    icon={faGlobe}
+                    style={{ fontSize: '2rem', color: theme.palette.primary.main }}
                   />
                 </Box>
                 <Typography variant="h6" gutterBottom>
@@ -140,9 +140,9 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
             <Card variant="outlined" sx={{ height: '100%' }}>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Box sx={{ mb: 2 }}>
-                  <FontAwesomeIcon 
-                    icon={faUsers} 
-                    style={{ fontSize: '2rem', color: theme.palette.secondary.main }} 
+                  <FontAwesomeIcon
+                    icon={faUsers}
+                    style={{ fontSize: '2rem', color: theme.palette.secondary.main }}
                   />
                 </Box>
                 <Typography variant="h6" gutterBottom>
@@ -174,9 +174,9 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
             <Card variant="outlined" sx={{ height: '100%' }}>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Box sx={{ mb: 2 }}>
-                  <FontAwesomeIcon 
-                    icon={faMicrophone} 
-                    style={{ fontSize: '2rem', color: theme.palette.success.main }} 
+                  <FontAwesomeIcon
+                    icon={faMicrophone}
+                    style={{ fontSize: '2rem', color: theme.palette.success.main }}
                   />
                 </Box>
                 <Typography variant="h6" gutterBottom>
@@ -212,47 +212,47 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
           <Typography variant="h6" gutterBottom>
             Overall Assessment
           </Typography>
-          
+
           <Grid container spacing={2} sx={{ mt: 2 }}>
             <Grid item xs={4}>
               <Typography variant="body2" color="text.secondary">
                 Vendor Confidence
               </Typography>
-              <Typography 
-                variant="body1" 
-                sx={{ 
+              <Typography
+                variant="body1"
+                sx={{
                   color: getConfidenceColor(results.confidence.vendor),
-                  fontWeight: 600 
+                  fontWeight: 600,
                 }}
               >
                 {getConfidenceLabel(results.confidence.vendor)}
               </Typography>
             </Grid>
-            
+
             <Grid item xs={4}>
               <Typography variant="body2" color="text.secondary">
                 KJ Detection
               </Typography>
-              <Typography 
-                variant="body1" 
-                sx={{ 
+              <Typography
+                variant="body1"
+                sx={{
                   color: getConfidenceColor(results.confidence.avgKjConfidence),
-                  fontWeight: 600 
+                  fontWeight: 600,
                 }}
               >
                 {getConfidenceLabel(results.confidence.avgKjConfidence)}
               </Typography>
             </Grid>
-            
+
             <Grid item xs={4}>
               <Typography variant="body2" color="text.secondary">
                 Show Detection
               </Typography>
-              <Typography 
-                variant="body1" 
-                sx={{ 
+              <Typography
+                variant="body1"
+                sx={{
                   color: getConfidenceColor(results.confidence.avgShowConfidence),
-                  fontWeight: 600 
+                  fontWeight: 600,
                 }}
               >
                 {getConfidenceLabel(results.confidence.avgShowConfidence)}
@@ -263,12 +263,7 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
       </DialogContent>
 
       <DialogActions sx={{ p: 3, pt: 1 }}>
-        <Button 
-          onClick={onClose} 
-          variant="contained" 
-          size="large"
-          sx={{ px: 4 }}
-        >
+        <Button onClick={onClose} variant="contained" size="large" sx={{ px: 4 }}>
           Close
         </Button>
       </DialogActions>

@@ -1,2 +1,2 @@
-export { DayPicker, DayOfWeek } from './DayPicker';
+export { DayOfWeek, DayPicker } from './DayPicker';
 export type { DayPickerProps } from './DayPicker';
