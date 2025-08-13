@@ -29,6 +29,6 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../dist/client',
+    outDir: process.env.DOCKER_BUILD ? './dist' : '../dist/client',
   },
 });
