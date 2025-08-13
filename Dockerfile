@@ -1,5 +1,5 @@
 # Multi-stage build for React client
-FROM node:18-alpine AS client-builder
+FROM node:20-alpine AS client-builder
 
 WORKDIR /app/client
 COPY client/package*.json ./
@@ -10,7 +10,7 @@ ENV DOCKER_BUILD=true
 RUN npm run build
 
 # Multi-stage build for NestJS server
-FROM node:18-alpine AS server-builder
+FROM node:20-alpine AS server-builder
 
 WORKDIR /app
 COPY package*.json ./
@@ -21,7 +21,7 @@ COPY --from=client-builder /app/client/dist ./dist/client
 RUN npm run build
 
 # Production image
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 
 WORKDIR /app
 
@@ -42,6 +42,5 @@ USER nestjs
 EXPOSE 8080
 
 ENV NODE_ENV=production
-ENV PORT=8080
 
 CMD ["dumb-init", "node", "dist/main"]

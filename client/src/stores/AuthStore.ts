@@ -68,6 +68,12 @@ export class AuthStore {
     return await this.getProfile();
   }
 
+  // Force refresh profile data - useful after admin status changes
+  async refreshProfile() {
+    console.log('AuthStore: Force refreshing profile data...');
+    return await this.getProfile();
+  }
+
   async login(credentials: LoginCredentials) {
     try {
       this.setLoading(true);
@@ -186,6 +192,9 @@ export class AuthStore {
         this.isLoading = false;
       });
 
+      // Force refresh profile to ensure admin status is properly loaded
+      await this.refreshProfile();
+
       return {
         success: true,
         message: response.message || 'You are now an admin!',
@@ -237,9 +246,21 @@ export class AuthStore {
 
   // Getter to check if current user is admin
   get isAdmin(): boolean {
+    if (!this.user) return false;
+
     // Handle both boolean true and integer 1 from database
     const isAdminValue = this.user?.isAdmin;
-    return isAdminValue === true || (isAdminValue as any) === 1;
+    const result = isAdminValue === true || (isAdminValue as any) === 1 || String(isAdminValue) === '1';
+
+    // Debug logging
+    console.log('AuthStore.isAdmin check:', {
+      user: this.user,
+      isAdminValue,
+      result,
+      userKeys: this.user ? Object.keys(this.user) : 'no user',
+    });
+
+    return result;
   }
 
   // Debug method to check localStorage

@@ -144,7 +144,7 @@ ${linkText.substring(0, 1000)}
       const model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
 
       const prompt = `
-Analyze the following webpage content for karaoke-related information. I need you to extract:
+You are an expert at parsing karaoke and DJ service websites to extract structured schedule information. Focus on finding:
 
 1. VENDOR INFORMATION:
    - Business/company name that runs karaoke shows
@@ -153,16 +153,30 @@ Analyze the following webpage content for karaoke-related information. I need yo
    - Confidence level (0-100)
 
 2. KJ (Karaoke Jockey) INFORMATION:
-   - Names of KJs/DJs mentioned
-   - Any context about each KJ
+   - Names of KJs/DJs mentioned (they may be called "DJs", "KJs", "Hosts", "Staff", or "Team")
+   - Look for staff pages, team pages, or about sections
+   - Any context about each KJ/DJ
    - Confidence level for each (0-100)
 
-3. SHOW INFORMATION:
-   - Venue names where shows happen
-   - Dates and times of shows
-   - Which KJ is hosting (if mentioned)
-   - Any special details about shows
+3. SHOW INFORMATION (MOST IMPORTANT - Look for weekly schedules):
+   - Extract SPECIFIC venue names where shows happen (bars, restaurants, clubs, halls)
+   - Extract SPECIFIC days of the week (Monday, Tuesday, etc.) - not abbreviations
+   - Extract SPECIFIC times (start and end times if available)
+   - Look for recurring weekly schedules, not just one-time events
+   - Match KJs/DJs to specific shows if mentioned
+   - Look for addresses or location details
+   - Pay special attention to schedule tables, lists, or structured data
+   - If you see "Multiple locations" or similar, try to extract individual venue names
    - Confidence level for each (0-100)
+
+IMPORTANT PARSING GUIDELINES:
+- Prioritize recurring weekly karaoke schedules over one-time events
+- Look for venue names like "Joe's Bar", "Main Street Grill", "VFW Post 123", etc.
+- Times are often in evening hours (6PM-11PM range)
+- If times are ranges like "7PM-11PM", use "19:00" for time field
+- Days should be full day names (Monday, Tuesday, etc.)
+- If no specific date, use "recurring" for weekly shows
+- Focus on actual venue names, not generic descriptions
 
 Please return the response as a valid JSON object with this exact structure:
 {
@@ -174,24 +188,24 @@ Please return the response as a valid JSON object with this exact structure:
   },
   "kjs": [
     {
-      "name": "KJ Name",
+      "name": "KJ/DJ Name",
       "confidence": 90,
-      "context": "additional info about this KJ"
+      "context": "additional info about this person"
     }
   ],
   "shows": [
     {
-      "venue": "Venue Name",
-      "date": "YYYY-MM-DD format or 'recurring' or 'weekly'",
-      "time": "HH:MM format or time description",
+      "venue": "Specific Venue Name",
+      "date": "recurring" (for weekly shows) or "YYYY-MM-DD",
+      "time": "19:00" (start time in HH:MM format),
       "kjName": "KJ Name if specified",
-      "description": "additional show details",
+      "description": "day of week and additional details (e.g., 'Every Monday')",
       "confidence": 80
     }
   ]
 }
 
-Only include information you're reasonably confident about. If no karaoke information is found, return empty arrays for kjs and shows, but still try to identify the vendor.
+Only include information you're reasonably confident about. For shows, prioritize finding actual venue names and specific days/times over generic information. Focus especially on weekly recurring karaoke schedules.
 
 WEBPAGE CONTENT TO ANALYZE:
 ${content}
@@ -492,10 +506,213 @@ ${content}
       shows: Show[];
     };
   }> {
-    const url = 'https://stevesdj.com';
-    this.logger.log(`Starting specialized parsing for Steve's DJ website: ${url}`);
+    const baseUrl = 'https://stevesdj.com';
+    this.logger.log(`Starting enhanced parsing for Steve's DJ website: ${baseUrl}`);
 
-    // Use the general parse and save method with auto-approval for trusted source
-    return this.parseAndSaveWebsite(url, true);
+    try {
+      // Define key pages to crawl for show information
+      const pagesToCrawl = [
+        baseUrl, // Homepage
+        `${baseUrl}/schedule`,
+        `${baseUrl}/calendar`,
+        `${baseUrl}/events`,
+        `${baseUrl}/venues`,
+        `${baseUrl}/where-we-play`,
+        `${baseUrl}/weekly-schedule`,
+        `${baseUrl}/locations`,
+        `${baseUrl}/shows`,
+        `${baseUrl}/staff`,
+        `${baseUrl}/team`,
+        `${baseUrl}/djs`,
+        `${baseUrl}/about`,
+      ];
+
+      let combinedContent = '';
+      let allLinks: any[] = [];
+      let pageTitle = '';
+
+      // Crawl multiple pages to gather comprehensive information
+      for (const url of pagesToCrawl) {
+        try {
+          this.logger.log(`Crawling page: ${url}`);
+          const response = await fetch(url);
+          
+          if (response.status === 200) {
+            const html = await response.text();
+            const $ = cheerio.load(html);
+
+            if (!pageTitle) {
+              pageTitle = $('title').text() || 'Steve\'s DJ Website';
+            }
+
+            const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
+            const links = $('a[href]')
+              .map((_, el) => ({
+                text: $(el).text().trim(),
+                href: $(el).attr('href'),
+                page: url,
+              }))
+              .get();
+
+            combinedContent += `\n\n--- Content from ${url} ---\n${bodyText}`;
+            allLinks.push(...links);
+            
+            this.logger.log(`Successfully crawled ${url} - ${bodyText.length} characters`);
+          } else {
+            this.logger.log(`Page ${url} not found (${response.status}), skipping`);
+          }
+        } catch (error) {
+          this.logger.log(`Error crawling ${url}: ${error.message}, continuing with other pages`);
+        }
+
+        // Add delay between requests to be respectful
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      this.logger.log(`Crawling completed. Total content length: ${combinedContent.length} characters`);
+      this.logger.log(`Total links found: ${allLinks.length}`);
+
+      // Prepare enhanced content for AI analysis with specific rules for Steve's DJ
+      const contentForAI = this.prepareContentForAI(pageTitle, combinedContent, allLinks, baseUrl);
+      
+      // Use the enhanced content with the existing AI analysis
+      const aiResult = await this.analyzeWithGemini(contentForAI);
+
+      // Save raw parsed data for the main URL
+      const parsedSchedule = new ParsedSchedule();
+      parsedSchedule.url = baseUrl;
+      parsedSchedule.rawData = {
+        title: pageTitle,
+        content: combinedContent.substring(0, 10000), // Limit for storage
+        links: allLinks.slice(0, 50), // Limit links
+        parsedAt: new Date(),
+      };
+      parsedSchedule.aiAnalysis = aiResult;
+      parsedSchedule.status = ParseStatus.APPROVED; // Auto-approve for Steve's DJ
+
+      await this.parsedScheduleRepository.save(parsedSchedule);
+
+      const parsedData: ParsedKaraokeData = {
+        vendor: aiResult.vendor,
+        kjs: aiResult.kjs || [],
+        shows: aiResult.shows || [],
+        rawData: {
+          url: baseUrl,
+          title: pageTitle,
+          content: combinedContent.substring(0, 1000),
+          parsedAt: new Date(),
+        },
+      };
+
+      this.logger.log(`Enhanced parsing found: ${parsedData.kjs.length} KJs and ${parsedData.shows.length} shows`);
+
+      // Now use the existing parseAndSaveWebsite logic to create entities
+      // But we'll create them manually since we have custom data
+      return await this.createEntitiesFromParsedData(parsedData);
+      
+    } catch (error) {
+      this.logger.error(`Error in enhanced Steve's DJ parsing:`, error);
+      throw error;
+    }
+  }
+
+  private async createEntitiesFromParsedData(parsedData: ParsedKaraokeData): Promise<{
+    parsedData: ParsedKaraokeData;
+    savedEntities: {
+      vendor: Vendor;
+      kjs: KJ[];
+      shows: Show[];
+    };
+  }> {
+    // Step 1: Create or find vendor
+    let vendor = await this.vendorRepository.findOne({
+      where: { name: parsedData.vendor.name },
+    });
+
+    if (!vendor) {
+      vendor = new Vendor();
+      vendor.name = parsedData.vendor.name;
+      vendor.website = parsedData.vendor.website || parsedData.rawData.url;
+      vendor.description = parsedData.vendor.description;
+      vendor.isActive = true;
+      vendor = await this.vendorRepository.save(vendor);
+      this.logger.log(`Created new vendor: ${vendor.name}`);
+    } else {
+      this.logger.log(`Using existing vendor: ${vendor.name}`);
+    }
+
+    // Step 2: Create KJs
+    const savedKjs: KJ[] = [];
+    for (const kjData of parsedData.kjs) {
+      const existingKj = await this.kjRepository.findOne({
+        where: { name: kjData.name, vendorId: vendor.id },
+      });
+
+      if (!existingKj) {
+        const kj = new KJ();
+        kj.name = kjData.name;
+        kj.vendorId = vendor.id;
+        kj.isActive = true;
+        const savedKj = await this.kjRepository.save(kj);
+        savedKjs.push(savedKj);
+        this.logger.log(`Created new KJ: ${kj.name}`);
+      } else {
+        savedKjs.push(existingKj);
+        this.logger.log(`Using existing KJ: ${existingKj.name}`);
+      }
+    }
+
+    // Step 3: Create Shows (using the existing show interface format)
+    const savedShows: Show[] = [];
+    for (const showData of parsedData.shows) {
+      // Find the KJ if specified
+      let kj: KJ | null = null;
+      if (showData.kjName) {
+        kj = savedKjs.find((k) => k.name === showData.kjName) ||
+             await this.kjRepository.findOne({
+               where: { name: showData.kjName, vendorId: vendor.id },
+             });
+      }
+
+      // Parse the existing interface fields
+      const parsedDate = this.parseDate(showData.date);
+      
+      // Check if show already exists to avoid duplicates
+      const existingShow = await this.showRepository.findOne({
+        where: {
+          venue: showData.venue,
+          date: parsedDate,
+          time: showData.time,
+          vendorId: vendor.id,
+        },
+      });
+
+      if (!existingShow) {
+        const show = new Show();
+        show.venue = showData.venue;
+        show.date = parsedDate;
+        show.time = showData.time;
+        show.vendorId = vendor.id;
+        show.kjId = kj?.id || null;
+        show.isActive = true;
+        show.notes = showData.description;
+
+        const savedShow = await this.showRepository.save(show);
+        savedShows.push(savedShow);
+        this.logger.log(`Created new show at ${show.venue} on ${show.date || 'recurring'} at ${show.time}`);
+      } else {
+        savedShows.push(existingShow);
+        this.logger.log(`Show already exists at ${showData.venue}, skipping duplicate`);
+      }
+    }
+
+    return {
+      parsedData,
+      savedEntities: {
+        vendor,
+        kjs: savedKjs,
+        shows: savedShows,
+      },
+    };
   }
 }
