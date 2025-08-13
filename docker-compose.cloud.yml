@@ -1,0 +1,47 @@
+# Cloud deployment with Ollama service
+version: '3.8'
+
+services:
+  # Your main application
+  karaoke-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=deepseek-r1:8b
+      # Other environment variables...
+    depends_on:
+      - ollama
+    networks:
+      - karaoke-network
+
+  # Ollama service with models
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_ORIGINS=*
+    networks:
+      - karaoke-network
+    # Pull models on startup
+    command: >
+      sh -c "ollama serve & 
+             sleep 10 && 
+             ollama pull deepseek-r1:8b && 
+             ollama pull mistral:latest && 
+             wait"
+
+volumes:
+  ollama_data:
+    driver: local
+
+networks:
+  karaoke-network:
+    driver: bridge

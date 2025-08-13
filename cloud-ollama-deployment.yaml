@@ -1,0 +1,55 @@
+# Google Cloud Run deployment with Ollama
+# Deploy this as a separate Cloud Run service
+
+# 1. Ollama Service (ollama-service.yaml)
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ollama-service
+  annotations:
+    run.googleapis.com/execution-environment: gen2
+    run.googleapis.com/cpu-throttling: "false"
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/memory: "4Gi"
+        run.googleapis.com/cpu: "2"
+    spec:
+      containers:
+      - image: ollama/ollama:latest
+        ports:
+        - containerPort: 11434
+        env:
+        - name: OLLAMA_ORIGINS
+          value: "*"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          ollama serve &
+          sleep 15
+          ollama pull deepseek-r1:8b
+          ollama pull mistral:latest
+          wait
+        resources:
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+---
+# 2. Update your main app's Cloud Run service to point to Ollama
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: karaoke-pal
+spec:
+  template:
+    spec:
+      containers:
+      - image: gcr.io/YOUR_PROJECT_ID/karaoke-pal
+        env:
+        - name: OLLAMA_HOST
+          value: "https://ollama-service-YOUR_HASH-uc.a.run.app"
+        - name: OLLAMA_MODEL  
+          value: "deepseek-r1:8b"
+        # ... other env vars

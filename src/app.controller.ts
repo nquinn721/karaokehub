@@ -32,6 +32,8 @@ export class AppController {
       hasGoogleClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
       hasJwtSecret: !!process.env.JWT_SECRET,
       hasGeminiApiKey: !!process.env.GEMINI_API_KEY,
+      hasOpenAiApiKey: !!process.env.OPENAI_API_KEY,
+      hasOllamaConfig: !!(process.env.OLLAMA_HOST && process.env.OLLAMA_MODEL),
       timestamp: new Date().toISOString(),
     };
   }

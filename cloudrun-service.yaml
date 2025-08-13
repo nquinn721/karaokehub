@@ -70,3 +70,11 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_GEMINI_API_KEY
                   key: latest
+            # Ollama configuration (disabled in Cloud Run by default)
+            # Uncomment and set these if you deploy a separate Ollama service:
+            # - name: ENABLE_OLLAMA
+            #   value: "true"
+            # - name: OLLAMA_HOST
+            #   value: "https://your-ollama-service-url"
+            # - name: OLLAMA_MODEL
+            #   value: "deepseek-r1:8b"

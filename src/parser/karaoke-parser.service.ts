@@ -1,7 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { load } from 'cheerio';
+import NodeCache from 'node-cache';
 import fetch from 'node-fetch';
+import { Ollama } from 'ollama';
+import OpenAI from 'openai';
 import { Repository } from 'typeorm';
 import { KJ } from '../kj/kj.entity';
 import { Show } from '../show/show.entity';
@@ -39,7 +43,13 @@ export interface ParsedKaraokeData {
 @Injectable()
 export class KaraokeParserService {
   private readonly logger = new Logger(KaraokeParserService.name);
-  private readonly genAI: GoogleGenerativeAI;
+  private readonly genAI: GoogleGenerativeAI | null;
+  private readonly openai: OpenAI | null;
+  private readonly ollama: Ollama | null;
+  private readonly cache: NodeCache;
+  private geminiQuotaExhausted = false;
+  private dailyGeminiCalls = 0;
+  private readonly MAX_DAILY_GEMINI_CALLS = 100; // Adjust based on your quota
 
   constructor(
     @InjectRepository(Vendor)
@@ -51,31 +61,135 @@ export class KaraokeParserService {
     @InjectRepository(ParsedSchedule)
     private parsedScheduleRepository: Repository<ParsedSchedule>,
   ) {
-    // Initialize Gemini AI with API key from environment
-    const apiKey = process.env.GEMINI_API_KEY;
+    // Initialize cache (TTL: 24 hours)
+    this.cache = new NodeCache({ stdTTL: 86400, checkperiod: 3600 });
 
-    if (!apiKey) {
-      this.logger.error('GEMINI_API_KEY not found in environment variables');
-      throw new Error('GEMINI_API_KEY environment variable is required');
+    // Initialize Gemini AI (primary)
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (geminiApiKey) {
+      this.genAI = new GoogleGenerativeAI(geminiApiKey);
+      this.logger.log('Gemini AI initialized successfully');
+    } else {
+      this.logger.warn('GEMINI_API_KEY not found - Gemini AI disabled');
+      this.genAI = null;
+      this.geminiQuotaExhausted = true;
     }
 
-    this.genAI = new GoogleGenerativeAI(apiKey);
+    // Initialize OpenAI (fallback)
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    if (openaiApiKey) {
+      this.openai = new OpenAI({ apiKey: openaiApiKey });
+      this.logger.log('OpenAI initialized successfully as fallback');
+    } else {
+      this.logger.warn('OPENAI_API_KEY not found - OpenAI fallback disabled');
+      this.openai = null;
+    }
+
+    // Initialize Ollama (local models - highest priority when available)
+    const ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
+    const ollamaModel = process.env.OLLAMA_MODEL || 'deepseek-r1:8b';
+
+    // Only initialize Ollama in development or when explicitly configured
+    const enableOllama =
+      process.env.NODE_ENV !== 'production' || process.env.ENABLE_OLLAMA === 'true';
+
+    if (enableOllama) {
+      try {
+        this.ollama = new Ollama({ host: ollamaHost });
+        // Test if Ollama is available (async, don't block startup)
+        this.testOllamaConnection(ollamaModel).catch((error) => {
+          this.logger.warn('Ollama connection test failed, disabling Ollama:', error.message);
+          // Don't set to null here to avoid TypeScript issues, just log the failure
+        });
+      } catch (error) {
+        this.logger.warn('Ollama initialization failed - local AI disabled:', error.message);
+        this.ollama = null;
+      }
+    } else {
+      this.logger.log(
+        'Ollama disabled in production environment (set ENABLE_OLLAMA=true to override)',
+      );
+      this.ollama = null;
+    }
+
+    if (!this.genAI && !this.openai && !this.ollama) {
+      this.logger.error('No AI providers available - Gemini, OpenAI, and Ollama are all disabled');
+      throw new Error(
+        'At least one AI provider (GEMINI_API_KEY, OPENAI_API_KEY, or Ollama) is required',
+      );
+    }
+
+    // Reset daily call counter at midnight
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const msUntilMidnight = tomorrow.getTime() - now.getTime();
+    setTimeout(() => {
+      this.dailyGeminiCalls = 0;
+      this.geminiQuotaExhausted = false;
+      // Set up daily reset
+      setInterval(
+        () => {
+          this.dailyGeminiCalls = 0;
+          this.geminiQuotaExhausted = false;
+        },
+        24 * 60 * 60 * 1000,
+      );
+    }, msUntilMidnight);
+  }
+
+  // Test Ollama connection and log available models
+  private async testOllamaConnection(defaultModel: string): Promise<void> {
+    try {
+      const models = await this.ollama.list();
+      this.logger.log(
+        `Ollama connected successfully. Available models: ${models.models.map((m) => m.name).join(', ')}`,
+      );
+
+      // Check if the default model is available
+      const hasDefaultModel = models.models.some((m) => m.name === defaultModel);
+      if (!hasDefaultModel) {
+        this.logger.warn(
+          `Default model '${defaultModel}' not found. Available: ${models.models.map((m) => m.name).join(', ')}`,
+        );
+      } else {
+        this.logger.log(`Using Ollama model: ${defaultModel}`);
+      }
+    } catch (error) {
+      this.logger.warn('Failed to connect to Ollama:', error.message);
+      throw error;
+    }
   }
 
   async parseWebsite(url: string): Promise<ParsedKaraokeData> {
     this.logger.log(`Starting to parse website: ${url}`);
 
     try {
+      // Check cache first
+      const cacheKey = `parsed_${Buffer.from(url).toString('base64')}`;
+      const cached = this.cache.get(cacheKey) as ParsedKaraokeData;
+      if (cached) {
+        this.logger.log(`Returning cached result for ${url}`);
+        return cached;
+      }
+
       // Fetch the webpage content
       const response = await fetch(url);
       const html = await response.text();
 
-      // Truncate HTML if it's too large for Gemini (roughly 100KB limit)
-      const truncatedHtml = html.length > 100000 ? html.substring(0, 100000) + '...' : html;
+      // Try Cheerio-based parsing first (no AI quota usage)
+      const cheerioResult = this.parseWithCheerio(html, url);
 
-      // Use Gemini AI to parse karaoke information directly from HTML
+      // If Cheerio parsing was successful enough, use it
+      if (this.isParsingSuccessful(cheerioResult)) {
+        this.logger.log(`Successfully parsed ${url} with Cheerio (no AI quota used)`);
+        this.cache.set(cacheKey, cheerioResult);
+        return cheerioResult;
+      }
+
+      // Fallback to AI parsing with smart provider selection
+      const truncatedHtml = html.length > 100000 ? html.substring(0, 100000) + '...' : html;
       const contentForAI = this.prepareContentForAI(truncatedHtml, url);
-      const aiResult = await this.analyzeWithGemini(contentForAI);
+      const aiResult = await this.analyzeWithSmartAI(contentForAI);
 
       // Save raw parsed data
       const parsedSchedule = new ParsedSchedule();
@@ -101,6 +215,9 @@ export class KaraokeParserService {
           parsedAt: new Date(),
         },
       };
+
+      // Cache the result
+      this.cache.set(cacheKey, result);
 
       this.logger.log(
         `Successfully parsed website: ${url}. Found ${result.kjs.length} KJs and ${result.shows.length} shows`,
@@ -292,6 +409,331 @@ ${content}
       this.logger.error('Error with Gemini AI analysis:', error);
       throw error;
     }
+  }
+
+  // Smart AI provider selection with quota management (Ollama > Gemini > OpenAI)
+  private async analyzeWithSmartAI(content: string): Promise<any> {
+    // Try Ollama first (local, unlimited, free)
+    if (this.ollama) {
+      try {
+        const result = await this.analyzeWithOllama(content);
+        this.logger.log('Used Ollama (local model - no quota used)');
+        return result;
+      } catch (error) {
+        this.logger.warn('Ollama failed, falling back to cloud AI:', error.message);
+      }
+    }
+
+    // Fallback to Gemini if available and quota not exhausted
+    if (
+      this.genAI &&
+      !this.geminiQuotaExhausted &&
+      this.dailyGeminiCalls < this.MAX_DAILY_GEMINI_CALLS
+    ) {
+      try {
+        this.dailyGeminiCalls++;
+        const result = await this.analyzeWithGemini(content);
+        this.logger.log(
+          `Used Gemini AI (call ${this.dailyGeminiCalls}/${this.MAX_DAILY_GEMINI_CALLS})`,
+        );
+        return result;
+      } catch (error) {
+        this.logger.warn('Gemini AI failed, switching to OpenAI fallback:', error.message);
+        if (error.message.includes('quota') || error.message.includes('limit')) {
+          this.geminiQuotaExhausted = true;
+        }
+      }
+    }
+
+    // Final fallback to OpenAI
+    if (this.openai) {
+      try {
+        const result = await this.analyzeWithOpenAI(content);
+        this.logger.log('Used OpenAI as final fallback');
+        return result;
+      } catch (error) {
+        this.logger.error('OpenAI also failed:', error);
+        throw error;
+      }
+    }
+
+    throw new Error('No AI providers available or all failed');
+  }
+
+  // OpenAI fallback method
+  private async analyzeWithOpenAI(content: string): Promise<any> {
+    const prompt = this.buildAIPrompt(content);
+
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-3.5-turbo', // More cost-effective than GPT-4
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1,
+      max_tokens: 2000,
+    });
+
+    const text = response.choices[0]?.message?.content;
+    if (!text) {
+      throw new Error('Empty response from OpenAI');
+    }
+
+    // Parse JSON response (same as Gemini)
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (parseError) {
+      this.logger.warn('Failed to parse OpenAI response as JSON, using fallback parsing');
+    }
+
+    return this.fallbackParsing(text);
+  }
+
+  // Ollama local AI method (highest priority - free and unlimited)
+  private async analyzeWithOllama(content: string): Promise<any> {
+    const model = process.env.OLLAMA_MODEL || 'llama3.1:8b';
+    const prompt = this.buildAIPrompt(content);
+
+    const response = await this.ollama.chat({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      options: {
+        temperature: 0.1,
+        top_p: 0.9,
+        num_predict: 2000,
+      },
+    });
+
+    const text = response.message?.content;
+    if (!text) {
+      throw new Error('Empty response from Ollama');
+    }
+
+    // Parse JSON response (same as other AI providers)
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (parseError) {
+      this.logger.warn('Failed to parse Ollama response as JSON, using fallback parsing');
+    }
+
+    return this.fallbackParsing(text);
+  }
+
+  // Cheerio-based parsing (no AI quota usage)
+  private parseWithCheerio(html: string, url: string): ParsedKaraokeData {
+    const $ = load(html);
+
+    // Extract vendor information
+    const title = $('title').text() || $('h1').first().text() || 'Unknown Venue';
+    const vendor = {
+      name: this.cleanVendorName(title),
+      website: url,
+      description: $('meta[name="description"]').attr('content') || '',
+      confidence: 60, // Lower confidence for non-AI parsing
+    };
+
+    // Look for common karaoke/DJ patterns
+    const kjs: any[] = [];
+    const shows: any[] = [];
+
+    // Find KJ names (look for common patterns)
+    const kjPatterns = [
+      /DJ\s+([A-Za-z\s]+)/gi,
+      /KJ\s+([A-Za-z\s]+)/gi,
+      /Host[:\s]+([A-Za-z\s]+)/gi,
+    ];
+
+    const textContent = $('body').text() || $.html();
+    kjPatterns.forEach((pattern) => {
+      let match;
+      while ((match = pattern.exec(textContent)) !== null) {
+        const name = match[1].trim();
+        if (name && name.length > 1 && name.length < 30) {
+          kjs.push({
+            name,
+            confidence: 70,
+            context: 'Found via pattern matching',
+          });
+        }
+      }
+    });
+
+    // Look for schedule patterns
+    const schedulePatterns = [
+      /([A-Za-z]+day)s?\s+.*?(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
+      /([A-Za-z]+day)s?\s+.*?karaoke.*?(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
+    ];
+
+    schedulePatterns.forEach((pattern) => {
+      let match;
+      while ((match = pattern.exec(textContent)) !== null) {
+        const day = this.standardizeDayName(match[1]);
+        const time = this.standardizeTime(match[2]);
+
+        if (day && time) {
+          shows.push({
+            venue: vendor.name,
+            date: 'recurring',
+            time,
+            description: `Every ${day}`,
+            confidence: 65,
+          });
+        }
+      }
+    });
+
+    return {
+      vendor,
+      kjs: this.deduplicateKJs(kjs),
+      shows: this.deduplicateShows(shows),
+      rawData: {
+        url,
+        title,
+        content: textContent.substring(0, 1000),
+        parsedAt: new Date(),
+      },
+    };
+  }
+
+  // Check if parsing was successful enough to skip AI
+  private isParsingSuccessful(result: ParsedKaraokeData): boolean {
+    const hasVendor = result.vendor && result.vendor.name !== 'Unknown Venue';
+    const hasShows = result.shows && result.shows.length > 0;
+    const hasKJs = result.kjs && result.kjs.length > 0;
+
+    // Consider successful if we have vendor + (shows OR KJs)
+    return hasVendor && (hasShows || hasKJs);
+  }
+
+  // Helper methods for Cheerio parsing
+  private cleanVendorName(name: string): string {
+    return name
+      .replace(/\s+/g, ' ')
+      .replace(/[|•·]/g, ' ')
+      .split(' ')[0] // Take first part if multiple
+      .trim()
+      .substring(0, 50); // Limit length
+  }
+
+  private standardizeDayName(day: string): string {
+    const dayMap = {
+      monday: 'Monday',
+      mon: 'Monday',
+      tuesday: 'Tuesday',
+      tue: 'Tuesday',
+      tues: 'Tuesday',
+      wednesday: 'Wednesday',
+      wed: 'Wednesday',
+      thursday: 'Thursday',
+      thu: 'Thursday',
+      thur: 'Thursday',
+      friday: 'Friday',
+      fri: 'Friday',
+      saturday: 'Saturday',
+      sat: 'Saturday',
+      sunday: 'Sunday',
+      sun: 'Sunday',
+    };
+
+    const normalized = day.toLowerCase().replace(/s$/, ''); // Remove plural 's'
+    return dayMap[normalized] || null;
+  }
+
+  private standardizeTime(time: string): string {
+    const match = time.match(/(\d{1,2})(?::(\d{2}))?\s*(PM|AM)/i);
+    if (!match) return null;
+
+    let hour = parseInt(match[1]);
+    const minute = match[2] || '00';
+    const ampm = match[3].toUpperCase();
+
+    if (ampm === 'PM' && hour !== 12) hour += 12;
+    if (ampm === 'AM' && hour === 12) hour = 0;
+
+    return `${hour.toString().padStart(2, '0')}:${minute}`;
+  }
+
+  private deduplicateKJs(kjs: any[]): any[] {
+    const seen = new Set();
+    return kjs.filter((kj) => {
+      const key = kj.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  private deduplicateShows(shows: any[]): any[] {
+    const seen = new Set();
+    return shows.filter((show) => {
+      const key = `${show.venue}-${show.date}-${show.time}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  // Centralized AI prompt building
+  private buildAIPrompt(content: string): string {
+    return `
+You are an expert at parsing HTML content from karaoke and DJ service websites to extract structured schedule information.
+
+IMPORTANT: You will receive raw HTML content that may include tags, scripts, styles, and formatting. Focus on finding the actual content within the HTML and ignore structural elements.
+
+Focus on finding:
+
+1. VENDOR INFORMATION:
+   - Business/company name that runs karaoke shows
+   - Website URL 
+   - Brief description
+   - Confidence level (0-100)
+
+2. KJ/DJ INFORMATION:  
+   - Names of KJs/DJs mentioned
+   - Context about each person
+   - Confidence level (0-100)
+
+3. SHOW INFORMATION:
+   - Specific venue names where shows happen
+   - Days of the week (full names: Monday, Tuesday, etc.)
+   - Specific times (in HH:MM format, 24-hour)
+   - Match KJs to shows if possible
+   - Look for recurring weekly schedules
+   - Confidence level (0-100)
+
+Return valid JSON with this structure:
+{
+  "vendor": {
+    "name": "business name",
+    "website": "website url", 
+    "description": "brief description",
+    "confidence": 85
+  },
+  "kjs": [
+    {
+      "name": "KJ/DJ Name",
+      "confidence": 90,
+      "context": "additional info"
+    }
+  ],
+  "shows": [
+    {
+      "venue": "Venue Name",
+      "date": "recurring",
+      "time": "19:00",
+      "kjName": "KJ Name",
+      "description": "Every Monday",
+      "confidence": 80
+    }
+  ]
+}
+
+WEBPAGE CONTENT:
+${content}
+    `;
   }
 
   private extractCleanText(html: string): string {
@@ -539,39 +981,63 @@ ${content}
 
     // Create selected shows
     if (selectedItems.showIds?.length && vendor) {
+      this.logger.log(`Creating ${selectedItems.showIds.length} shows for vendor ${vendor.name}`);
+      
       for (const showId of selectedItems.showIds) {
         const showData = aiAnalysis.shows.find((show, index) => index.toString() === showId);
         if (showData) {
+          this.logger.log(`Processing show: ${JSON.stringify(showData)}`);
+          
           // Find the KJ if specified
           let kj: KJ | null = null;
           if (showData.kjName) {
             kj = await this.kjRepository.findOne({
               where: { name: showData.kjName, vendorId: vendor.id },
             });
+            if (kj) {
+              this.logger.log(`Found KJ: ${kj.name} (ID: ${kj.id})`);
+            } else {
+              this.logger.log(`KJ not found: ${showData.kjName}`);
+            }
+          }
+
+          // Check for required fields
+          if (!showData.venue) {
+            this.logger.warn(`Skipping show with missing venue: ${JSON.stringify(showData)}`);
+            continue;
           }
 
           const show = new Show();
           show.venue = showData.venue;
           show.date = this.parseDate(showData.date);
-          show.time = showData.time;
+          show.time = showData.time || '19:00'; // Default time if missing
           show.vendorId = vendor.id;
           show.kjId = kj?.id || null;
           show.isActive = true;
-          show.notes = showData.description;
+          show.notes = showData.description || '';
 
           // Handle image URL if present
           if (showData.imageUrl) {
             show.imageUrl = showData.imageUrl;
           }
 
-          const savedShow = await this.showRepository.save(show);
-          result.shows.push(savedShow);
-          this.logger.log(`Created show: ${show.venue} on ${show.date}`);
+          try {
+            const savedShow = await this.showRepository.save(show);
+            result.shows.push(savedShow);
+            this.logger.log(`✅ Created show: ${show.venue} on ${show.date || 'recurring'} at ${show.time} (ID: ${savedShow.id})`);
+          } catch (error) {
+            this.logger.error(`❌ Failed to save show: ${show.venue}`, error);
+            // Continue with other shows even if one fails
+          }
+        } else {
+          this.logger.warn(`Show data not found for ID: ${showId}`);
         }
       }
+      
+      this.logger.log(`Successfully created ${result.shows.length} shows out of ${selectedItems.showIds.length} attempted`);
     }
 
-    // Check if all items have been processed
+    // Check if all items have been processed - always remove the record when approving all items
     const totalSelectedItems =
       (selectedItems.vendor ? 1 : 0) +
       (selectedItems.kjIds?.length || 0) +
@@ -579,18 +1045,18 @@ ${content}
 
     const totalAvailableItems =
       1 + // vendor
-      aiAnalysis.kjs.length +
-      aiAnalysis.shows.length;
+      (aiAnalysis.kjs?.length || 0) +
+      (aiAnalysis.shows?.length || 0);
 
-    // If all items were selected, remove the parsed schedule record
-    if (totalSelectedItems === totalAvailableItems) {
-      await this.parsedScheduleRepository.remove(parsedSchedule);
-      this.logger.log(`Removed parsed schedule ${parsedScheduleId} - all items processed`);
-    } else {
-      // Update status to partially processed
-      parsedSchedule.status = ParseStatus.APPROVED;
-      await this.parsedScheduleRepository.save(parsedSchedule);
-    }
+    this.logger.log(
+      `Selected items: ${totalSelectedItems}, Available items: ${totalAvailableItems}`,
+    );
+
+    // Always remove the parsed schedule record after processing (approved items are now in the database)
+    await this.parsedScheduleRepository.remove(parsedSchedule);
+    this.logger.log(
+      `Removed parsed schedule ${parsedScheduleId} - items processed and saved to database`,
+    );
 
     return result;
   }
@@ -901,7 +1367,7 @@ ${allLinks.map((link) => `<a href="${link.href}">${link.text}</a> (from ${link.p
       this.logger.log(`Content preview (first 500 chars): ${contentForAI.substring(0, 500)}`);
 
       // Use the enhanced content with the existing AI analysis
-      const aiResult = await this.analyzeWithGemini(contentForAI);
+      const aiResult = await this.analyzeWithSmartAI(contentForAI);
 
       // Save raw parsed data for the main URL
       const parsedSchedule = new ParsedSchedule();
