@@ -29,10 +29,10 @@ gcloud run deploy ${SERVICE_NAME} \
   --concurrency 80 \
   --set-env-vars NODE_ENV=production \
   --set-env-vars FRONTEND_URL=https://karaokehub-203453576607.us-east1.run.app \
-  --set-env-vars DATABASE_HOST=35.196.192.156 \
-  --set-env-vars DATABASE_PORT=3306 \
-  --set-env-vars DATABASE_NAME=karaoke-hub \
-  --set-env-vars DATABASE_SYNCHRONIZE=false \
+  --update-secrets DATABASE_HOST=KARAOKE_HUB_DB_HOST:latest \
+  --update-secrets DATABASE_PORT=KARAOKE_HUB_DB_PORT:latest \
+  --update-secrets DATABASE_NAME=KARAOKE_HUB_DB_NAME:latest \
+  --update-secrets DATABASE_SYNCHRONIZE=KARAOKE_HUB_DB_SYNCHRONIZE:latest \
   --update-secrets DATABASE_USERNAME=KARAOKE_HUB_DB_USERNAME:latest \
   --update-secrets DATABASE_PASSWORD=KARAOKE_HUB_DB_PASSWORD:latest \
   --update-secrets JWT_SECRET=KARAOKE_HUB_JWT_SECRET:latest \

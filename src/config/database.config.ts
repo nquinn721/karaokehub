@@ -23,15 +23,20 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     timezone: 'Z',
     charset: 'utf8mb4',
     extra: {
-      // For Cloud SQL connection
-      ...(isProduction &&
-        configService.get('DATABASE_SOCKET_PATH') && {
-          socketPath: configService.get('DATABASE_SOCKET_PATH'),
-        }),
-      // Connection pool settings
-      connectionLimit: 10,
-      acquireTimeout: 60000,
-      timeout: 60000,
+      // Connection pool settings for MySQL2 (compatible options only)
+      connectionLimit: 5, // Reduced for Cloud Run
+      acquireTimeout: 30000, // 30 seconds
+      connectTimeout: 20000, // 20 seconds  
+      // Additional MySQL2 settings
+      queueLimit: 0,
+      reconnect: true,
+      dateStrings: false,
+      // SSL settings for Cloud SQL
+      ...(isProduction && {
+        ssl: {
+          rejectUnauthorized: false, // Cloud SQL uses self-signed certificates
+        },
+      }),
     },
     // Migration settings
     migrations: ['dist/migrations/*.js'],

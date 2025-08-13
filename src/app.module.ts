@@ -4,12 +4,14 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
+import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { getDatabaseConfig } from './config/database.config';
 import { FavoriteModule } from './favorite/favorite.module';
 import { KJModule } from './kj/kj.module';
-import { ParserModule } from './parser/parser.module';
+import { ParserModule } from './modules/parser/parser.module';
+import { KaraokeParserService } from './modules/parser/karaoke-parser.service';
 import { ShowModule } from './show/show.module';
 import { UserModule } from './user/user.module';
 import { VendorModule } from './vendor/vendor.module';
@@ -54,7 +56,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     FavoriteModule,
     ParserModule,
   ],
-  controllers: [],
+  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}

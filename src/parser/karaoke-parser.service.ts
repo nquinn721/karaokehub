@@ -2,11 +2,11 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as cheerio from 'cheerio';
-import fetch from 'node-fetch';
-import { Repository } from 'typeorm';
-import * as fs from 'fs';
-import * as path from 'path';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
+import fetch from 'node-fetch';
+import * as path from 'path';
+import { Repository } from 'typeorm';
 import { KJ } from '../kj/kj.entity';
 import { ParsedSchedule, ParseStatus } from '../modules/parser/parsed-schedule.entity';
 import { Show } from '../show/show.entity';
@@ -241,7 +241,10 @@ IMPORTANT PARSING GUIDELINES:
 - If times are listed as ranges (like "7PM-11PM"), separate into startTime and endTime
 - Days should be full day names (Monday, Tuesday, etc.) not abbreviations  
 - If no specific venues are found but there are time/day patterns, still extract them
-- Pay special attention to tables, lists, or structured data that might contain schedules${rulesSection}
+- Pay special attention to tables, lists, or structured data that might contain schedules
+- CRITICAL: Only include shows in the results if you can find BOTH day and time information
+- Do not create show entries for venues without specific schedule information
+- Look for promotional flyers and images that contain schedule text${rulesSection}
 
 Please return the response as a valid JSON object with this exact structure:
 {
@@ -274,7 +277,7 @@ Please return the response as a valid JSON object with this exact structure:
   ]
 }
 
-Only include information you're reasonably confident about. For shows, prioritize finding actual venue names and specific days/times over generic information.
+CRITICAL: Only include shows where you have found specific day and time information. Do not include venue-only entries without schedule details.
 
 WEBPAGE CONTENT TO ANALYZE:
 ${content}
@@ -519,7 +522,10 @@ ${content}
 
       // Generate filename from URL and show venue
       const urlHash = crypto.createHash('md5').update(imageUrl).digest('hex');
-      const venueSlug = showVenue.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+      const venueSlug = showVenue
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-');
       const extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
       const filename = `${venueSlug}-${urlHash}${extension}`;
       const filepath = path.join(imagesDir, filename);
@@ -538,7 +544,7 @@ ${content}
       // Return the public URL path
       const publicUrl = `/images/shows/${filename}`;
       this.logger.log(`Downloaded and saved image: ${publicUrl}`);
-      
+
       return publicUrl;
     } catch (error) {
       this.logger.error(`Error downloading image from ${imageUrl}:`, error);
@@ -851,7 +857,9 @@ ${content}
 
           const savedShow = await this.showRepository.save(show);
           savedShows.push(savedShow);
-          this.logger.log(`Created new show: ${show.venue} on ${show.day} at ${show.startTime}${show.imageUrl ? ' with image' : ''}`);
+          this.logger.log(
+            `Created new show: ${show.venue} on ${show.day} at ${show.startTime}${show.imageUrl ? ' with image' : ''}`,
+          );
         } else {
           // Update existing show if needed
           if (showData.endTime && !existingShow.endTime) {
@@ -932,20 +940,29 @@ ${content}
           $('img').each((_, element) => {
             const src = $(element).attr('src') || $(element).attr('data-src');
             const alt = $(element).attr('alt') || '';
-            
+
             if (src) {
               // Convert relative URLs to absolute URLs
               let imageUrl = src;
               if (!src.startsWith('http')) {
                 imageUrl = new URL(src, pageUrl).href;
               }
-              
+
               // Check if image might be relevant (contains karaoke/venue keywords)
-              const relevantKeywords = ['karaoke', 'alibi', 'sharky', 'flyer', 'event', 'dj', 'steve'];
-              const isRelevant = relevantKeywords.some(keyword => 
-                (src.toLowerCase().includes(keyword) || alt.toLowerCase().includes(keyword))
+              const relevantKeywords = [
+                'karaoke',
+                'alibi',
+                'sharky',
+                'flyer',
+                'event',
+                'dj',
+                'steve',
+              ];
+              const isRelevant = relevantKeywords.some(
+                (keyword) =>
+                  src.toLowerCase().includes(keyword) || alt.toLowerCase().includes(keyword),
               );
-              
+
               if (isRelevant) {
                 images.push(`IMAGE: ${imageUrl} (alt: ${alt})`);
               }
@@ -986,6 +1003,29 @@ IMAGES: ${images.join('\n')}
     );
     this.logger.log('- Total content length: ' + contentForAI.length);
 
+    // Look for schedule patterns in the content
+    const schedulePatterns = [
+      /SUNDAY[S]?\s+KARAOKE/gi,
+      /MONDAY[S]?\s+KARAOKE/gi,
+      /TUESDAY[S]?\s+KARAOKE/gi,
+      /WEDNESDAY[S]?\s+KARAOKE/gi,
+      /THURSDAY[S]?\s+KARAOKE/gi,
+      /FRIDAY[S]?\s+KARAOKE/gi,
+      /SATURDAY[S]?\s+KARAOKE/gi,
+      /\d{1,2}:\d{2}\s*(AM|PM)/gi,
+      /\d{1,2}(AM|PM)/gi,
+    ];
+
+    let foundPatterns: string[] = [];
+    schedulePatterns.forEach((pattern, index) => {
+      const matches = contentForAI.match(pattern);
+      if (matches) {
+        foundPatterns = foundPatterns.concat(matches);
+      }
+    });
+
+    this.logger.log('[DEBUG] Found schedule patterns: ' + foundPatterns.join(', '));
+
     // Log content from the karaoke-schedule page specifically if it exists
     const karaokeScheduleIndex = pagesToCrawl.findIndex((page) =>
       page.includes('/karaoke-schedule'),
@@ -993,36 +1033,63 @@ IMAGES: ${images.join('\n')}
     if (karaokeScheduleIndex >= 0 && allPageContents[karaokeScheduleIndex]) {
       this.logger.log('[DEBUG] Karaoke-schedule page content (first 1000 chars):');
       this.logger.log(allPageContents[karaokeScheduleIndex].substring(0, 1000));
+
+      // Look for schedule patterns specifically in karaoke-schedule page
+      const karaokeScheduleContent = allPageContents[karaokeScheduleIndex];
+      let karaokePatterns: string[] = [];
+      schedulePatterns.forEach((pattern) => {
+        const matches = karaokeScheduleContent.match(pattern);
+        if (matches) {
+          karaokePatterns = karaokePatterns.concat(matches);
+        }
+      });
+      this.logger.log('[DEBUG] Karaoke-schedule page patterns: ' + karaokePatterns.join(', '));
     }
 
     // Enhanced prompt specifically targeting Steve's DJ format
     const customRules = `
-SPECIFIC FORMAT TO DETECT:
-Look for text patterns like "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve ALIBI BEACH LOUNGE"
+CRITICAL: This website contains promotional flyers with karaoke schedule text. You MUST extract day and time information.
 
-This website contains karaoke show schedules. Pay special attention to:
-1. Day names (SUNDAY, MONDAY, etc.) followed by "KARAOKE"
-2. Time ranges like "7:00PM - 11:00PM" 
-3. DJ names like "DJ Steve"
-4. Venue names like "ALIBI BEACH LOUNGE"
-5. Any recurring weekly schedule information
-6. Promotional images/flyers associated with venues or shows (look for image tags with karaoke, venue names, or DJ promotional content)
-
-EXAMPLE PATTERNS TO MATCH:
+SPECIFIC FORMATS TO DETECT:
+Look for text patterns embedded in images or promotional content like:
 - "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve ALIBI BEACH LOUNGE"
-- "MONDAY KARAOKE 8:00PM - 12:00AM with DJ [Name] [Venue]"
+- "MONDAY KARAOKE 8:00PM - 12:00AM with DJ Steve SHARKY'S"
+- "[DAY] KARAOKE [TIME] - [TIME] with DJ Steve [VENUE]"
+
+PARSING REQUIREMENTS:
+1. Day names: Look for SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY
+2. Time patterns: 
+   - "7:00PM - 11:00PM" 
+   - "8:00PM - 12:00AM"
+   - "19:00 - 23:00"
+   - Single times like "7:00PM" or "8PM"
+3. Venue names: "ALIBI BEACH LOUNGE", "SHARKY'S", "HOME 2 SUITES"
+4. DJ names: "DJ Steve", "Steve"
+
+EXTRACTION PRIORITY:
+1. First extract the day of the week (convert to format like "Sunday", "Monday", etc.)
+2. Then extract startTime (convert to format like "7:00 PM" or "19:00")  
+3. Then extract endTime if available (convert to format like "11:00 PM" or "23:00")
+4. Then extract venue name
+5. Associate with "DJ Steve" as the KJ
+
+IMPORTANT: Even if you find venue names like "ALIBI BEACH LOUNGE", you MUST also find and extract:
+- day: The day of the week this show occurs
+- startTime: When the karaoke starts  
+- endTime: When the karaoke ends
+
+Do NOT create show entries without day and time information. If you can't find day/time for a venue, don't include it.
 
 For images, look for:
-- Karaoke flyers or promotional images
-- Venue-specific promotional material
-- Images with venue names like "ALIBI", "SHARKY'S", etc.
-- Event flyers with schedule information
+- Karaoke flyers or promotional images with schedule text
+- Event flyers with day and time information
+- Images with venue names that also contain schedule details
 
 Extract each show as a separate entry with:
 - venue: The location name (e.g., "ALIBI BEACH LOUNGE")
-- day: Day of week (e.g., "Sunday") 
-- startTime: Start time (e.g., "7:00 PM")
-- endTime: End time (e.g., "11:00 PM")
+- day: Day of week (e.g., "Sunday", "Monday") - REQUIRED
+- startTime: Start time (e.g., "7:00 PM", "19:00") - REQUIRED  
+- endTime: End time (e.g., "11:00 PM", "23:00") - REQUIRED if available
 - kjName: DJ name (e.g., "DJ Steve")
 - imageUrl: Full URL to any associated promotional image
 - imageAlt: Description of the image if available

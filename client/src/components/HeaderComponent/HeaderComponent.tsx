@@ -89,10 +89,6 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                 style={{
                   width: '32px',
                   height: '32px',
-                  objectFit: 'contain',
-                  backgroundColor: 'transparent',
-                  mixBlendMode: 'multiply',
-                  filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.3))',
                 }}
               />
             </IconButton>
