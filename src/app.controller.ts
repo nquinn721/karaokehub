@@ -22,6 +22,20 @@ export class AppController {
     };
   }
 
+  @Get('api/env-info')
+  getEnvInfo(): object {
+    return {
+      nodeEnv: process.env.NODE_ENV,
+      frontendUrl: process.env.FRONTEND_URL,
+      allowedOrigins: process.env.ALLOWED_ORIGINS,
+      hasGoogleClientId: !!process.env.GOOGLE_CLIENT_ID,
+      hasGoogleClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      hasJwtSecret: !!process.env.JWT_SECRET,
+      hasGeminiApiKey: !!process.env.GEMINI_API_KEY,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   @Get('api/test-parser')
   async testParser() {
     try {

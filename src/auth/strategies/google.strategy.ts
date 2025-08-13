@@ -10,8 +10,13 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     private configService: ConfigService,
     private authService: AuthService,
   ) {
-    const baseUrl = configService.get<string>('FRONTEND_URL') || 'http://localhost:8000';
-    
+    // For OAuth callback, we need the backend URL, not frontend URL
+    const isProduction = configService.get<string>('NODE_ENV') === 'production';
+    const baseUrl = isProduction
+      ? configService.get<string>('FRONTEND_URL') ||
+        'https://karaokehub-203453576607.us-central1.run.app'
+      : 'http://localhost:8000'; // Local development uses backend port
+
     super({
       clientID: configService.get<string>('GOOGLE_CLIENT_ID'),
       clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET'),

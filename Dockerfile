@@ -22,6 +22,10 @@ RUN npm ci
 
 COPY . .
 COPY --from=client-builder /app/client/dist ./client/dist
+
+# Ensure public directory exists for copying
+RUN mkdir -p ./public/images/shows
+
 RUN npm run build
 
 # Production image
@@ -41,7 +45,10 @@ COPY --from=server-builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=server-builder --chown=nestjs:nodejs /app/client/dist ./client/dist
 COPY --from=server-builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=server-builder --chown=nestjs:nodejs /app/package*.json ./
-COPY --from=server-builder --chown=nestjs:nodejs /app/public ./public
+
+# Create public directory and copy contents
+RUN mkdir -p ./public/images/shows
+COPY --from=server-builder --chown=nestjs:nodejs /app/public/ ./public/
 
 USER nestjs
 

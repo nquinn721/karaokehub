@@ -103,10 +103,10 @@ export class ShowStore {
         this.shows = (response || []).map((show: Show) => {
           // Create more realistic coordinates based on venue names
           let coordinates = { lat: 40.7128, lng: -74.006 }; // Default NYC
-          
+
           // Try to match venue names to approximate locations
           const venueName = show.address?.toLowerCase() || '';
-          
+
           if (venueName.includes('brooklyn')) {
             coordinates = { lat: 40.6782, lng: -73.9442 };
           } else if (venueName.includes('queens')) {
@@ -124,7 +124,7 @@ export class ShowStore {
               lng: -74.006 + (Math.random() - 0.5) * 0.05,
             };
           }
-          
+
           return {
             ...show,
             lat: coordinates.lat,
