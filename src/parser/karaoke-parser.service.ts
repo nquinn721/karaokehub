@@ -10,7 +10,6 @@ import { KJ } from '../kj/kj.entity';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
 import { ParsedSchedule, ParseStatus } from './parsed-schedule.entity';
-const NodeCache = require('node-cache');
 
 export interface ParsedKaraokeData {
   vendor: {
@@ -45,7 +44,6 @@ export class KaraokeParserService {
   private readonly logger = new Logger(KaraokeParserService.name);
   private readonly genAI: GoogleGenerativeAI | null;
   private readonly openai: OpenAI | null;
-  private readonly cache: any; // NodeCache instance
   private geminiQuotaExhausted = false;
   private dailyGeminiCalls = 0;
   private readonly MAX_DAILY_GEMINI_CALLS = 100; // Adjust based on your quota
@@ -61,9 +59,6 @@ export class KaraokeParserService {
     private parsedScheduleRepository: Repository<ParsedSchedule>,
     private configService: ConfigService,
   ) {
-    // Initialize cache (TTL: 24 hours)
-    this.cache = new (NodeCache as any)({ stdTTL: 86400, checkperiod: 3600 });
-
     // Initialize Gemini AI (primary)
     const geminiApiKey = this.configService.get<string>('GEMINI_API_KEY');
     if (geminiApiKey) {
@@ -115,13 +110,6 @@ export class KaraokeParserService {
     this.logger.log(`Starting to parse website: ${url}`);
 
     try {
-      // Check cache first (temporarily disabled for debugging)
-      const cacheKey = `parsed_${Buffer.from(url).toString('base64')}`;
-      // const cached = this.cache.get(cacheKey) as ParsedKaraokeData;
-      // if (cached) {
-      //   this.logger.log(`Returning cached result for ${url}`);
-      //   return cached;
-      // }
       this.logger.log(`Cache disabled for debugging - parsing fresh data for ${url}`);
 
       // Fetch the webpage content
@@ -134,7 +122,6 @@ export class KaraokeParserService {
       // If Cheerio parsing was successful enough, use it
       if (this.isParsingSuccessful(cheerioResult)) {
         this.logger.log(`Successfully parsed ${url} with Cheerio (no AI quota used)`);
-        this.cache.set(cacheKey, cheerioResult);
         return cheerioResult;
       }
 
@@ -167,9 +154,6 @@ export class KaraokeParserService {
           parsedAt: new Date(),
         },
       };
-
-      // Cache the result
-      this.cache.set(cacheKey, result);
 
       this.logger.log(
         `Successfully parsed website: ${url}. Found ${result.kjs.length} KJs and ${result.shows.length} shows`,
