@@ -109,8 +109,8 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               fontWeight: 600,
               cursor: 'pointer',
               background: theme.palette.mode === 'light'
-                ? 'linear-gradient(135deg, #1976d2 0%, #9c27b0 50%, #f44336 100%)'
-                : 'linear-gradient(135deg, #64b5f6 0%, #ba68c8 50%, #ef5350 100%)',
+                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)'
+                : 'linear-gradient(135deg, #8fa8f7 0%, #9d6db8 50%, #f5b8fd 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
