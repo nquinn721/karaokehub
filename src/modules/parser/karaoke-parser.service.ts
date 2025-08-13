@@ -3,6 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as cheerio from 'cheerio';
 import fetch from 'node-fetch';
+import { JSDOM } from 'jsdom';
+import { promises as fs } from 'fs';
+import { join } from 'path';
 import { Repository } from 'typeorm';
 import { KJ } from '../../kj/kj.entity';
 import { Show } from '../../show/show.entity';
@@ -278,6 +281,43 @@ ${content}
     } catch (error) {
       this.logger.error('Error with Gemini AI analysis:', error);
       throw error;
+    }
+  }
+
+  private extractCleanText(html: string): string {
+    try {
+      // Parse HTML and extract readable text using JSDOM
+      const dom = new JSDOM(html);
+      const document = dom.window.document;
+      
+      // Remove script, style, and other non-content elements
+      const elementsToRemove = document.querySelectorAll('script, style, head, nav, footer, .nav, .menu, .header');
+      elementsToRemove.forEach(el => el.remove());
+      
+      // Get the text content
+      let textContent = document.body.textContent || document.body.innerText || '';
+      
+      // Clean up the text - normalize whitespace but preserve line breaks where meaningful
+      textContent = textContent
+        .replace(/\s*\n\s*/g, ' ') // Replace newlines with spaces
+        .replace(/\s{2,}/g, ' ')   // Replace multiple spaces with single space
+        .replace(/\s*([.!?])\s*/g, '$1\n') // Add line breaks after sentences
+        .replace(/([A-Z]{2,})\s+([A-Z]{2,})/g, '$1\n$2') // Break up consecutive all-caps words
+        .replace(/(\d+:\d+[AP]M)\s*-\s*(\d+:\d+[AP]M)/g, '$1-$2') // Keep time ranges together
+        .replace(/([A-Z]+DAY[S]?)\s+(KARAOKE)/g, '$1 $2') // Keep day+karaoke together
+        .replace(/(with\s+DJ\s+\w+)\s+([A-Z][A-Z\s]+)/g, '$1\n$2') // Break line after DJ name
+        .trim();
+      
+      return textContent;
+    } catch (error) {
+      this.logger.warn('Failed to parse HTML with JSDOM, falling back to text extraction');
+      // Fallback to simple text extraction
+      return html
+        .replace(/<script[^>]*>.*?<\/script>/gsi, '')
+        .replace(/<style[^>]*>.*?<\/style>/gsi, '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
     }
   }
 
@@ -595,7 +635,7 @@ ${content}
               pageTitle = $('title').text() || "Steve's DJ Website";
             }
 
-            const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
+            const bodyText = this.extractCleanText(html);
             const links = $('a[href]')
               .map((_, el) => ({
                 text: $(el).text().trim(),
