@@ -6,7 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Favorite } from './favorite.entity';
+import { Favorite } from '../favorite/favorite.entity';
 
 @Entity('users')
 export class User {

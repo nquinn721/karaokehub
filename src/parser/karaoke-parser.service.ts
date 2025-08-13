@@ -5,9 +5,9 @@ import * as cheerio from 'cheerio';
 import fetch from 'node-fetch';
 import { Repository } from 'typeorm';
 import { KJ } from '../kj/kj.entity';
+import { ParsedSchedule, ParseStatus } from '../modules/parser/parsed-schedule.entity';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
-import { ParsedSchedule, ParseStatus } from '../modules/parser/parsed-schedule.entity';
 
 export interface ParsedKaraokeData {
   vendor: {
@@ -43,6 +43,10 @@ export interface ParsedKaraokeData {
 export class KaraokeParserService {
   private readonly logger = new Logger(KaraokeParserService.name);
   private readonly genAI: GoogleGenerativeAI;
+  private lastRequestTime = 0;
+  private requestCount = 0;
+  private readonly rateLimitWindow = 60000; // 1 minute
+  private readonly maxRequestsPerMinute = 10; // Conservative limit for free tier
 
   constructor(
     @InjectRepository(Vendor)
@@ -54,8 +58,41 @@ export class KaraokeParserService {
     @InjectRepository(ParsedSchedule)
     private parsedScheduleRepository: Repository<ParsedSchedule>,
   ) {
-    // Initialize Gemini AI
-    this.genAI = new GoogleGenerativeAI('AIzaSyCMOfS4hJpako_FbMLmM7XXqh5PLWtDetg');
+    // Initialize Gemini AI with API key from environment
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      this.logger.error('GEMINI_API_KEY not found in environment variables');
+      throw new Error('GEMINI_API_KEY environment variable is required');
+    }
+
+    this.genAI = new GoogleGenerativeAI(apiKey);
+  }
+
+  /**
+   * Check and enforce rate limiting for Gemini API calls
+   */
+  private async enforceRateLimit(): Promise<void> {
+    const now = Date.now();
+
+    // Reset counter if window has passed
+    if (now - this.lastRequestTime > this.rateLimitWindow) {
+      this.requestCount = 0;
+      this.lastRequestTime = now;
+    }
+
+    // Check if we've exceeded the limit
+    if (this.requestCount >= this.maxRequestsPerMinute) {
+      const waitTime = this.rateLimitWindow - (now - this.lastRequestTime);
+      this.logger.warn(`Rate limit reached. Waiting ${waitTime}ms before next request.`);
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+
+      // Reset after waiting
+      this.requestCount = 0;
+      this.lastRequestTime = Date.now();
+    }
+
+    this.requestCount++;
   }
 
   async parseWebsite(url: string, customRules?: string): Promise<ParsedKaraokeData> {
@@ -134,26 +171,35 @@ ${linkText.substring(0, 1000)}
     `.trim();
   }
 
-  private async analyzeWithGemini(content: string, retryCount = 0, customRules?: string): Promise<any> {
+  private async analyzeWithGemini(
+    content: string,
+    retryCount = 0,
+    customRules?: string,
+  ): Promise<any> {
     const maxRetries = 3;
     const baseDelay = 2000; // 2 seconds
-    
+
+    // Enforce rate limiting before making the request
+    await this.enforceRateLimit();
+
     try {
       // Try gemini-1.5-flash first, then fall back to gemini-1.5-pro if overloaded
       const modelName = retryCount >= 2 ? 'gemini-1.5-pro' : 'gemini-1.5-flash';
       const model = this.genAI.getGenerativeModel({ model: modelName });
-      
+
       if (retryCount >= 2) {
         this.logger.log(`Switching to alternative model: ${modelName}`);
       }
 
-      const rulesSection = customRules ? `
+      const rulesSection = customRules
+        ? `
 
 CUSTOM PARSING RULES:
 ${customRules}
 
 Please follow these custom rules when parsing the content.
-` : '';
+`
+        : '';
 
       const prompt = `
 You are an expert at parsing karaoke and DJ service websites to extract structured schedule information. Focus on finding:
@@ -223,7 +269,8 @@ Only include information you're reasonably confident about. For shows, prioritiz
 
 WEBPAGE CONTENT TO ANALYZE:
 ${content}
-      `;      const result = await model.generateContent(prompt);
+      `;
+      const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
 
@@ -240,15 +287,43 @@ ${content}
       // Fallback parsing if JSON parsing fails
       return this.fallbackParsing(text);
     } catch (error) {
-      // Check if this is a 503 Service Unavailable error and we haven't exceeded max retries
-      if (error.message?.includes('503 Service Unavailable') && retryCount < maxRetries) {
-        const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
-        this.logger.warn(
-          `Gemini API overloaded, retrying in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries + 1})`,
-        );
+      // Check for various API errors that warrant retries
+      const shouldRetry =
+        retryCount < maxRetries &&
+        (error.message?.includes('503 Service Unavailable') ||
+          error.message?.includes('429 Too Many Requests') ||
+          error.message?.includes('exceeded your current quota') ||
+          error.message?.includes('rate limit'));
+
+      if (shouldRetry) {
+        // Calculate delay based on error type
+        let delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
+
+        // For rate limiting errors, use a longer delay
+        if (
+          error.message?.includes('429') ||
+          error.message?.includes('quota') ||
+          error.message?.includes('rate limit')
+        ) {
+          delay = Math.max(delay, 60000); // At least 1 minute for rate limiting
+          this.logger.warn(
+            `Gemini API rate limit exceeded, retrying in ${delay / 1000}s... (attempt ${retryCount + 1}/${maxRetries + 1})`,
+          );
+        } else {
+          this.logger.warn(
+            `Gemini API overloaded, retrying in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries + 1})`,
+          );
+        }
 
         await new Promise((resolve) => setTimeout(resolve, delay));
         return this.analyzeWithGemini(content, retryCount + 1, customRules);
+      }
+
+      // If we've exhausted retries or it's a non-retryable error, handle gracefully
+      if (error.message?.includes('429') || error.message?.includes('quota')) {
+        this.logger.error('Gemini API quota exceeded. Using manual parsing fallback.');
+        // For quota errors, use manual fallback instead of throwing
+        return await this.manualParsingFallback(content, 'unknown');
       }
 
       this.logger.error('Error with Gemini AI analysis:', error);
@@ -268,6 +343,40 @@ ${content}
       kjs: [],
       shows: [],
       rawAiResponse: text,
+    };
+  }
+
+  /**
+   * Provides a basic manual parsing fallback when AI is unavailable
+   */
+  private async manualParsingFallback(content: string, url: string): Promise<any> {
+    this.logger.warn('Using manual parsing fallback due to AI service unavailability');
+
+    // Extract basic information using simple text parsing
+    const lines = content.toLowerCase().split('\n');
+    const words = content.toLowerCase().split(/\s+/);
+
+    // Try to find business name from title or content
+    const businessKeywords = ['karaoke', 'dj', 'entertainment', 'music', 'sound'];
+    let businessName = 'Unknown Business';
+
+    // Simple heuristics for business name
+    const titleMatch = content.match(/<title[^>]*>([^<]+)</i);
+    if (titleMatch && titleMatch[1]) {
+      businessName = titleMatch[1].trim();
+    }
+
+    return {
+      vendor: {
+        name: businessName,
+        website: url,
+        description: 'Parsed using fallback method - AI service unavailable',
+        confidence: 30,
+      },
+      kjs: [],
+      shows: [],
+      fallbackUsed: true,
+      message: 'AI parsing service temporarily unavailable due to quota limits',
     };
   }
 
@@ -355,24 +464,24 @@ ${content}
 
   private parseDayOfWeek(dayString: string): any {
     if (!dayString) return null;
-    
+
     const dayMap: Record<string, any> = {
-      'monday': 'monday',
-      'tuesday': 'tuesday', 
-      'wednesday': 'wednesday',
-      'thursday': 'thursday',
-      'friday': 'friday',
-      'saturday': 'saturday',
-      'sunday': 'sunday',
-      'mon': 'monday',
-      'tue': 'tuesday',
-      'wed': 'wednesday', 
-      'thu': 'thursday',
-      'fri': 'friday',
-      'sat': 'saturday',
-      'sun': 'sunday'
+      monday: 'monday',
+      tuesday: 'tuesday',
+      wednesday: 'wednesday',
+      thursday: 'thursday',
+      friday: 'friday',
+      saturday: 'saturday',
+      sunday: 'sunday',
+      mon: 'monday',
+      tue: 'tuesday',
+      wed: 'wednesday',
+      thu: 'thursday',
+      fri: 'friday',
+      sat: 'saturday',
+      sun: 'sunday',
     };
-    
+
     return dayMap[dayString.toLowerCase()] || null;
   }
 

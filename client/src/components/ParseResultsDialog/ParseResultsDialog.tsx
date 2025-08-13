@@ -1,4 +1,4 @@
-import { faCheck, faGlobe, faMicrophone, faMusic, faUsers } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faGlobe, faMicrophone, faUsers } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Box,

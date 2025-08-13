@@ -1,4 +1,3 @@
-import { DayOfWeek, DayPicker } from '@components/DayPicker';
 import { faLocationDot, faMicrophone } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -15,8 +14,9 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { showStore } from '@stores/index';
 import { APIProvider, InfoWindow, Map, Marker } from '@vis.gl/react-google-maps';
+import { DayPicker, DayOfWeek } from '@components/DayPicker';
+import { showStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -34,9 +34,7 @@ export const MapComponent: React.FC = observer(() => {
   const API_KEY = (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY;
 
   if (!API_KEY) {
-    console.error(
-      'Google Maps API key not found. Please set VITE_GOOGLE_MAPS_API_KEY in your .env file',
-    );
+    console.error('Google Maps API key not found. Please set VITE_GOOGLE_MAPS_API_KEY in your .env file');
   }
 
   useEffect(() => {
@@ -65,7 +63,7 @@ export const MapComponent: React.FC = observer(() => {
   const handleMarkerClick = (show: any) => {
     setSelectedMarkerId(show.id);
     showStore.setSelectedShow(show);
-
+    
     // Scroll to show in list
     if (showListRef.current) {
       const showElement = showListRef.current.querySelector(`[data-show-id="${show.id}"]`);
@@ -89,10 +87,10 @@ export const MapComponent: React.FC = observer(() => {
       const [hours, minutes] = time.split(':');
       const date = new Date();
       date.setHours(parseInt(hours), parseInt(minutes));
-      return date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true 
       });
     } catch {
       return time;
@@ -102,7 +100,10 @@ export const MapComponent: React.FC = observer(() => {
   return (
     <Box>
       {/* Day Picker */}
-      <DayPicker selectedDay={showStore.selectedDay} onDayChange={handleDayChange} />
+      <DayPicker
+        selectedDay={showStore.selectedDay}
+        onDayChange={handleDayChange}
+      />
 
       {/* Map and List Layout */}
       <Box sx={{ display: 'flex', gap: 3, height: '600px' }}>
@@ -120,7 +121,11 @@ export const MapComponent: React.FC = observer(() => {
                 disableDefaultUI={false}
               >
                 {/* User Location Marker */}
-                {userLocation && <Marker position={userLocation} />}
+                {userLocation && (
+                  <Marker
+                    position={userLocation}
+                  />
+                )}
 
                 {/* Show Markers with Microphone Icons */}
                 {showStore.showsWithCoordinates.map((show) => (
@@ -135,9 +140,9 @@ export const MapComponent: React.FC = observer(() => {
                 {/* Info Window for Selected Show */}
                 {selectedMarkerId && showStore.selectedShow && (
                   <InfoWindow
-                    position={{
-                      lat: showStore.selectedShow.lat!,
-                      lng: showStore.selectedShow.lng!,
+                    position={{ 
+                      lat: showStore.selectedShow.lat!, 
+                      lng: showStore.selectedShow.lng! 
                     }}
                     onCloseClick={() => {
                       setSelectedMarkerId(null);
@@ -160,8 +165,7 @@ export const MapComponent: React.FC = observer(() => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <FontAwesomeIcon icon={faLocationDot} style={{ fontSize: '12px' }} />
                         <Typography variant="body2">
-                          {formatTime(showStore.selectedShow.startTime)} -{' '}
-                          {formatTime(showStore.selectedShow.endTime)}
+                          {formatTime(showStore.selectedShow.startTime)} - {formatTime(showStore.selectedShow.endTime)}
                         </Typography>
                       </Box>
                       {showStore.selectedShow.description && (
@@ -185,7 +189,9 @@ export const MapComponent: React.FC = observer(() => {
                 borderRadius: 2,
               }}
             >
-              <Alert severity="warning">Google Maps API key is not configured</Alert>
+              <Alert severity="warning">
+                Google Maps API key is not configured
+              </Alert>
             </Box>
           )}
         </Box>
@@ -195,7 +201,9 @@ export const MapComponent: React.FC = observer(() => {
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ height: '100%', p: 0 }}>
               <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
-                <Typography variant="h6">Shows for {showStore.selectedDay}</Typography>
+                <Typography variant="h6">
+                  Shows for {showStore.selectedDay}
+                </Typography>
                 {showStore.isLoading ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                     <CircularProgress size={24} />
@@ -207,12 +215,12 @@ export const MapComponent: React.FC = observer(() => {
                 )}
               </Box>
 
-              <Box
+              <Box 
                 ref={showListRef}
-                sx={{
-                  height: 'calc(100% - 80px)',
+                sx={{ 
+                  height: 'calc(100% - 80px)', 
                   overflow: 'auto',
-                  p: 0,
+                  p: 0
                 }}
               >
                 {showStore.isLoading ? (
@@ -239,12 +247,12 @@ export const MapComponent: React.FC = observer(() => {
                             <ListItemText
                               primary={
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <FontAwesomeIcon
-                                    icon={faMicrophone}
-                                    style={{
-                                      fontSize: '14px',
-                                      color: theme.palette.primary.main,
-                                    }}
+                                  <FontAwesomeIcon 
+                                    icon={faMicrophone} 
+                                    style={{ 
+                                      fontSize: '14px', 
+                                      color: theme.palette.primary.main 
+                                    }} 
                                   />
                                   <Typography variant="subtitle1" fontWeight={600}>
                                     {show.vendor?.name || 'Unknown Venue'}
@@ -256,9 +264,7 @@ export const MapComponent: React.FC = observer(() => {
                                   <Typography variant="body2" color="text.secondary">
                                     {show.address}
                                   </Typography>
-                                  <Box
-                                    sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}
-                                  >
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                                     <Typography variant="body2" color="text.secondary">
                                       {formatTime(show.startTime)} - {formatTime(show.endTime)}
                                     </Typography>
@@ -267,10 +273,10 @@ export const MapComponent: React.FC = observer(() => {
                                     Host: {show.kj?.name || 'Unknown'}
                                   </Typography>
                                   {show.description && (
-                                    <Typography
-                                      variant="body2"
+                                    <Typography 
+                                      variant="body2" 
                                       color="text.secondary"
-                                      sx={{
+                                      sx={{ 
                                         mt: 0.5,
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',

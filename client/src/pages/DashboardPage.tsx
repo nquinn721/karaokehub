@@ -1,4 +1,5 @@
 import { CustomCard } from '@components/CustomCard';
+import { NotificationDialog, NotificationType } from '@components/NotificationDialog';
 import {
   faCog,
   faHeadphones,
@@ -11,20 +12,45 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Alert, Box, Button, Container, Grid, Typography } from '@mui/material';
 import { apiStore, authStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
-import React from 'react';
+import React, { useState } from 'react';
 
 const DashboardPage: React.FC = observer(() => {
+  const [notificationDialog, setNotificationDialog] = useState<{
+    open: boolean;
+    type: NotificationType;
+    title: string;
+    message: string;
+  }>({
+    open: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+
+  const showNotification = (type: NotificationType, title: string, message: string) => {
+    setNotificationDialog({
+      open: true,
+      type,
+      title,
+      message,
+    });
+  };
+
   const handleMakeAdmin = async () => {
     try {
       const response = await apiStore.post('/auth/make-me-admin', {});
       if (response.success) {
         // Refresh the user profile to get updated isAdmin status
         await authStore.fetchProfile();
-        alert('You are now an admin! Refresh the page to see the admin dropdown.');
+        showNotification(
+          'success',
+          'Admin Access Granted',
+          'You are now an admin! Refresh the page to see the admin dropdown.',
+        );
       }
     } catch (error) {
       console.error('Failed to promote to admin:', error);
-      alert('Failed to promote to admin');
+      showNotification('error', 'Promotion Failed', 'Failed to promote to admin');
     }
   };
 
@@ -150,6 +176,15 @@ const DashboardPage: React.FC = observer(() => {
             </CustomCard>
           </Grid>
         </Grid>
+
+        {/* Notification Dialog */}
+        <NotificationDialog
+          open={notificationDialog.open}
+          onClose={() => setNotificationDialog((prev) => ({ ...prev, open: false }))}
+          type={notificationDialog.type}
+          title={notificationDialog.title}
+          message={notificationDialog.message}
+        />
       </Box>
     </Container>
   );

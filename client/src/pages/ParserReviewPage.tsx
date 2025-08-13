@@ -1,5 +1,6 @@
 import { CustomCard } from '@components/CustomCard';
 import { LoadingButton } from '@components/LoadingButton';
+import { ParseResults, ParseResultsDialog } from '@components/ParseResultsDialog';
 import {
   faCheck,
   faGlobe,
@@ -46,6 +47,8 @@ const ParserReviewPage: React.FC = observer(() => {
   const [selectedReview, setSelectedReview] = useState<string | null>(null);
   const [editedData, setEditedData] = useState<any>(null);
   const [reviewComments, setReviewComments] = useState('');
+  const [parseResults, setParseResults] = useState<ParseResults | null>(null);
+  const [parseResultsDialogOpen, setParseResultsDialogOpen] = useState(false);
 
   // Redirect non-admin users
   if (!authStore.isAdmin) {
@@ -63,10 +66,15 @@ const ParserReviewPage: React.FC = observer(() => {
       // Use parse and save directly
       const result = await parserStore.parseAndSaveWebsite(newUrl, true);
       if (result.success && result.data) {
-        // Show success alert with details
-        alert(
-          `Successfully parsed and saved website data!\n\nResults:\n- Vendor: ${result.data.vendor}\n- KJs found: ${result.data.kjsCount}\n- Shows found: ${result.data.showsCount}\n\nConfidence scores:\n- Vendor: ${result.data.confidence.vendor}%\n- Average KJ confidence: ${result.data.confidence.avgKjConfidence}%\n- Average show confidence: ${result.data.confidence.avgShowConfidence}%`,
-        );
+        // Show success dialog with details
+        setParseResults({
+          vendor: result.data.vendor,
+          kjsCount: result.data.kjsCount,
+          showsCount: result.data.showsCount,
+          confidence: result.data.confidence,
+          url: newUrl,
+        });
+        setParseResultsDialogOpen(true);
         setNewUrl('');
         setAutoApprove(false);
         setUrlToParseDialog(false);
@@ -113,10 +121,15 @@ const ParserReviewPage: React.FC = observer(() => {
   const handleParseStevesdj = async () => {
     const result = await parserStore.parseStevesdj();
     if (result.success && result.data) {
-      // Show success alert with details
-      alert(
-        `Successfully parsed Steve's DJ website!\n\nResults:\n- Vendor: ${result.data.vendor}\n- KJs found: ${result.data.kjsCount}\n- Shows found: ${result.data.showsCount}\n\nConfidence scores:\n- Vendor: ${result.data.confidence.vendor}%\n- Average KJ confidence: ${result.data.confidence.avgKjConfidence}%\n- Average show confidence: ${result.data.confidence.avgShowConfidence}%`,
-      );
+      // Show success dialog with details
+      setParseResults({
+        vendor: result.data.vendor,
+        kjsCount: result.data.kjsCount,
+        showsCount: result.data.showsCount,
+        confidence: result.data.confidence,
+        url: "Steve's DJ Website",
+      });
+      setParseResultsDialogOpen(true);
     }
   };
 
@@ -560,6 +573,14 @@ const ParserReviewPage: React.FC = observer(() => {
             </LoadingButton>
           </DialogActions>
         </Dialog>
+
+        {/* Parse Results Dialog */}
+        <ParseResultsDialog
+          open={parseResultsDialogOpen}
+          onClose={() => setParseResultsDialogOpen(false)}
+          results={parseResults}
+          title="Parse Results"
+        />
       </Box>
     </Container>
   );

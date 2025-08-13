@@ -70,12 +70,14 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
         elevation={0}
         sx={{
           borderBottom: `1px solid ${theme.palette.divider}`,
-          backgroundColor: theme.palette.mode === 'light' 
-            ? theme.palette.primary.main  // Solid primary color in light mode
-            : theme.palette.background.paper, // Keep current dark mode style
-          color: theme.palette.mode === 'light'
-            ? theme.palette.primary.contrastText // White text on solid primary
-            : theme.palette.text.primary, // Current dark mode text
+          backgroundColor:
+            theme.palette.mode === 'light'
+              ? theme.palette.primary.main // Solid primary color in light mode
+              : theme.palette.background.paper, // Keep current dark mode style
+          color:
+            theme.palette.mode === 'light'
+              ? theme.palette.primary.contrastText // White text on solid primary
+              : theme.palette.text.primary, // Current dark mode text
         }}
       >
         <Toolbar>
@@ -98,9 +100,10 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
             sx={{
               flexGrow: 1,
               fontWeight: 600,
-              color: theme.palette.mode === 'light'
-                ? theme.palette.primary.contrastText // White text on solid primary
-                : theme.palette.primary.main, // Keep original gradient in dark mode
+              color:
+                theme.palette.mode === 'light'
+                  ? theme.palette.primary.contrastText // White text on solid primary
+                  : theme.palette.primary.main, // Keep original gradient in dark mode
               cursor: 'pointer',
               '&:hover': {
                 opacity: 0.8,
@@ -121,14 +124,18 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   variant={theme.palette.mode === 'light' ? 'contained' : 'outlined'}
                   size="small"
                   onClick={() => navigate('/dashboard')}
-                  sx={theme.palette.mode === 'light' ? {
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                    color: theme.palette.primary.contrastText,
-                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                    }
-                  } : {}}
+                  sx={
+                    theme.palette.mode === 'light'
+                      ? {
+                          backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                          color: theme.palette.primary.contrastText,
+                          borderColor: 'rgba(255, 255, 255, 0.3)',
+                          '&:hover': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                          },
+                        }
+                      : {}
+                  }
                 >
                   Dashboard
                 </Button>
@@ -178,7 +185,11 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                           {authStore.user.stageName || authStore.user.name}
                         </Typography>
                         {authStore.user.stageName && (
-                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ fontSize: '0.65rem' }}
+                          >
                             {authStore.user.name}
                           </Typography>
                         )}
@@ -215,14 +226,18 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   variant={theme.palette.mode === 'light' ? 'contained' : 'outlined'}
                   size="small"
                   onClick={() => navigate('/login')}
-                  sx={theme.palette.mode === 'light' ? {
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                    color: theme.palette.primary.contrastText,
-                    borderColor: 'rgba(255, 255, 255, 0.3)',
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                    }
-                  } : {}}
+                  sx={
+                    theme.palette.mode === 'light'
+                      ? {
+                          backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                          color: theme.palette.primary.contrastText,
+                          borderColor: 'rgba(255, 255, 255, 0.3)',
+                          '&:hover': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                          },
+                        }
+                      : {}
+                  }
                 >
                   Login
                 </Button>
@@ -231,13 +246,17 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   variant="contained"
                   size="small"
                   onClick={() => navigate('/register')}
-                  sx={theme.palette.mode === 'light' ? {
-                    backgroundColor: theme.palette.primary.contrastText,
-                    color: theme.palette.primary.main,
-                    '&:hover': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                    }
-                  } : {}}
+                  sx={
+                    theme.palette.mode === 'light'
+                      ? {
+                          backgroundColor: theme.palette.primary.contrastText,
+                          color: theme.palette.primary.main,
+                          '&:hover': {
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                          },
+                        }
+                      : {}
+                  }
                 >
                   Sign Up
                 </Button>

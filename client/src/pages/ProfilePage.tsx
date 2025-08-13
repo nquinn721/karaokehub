@@ -51,9 +51,7 @@ const ProfilePage: React.FC = observer(() => {
           <Typography variant="h4" component="h1" gutterBottom>
             Profile
           </Typography>
-          <Alert severity="error">
-            You must be logged in to view this page.
-          </Alert>
+          <Alert severity="error">You must be logged in to view this page.</Alert>
         </Box>
       </Container>
     );
@@ -62,11 +60,11 @@ const ProfilePage: React.FC = observer(() => {
   return (
     <Container maxWidth="md">
       <Box sx={{ py: 4 }}>
-        <Typography 
-          variant="h4" 
-          component="h1" 
+        <Typography
+          variant="h4"
+          component="h1"
           gutterBottom
-          sx={{ 
+          sx={{
             mb: 4,
             display: 'flex',
             alignItems: 'center',
@@ -94,28 +92,28 @@ const ProfilePage: React.FC = observer(() => {
                 >
                   <FontAwesomeIcon icon={faUser} />
                 </Avatar>
-                
+
                 <Typography variant="h6" gutterBottom>
                   {authStore.user.stageName || authStore.user.name}
                 </Typography>
-                
+
                 {authStore.user.stageName && (
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     Real name: {authStore.user.name}
                   </Typography>
                 )}
-                
+
                 <Typography variant="body2" color="text.secondary">
                   {authStore.user.email}
                 </Typography>
 
                 {authStore.user.isAdmin && (
                   <Box sx={{ mt: 2 }}>
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
-                        px: 2, 
-                        py: 0.5, 
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        px: 2,
+                        py: 0.5,
                         borderRadius: 1,
                         backgroundColor: theme.palette.primary.main,
                         color: theme.palette.primary.contrastText,
@@ -133,7 +131,11 @@ const ProfilePage: React.FC = observer(() => {
           <Grid item xs={12} md={8}>
             <Card>
               <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}
+                >
                   <FontAwesomeIcon icon={faUserTag} />
                   Edit Profile
                 </Typography>

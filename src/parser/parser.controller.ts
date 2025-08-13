@@ -98,10 +98,7 @@ export class ParserController {
   }
 
   @Patch('review-comments/:id')
-  async updateReviewComments(
-    @Param('id') id: string,
-    @Body() body: { comments: string }
-  ) {
+  async updateReviewComments(@Param('id') id: string, @Body() body: { comments: string }) {
     await this.parserService.updateReviewComments(id, body.comments);
     return { success: true, message: 'Review comments updated successfully' };
   }

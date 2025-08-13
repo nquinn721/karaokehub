@@ -3,7 +3,7 @@ FROM node:18-alpine AS client-builder
 
 WORKDIR /app/client
 COPY client/package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 COPY client/ ./
 RUN npm run build
@@ -13,7 +13,7 @@ FROM node:18-alpine AS server-builder
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci
 
 COPY . .
 COPY --from=client-builder /app/client/dist ./dist/client

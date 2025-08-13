@@ -31,7 +31,6 @@ gcloud run deploy ${SERVICE_NAME} \
   --timeout 300 \
   --concurrency 80 \
   --set-env-vars NODE_ENV=production \
-  --set-env-vars PORT=8080 \
   --set-env-vars FRONTEND_URL=https://karaokehub-203453576607.us-east1.run.app \
   --set-env-vars DATABASE_HOST=35.196.192.156 \
   --set-env-vars DATABASE_PORT=3306 \

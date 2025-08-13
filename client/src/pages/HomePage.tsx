@@ -15,13 +15,14 @@ const HomePage: React.FC = observer(() => {
   return (
     <Container maxWidth="lg">
       {/* Hero Section - Inspired by SingSpot */}
-      <Box 
-        sx={{ 
-          textAlign: 'center', 
+      <Box
+        sx={{
+          textAlign: 'center',
           py: 8,
-          background: theme.palette.mode === 'light'
-            ? `linear-gradient(135deg, ${theme.palette.primary.main}15, ${theme.palette.secondary.main}10)`
-            : 'transparent',
+          background:
+            theme.palette.mode === 'light'
+              ? `linear-gradient(135deg, ${theme.palette.primary.main}15, ${theme.palette.secondary.main}10)`
+              : 'transparent',
           borderRadius: theme.palette.mode === 'light' ? 4 : 0,
           mb: theme.palette.mode === 'light' ? 4 : 0,
           mx: theme.palette.mode === 'light' ? -2 : 0,

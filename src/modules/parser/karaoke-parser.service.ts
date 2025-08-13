@@ -52,8 +52,15 @@ export class KaraokeParserService {
     @InjectRepository(ParsedSchedule)
     private parsedScheduleRepository: Repository<ParsedSchedule>,
   ) {
-    // Initialize Gemini AI
-    this.genAI = new GoogleGenerativeAI('AIzaSyCMOfS4hJpako_FbMLmM7XXqh5PLWtDetg');
+    // Initialize Gemini AI with API key from environment
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      this.logger.error('GEMINI_API_KEY not found in environment variables');
+      throw new Error('GEMINI_API_KEY environment variable is required');
+    }
+
+    this.genAI = new GoogleGenerativeAI(apiKey);
   }
 
   async parseWebsite(url: string): Promise<ParsedKaraokeData> {

@@ -221,7 +221,10 @@ export class ParserStore {
     }
   }
 
-  async updateReviewComments(parsedScheduleId: string, comments: string): Promise<{ success: boolean; error?: string }> {
+  async updateReviewComments(
+    parsedScheduleId: string,
+    comments: string,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       this.setLoading(true);
       this.setError(null);
