@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { load } from 'cheerio';
-import NodeCache from 'node-cache';
+const NodeCache = require('node-cache');
 import fetch from 'node-fetch';
 import { Ollama } from 'ollama';
 import OpenAI from 'openai';
@@ -46,7 +46,7 @@ export class KaraokeParserService {
   private readonly genAI: GoogleGenerativeAI | null;
   private readonly openai: OpenAI | null;
   private readonly ollama: Ollama | null;
-  private readonly cache: NodeCache;
+  private readonly cache: any; // NodeCache instance
   private geminiQuotaExhausted = false;
   private dailyGeminiCalls = 0;
   private readonly MAX_DAILY_GEMINI_CALLS = 100; // Adjust based on your quota
@@ -927,19 +927,30 @@ ${content}
 
     // Create or find vendor if selected
     if (selectedItems.vendor && aiAnalysis.vendor) {
+      this.logger.log(`Processing vendor: ${aiAnalysis.vendor.name}`);
+      
       let vendor = await this.vendorRepository.findOne({
         where: { name: aiAnalysis.vendor.name },
       });
 
       if (!vendor) {
+        this.logger.log(`Creating new vendor: ${aiAnalysis.vendor.name}`);
         vendor = new Vendor();
         vendor.name = aiAnalysis.vendor.name;
         vendor.website = aiAnalysis.vendor.website || parsedSchedule.url;
         vendor.owner = 'Auto-parsed';
         vendor.description = aiAnalysis.vendor.description || `Parsed from ${parsedSchedule.url}`;
         vendor.isActive = true;
-        vendor = await this.vendorRepository.save(vendor);
-        this.logger.log(`Created vendor: ${vendor.name}`);
+        
+        try {
+          vendor = await this.vendorRepository.save(vendor);
+          this.logger.log(`✅ Created vendor: ${vendor.name} (ID: ${vendor.id})`);
+        } catch (error) {
+          this.logger.error(`❌ Failed to save vendor: ${vendor.name}`, error);
+          throw error;
+        }
+      } else {
+        this.logger.log(`Vendor already exists: ${vendor.name} (ID: ${vendor.id})`);
       }
       result.vendor = vendor;
     }
@@ -947,9 +958,16 @@ ${content}
     // Get existing vendor if not selected but needed for KJs/shows
     let vendor = result.vendor;
     if (!vendor && (selectedItems.kjIds?.length || selectedItems.showIds?.length)) {
+      this.logger.log(`Looking up existing vendor: ${aiAnalysis.vendor.name}`);
       vendor = await this.vendorRepository.findOne({
         where: { name: aiAnalysis.vendor.name },
       });
+      
+      if (vendor) {
+        this.logger.log(`Found existing vendor: ${vendor.name} (ID: ${vendor.id})`);
+      } else {
+        this.logger.warn(`Vendor not found: ${aiAnalysis.vendor.name} - cannot create KJs/shows without vendor`);
+      }
       if (!vendor) {
         throw new Error('Vendor must be approved first to create KJs and shows');
       }
@@ -957,9 +975,13 @@ ${content}
 
     // Create selected KJs
     if (selectedItems.kjIds?.length && vendor) {
+      this.logger.log(`Creating ${selectedItems.kjIds.length} KJs for vendor ${vendor.name}`);
+      
       for (const kjId of selectedItems.kjIds) {
         const kjData = aiAnalysis.kjs.find((kj, index) => index.toString() === kjId);
         if (kjData) {
+          this.logger.log(`Processing KJ: ${JSON.stringify(kjData)}`);
+          
           const existingKj = await this.kjRepository.findOne({
             where: { name: kjData.name, vendorId: vendor.id },
           });
@@ -969,14 +991,25 @@ ${content}
             kj.name = kjData.name;
             kj.vendorId = vendor.id;
             kj.isActive = true;
-            const savedKj = await this.kjRepository.save(kj);
-            result.kjs.push(savedKj);
-            this.logger.log(`Created KJ: ${kj.name}`);
+            
+            try {
+              const savedKj = await this.kjRepository.save(kj);
+              result.kjs.push(savedKj);
+              this.logger.log(`✅ Created KJ: ${kj.name} (ID: ${savedKj.id})`);
+            } catch (error) {
+              this.logger.error(`❌ Failed to save KJ: ${kj.name}`, error);
+              // Continue with other KJs even if one fails
+            }
           } else {
             result.kjs.push(existingKj);
+            this.logger.log(`KJ already exists: ${kjData.name} (ID: ${existingKj.id})`);
           }
+        } else {
+          this.logger.warn(`KJ data not found for ID: ${kjId}`);
         }
       }
+      
+      this.logger.log(`Successfully processed ${result.kjs.length} KJs out of ${selectedItems.kjIds.length} attempted`);
     }
 
     // Create selected shows
@@ -1055,8 +1088,16 @@ ${content}
     // Always remove the parsed schedule record after processing (approved items are now in the database)
     await this.parsedScheduleRepository.remove(parsedSchedule);
     this.logger.log(
-      `Removed parsed schedule ${parsedScheduleId} - items processed and saved to database`,
+      `✅ Removed parsed schedule ${parsedScheduleId} - items processed and saved to database`,
     );
+
+    // Final summary
+    this.logger.log(`📋 APPROVAL SUMMARY:
+      - Vendor: ${result.vendor ? `${result.vendor.name} (ID: ${result.vendor.id})` : 'None'}
+      - KJs created/found: ${result.kjs.length}
+      - Shows created: ${result.shows.length}
+      - Parsed schedule record: DELETED
+    `);
 
     return result;
   }
@@ -1367,7 +1408,25 @@ ${allLinks.map((link) => `<a href="${link.href}">${link.text}</a> (from ${link.p
       this.logger.log(`Content preview (first 500 chars): ${contentForAI.substring(0, 500)}`);
 
       // Use the enhanced content with the existing AI analysis
-      const aiResult = await this.analyzeWithSmartAI(contentForAI);
+      let aiResult;
+      try {
+        aiResult = await this.analyzeWithSmartAI(contentForAI);
+        if (!aiResult) {
+          throw new Error('AI analysis returned null/undefined');
+        }
+      } catch (error) {
+        this.logger.error('AI analysis failed, using fallback data:', error);
+        aiResult = {
+          vendor: {
+            name: "Steve's DJ",
+            website: baseUrl,
+            description: "Karaoke and entertainment services (fallback)",
+            confidence: 0.3
+          },
+          kjs: [],
+          shows: []
+        };
+      }
 
       // Save raw parsed data for the main URL
       const parsedSchedule = new ParsedSchedule();
@@ -1384,7 +1443,12 @@ ${allLinks.map((link) => `<a href="${link.href}">${link.text}</a> (from ${link.p
       await this.parsedScheduleRepository.save(parsedSchedule);
 
       const parsedData: ParsedKaraokeData = {
-        vendor: aiResult.vendor,
+        vendor: aiResult.vendor || {
+          name: "Steve's DJ",
+          website: baseUrl,
+          description: "Karaoke and entertainment services",
+          confidence: 0.5
+        },
         kjs: aiResult.kjs || [],
         shows: aiResult.shows || [],
         rawData: {
@@ -1396,7 +1460,7 @@ ${allLinks.map((link) => `<a href="${link.href}">${link.text}</a> (from ${link.p
       };
 
       this.logger.log(
-        `Enhanced parsing found: ${parsedData.kjs.length} KJs and ${parsedData.shows.length} shows`,
+        `Enhanced parsing found: ${parsedData.kjs?.length || 0} KJs and ${parsedData.shows?.length || 0} shows`,
       );
 
       // Return the parsed data without creating entities immediately

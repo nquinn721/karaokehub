@@ -92,23 +92,23 @@ export class ParserController {
       success: true,
       message: "Steve's DJ website parsed and data saved for review",
       data: {
-        vendor: result.savedEntities.vendor?.name || result.parsedData.vendor.name,
+        vendor: result.savedEntities.vendor?.name || result.parsedData.vendor?.name || 'Unknown',
         kjsCount: result.savedEntities.kjs.length,
         showsCount: result.savedEntities.shows.length,
-        parsedKjsCount: result.parsedData.kjs.length,
-        parsedShowsCount: result.parsedData.shows.length,
+        parsedKjsCount: result.parsedData.kjs?.length || 0,
+        parsedShowsCount: result.parsedData.shows?.length || 0,
         status: result.savedEntities.vendor ? 'saved' : 'pending_review',
         confidence: {
-          vendor: result.parsedData.vendor.confidence,
+          vendor: result.parsedData.vendor?.confidence || 0,
           avgKjConfidence:
-            result.parsedData.kjs.length > 0
+            result.parsedData.kjs?.length > 0
               ? Math.round(
                   result.parsedData.kjs.reduce((sum, kj) => sum + kj.confidence, 0) /
                     result.parsedData.kjs.length,
                 )
               : 0,
           avgShowConfidence:
-            result.parsedData.shows.length > 0
+            result.parsedData.shows?.length > 0
               ? Math.round(
                   result.parsedData.shows.reduce((sum, show) => sum + show.confidence, 0) /
                     result.parsedData.shows.length,
