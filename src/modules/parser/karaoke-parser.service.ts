@@ -544,13 +544,13 @@ ${content}
         try {
           this.logger.log(`Crawling page: ${url}`);
           const response = await fetch(url);
-          
+
           if (response.status === 200) {
             const html = await response.text();
             const $ = cheerio.load(html);
 
             if (!pageTitle) {
-              pageTitle = $('title').text() || 'Steve\'s DJ Website';
+              pageTitle = $('title').text() || "Steve's DJ Website";
             }
 
             const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
@@ -564,7 +564,7 @@ ${content}
 
             combinedContent += `\n\n--- Content from ${url} ---\n${bodyText}`;
             allLinks.push(...links);
-            
+
             this.logger.log(`Successfully crawled ${url} - ${bodyText.length} characters`);
           } else {
             this.logger.log(`Page ${url} not found (${response.status}), skipping`);
@@ -574,35 +574,55 @@ ${content}
         }
 
         // Add delay between requests to be respectful
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
-      this.logger.log(`Crawling completed. Total content length: ${combinedContent.length} characters`);
+      this.logger.log(
+        `Crawling completed. Total content length: ${combinedContent.length} characters`,
+      );
       this.logger.log(`Total links found: ${allLinks.length}`);
 
       // Prepare enhanced content for AI analysis with specific rules for Steve's DJ
       const contentForAI = this.prepareContentForAI(pageTitle, combinedContent, allLinks, baseUrl);
-      
+
       // Debug: Log key information about the content being analyzed
       this.logger.log(`Content for AI analysis: ${contentForAI.length} characters`);
-      this.logger.log(`Content includes "SUNDAYS": ${contentForAI.includes('SUNDAYS') ? 'YES' : 'NO'}`);
+      this.logger.log(
+        `Content includes "SUNDAYS": ${contentForAI.includes('SUNDAYS') ? 'YES' : 'NO'}`,
+      );
       this.logger.log(`Content includes "ALIBI": ${contentForAI.includes('ALIBI') ? 'YES' : 'NO'}`);
-      this.logger.log(`Content includes "7:00PM": ${contentForAI.includes('7:00PM') ? 'YES' : 'NO'}`);
-      this.logger.log(`Content includes "BEACH LOUNGE": ${contentForAI.includes('BEACH LOUNGE') ? 'YES' : 'NO'}`);
-      this.logger.log(`Content includes "karaoke" (case-insensitive): ${contentForAI.toLowerCase().includes('karaoke') ? 'YES' : 'NO'}`);
-      
+      this.logger.log(
+        `Content includes "7:00PM": ${contentForAI.includes('7:00PM') ? 'YES' : 'NO'}`,
+      );
+      this.logger.log(
+        `Content includes "BEACH LOUNGE": ${contentForAI.includes('BEACH LOUNGE') ? 'YES' : 'NO'}`,
+      );
+      this.logger.log(
+        `Content includes "karaoke" (case-insensitive): ${contentForAI.toLowerCase().includes('karaoke') ? 'YES' : 'NO'}`,
+      );
+
       // Log content from karaoke-schedule page specifically
-      const karaokeScheduleContent = combinedContent.split('--- Content from ')[1]?.split('---')[0] || '';
+      const karaokeScheduleContent =
+        combinedContent.split('--- Content from ')[1]?.split('---')[0] || '';
       if (karaokeScheduleContent.includes('/karaoke-schedule')) {
-        const schedulePageContent = combinedContent.split('--- Content from https://stevesdj.com/karaoke-schedule ---')[1]?.split('--- Content from ')[0] || '';
+        const schedulePageContent =
+          combinedContent
+            .split('--- Content from https://stevesdj.com/karaoke-schedule ---')[1]
+            ?.split('--- Content from ')[0] || '';
         this.logger.log(`[KARAOKE-SCHEDULE PAGE] Content length: ${schedulePageContent.length}`);
-        this.logger.log(`[KARAOKE-SCHEDULE PAGE] First 1500 chars: ${schedulePageContent.substring(0, 1500)}`);
-        this.logger.log(`[KARAOKE-SCHEDULE PAGE] Contains SUNDAYS: ${schedulePageContent.includes('SUNDAYS')}`);
-        this.logger.log(`[KARAOKE-SCHEDULE PAGE] Contains ALIBI: ${schedulePageContent.includes('ALIBI')}`);
+        this.logger.log(
+          `[KARAOKE-SCHEDULE PAGE] First 1500 chars: ${schedulePageContent.substring(0, 1500)}`,
+        );
+        this.logger.log(
+          `[KARAOKE-SCHEDULE PAGE] Contains SUNDAYS: ${schedulePageContent.includes('SUNDAYS')}`,
+        );
+        this.logger.log(
+          `[KARAOKE-SCHEDULE PAGE] Contains ALIBI: ${schedulePageContent.includes('ALIBI')}`,
+        );
       }
-      
+
       this.logger.log(`Content preview (first 500 chars): ${contentForAI.substring(0, 500)}`);
-      
+
       // Use the enhanced content with the existing AI analysis
       const aiResult = await this.analyzeWithGemini(contentForAI);
 
@@ -632,12 +652,13 @@ ${content}
         },
       };
 
-      this.logger.log(`Enhanced parsing found: ${parsedData.kjs.length} KJs and ${parsedData.shows.length} shows`);
+      this.logger.log(
+        `Enhanced parsing found: ${parsedData.kjs.length} KJs and ${parsedData.shows.length} shows`,
+      );
 
       // Now use the existing parseAndSaveWebsite logic to create entities
       // But we'll create them manually since we have custom data
       return await this.createEntitiesFromParsedData(parsedData);
-      
     } catch (error) {
       this.logger.error(`Error in enhanced Steve's DJ parsing:`, error);
       throw error;
@@ -696,15 +717,16 @@ ${content}
       // Find the KJ if specified
       let kj: KJ | null = null;
       if (showData.kjName) {
-        kj = savedKjs.find((k) => k.name === showData.kjName) ||
-             await this.kjRepository.findOne({
-               where: { name: showData.kjName, vendorId: vendor.id },
-             });
+        kj =
+          savedKjs.find((k) => k.name === showData.kjName) ||
+          (await this.kjRepository.findOne({
+            where: { name: showData.kjName, vendorId: vendor.id },
+          }));
       }
 
       // Parse the existing interface fields
       const parsedDate = this.parseDate(showData.date);
-      
+
       // Check if show already exists to avoid duplicates
       const existingShow = await this.showRepository.findOne({
         where: {
@@ -727,7 +749,9 @@ ${content}
 
         const savedShow = await this.showRepository.save(show);
         savedShows.push(savedShow);
-        this.logger.log(`Created new show at ${show.venue} on ${show.date || 'recurring'} at ${show.time}`);
+        this.logger.log(
+          `Created new show at ${show.venue} on ${show.date || 'recurring'} at ${show.time}`,
+        );
       } else {
         savedShows.push(existingShow);
         this.logger.log(`Show already exists at ${showData.venue}, skipping duplicate`);

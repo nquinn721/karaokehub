@@ -250,7 +250,8 @@ export class AuthStore {
 
     // Handle both boolean true and integer 1 from database
     const isAdminValue = this.user?.isAdmin;
-    const result = isAdminValue === true || (isAdminValue as any) === 1 || String(isAdminValue) === '1';
+    const result =
+      isAdminValue === true || (isAdminValue as any) === 1 || String(isAdminValue) === '1';
 
     // Debug logging
     console.log('AuthStore.isAdmin check:', {

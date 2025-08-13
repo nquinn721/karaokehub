@@ -4,6 +4,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as cheerio from 'cheerio';
 import fetch from 'node-fetch';
 import { Repository } from 'typeorm';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
 import { KJ } from '../kj/kj.entity';
 import { ParsedSchedule, ParseStatus } from '../modules/parser/parsed-schedule.entity';
 import { Show } from '../show/show.entity';
@@ -29,6 +32,8 @@ export interface ParsedKaraokeData {
     address?: string;
     kjName?: string;
     description?: string;
+    imageUrl?: string;
+    imageAlt?: string;
     confidence: number;
   }>;
   rawData: {
@@ -226,6 +231,8 @@ You are an expert at parsing karaoke and DJ service websites to extract structur
    - If it's a recurring weekly schedule, note that it's "recurring"
    - Match KJs/DJs to specific shows if mentioned
    - Look for addresses or location details
+   - Extract any images associated with shows/venues (flyers, promotional images)
+   - For images, extract both the URL and alt text if available
    - Confidence level for each (0-100)
 
 IMPORTANT PARSING GUIDELINES:
@@ -260,6 +267,8 @@ Please return the response as a valid JSON object with this exact structure:
       "address": "street address if available",
       "kjName": "KJ Name if specified for this show",
       "description": "additional show details, special notes",
+      "imageUrl": "full URL to promotional image/flyer if found",
+      "imageAlt": "alt text or description of the image",
       "confidence": 80
     }
   ]
@@ -440,6 +449,14 @@ ${content}
       show.isActive = true;
       show.notes = showData.description;
 
+      // Download and save image if provided
+      if (showData.imageUrl) {
+        const savedImageUrl = await this.downloadImage(showData.imageUrl, showData.venue);
+        if (savedImageUrl) {
+          show.imageUrl = savedImageUrl;
+        }
+      }
+
       await this.showRepository.save(show);
     }
 
@@ -483,6 +500,50 @@ ${content}
     };
 
     return dayMap[dayString.toLowerCase()] || null;
+  }
+
+  /**
+   * Download and save an image from URL
+   */
+  private async downloadImage(imageUrl: string, showVenue: string): Promise<string | null> {
+    try {
+      if (!imageUrl || (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://'))) {
+        return null;
+      }
+
+      // Create images directory if it doesn't exist
+      const imagesDir = path.join(process.cwd(), 'public', 'images', 'shows');
+      if (!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir, { recursive: true });
+      }
+
+      // Generate filename from URL and show venue
+      const urlHash = crypto.createHash('md5').update(imageUrl).digest('hex');
+      const venueSlug = showVenue.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+      const extension = path.extname(new URL(imageUrl).pathname) || '.jpg';
+      const filename = `${venueSlug}-${urlHash}${extension}`;
+      const filepath = path.join(imagesDir, filename);
+
+      // Download image
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        this.logger.warn(`Failed to download image from ${imageUrl}: ${response.status}`);
+        return null;
+      }
+
+      // Save image to file
+      const buffer = await response.buffer();
+      fs.writeFileSync(filepath, buffer);
+
+      // Return the public URL path
+      const publicUrl = `/images/shows/${filename}`;
+      this.logger.log(`Downloaded and saved image: ${publicUrl}`);
+      
+      return publicUrl;
+    } catch (error) {
+      this.logger.error(`Error downloading image from ${imageUrl}:`, error);
+      return null;
+    }
   }
 
   async getPendingReviews(): Promise<ParsedSchedule[]> {
@@ -627,10 +688,18 @@ ${content}
           show.isActive = true;
           show.notes = showData.description;
 
+          // Download and save image if provided
+          if (showData.imageUrl) {
+            const savedImageUrl = await this.downloadImage(showData.imageUrl, showData.venue);
+            if (savedImageUrl) {
+              show.imageUrl = savedImageUrl;
+            }
+          }
+
           const savedShow = await this.showRepository.save(show);
           savedShows.push(savedShow);
           this.logger.log(
-            `Created new show at ${show.venue} on ${show.day || 'recurring'} at ${show.startTime}${show.endTime ? '-' + show.endTime : ''}`,
+            `Created new show at ${show.venue} on ${show.day || 'recurring'} at ${show.startTime}${show.endTime ? '-' + show.endTime : ''}${show.imageUrl ? ' with image' : ''}`,
           );
         } else {
           savedShows.push(existingShow);
@@ -745,7 +814,9 @@ ${content}
         // Find the KJ if specified
         let kj: KJ | null = null;
         if (showData.kjName) {
-          kj = savedKjs.find(k => k.name.toLowerCase().includes(showData.kjName.toLowerCase())) || null;
+          kj =
+            savedKjs.find((k) => k.name.toLowerCase().includes(showData.kjName.toLowerCase())) ||
+            null;
         }
 
         // Check if show already exists
@@ -769,10 +840,18 @@ ${content}
           show.vendorId = vendor.id;
           show.kjId = kj?.id;
           show.isActive = true;
-          
+
+          // Download and save image if provided
+          if (showData.imageUrl) {
+            const savedImageUrl = await this.downloadImage(showData.imageUrl, showData.venue);
+            if (savedImageUrl) {
+              show.imageUrl = savedImageUrl;
+            }
+          }
+
           const savedShow = await this.showRepository.save(show);
           savedShows.push(savedShow);
-          this.logger.log(`Created new show: ${show.venue} on ${show.day} at ${show.startTime}`);
+          this.logger.log(`Created new show: ${show.venue} on ${show.day} at ${show.startTime}${show.imageUrl ? ' with image' : ''}`);
         } else {
           // Update existing show if needed
           if (showData.endTime && !existingShow.endTime) {
@@ -783,6 +862,13 @@ ${content}
           }
           if (kj && !existingShow.kjId) {
             existingShow.kjId = kj.id;
+          }
+          // Update image if new one is found and existing show doesn't have one
+          if (showData.imageUrl && !existingShow.imageUrl) {
+            const savedImageUrl = await this.downloadImage(showData.imageUrl, showData.venue);
+            if (savedImageUrl) {
+              existingShow.imageUrl = savedImageUrl;
+            }
           }
           const updatedShow = await this.showRepository.save(existingShow);
           savedShows.push(updatedShow);
@@ -824,11 +910,11 @@ ${content}
       'https://stevesdj.com/about',
       'https://stevesdj.com/contact',
       'https://stevesdj.com/locations',
-      'https://stevesdj.com/weekly-schedule'
+      'https://stevesdj.com/weekly-schedule',
     ];
 
     const allPageContents: string[] = [];
-    
+
     this.logger.log(`Crawling ${pagesToCrawl.length} pages for comprehensive analysis...`);
 
     // Crawl all pages with respectful delays
@@ -840,22 +926,48 @@ ${content}
           const $ = cheerio.load(html);
           const title = $('title').text() || '';
           const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
-          
-          // Create page-specific content
+
+          // Extract images that might be relevant to karaoke/shows
+          const images: string[] = [];
+          $('img').each((_, element) => {
+            const src = $(element).attr('src') || $(element).attr('data-src');
+            const alt = $(element).attr('alt') || '';
+            
+            if (src) {
+              // Convert relative URLs to absolute URLs
+              let imageUrl = src;
+              if (!src.startsWith('http')) {
+                imageUrl = new URL(src, pageUrl).href;
+              }
+              
+              // Check if image might be relevant (contains karaoke/venue keywords)
+              const relevantKeywords = ['karaoke', 'alibi', 'sharky', 'flyer', 'event', 'dj', 'steve'];
+              const isRelevant = relevantKeywords.some(keyword => 
+                (src.toLowerCase().includes(keyword) || alt.toLowerCase().includes(keyword))
+              );
+              
+              if (isRelevant) {
+                images.push(`IMAGE: ${imageUrl} (alt: ${alt})`);
+              }
+            }
+          });
+
+          // Create page-specific content with images
           const pageContent = `
 === PAGE: ${pageUrl} ===
 TITLE: ${title}
 CONTENT: ${bodyText.substring(0, 5000)}
+IMAGES: ${images.join('\n')}
           `.trim();
-          
+
           allPageContents.push(pageContent);
           this.logger.log(`Successfully crawled: ${pageUrl} (${bodyText.length} chars)`);
         } else {
           this.logger.log(`Failed to fetch ${pageUrl}: ${response.status}`);
         }
-        
+
         // Respectful delay between requests
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (error) {
         this.logger.error(`Error crawling ${pageUrl}:`, error.message);
       }
@@ -863,17 +975,21 @@ CONTENT: ${bodyText.substring(0, 5000)}
 
     // Combine all content for AI analysis
     const contentForAI = allPageContents.join('\n\n--- PAGE SEPARATOR ---\n\n');
-    
+
     // Add debugging to check for specific keywords
     this.logger.log('[DEBUG] Content analysis:');
     this.logger.log('- Contains "SUNDAYS": ' + contentForAI.includes('SUNDAYS'));
-    this.logger.log('- Contains "ALIBI": ' + contentForAI.includes('ALIBI')); 
+    this.logger.log('- Contains "ALIBI": ' + contentForAI.includes('ALIBI'));
     this.logger.log('- Contains "7:00PM": ' + contentForAI.includes('7:00PM'));
-    this.logger.log('- Contains "karaoke" (case insensitive): ' + contentForAI.toLowerCase().includes('karaoke'));
+    this.logger.log(
+      '- Contains "karaoke" (case insensitive): ' + contentForAI.toLowerCase().includes('karaoke'),
+    );
     this.logger.log('- Total content length: ' + contentForAI.length);
-    
+
     // Log content from the karaoke-schedule page specifically if it exists
-    const karaokeScheduleIndex = pagesToCrawl.findIndex(page => page.includes('/karaoke-schedule'));
+    const karaokeScheduleIndex = pagesToCrawl.findIndex((page) =>
+      page.includes('/karaoke-schedule'),
+    );
     if (karaokeScheduleIndex >= 0 && allPageContents[karaokeScheduleIndex]) {
       this.logger.log('[DEBUG] Karaoke-schedule page content (first 1000 chars):');
       this.logger.log(allPageContents[karaokeScheduleIndex].substring(0, 1000));
@@ -890,10 +1006,17 @@ This website contains karaoke show schedules. Pay special attention to:
 3. DJ names like "DJ Steve"
 4. Venue names like "ALIBI BEACH LOUNGE"
 5. Any recurring weekly schedule information
+6. Promotional images/flyers associated with venues or shows (look for image tags with karaoke, venue names, or DJ promotional content)
 
 EXAMPLE PATTERNS TO MATCH:
 - "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve ALIBI BEACH LOUNGE"
 - "MONDAY KARAOKE 8:00PM - 12:00AM with DJ [Name] [Venue]"
+
+For images, look for:
+- Karaoke flyers or promotional images
+- Venue-specific promotional material
+- Images with venue names like "ALIBI", "SHARKY'S", etc.
+- Event flyers with schedule information
 
 Extract each show as a separate entry with:
 - venue: The location name (e.g., "ALIBI BEACH LOUNGE")
@@ -901,6 +1024,8 @@ Extract each show as a separate entry with:
 - startTime: Start time (e.g., "7:00 PM")
 - endTime: End time (e.g., "11:00 PM")
 - kjName: DJ name (e.g., "DJ Steve")
+- imageUrl: Full URL to any associated promotional image
+- imageAlt: Description of the image if available
     `;
 
     // Use Gemini AI to parse the comprehensive content
@@ -910,7 +1035,7 @@ Extract each show as a separate entry with:
     const parsedSchedule = new ParsedSchedule();
     parsedSchedule.url = url;
     parsedSchedule.rawData = {
-      title: 'Steve\'s DJ Multi-Page Crawl',
+      title: "Steve's DJ Multi-Page Crawl",
       content: contentForAI.substring(0, 5000), // Limit content size for storage
       links: [],
       parsedAt: new Date(),
@@ -926,7 +1051,7 @@ Extract each show as a separate entry with:
       shows: aiResult.shows,
       rawData: {
         url,
-        title: 'Steve\'s DJ Multi-Page Analysis',
+        title: "Steve's DJ Multi-Page Analysis",
         content: contentForAI.substring(0, 1000),
         parsedAt: new Date(),
       },
@@ -935,7 +1060,7 @@ Extract each show as a separate entry with:
     this.logger.log(
       `Multi-page parsing completed. Found ${result.kjs.length} KJs and ${result.shows.length} shows from ${allPageContents.length} pages`,
     );
-    
+
     return result;
   }
 }

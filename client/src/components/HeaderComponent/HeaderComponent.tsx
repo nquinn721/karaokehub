@@ -1,9 +1,4 @@
-import {
-  faCog,
-  faSignOutAlt,
-  faUser,
-  faUserShield,
-} from '@fortawesome/free-solid-svg-icons';
+import { faCog, faSignOutAlt, faUser, faUserShield } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   AppBar,
@@ -88,13 +83,16 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               onClick={() => uiStore.toggleSidebar()}
               sx={{ mr: 2 }}
             >
-              <img 
-                src="/images/karaoke-hub-logo.png" 
+              <img
+                src="/images/karaoke-hub-logo.png"
                 alt="KaraokeHub Logo"
-                style={{ 
-                  width: '32px', 
+                style={{
+                  width: '32px',
                   height: '32px',
-                  objectFit: 'contain'
+                  objectFit: 'contain',
+                  backgroundColor: 'transparent',
+                  mixBlendMode: 'multiply',
+                  filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.3))',
                 }}
               />
             </IconButton>
@@ -108,9 +106,10 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               flexGrow: 1,
               fontWeight: 600,
               cursor: 'pointer',
-              background: theme.palette.mode === 'light'
-                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)'
-                : 'linear-gradient(135deg, #8fa8f7 0%, #9d6db8 50%, #f5b8fd 100%)',
+              background:
+                theme.palette.mode === 'light'
+                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)'
+                  : 'linear-gradient(135deg, #8fa8f7 0%, #9d6db8 50%, #f5b8fd 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',

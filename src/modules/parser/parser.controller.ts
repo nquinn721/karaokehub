@@ -103,7 +103,7 @@ export class ParserController {
 export class TestParserController {
   constructor(private readonly parserService: KaraokeParserService) {}
 
-  @Post('parse-stevesdj')
+  @Get('parse-stevesdj')
   async parseStevesdj() {
     const result = await this.parserService.parseStevesdj();
     return {
