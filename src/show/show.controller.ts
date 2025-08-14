@@ -41,11 +41,6 @@ export class ShowController {
     return this.showService.findByVendor(vendorId);
   }
 
-  @Get('kj/:kjId')
-  findByKJ(@Param('kjId') kjId: string) {
-    return this.showService.findByKJ(kjId);
-  }
-
   @Get('dj/:djId')
   findByDJ(@Param('djId') djId: string) {
     return this.showService.findByDJ(djId);

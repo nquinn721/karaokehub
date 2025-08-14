@@ -24,14 +24,14 @@ export class FavoriteService {
 
   async findAll(): Promise<Favorite[]> {
     return await this.favoriteRepository.find({
-      relations: ['user', 'show', 'show.vendor', 'show.kj'],
+      relations: ['user', 'show', 'show.vendor', 'show.dj'],
     });
   }
 
   async findByUser(userId: string): Promise<Favorite[]> {
     return await this.favoriteRepository.find({
       where: { userId },
-      relations: ['show', 'show.vendor', 'show.kj'],
+      relations: ['show', 'show.vendor', 'show.dj'],
     });
   }
 

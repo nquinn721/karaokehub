@@ -87,39 +87,41 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                 src="/images/karaoke-hub-logo.png"
                 alt="KaraokeHub Logo"
                 style={{
-                  width: '32px',
-                  height: '32px',
+                  width: '48px',
+                  height: '48px',
                 }}
               />
             </IconButton>
           )}
 
-          <Typography
-            variant="h6"
-            component="div"
-            onClick={() => navigate('/')}
-            sx={{
-              flexGrow: 1,
-              fontWeight: 600,
-              cursor: 'pointer',
-              color: theme.palette.mode === 'light' ? '#FFFFFF' : 'transparent',
-              background:
-                theme.palette.mode === 'light'
-                  ? 'none'
-                  : 'linear-gradient(135deg, #8fa8f7 0%, #9d6db8 50%, #f5b8fd 100%)',
-              WebkitBackgroundClip: theme.palette.mode === 'light' ? 'initial' : 'text',
-              WebkitTextFillColor: theme.palette.mode === 'light' ? '#FFFFFF' : 'transparent',
-              backgroundClip: theme.palette.mode === 'light' ? 'initial' : 'text',
-              textShadow: theme.palette.mode === 'light' ? '1px 1px 2px rgba(0,0,0,0.3)' : 'none',
-              '&:hover': {
-                opacity: 0.8,
-                transform: 'scale(1.02)',
-                transition: 'all 0.2s ease-in-out',
-              },
-            }}
-          >
-            {title}
-          </Typography>
+          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+            <Typography
+              variant="h6"
+              component="div"
+              onClick={() => navigate('/')}
+              sx={{
+                fontWeight: 600,
+                cursor: 'pointer',
+                color: theme.palette.mode === 'light' ? '#FFFFFF' : 'transparent',
+                background:
+                  theme.palette.mode === 'light'
+                    ? 'none'
+                    : 'linear-gradient(135deg, #8fa8f7 0%, #9d6db8 50%, #f5b8fd 100%)',
+                WebkitBackgroundClip: theme.palette.mode === 'light' ? 'initial' : 'text',
+                WebkitTextFillColor: theme.palette.mode === 'light' ? '#FFFFFF' : 'transparent',
+                backgroundClip: theme.palette.mode === 'light' ? 'initial' : 'text',
+                textShadow: theme.palette.mode === 'light' ? '1px 1px 2px rgba(0,0,0,0.3)' : 'none',
+                display: 'inline-block',
+                '&:hover': {
+                  opacity: 0.8,
+                  transform: 'scale(1.02)',
+                  transition: 'all 0.2s ease-in-out',
+                },
+              }}
+            >
+              {title}
+            </Typography>
+          </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {/* Theme Toggle - Always visible */}

@@ -41,33 +41,27 @@ export class AppController {
   @Get('api/test-parser')
   async testParser() {
     try {
-      const result = await this.parserService.parseStevesdj();
+      // Testing with a generic website instead of the hardcoded Steve's DJ method
+      const result = await this.parserService.parseWebsite('https://stevesdj.com/karaoke-schedule');
       return {
         success: true,
-        message: "Steve's DJ website parsed successfully",
+        message: 'Website parsed successfully',
         data: {
-          vendor: result.savedEntities?.vendor?.name || 'Unknown',
-          kjsCount: result.savedEntities?.kjs?.length || 0,
-          showsCount: result.savedEntities?.shows?.length || 0,
+          vendor: result.vendor?.name || 'Unknown',
+          djsCount: result.djs?.length || 0,
+          showsCount: result.shows?.length || 0,
           confidence: {
-            vendor: result.parsedData?.vendor?.confidence || 0,
-            avgKjConfidence:
-              result.parsedData?.kjs?.length > 0
-                ? Math.round(
-                    result.parsedData.kjs.reduce((sum, kj) => sum + kj.confidence, 0) /
-                      result.parsedData.kjs.length,
-                  )
-                : 0,
+            vendor: result.vendor?.confidence || 0,
             avgShowConfidence:
-              result.parsedData?.shows?.length > 0
+              result.shows?.length > 0
                 ? Math.round(
-                    result.parsedData.shows.reduce((sum, show) => sum + show.confidence, 0) /
-                      result.parsedData.shows.length,
+                    result.shows.reduce((sum, show) => sum + show.confidence, 0) /
+                      result.shows.length,
                   )
                 : 0,
           },
         },
-        rawShows: result.parsedData?.shows || [], // Include raw show data for debugging
+        rawShows: result.shows || [], // Include raw show data for debugging
       };
     } catch (error) {
       return {

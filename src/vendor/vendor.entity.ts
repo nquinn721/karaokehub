@@ -7,7 +7,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
-import { KJ } from '../kj/kj.entity';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { Show } from '../show/show.entity';
 
@@ -54,9 +53,6 @@ export class Vendor {
   updatedAt: Date;
 
   // Relationships
-  @OneToMany(() => KJ, (kj) => kj.vendor)
-  kjs: KJ[];
-
   @OneToMany(() => DJ, (dj) => dj.vendor)
   djs: DJ[];
 

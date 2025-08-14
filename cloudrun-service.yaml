@@ -13,6 +13,7 @@ spec:
         autoscaling.knative.dev/maxScale: '10'
         run.googleapis.com/cpu-throttling: 'true'
         run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cloudsql-instances: heroic-footing-460117-k8:us-central1:accountant
     spec:
       containerConcurrency: 80
       timeoutSeconds: 300
@@ -28,18 +29,16 @@ spec:
           env:
             - name: NODE_ENV
               value: 'production'
-            - name: PORT
-              value: '8080'
             - name: FRONTEND_URL
               value: 'https://karaokehub-203453576607.us-central1.run.app'
             - name: BACKEND_URL
               value: 'https://karaokehub-203453576607.us-central1.run.app'
             - name: ALLOWED_ORIGINS
               value: 'https://karaokehub-203453576607.us-central1.run.app'
-            - name: DATABASE_HOST
-              value: '35.196.192.156'
-            - name: DATABASE_PORT
-              value: '3306'
+            - name: DATABASE_SOCKET_PATH
+              value: '/cloudsql/heroic-footing-460117-k8:us-central1:accountant'
+            - name: DEPLOYMENT_TIME
+              value: '2025-01-14-03-00'
             - name: DATABASE_NAME
               value: 'karaoke-hub'
             - name: DATABASE_SYNCHRONIZE

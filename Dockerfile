@@ -19,8 +19,9 @@ RUN npm ci
 COPY . .
 COPY --from=client-builder /app/client/dist ./client/dist
 
-# Ensure public directory exists for copying
+# Ensure public directory exists and copy client public assets
 RUN mkdir -p ./public/images/shows
+COPY --from=client-builder /app/client/public/images/ ./public/images/
 
 RUN npm run build
 
@@ -28,6 +29,20 @@ RUN npm run build
 FROM node:20-alpine AS production
 
 WORKDIR /app
+
+# Install dependencies needed for Puppeteer
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    && rm -rf /var/cache/apk/*
+
+# Tell Puppeteer to use the installed Chromium
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init

@@ -176,7 +176,7 @@ export const MapComponent: React.FC = observer(() => {
               key={show.id}
               position={{ lat: show.lat!, lng: show.lng! }}
               onClick={() => handleMarkerClick(show)}
-              title={show.vendor?.name || 'Karaoke Show'}
+              title={show.venue || show.vendor?.name || 'Karaoke Show'}
               icon={createMicrophoneIcon(selectedMarkerId === show.id, theme)}
             />
           ))}
@@ -210,8 +210,21 @@ export const MapComponent: React.FC = observer(() => {
                     fontWeight: 600,
                   }}
                 >
-                  {showStore.selectedShow.vendor?.name}
+                  {showStore.selectedShow.venue || showStore.selectedShow.vendor?.name}
                 </Typography>
+                {showStore.selectedShow.venue && showStore.selectedShow.vendor?.name && (
+                  <Typography
+                    variant="body2"
+                    gutterBottom
+                    sx={{
+                      color: theme.palette.text.secondary,
+                      fontStyle: 'italic',
+                      mb: 1,
+                    }}
+                  >
+                    by {showStore.selectedShow.vendor.name}
+                  </Typography>
+                )}
                 <Typography
                   variant="body2"
                   gutterBottom
@@ -231,7 +244,7 @@ export const MapComponent: React.FC = observer(() => {
                     }}
                   />
                   <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
-                    Host: {showStore.selectedShow.kj?.name}
+                    Host: {showStore.selectedShow.dj?.name}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -402,12 +415,17 @@ export const MapComponent: React.FC = observer(() => {
                                     }}
                                   />
                                   <Typography variant="subtitle1" fontWeight={600}>
-                                    {show.vendor?.name || 'Unknown Venue'}
+                                    {show.venue || show.vendor?.name || 'Unknown Venue'}
                                   </Typography>
                                 </Box>
                               }
                               secondary={
                                 <Box sx={{ mt: 0.5 }}>
+                                  {show.venue && show.vendor?.name && (
+                                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mb: 0.5 }}>
+                                      by {show.vendor.name}
+                                    </Typography>
+                                  )}
                                   <Typography variant="body2" color="text.secondary">
                                     {show.address}
                                   </Typography>
@@ -419,7 +437,7 @@ export const MapComponent: React.FC = observer(() => {
                                     </Typography>
                                   </Box>
                                   <Typography variant="body2" color="text.secondary">
-                                    Host: {show.kj?.name || 'Unknown'}
+                                    Host: {show.dj?.name || 'Unknown'}
                                   </Typography>
                                   {show.description && (
                                     <Typography

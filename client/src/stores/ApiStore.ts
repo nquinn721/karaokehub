@@ -484,14 +484,7 @@ class ApiStore {
       byId: (id: string) => `/vendors/${id}`,
     },
 
-    // KJ endpoints
-    kjs: {
-      base: '/kjs',
-      byId: (id: string) => `/kjs/${id}`,
-      byVendor: (vendorId: string) => `/kjs/vendor/${vendorId}`,
-    },
-
-    // DJ endpoints  
+    // DJ endpoints
     djs: {
       base: '/djs',
       byId: (id: string) => `/djs/${id}`,
@@ -503,7 +496,6 @@ class ApiStore {
       base: '/shows',
       byId: (id: string) => `/shows/${id}`,
       byVendor: (vendorId: string) => `/shows/vendor/${vendorId}`,
-      byKJ: (kjId: string) => `/shows/kj/${kjId}`,
       byDJ: (djId: string) => `/shows/dj/${djId}`,
       byDay: (day: string) => `/shows?day=${day}`,
     },

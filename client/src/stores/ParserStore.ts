@@ -8,12 +8,6 @@ export interface ParsedVendorData {
   confidence: number;
 }
 
-export interface ParsedKJData {
-  name: string;
-  confidence: number;
-  context?: string;
-}
-
 export interface ParsedDJData {
   name: string;
   confidence: number;
@@ -24,7 +18,6 @@ export interface ParsedShowData {
   venue: string;
   date: string;
   time: string;
-  kjName?: string;
   djName?: string;
   description?: string;
   confidence: number;
@@ -36,13 +29,16 @@ export interface ParsedScheduleItem {
   rawData: any;
   aiAnalysis: {
     vendor: ParsedVendorData;
-    kjs: ParsedKJData[];
     djs: ParsedDJData[];
     shows: ParsedShowData[];
   };
-  status: 'pending' | 'pending_review' | 'approved' | 'rejected';
+  status: 'pending' | 'pending_review' | 'approved' | 'rejected' | 'needs_review';
   createdAt: string;
   updatedAt: string;
+  rejectionReason?: string;
+  reviewComments?: string;
+  vendorId?: string;
+  vendor?: any; // Vendor entity
 }
 
 export class ParserStore {
@@ -62,17 +58,14 @@ export class ParserStore {
     this.error = error;
   }
 
-  async parseWebsite(url: string): Promise<{ success: boolean; error?: string }> {
+  async parseWebsite(url: string): Promise<{ success: boolean; error?: string; data?: any }> {
     try {
       this.setLoading(true);
       this.setError(null);
 
-      await apiStore.post('/admin/parser/parse-website', { url });
+      const result = await apiStore.post('/parser/parse-website', { url });
 
-      // Refresh pending reviews after parsing
-      await this.fetchPendingReviews();
-
-      return { success: true };
+      return { success: true, data: result };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to parse website';
       this.setError(errorMessage);
@@ -87,37 +80,37 @@ export class ParserStore {
       this.setLoading(true);
       this.setError(null);
 
-      const response = await apiStore.get('/admin/parser/pending-reviews');
+      const response = await apiStore.get('/parser/pending-reviews');
 
       runInAction(() => {
-        this.pendingReviews = response;
+        // Ensure the response is an array and has the expected structure
+        this.pendingReviews = Array.isArray(response) ? response : [];
       });
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to fetch pending reviews';
       this.setError(errorMessage);
+      // Ensure pendingReviews is always an array
+      runInAction(() => {
+        this.pendingReviews = [];
+      });
     } finally {
       this.setLoading(false);
     }
   }
 
-  async approveParsedData(
-    id: string,
-    approvedData: any,
-  ): Promise<{ success: boolean; error?: string }> {
+  async cleanupInvalidReviews(): Promise<{ success: boolean; error?: string; message?: string }> {
     try {
       this.setLoading(true);
       this.setError(null);
 
-      await apiStore.patch(`/admin/parser/approve/${id}`, approvedData);
+      const response = await apiStore.post('/parser/cleanup-invalid-reviews');
 
-      // Remove from pending reviews
-      runInAction(() => {
-        this.pendingReviews = this.pendingReviews.filter((item) => item.id !== id);
-      });
+      // Refresh the list after cleanup
+      await this.fetchPendingReviews();
 
-      return { success: true };
+      return { success: true, message: response.message };
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to approve data';
+      const errorMessage = error.response?.data?.message || 'Failed to cleanup invalid reviews';
       this.setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -125,24 +118,102 @@ export class ParserStore {
     }
   }
 
-  async rejectParsedData(
-    id: string,
-    reason?: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  async cleanupAllReviews(): Promise<{ success: boolean; error?: string; message?: string }> {
     try {
       this.setLoading(true);
       this.setError(null);
 
-      await apiStore.patch(`/admin/parser/reject/${id}`, { reason });
+      const response = await apiStore.post('/parser/cleanup-all-reviews');
 
-      // Remove from pending reviews
-      runInAction(() => {
-        this.pendingReviews = this.pendingReviews.filter((item) => item.id !== id);
-      });
+      // Refresh the list after cleanup
+      await this.fetchPendingReviews();
 
-      return { success: true };
+      return { success: true, message: response.message };
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to reject data';
+      const errorMessage = error.response?.data?.message || 'Failed to cleanup all reviews';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async testPuppeteerParsing(
+    url: string,
+  ): Promise<{ success: boolean; error?: string; data?: any }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      const result = await apiStore.post('/parser/test-puppeteer', { url });
+
+      return { success: true, data: result };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to test Puppeteer parsing';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async parseStevesdj(): Promise<{
+    success: boolean;
+    error?: string;
+    data?: any;
+    parsedScheduleId?: string;
+  }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      // Use the new parse-and-save-website endpoint with Steve's DJ URL
+      const stevesdjUrl = 'https://stevesdj.com/karaoke-schedule'; // Updated to correct karaoke schedule page
+      const result = await apiStore.post('/parser/parse-and-save-website', { url: stevesdjUrl });
+
+      // Refresh pending reviews to show the new entry
+      await this.fetchPendingReviews();
+
+      return {
+        success: true,
+        data: result.data,
+        parsedScheduleId: result.parsedScheduleId,
+      };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Failed to parse Steve's DJ website";
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async parseAndSaveWebsite(
+    url: string,
+    _autoApprove: boolean = false, // Currently not supported by backend, kept for compatibility
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    data?: any;
+    parsedScheduleId?: string;
+  }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      // Use the new parse-and-save-website endpoint which saves to database
+      const result = await apiStore.post('/parser/parse-and-save-website', { url });
+
+      // Refresh pending reviews to show the new entry
+      await this.fetchPendingReviews();
+
+      return {
+        success: true,
+        data: result.data,
+        parsedScheduleId: result.parsedScheduleId,
+      };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to parse and save website';
       this.setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -155,150 +226,87 @@ export class ParserStore {
     return this.pendingReviews.find((item) => item.id === id);
   }
 
+  // Approve selected items (stub implementation)
   async approveSelectedItems(
-    id: string,
-    selectedItems: {
-      vendor?: boolean;
-      kjIds?: string[];
-      showIds?: string[];
-    },
+    reviewId: string,
+    selectedItems: any,
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      this.setLoading(true);
-      this.setError(null);
-
-      await apiStore.patch(`/admin/parser/approve-selected/${id}`, selectedItems);
-
-      // Remove from pending reviews or refresh list
-      await this.fetchPendingReviews();
-
+      // TODO: Implement actual approval logic
+      console.log('Approving selected items:', reviewId, selectedItems);
       return { success: true };
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to approve selected items';
-      this.setError(errorMessage);
-      return { success: false, error: errorMessage };
-    } finally {
-      this.setLoading(false);
+    } catch (error) {
+      return { success: false, error: 'Approval failed' };
     }
   }
 
-  async approveAllItems(id: string): Promise<{ success: boolean; error?: string }> {
+  // Approve all items from a parsed schedule
+  async approveAllItems(reviewId: string): Promise<{ success: boolean; error?: string }> {
     try {
       this.setLoading(true);
-      this.setError(null);
 
-      await apiStore.patch(`/admin/parser/approve-all/${id}`);
-
-      // Remove from pending reviews
-      runInAction(() => {
-        this.pendingReviews = this.pendingReviews.filter((item) => item.id !== id);
-      });
-
-      return { success: true };
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to approve all items';
-      this.setError(errorMessage);
-      return { success: false, error: errorMessage };
-    } finally {
-      this.setLoading(false);
-    }
-  }
-
-  async parseAndSaveWebsite(
-    url: string,
-    autoApprove: boolean = false,
-  ): Promise<{
-    success: boolean;
-    error?: string;
-    data?: {
-      vendor: string;
-      kjsCount: number;
-      showsCount: number;
-      confidence: {
-        vendor: number;
-        avgKjConfidence: number;
-        avgShowConfidence: number;
-      };
-    };
-  }> {
-    try {
-      this.setLoading(true);
-      this.setError(null);
-
-      const response = await apiStore.post('/admin/parser/parse-and-save', { url, autoApprove });
-
-      // If not auto-approved, refresh pending reviews
-      if (!autoApprove) {
-        await this.fetchPendingReviews();
+      // Get the review data
+      const review = this.getPendingReviewById(reviewId);
+      if (!review) {
+        return { success: false, error: 'Review not found' };
       }
 
-      return {
-        success: true,
-        data: response.data,
-      };
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to parse and save website';
-      this.setError(errorMessage);
-      return { success: false, error: errorMessage };
-    } finally {
-      this.setLoading(false);
-    }
-  }
+      // Approve the parsed data with the AI analysis data
+      await apiStore.post(`/parser/approve-parsed-data/${reviewId}`, {
+        data: review.aiAnalysis,
+      });
 
-  async parseStevesdj(): Promise<{
-    success: boolean;
-    error?: string;
-    data?: {
-      vendor: string;
-      kjsCount: number;
-      showsCount: number;
-      confidence: {
-        vendor: number;
-        avgKjConfidence: number;
-        avgShowConfidence: number;
-      };
-    };
-  }> {
-    try {
-      this.setLoading(true);
-      this.setError(null);
-
-      const response = await apiStore.post('/admin/parser/parse-stevesdj');
-
-      // Refresh pending reviews after parsing
+      // Refresh pending reviews
       await this.fetchPendingReviews();
-
-      return {
-        success: true,
-        data: response.data,
-      };
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || "Failed to parse Steve's DJ website";
-      this.setError(errorMessage);
-      return { success: false, error: errorMessage };
-    } finally {
-      this.setLoading(false);
-    }
-  }
-
-  async updateReviewComments(
-    parsedScheduleId: string,
-    comments: string,
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      this.setLoading(true);
-      this.setError(null);
-
-      await apiStore.patch(`/admin/parser/review-comments/${parsedScheduleId}`, { comments });
 
       return { success: true };
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to update review comments';
-      this.setError(errorMessage);
+      const errorMessage = error.response?.data?.message || 'Failed to approve items';
       return { success: false, error: errorMessage };
     } finally {
       this.setLoading(false);
     }
+  }
+
+  // Reject parsed data
+  async rejectParsedData(
+    reviewId: string,
+    reason?: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.setLoading(true);
+      await apiStore.post(`/parser/reject-parsed-data/${reviewId}`, { reason });
+
+      // Refresh pending reviews
+      await this.fetchPendingReviews();
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to reject parsed data';
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  // Update review comments (stub implementation)
+  async updateReviewComments(reviewId: string, comments: string): Promise<void> {
+    try {
+      // TODO: Implement actual update logic
+      console.log('Updating review comments:', reviewId, comments);
+    } catch (error) {
+      console.error('Failed to update comments:', error);
+    }
+  }
+
+  // Helper method to get count of pending reviews
+  get pendingReviewsCount(): number {
+    return this.pendingReviews.length;
+  }
+
+  // Helper method to check if there are any pending reviews
+  get hasPendingReviews(): boolean {
+    return this.pendingReviews.length > 0;
   }
 }
 

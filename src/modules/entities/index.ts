@@ -2,7 +2,6 @@
 export * from '../../dj/dj.entity';
 export * from '../../entities/user.entity';
 export * from '../../favorite/favorite.entity';
-export * from '../../kj/kj.entity';
 export * from '../../parser/parsed-schedule.entity';
 export { ParseStatus } from '../../parser/parsed-schedule.entity';
 export * from '../../show/show.entity';

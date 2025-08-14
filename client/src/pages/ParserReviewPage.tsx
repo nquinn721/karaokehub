@@ -52,7 +52,7 @@ const ParserReviewPage: React.FC = observer(() => {
 
   // Granular approval state
   const [selectedVendor, setSelectedVendor] = useState(false);
-  const [selectedKjs, setSelectedKjs] = useState<string[]>([]);
+  const [selectedDjs, setSelectedDjs] = useState<string[]>([]);
   const [selectedShows, setSelectedShows] = useState<string[]>([]);
 
   // Redirect non-admin users
@@ -72,11 +72,26 @@ const ParserReviewPage: React.FC = observer(() => {
       const result = await parserStore.parseAndSaveWebsite(newUrl, true);
       if (result.success && result.data) {
         // Show success dialog with details
+        const avgDjConfidence =
+          result.data.djs?.length > 0
+            ? result.data.djs.reduce((sum: number, dj: any) => sum + dj.confidence, 0) /
+              result.data.djs.length
+            : 0;
+        const avgShowConfidence =
+          result.data.shows?.length > 0
+            ? result.data.shows.reduce((sum: number, show: any) => sum + show.confidence, 0) /
+              result.data.shows.length
+            : 0;
+
         setParseResults({
           vendor: result.data.vendor,
-          kjsCount: result.data.kjsCount,
-          showsCount: result.data.showsCount,
-          confidence: result.data.confidence,
+          djsCount: result.data.djs?.length || 0,
+          showsCount: result.data.shows?.length || 0,
+          confidence: {
+            vendor: result.data.vendor?.confidence || 0,
+            avgDjConfidence: avgDjConfidence,
+            avgShowConfidence: avgShowConfidence,
+          },
           url: newUrl,
         });
         setParseResultsDialogOpen(true);
@@ -102,7 +117,7 @@ const ParserReviewPage: React.FC = observer(() => {
       setEditedData({ ...review.aiAnalysis });
       // Reset selections when switching reviews
       setSelectedVendor(false);
-      setSelectedKjs([]);
+      setSelectedDjs([]);
       setSelectedShows([]);
     }
   };
@@ -112,8 +127,8 @@ const ParserReviewPage: React.FC = observer(() => {
 
     const selectedItems = {
       vendor: selectedVendor,
-      // Convert kj-0, kj-1 to actual indices for the backend
-      kjIds: selectedKjs.map((id) => id.replace('kj-', '')),
+      // Convert dj-0, dj-1 to actual indices for the backend
+      djIds: selectedDjs.map((id) => id.replace('dj-', '')),
       // Convert show-0, show-1 to actual indices for the backend
       showIds: selectedShows.map((id) => id.replace('show-', '')),
     };
@@ -123,7 +138,7 @@ const ParserReviewPage: React.FC = observer(() => {
       setSelectedReview(null);
       setEditedData(null);
       setSelectedVendor(false);
-      setSelectedKjs([]);
+      setSelectedDjs([]);
       setSelectedShows([]);
     }
   };
@@ -136,7 +151,7 @@ const ParserReviewPage: React.FC = observer(() => {
       setSelectedReview(null);
       setEditedData(null);
       setSelectedVendor(false);
-      setSelectedKjs([]);
+      setSelectedDjs([]);
       setSelectedShows([]);
     }
   };
@@ -155,11 +170,26 @@ const ParserReviewPage: React.FC = observer(() => {
     const result = await parserStore.parseStevesdj();
     if (result.success && result.data) {
       // Show success dialog with details
+      const avgDjConfidence =
+        result.data.djs?.length > 0
+          ? result.data.djs.reduce((sum: number, dj: any) => sum + dj.confidence, 0) /
+            result.data.djs.length
+          : 0;
+      const avgShowConfidence =
+        result.data.shows?.length > 0
+          ? result.data.shows.reduce((sum: number, show: any) => sum + show.confidence, 0) /
+            result.data.shows.length
+          : 0;
+
       setParseResults({
         vendor: result.data.vendor,
-        kjsCount: result.data.kjsCount,
-        showsCount: result.data.showsCount,
-        confidence: result.data.confidence,
+        djsCount: result.data.djs?.length || 0,
+        showsCount: result.data.shows?.length || 0,
+        confidence: {
+          vendor: result.data.vendor?.confidence || 0,
+          avgDjConfidence: avgDjConfidence,
+          avgShowConfidence: avgShowConfidence,
+        },
         url: "Steve's DJ Website",
       });
       setParseResultsDialogOpen(true);
@@ -254,7 +284,7 @@ const ParserReviewPage: React.FC = observer(() => {
                               </Typography>
                               <Chip
                                 size="small"
-                                label={`${review.aiAnalysis?.kjs?.length || 0} KJs`}
+                                label={`${review.aiAnalysis?.djs?.length || 0} DJs`}
                                 color="primary"
                               />
                               <Chip
@@ -296,7 +326,7 @@ const ParserReviewPage: React.FC = observer(() => {
                         disabled={
                           parserStore.isLoading ||
                           (!selectedVendor &&
-                            selectedKjs.length === 0 &&
+                            selectedDjs.length === 0 &&
                             selectedShows.length === 0)
                         }
                         startIcon={<FontAwesomeIcon icon={faCheck} />}
@@ -401,36 +431,36 @@ const ParserReviewPage: React.FC = observer(() => {
                       sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}
                     >
                       <FontAwesomeIcon icon={faMicrophone} />
-                      KJs ({editedData.kjs?.length || 0})
+                      DJs ({editedData.djs?.length || 0})
                     </Typography>
                     <Stack spacing={1}>
-                      {editedData.kjs?.map((kj: any, index: number) => (
+                      {editedData.djs?.map((dj: any, index: number) => (
                         <Paper key={index} sx={{ p: 2 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                             <Checkbox
-                              checked={selectedKjs.includes(`kj-${index}`)}
+                              checked={selectedDjs.includes(`dj-${index}`)}
                               onChange={(e) => {
-                                const kjId = `kj-${index}`;
+                                const djId = `dj-${index}`;
                                 if (e.target.checked) {
-                                  setSelectedKjs([...selectedKjs, kjId]);
+                                  setSelectedDjs([...selectedDjs, djId]);
                                 } else {
-                                  setSelectedKjs(selectedKjs.filter((id) => id !== kjId));
+                                  setSelectedDjs(selectedDjs.filter((id) => id !== djId));
                                 }
                               }}
                               size="small"
                               color="primary"
                             />
                             <Typography variant="subtitle2" flexGrow={1}>
-                              Select KJ: {kj.name}
+                              Select DJ: {dj.name}
                             </Typography>
                           </Box>
                           <TextField
-                            label="KJ Name"
-                            value={kj.name || ''}
+                            label="DJ Name"
+                            value={dj.name || ''}
                             onChange={(e) => {
-                              const newKjs = [...editedData.kjs];
-                              newKjs[index] = { ...newKjs[index], name: e.target.value };
-                              setEditedData({ ...editedData, kjs: newKjs });
+                              const newDjs = [...editedData.djs];
+                              newDjs[index] = { ...newDjs[index], name: e.target.value };
+                              setEditedData({ ...editedData, djs: newDjs });
                             }}
                             fullWidth
                             size="small"
@@ -440,9 +470,9 @@ const ParserReviewPage: React.FC = observer(() => {
                             <Typography variant="caption">Confidence:</Typography>
                             <Chip
                               size="small"
-                              label={`${kj.confidence || 0}%`}
+                              label={`${dj.confidence || 0}%`}
                               sx={{
-                                backgroundColor: getConfidenceColor(kj.confidence || 0),
+                                backgroundColor: getConfidenceColor(dj.confidence || 0),
                                 color: 'white',
                               }}
                             />
@@ -526,11 +556,11 @@ const ParserReviewPage: React.FC = observer(() => {
                             </Grid>
                             <Grid item xs={12} sm={6}>
                               <TextField
-                                label="KJ Name"
-                                value={show.kjName || ''}
+                                label="DJ Name"
+                                value={show.djName || ''}
                                 onChange={(e) => {
                                   const newShows = [...editedData.shows];
-                                  newShows[index] = { ...newShows[index], kjName: e.target.value };
+                                  newShows[index] = { ...newShows[index], djName: e.target.value };
                                   setEditedData({ ...editedData, shows: newShows });
                                 }}
                                 fullWidth

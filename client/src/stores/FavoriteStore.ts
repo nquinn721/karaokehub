@@ -16,7 +16,7 @@ export interface Favorite {
       id: string;
       name: string;
     };
-    kj?: {
+    dj?: {
       id: string;
       name: string;
     };

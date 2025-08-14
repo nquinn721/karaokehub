@@ -71,12 +71,12 @@ const AdminDashboardPage: React.FC = observer(() => {
               sx={{ height: '200px', display: 'flex', flexDirection: 'column' }}
             >
               <Typography color="text.secondary" sx={{ mb: 2 }}>
-                Manage karaoke venues and KJ assignments.
+                Manage karaoke venues and DJ assignments.
               </Typography>
               <Typography variant="body2" color="primary">
                 • Add/edit venues
                 <br />
-                • Manage KJ schedules
+                • Manage DJ schedules
                 <br />• Venue verification
               </Typography>
             </CustomCard>

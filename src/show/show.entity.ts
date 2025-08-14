@@ -10,7 +10,6 @@ import {
 } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
 import { Favorite } from '../favorite/favorite.entity';
-import { KJ } from '../kj/kj.entity';
 import { Vendor } from '../vendor/vendor.entity';
 
 export enum DayOfWeek {
@@ -30,9 +29,6 @@ export class Show {
 
   @Column('uuid')
   vendorId: string;
-
-  @Column('uuid', { nullable: true })
-  kjId: string;
 
   @Column('uuid', { nullable: true })
   djId: string;
@@ -84,10 +80,6 @@ export class Show {
   @ManyToOne(() => Vendor, (vendor) => vendor.shows)
   @JoinColumn({ name: 'vendorId' })
   vendor: Vendor;
-
-  @ManyToOne(() => KJ, (kj) => kj.shows)
-  @JoinColumn({ name: 'kjId' })
-  kj: KJ;
 
   @ManyToOne(() => DJ, (dj) => dj.shows)
   @JoinColumn({ name: 'djId' })

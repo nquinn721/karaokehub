@@ -18,13 +18,11 @@ import {
 import React from 'react';
 
 export interface ParseResults {
-  vendor: string;
-  kjsCount: number;
+  vendor: string | { name: string; website?: string; description?: string; confidence?: number };
   djsCount: number;
   showsCount: number;
   confidence: {
     vendor: number;
-    avgKjConfidence: number;
     avgDjConfidence: number;
     avgShowConfidence: number;
   };
@@ -48,12 +46,21 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
 
   if (!results) return null;
 
+  // Helper function to get vendor name
+  const getVendorName = (
+    vendor: string | { name: string; website?: string; description?: string; confidence?: number },
+  ) => {
+    if (typeof vendor === 'string') {
+      return vendor || 'Unknown Vendor';
+    }
+    return vendor?.name || 'Unknown Vendor';
+  };
+
   // Provide default values for confidence if missing
-  const confidence = results.confidence || {
-    vendor: 50,
-    avgKjConfidence: 50,
-    avgDjConfidence: 50,
-    avgShowConfidence: 50,
+  const confidence = {
+    vendor: Math.max(0, Math.min(100, results.confidence?.vendor || 0)),
+    avgDjConfidence: Math.max(0, Math.min(100, results.confidence?.avgDjConfidence || 0)),
+    avgShowConfidence: Math.max(0, Math.min(100, results.confidence?.avgShowConfidence || 0)),
   };
 
   const getConfidenceColor = (confidence: number) => {
@@ -125,7 +132,7 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
                   Vendor
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {results.vendor || 'Unknown Vendor'}
+                  {getVendorName(results.vendor)}
                 </Typography>
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="caption" color="text.secondary" display="block">
@@ -147,40 +154,6 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
           </Grid>
 
           <Grid item xs={12} sm={4}>
-            <Card variant="outlined" sx={{ height: '100%' }}>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Box sx={{ mb: 2 }}>
-                  <FontAwesomeIcon
-                    icon={faUsers}
-                    style={{ fontSize: '2rem', color: theme.palette.secondary.main }}
-                  />
-                </Box>
-                <Typography variant="h6" gutterBottom>
-                  KJs Found
-                </Typography>
-                <Typography variant="h4" color="secondary" sx={{ mb: 2 }}>
-                  {results.kjsCount || 0}
-                </Typography>
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Avg Confidence: {Math.round(confidence.avgKjConfidence)}%
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={confidence.avgKjConfidence}
-                    sx={{
-                      mt: 1,
-                      '& .MuiLinearProgress-bar': {
-                        backgroundColor: getConfidenceColor(confidence.avgKjConfidence),
-                      },
-                    }}
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={3}>
             <Card variant="outlined" sx={{ height: '100%' }}>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Box sx={{ mb: 2 }}>
@@ -258,7 +231,7 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
           </Typography>
 
           <Grid container spacing={2} sx={{ mt: 2 }}>
-            <Grid item xs={6}>
+            <Grid item xs={4}>
               <Typography variant="body2" color="text.secondary">
                 Vendor Confidence
               </Typography>
@@ -273,37 +246,7 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
               </Typography>
             </Grid>
 
-            <Grid item xs={6}>
-              <Typography variant="body2" color="text.secondary">
-                Show Detection
-              </Typography>
-              <Typography
-                variant="body1"
-                sx={{
-                  color: getConfidenceColor(confidence.avgShowConfidence),
-                  fontWeight: 600,
-                }}
-              >
-                {getConfidenceLabel(confidence.avgShowConfidence)}
-              </Typography>
-            </Grid>
-
-            <Grid item xs={6}>
-              <Typography variant="body2" color="text.secondary">
-                KJ Detection
-              </Typography>
-              <Typography
-                variant="body1"
-                sx={{
-                  color: getConfidenceColor(confidence.avgKjConfidence),
-                  fontWeight: 600,
-                }}
-              >
-                {getConfidenceLabel(confidence.avgKjConfidence)}
-              </Typography>
-            </Grid>
-
-            <Grid item xs={6}>
+            <Grid item xs={4}>
               <Typography variant="body2" color="text.secondary">
                 DJ Detection
               </Typography>
@@ -315,6 +258,21 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
                 }}
               >
                 {getConfidenceLabel(confidence.avgDjConfidence)}
+              </Typography>
+            </Grid>
+
+            <Grid item xs={4}>
+              <Typography variant="body2" color="text.secondary">
+                Show Detection
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{
+                  color: getConfidenceColor(confidence.avgShowConfidence),
+                  fontWeight: 600,
+                }}
+              >
+                {getConfidenceLabel(confidence.avgShowConfidence)}
               </Typography>
             </Grid>
           </Grid>

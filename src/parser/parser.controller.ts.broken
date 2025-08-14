@@ -1,0 +1,276 @@
+import { Body, Controller, Get, HttpException, HttpStatus, Logger, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { AdminGuard } from '../auth/guar        data: {
+          vendor: result.vendor?.name || 'Unknown',
+          showsCount: result.shows?.length || 0,
+          confidence: {
+            vendor: result.vendor?.confidence || 75,
+            avgShowConfidence,
+          },
+          parsedShowsCount: result.shows?.length || 0,
+        },
+        rawShows: result.shows || [], // Include raw show data for debuggingard';
+import { KaraokeParserService } from './karaoke-parser.service';
+
+@Controller('admin/parser')
+@UseGuards(AuthGuard('jwt'), AdminGuard)
+export class ParserController {
+  private readonly logger = new Logger(ParserController.name);
+
+  constructor(private readonly parserService: KaraokeParserService) {}
+
+  @Post('parse-website')
+  async parseWebsite(@Body() body: { url: string }) {
+    return this.parserService.parseWebsite(body.url);
+  }
+
+  @Get('pending-reviews')
+  async getPendingReviews() {
+    return this.parserService.getPendingReviews();
+  }
+
+  @Patch('approve/:id')
+  async approveParsedData(@Param('id') id: string, @Body() approvedData: any) {
+    await this.parserService.approveAndSaveParsedData(id, approvedData);
+    return { success: true, message: 'Data approved and saved successfully' };
+  }
+
+  @Patch('approve-selected/:id')
+  async approveSelectedItems(
+    @Param('id') id: string,
+    @Body()
+    selectedItems: {
+      vendor?: boolean;
+      djIds?: string[]; // Updated from kjIds
+      showIds?: string[];
+    },
+  ) {
+    try {
+      this.logger.log(`⚠️ Selected items approval is temporarily disabled during KJ→DJ migration`);
+      return {
+        success: false,
+        message: 'Selected items approval is temporarily disabled during KJ→DJ migration',
+        status: 'disabled'
+      };
+    } catch (error) {
+      this.logger.error('Error in approveSelectedItems:', error);
+      throw new HttpException(
+        error.message || 'Failed to approve selected items',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Patch('approve-all/:id')
+  async approveAllItems(@Param('id') id: string) {
+    try {
+      this.logger.log(`⚠️ Approve all items is temporarily disabled during KJ→DJ migration`);
+      return {
+        success: false,
+        message: 'Approve all items is temporarily disabled during KJ→DJ migration',
+        status: 'disabled'
+      };
+    } catch (error) {
+      this.logger.error('❌ Failed to approve all items:', error);
+      throw error;
+    }
+  }
+
+  @Patch('reject/:id')
+  async rejectParsedData(@Param('id') id: string, @Body() body: { reason?: string }) {
+    await this.parserService.rejectParsedData(id, body.reason);
+    return { success: true, message: 'Data rejected successfully' };
+  }
+
+  @Post('cleanup-invalid-reviews')
+  async cleanupInvalidPendingReviews() {
+    const removedCount = await this.parserService.cleanupInvalidPendingReviews();
+    return {
+      success: true,
+      message: `Cleaned up ${removedCount} invalid pending reviews`,
+      removedCount,
+    };
+  }
+
+  @Post('cleanup-all-pending-reviews')
+  async cleanupAllPendingReviews() {
+    const removedCount = await this.parserService.cleanupAllPendingReviews();
+    return {
+      success: true,
+      message: `Cleaned up ${removedCount} pending reviews`,
+      removedCount,
+    };
+  }
+
+  @Get('debug/entities-count')
+  async getEntitiesCount() {
+    const debug = await this.parserService.getEntitiesDebugInfo();
+    return {
+      success: true,
+      data: debug,
+    };
+  }
+
+  @Get('debug/parsed-schedules')
+  async getDebugParsedSchedules() {
+    try {
+      // Get all parsed schedules for debugging
+      const allParsedSchedules = await this.parserService.getAllParsedSchedulesForDebug();
+      return {
+        success: true,
+        data: allParsedSchedules,
+      };
+    } catch (error) {
+      this.logger.error('❌ Failed to get debug parsed schedules:', error);
+      throw error;
+    }
+  }
+
+  @Post('parse-and-save')
+  async parseAndSaveWebsite(@Body() body: { url: string; autoApprove?: boolean }) {
+    try {
+      this.logger.log(`🌐 Parse and save website: ${body.url}, autoApprove: ${body.autoApprove}`);
+
+      const parsedData = await this.parserService.parseWebsite(body.url);
+
+      // Calculate confidence scores from the parsed data
+      const avgShowConfidence =
+        parsedData.shows?.length > 0
+          ? parsedData.shows.reduce((sum, show) => sum + (show.confidence || 50), 0) /
+            parsedData.shows.length
+          : 0;
+
+      return {
+        success: true,
+        message: body.autoApprove
+          ? 'Website parsed and saved automatically'
+          : 'Website parsed and saved for review',
+        data: {
+          vendor: parsedData.vendor?.name || 'Unknown',
+          showsCount: parsedData.shows?.length || 0,
+          confidence: {
+            vendor: parsedData.vendor?.confidence || 50,
+            avgShowConfidence,
+          },
+        },
+      };
+    } catch (error) {
+      this.logger.error('❌ Failed to parse and save website:', error);
+      throw error;
+    }
+  }
+
+  @Post('parse-stevesdj')
+  async parseStevesdj() {
+    try {
+      // Use the generic parseWebsite method instead
+      const result = await this.parserService.parseWebsite('https://stevesdj.com/karaoke-schedule');
+
+      // Calculate confidence scores from the parsed data
+      const avgShowConfidence =
+        result.shows?.length > 0
+          ? result.shows.reduce((sum, show) => sum + (show.confidence || 50), 0) /
+            result.shows.length
+          : 0;
+
+      return {
+        success: true,
+        message: "Steve's DJ website parsed successfully",
+        data: {
+          vendor: result.vendor?.name || 'Unknown',
+          showsCount: result.shows?.length || 0,
+          confidence: {
+            vendor: result.vendor?.confidence || 50,
+            avgShowConfidence,
+          },
+          parsedShowsCount: result.shows?.length || 0,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+}
+
+// Simple test controller without authentication
+@Controller('parser-test')
+export class SimpleTestController {
+  constructor(private readonly parserService: KaraokeParserService) {}
+
+  @Get('stevesdj')
+  async testParseStevesdj() {
+    try {
+      const result = await this.parserService.parseWebsite('https://stevesdj.com/karaoke-schedule');
+
+      // Calculate confidence scores from the parsed data
+      const avgShowConfidence =
+        result.shows?.length > 0
+          ? Math.round(
+              result.shows.reduce((sum, show) => sum + (show.confidence || 80), 0) /
+                result.shows.length,
+            )
+          : 80;
+
+      return {
+        success: true,
+        message: "Steve's DJ website parsed successfully",
+        data: {
+          vendor: result.vendor?.name || 'Unknown Vendor',
+          showsCount: result.shows?.length || 0,
+          confidence: {
+            vendor: result.parsedData.vendor?.confidence || 75,
+            avgShowConfidence,
+          },
+          parsedShowsCount: result.parsedData.shows?.length || 0,
+          status: result.savedEntities.vendor ? 'saved' : 'pending_review',
+        },
+        rawShows: result.parsedData.shows || [], // Include raw show data for debugging
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        stack: error.stack,
+      };
+    }
+  }
+
+  @Post('cleanup')
+  async testCleanupInvalidReviews() {
+    try {
+      const removedCount = await this.parserService.cleanupInvalidPendingReviews();
+      return {
+        success: true,
+        message: `Cleaned up ${removedCount} invalid pending reviews`,
+        removedCount,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        stack: error.stack,
+      };
+    }
+  }
+
+  @Post('cleanup-all')
+  async testCleanupAllReviews() {
+    try {
+      const removedCount = await this.parserService.cleanupAllPendingReviews();
+      return {
+        success: true,
+        message: `Cleaned up ${removedCount} pending reviews`,
+        removedCount,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        stack: error.stack,
+      };
+    }
+  }
+}

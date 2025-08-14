@@ -11,7 +11,6 @@ import { ConfigApiModule } from './config/config.module';
 import { getDatabaseConfig } from './config/database.config';
 import { DJModule } from './dj/dj.module';
 import { FavoriteModule } from './favorite/favorite.module';
-import { KJModule } from './kj/kj.module';
 import { ParserModule } from './parser/parser.module';
 import { ShowModule } from './show/show.module';
 import { UserModule } from './user/user.module';
@@ -53,7 +52,6 @@ import { WebSocketModule } from './websocket/websocket.module';
     WebSocketModule,
     UserModule,
     VendorModule,
-    KJModule,
     DJModule,
     ShowModule,
     FavoriteModule,
