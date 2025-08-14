@@ -2,10 +2,20 @@ import { BannerAd, WideAd } from '@components/AdPlaceholder';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
-import { faMusic, faPause, faPlay, faSearch } from '@fortawesome/free-solid-svg-icons';
+import {
+  faChevronRight,
+  faCompactDisc,
+  faHome,
+  faMusic,
+  faPause,
+  faPlay,
+  faSearch,
+  faUser,
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Box,
+  Breadcrumbs,
   Button,
   Card,
   CardContent,
@@ -16,6 +26,7 @@ import {
   Grid,
   IconButton,
   InputAdornment,
+  Link,
   List,
   ListItem,
   ListItemButton,
@@ -29,10 +40,25 @@ import {
 import { musicStore, subscriptionStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
+import {
+  Link as RouterLink,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 
 export const MusicPage: React.FC = observer(() => {
   const theme = useTheme();
-  const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get search query from URL params
+  const urlSearchQuery = searchParams.get('q') || '';
+  const [searchQuery, setSearchQuery] = useState(urlSearchQuery);
+
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -40,12 +66,32 @@ export const MusicPage: React.FC = observer(() => {
     'favorites',
   );
 
+  // Determine current view based on route
+  const getCurrentView = () => {
+    const path = location.pathname;
+    if (path.includes('/category/')) return 'category';
+    if (path.includes('/artist/')) return 'artist';
+    if (path.includes('/song/')) return 'song';
+    if (path.includes('/search') || urlSearchQuery) return 'search';
+    return 'home';
+  };
+
+  const currentView = getCurrentView();
+
   useEffect(() => {
     // Clear any previous results when component mounts
     musicStore.clearResults();
     // Fetch subscription status if user is logged in
     subscriptionStore.fetchSubscriptionStatus();
-  }, []);
+
+    // Handle initial load based on route
+    if (currentView === 'search' && urlSearchQuery) {
+      setSearchQuery(urlSearchQuery);
+      musicStore.searchSongs(urlSearchQuery);
+    } else if (currentView === 'category' && params.categoryId) {
+      musicStore.loadCategoryMusic(params.categoryId);
+    }
+  }, [currentView, urlSearchQuery, params.categoryId]);
 
   // Scroll detection for infinite loading
   useEffect(() => {
@@ -72,6 +118,9 @@ export const MusicPage: React.FC = observer(() => {
     const searchTerm = query || searchQuery;
     if (!searchTerm.trim()) return;
 
+    // Update URL with search query
+    navigate(`/music/search?q=${encodeURIComponent(searchTerm)}`);
+
     musicStore.setSearchQuery(searchTerm);
     musicStore.setShowSuggestions(false); // Hide suggestions when searching
     await musicStore.searchCombined(searchTerm);
@@ -81,11 +130,20 @@ export const MusicPage: React.FC = observer(() => {
     const value = event.target.value;
     setSearchQuery(value);
 
-    // Get suggestions for autocomplete
+    // Update URL search params as user types (debounced)
     if (value.trim()) {
-      musicStore.getSuggestions(value);
+      const timeoutId = setTimeout(() => {
+        setSearchParams({ q: value });
+      }, 500);
+      return () => clearTimeout(timeoutId);
+    }
+
+    musicStore.setSearchQuery(value);
+    if (value.trim().length >= 2) {
+      // Use setSuggestions for now since fetchSuggestions doesn't exist
+      musicStore.setSuggestions([]);
     } else {
-      musicStore.setShowSuggestions(false);
+      musicStore.setSuggestions([]);
     }
   };
 
@@ -116,7 +174,31 @@ export const MusicPage: React.FC = observer(() => {
   };
 
   const handleCategoryClick = async (categoryId: string) => {
+    navigate(`/music/category/${categoryId}`);
     await musicStore.loadCategoryMusic(categoryId);
+  };
+
+  // Generate breadcrumbs based on current route
+  const generateBreadcrumbs = () => {
+    const breadcrumbs = [
+      { label: 'Home', href: '/', icon: faHome },
+      { label: 'Music', href: '/music', icon: faMusic },
+    ];
+
+    if (currentView === 'search') {
+      breadcrumbs.push({ label: `Search: "${urlSearchQuery}"`, href: '', icon: faSearch });
+    } else if (currentView === 'category' && params.categoryId) {
+      const category = musicStore.featuredCategories.find((c) => c.id === params.categoryId);
+      breadcrumbs.push({
+        label: category?.title || 'Category',
+        href: '',
+        icon: faCompactDisc,
+      });
+    } else if (currentView === 'artist' && params.artistId) {
+      breadcrumbs.push({ label: 'Artist', href: '', icon: faUser });
+    }
+
+    return breadcrumbs;
   };
 
   const handleFavorite = async (song: any) => {
@@ -177,6 +259,49 @@ export const MusicPage: React.FC = observer(() => {
     <>
       <SEO {...seoConfigs.music} />
       <Container maxWidth="lg" sx={{ py: 4 }}>
+        {/* Breadcrumbs */}
+        <Breadcrumbs
+          separator={<FontAwesomeIcon icon={faChevronRight} style={{ fontSize: '12px' }} />}
+          sx={{ mb: 3 }}
+        >
+          {generateBreadcrumbs().map((crumb: any, index: number) =>
+            crumb.href ? (
+              <Link
+                key={index}
+                component={RouterLink}
+                to={crumb.href}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  textDecoration: 'none',
+                  color: 'text.secondary',
+                  '&:hover': {
+                    color: 'primary.main',
+                  },
+                }}
+              >
+                <FontAwesomeIcon icon={crumb.icon} style={{ fontSize: '14px' }} />
+                {crumb.label}
+              </Link>
+            ) : (
+              <Typography
+                key={index}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  color: 'text.primary',
+                  fontWeight: 500,
+                }}
+              >
+                <FontAwesomeIcon icon={crumb.icon} style={{ fontSize: '14px' }} />
+                {crumb.label}
+              </Typography>
+            ),
+          )}
+        </Breadcrumbs>
+
         {/* Header */}
         <Box sx={{ textAlign: 'center', mb: 6 }}>
           <Typography
@@ -498,7 +623,7 @@ export const MusicPage: React.FC = observer(() => {
                             />
                           )}
                         </Box>
-                        
+
                         {/* Secondary content */}
                         <Box sx={{ mt: 0.5 }}>
                           <Typography variant="body2" color="text.secondary">

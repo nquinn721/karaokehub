@@ -53,13 +53,20 @@ const App: React.FC = observer(() => {
               '&:has([data-homepage])': {
                 p: 0,
                 paddingTop: 0,
-              }
+              },
             }}
           >
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<HomePage />} />
+
+              {/* Music Routes with nested navigation */}
               <Route path="/music" element={<MusicPage />} />
+              <Route path="/music/search" element={<MusicPage />} />
+              <Route path="/music/category/:categoryId" element={<MusicPage />} />
+              <Route path="/music/artist/:artistId" element={<MusicPage />} />
+              <Route path="/music/song/:songId" element={<MusicPage />} />
+
               <Route
                 path="/login"
                 element={
