@@ -59,40 +59,48 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
     };
 
     return (
-      <AppBar
-        position="sticky"
-        elevation={0}
-        sx={{
-          borderBottom: `1px solid ${theme.palette.divider}`,
-          backgroundColor:
-            theme.palette.mode === 'light'
-              ? theme.palette.primary.main // Solid primary color in light mode
-              : theme.palette.background.paper, // Keep current dark mode style
-          color:
-            theme.palette.mode === 'light'
-              ? theme.palette.primary.contrastText // White text on solid primary
-              : theme.palette.text.primary, // Current dark mode text
-        }}
-      >
-        <Toolbar>
-          {showMenuButton && (
-            <IconButton
-              edge="start"
-              color="inherit"
-              aria-label="menu"
-              onClick={() => uiStore.toggleSidebar()}
-              sx={{ mr: 2 }}
-            >
-              <img
-                src="/images/karaoke-hub-logo.png"
-                alt="KaraokeHub Logo"
-                style={{
-                  width: '48px',
-                  height: '48px',
+      <>
+        <AppBar
+          position="sticky"
+          elevation={0}
+          sx={{
+            borderBottom: `1px solid ${theme.palette.divider}`,
+            backgroundColor:
+              theme.palette.mode === 'light'
+                ? theme.palette.primary.main // Solid primary color in light mode
+                : theme.palette.background.paper, // Keep current dark mode style
+            color:
+              theme.palette.mode === 'light'
+                ? theme.palette.primary.contrastText // White text on solid primary
+                : theme.palette.text.primary, // Current dark mode text
+            height: '80px', // Make header taller
+            zIndex: theme.zIndex.appBar,
+          }}
+        >
+          <Toolbar sx={{ height: '100%', minHeight: '80px !important' }}>
+            {showMenuButton && (
+              <IconButton
+                edge="start"
+                color="inherit"
+                aria-label="menu"
+                onClick={() => uiStore.toggleSidebar()}
+                sx={{ 
+                  mr: 2,
+                  position: 'relative',
+                  zIndex: theme.zIndex.appBar + 1, // Ensure logo is above the stripe
                 }}
-              />
-            </IconButton>
-          )}
+              >
+                <img
+                  src="/images/karaoke-hub-logo.png"
+                  alt="KaraokeHub Logo"
+                  style={{
+                    width: '80px', // Make logo much bigger
+                    height: '80px', // Make logo much bigger
+                    transform: 'translateY(10px)', // Allow logo to expand below header
+                  }}
+                />
+              </IconButton>
+            )}
 
           <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
             <Typography
@@ -275,6 +283,21 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
           </Box>
         </Toolbar>
       </AppBar>
+      
+      {/* Horizontal gradient stripe - similar to SingSpot */}
+      <Box
+        sx={{
+          height: '8px',
+          width: '100%',
+          background: theme.palette.mode === 'light'
+            ? 'linear-gradient(90deg, #8B5CF6 0%, #A855F7 25%, #C084FC 50%, #E879F9 75%, #F0ABFC 100%)'
+            : 'linear-gradient(90deg, #6B46C1 0%, #8B5CF6 25%, #A855F7 50%, #C084FC 75%, #E879F9 100%)',
+          position: 'sticky',
+          top: '80px', // Position right below the header
+          zIndex: theme.zIndex.appBar - 1,
+        }}
+      />
+    </>
     );
   },
 );

@@ -43,7 +43,14 @@ const App: React.FC = observer(() => {
         >
           <HeaderComponent />
 
-          <Box component="main" sx={{ flex: 1, p: 3 }}>
+          <Box 
+            component="main" 
+            sx={{ 
+              flex: 1, 
+              p: 3,
+              paddingTop: '20px', // Add extra padding to account for larger logo extending down
+            }}
+          >
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<HomePage />} />
