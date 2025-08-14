@@ -35,7 +35,7 @@ export const MapComponent: React.FC = observer(() => {
   // Initialize config on mount
   useEffect(() => {
     let mounted = true;
-    
+
     const initConfig = async () => {
       try {
         await apiStore.initializeConfig();
