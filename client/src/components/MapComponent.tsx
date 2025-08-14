@@ -15,33 +15,31 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { apiStore, showStore } from '@stores/index';
+import { apiStore, showStore, mapStore } from '@stores/index';
 import { APIProvider, InfoWindow, Map, Marker, useMap } from '@vis.gl/react-google-maps';
 import { observer } from 'mobx-react-lite';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export const MapComponent: React.FC = observer(() => {
   const theme = useTheme();
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
-  const initialCenter = { lat: 40.7128, lng: -74.006 }; // Default to NYC
-  const initialZoom = 13;
-  const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const showListRef = useRef<HTMLDivElement>(null);
 
   // Google Maps API key from server config
   const API_KEY = apiStore.googleMapsApiKey;
 
-  // Initialize config on mount
+  // Initialize config and map store on mount
   useEffect(() => {
     let mounted = true;
 
     const initConfig = async () => {
       try {
         await apiStore.initializeConfig();
+        if (mounted) {
+          await mapStore.initialize();
+        }
       } catch (error) {
         if (mounted) {
-          console.error('Failed to initialize API config:', error);
+          console.error('Failed to initialize API config or map store:', error);
         }
       }
     };
@@ -73,43 +71,19 @@ export const MapComponent: React.FC = observer(() => {
     );
   }
 
-  useEffect(() => {
-    // Get user's location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setUserLocation(location);
-          // If map is already loaded, pan to user location
-          if (mapInstance) {
-            mapInstance.panTo(location);
-            mapInstance.setZoom(14); // Zoom in on user location
-          }
-        },
-        (error) => {
-          console.warn('Error getting user location:', error);
-        },
-      );
-    }
-  }, [mapInstance]);
-
   // Reset map view when shows load
   useEffect(() => {
-    if (showStore.showsWithCoordinates.length > 0 && !userLocation) {
-      resetMapView();
+    if (showStore.showsWithCoordinates.length > 0 && !mapStore.userLocation) {
+      mapStore.resetMapView();
     }
-  }, [showStore.showsWithCoordinates.length, userLocation]);
+  }, [showStore.showsWithCoordinates.length, mapStore.userLocation]);
 
   const handleDayChange = (day: DayOfWeek) => {
     showStore.setSelectedDay(day);
   };
 
   const handleMarkerClick = (show: any) => {
-    setSelectedMarkerId(show.id);
-    showStore.setSelectedShow(show);
+    mapStore.handleMarkerClick(show);
 
     // Scroll to show in list
     if (showListRef.current) {
@@ -121,49 +95,19 @@ export const MapComponent: React.FC = observer(() => {
   };
 
   const handleShowClick = (show: any) => {
-    showStore.setSelectedShow(show);
-    setSelectedMarkerId(show.id);
-    // Center map on the show with higher zoom
-    if (show.lat && show.lng && mapInstance) {
-      mapInstance.panTo({ lat: show.lat, lng: show.lng });
-      mapInstance.setZoom(15); // Zoom in when focusing on a specific show
-    }
-  };
-
-  // Reset map view to show all markers
-  const resetMapView = () => {
-    if (showStore.showsWithCoordinates.length > 0 && mapInstance) {
-      // Calculate bounds to show all shows
-      const bounds = new google.maps.LatLngBounds();
-      showStore.showsWithCoordinates.forEach((show) => {
-        if (show.lat && show.lng) {
-          bounds.extend({ lat: show.lat, lng: show.lng });
-        }
-      });
-
-      // Fit map to show all markers with some padding
-      mapInstance.fitBounds(bounds, 50);
-    }
+    mapStore.panToShow(show);
   };
 
   // MapContent component that has access to the map instance
   const MapContent: React.FC<{
     theme: any;
-    userLocation: { lat: number; lng: number } | null;
-    selectedMarkerId: string | null;
-    setSelectedMarkerId: (id: string | null) => void;
     handleMarkerClick: (show: any) => void;
-    showStore: any;
     formatTime: (time: string) => string;
     onMapLoad: (map: google.maps.Map) => void;
   }> = observer(
     ({
       theme,
-      userLocation,
-      selectedMarkerId,
-      setSelectedMarkerId,
       handleMarkerClick,
-      showStore,
       formatTime,
       onMapLoad,
     }) => {
@@ -178,9 +122,9 @@ export const MapComponent: React.FC = observer(() => {
       return (
         <>
           {/* User Location Marker */}
-          {userLocation && (
+          {mapStore.userLocation && (
             <Marker
-              position={userLocation}
+              position={mapStore.userLocation}
               icon={`data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
               <circle cx="12" cy="12" r="8" fill="${theme.palette.info.main}" stroke="#fff" stroke-width="2"/>
@@ -198,20 +142,19 @@ export const MapComponent: React.FC = observer(() => {
               position={{ lat: show.lat!, lng: show.lng! }}
               onClick={() => handleMarkerClick(show)}
               title={show.venue || show.vendor?.name || 'Karaoke Show'}
-              icon={createMicrophoneIcon(selectedMarkerId === show.id, theme)}
+              icon={createMicrophoneIcon(mapStore.selectedMarkerId === show.id, theme)}
             />
           ))}
 
           {/* Info Window for Selected Show */}
-          {selectedMarkerId && showStore.selectedShow && (
+          {mapStore.selectedMarkerId && showStore.selectedShow && (
             <InfoWindow
               position={{
                 lat: showStore.selectedShow.lat!,
                 lng: showStore.selectedShow.lng!,
               }}
               onCloseClick={() => {
-                setSelectedMarkerId(null);
-                showStore.setSelectedShow(null);
+                mapStore.closeInfoWindow();
               }}
             >
               <Box
@@ -339,8 +282,8 @@ export const MapComponent: React.FC = observer(() => {
             <APIProvider apiKey={API_KEY}>
               <Map
                 style={{ width: '100%', height: '100%' }}
-                defaultCenter={initialCenter}
-                defaultZoom={initialZoom}
+                defaultCenter={mapStore.currentCenter}
+                defaultZoom={mapStore.currentZoom}
                 gestureHandling={'greedy'}
                 disableDefaultUI={false}
                 clickableIcons={true}
@@ -353,13 +296,9 @@ export const MapComponent: React.FC = observer(() => {
               >
                 <MapContent
                   theme={theme}
-                  userLocation={userLocation}
-                  selectedMarkerId={selectedMarkerId}
-                  setSelectedMarkerId={setSelectedMarkerId}
                   handleMarkerClick={handleMarkerClick}
-                  showStore={showStore}
                   formatTime={formatTime}
-                  onMapLoad={setMapInstance}
+                  onMapLoad={mapStore.setMapInstance}
                 />
               </Map>
             </APIProvider>

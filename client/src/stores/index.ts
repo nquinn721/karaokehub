@@ -1,6 +1,7 @@
 import { apiStore } from './ApiStore';
 import { AuthStore } from './AuthStore';
 import { FavoriteStore } from './FavoriteStore';
+import { MapStore } from './MapStore';
 import { ParserStore } from './ParserStore';
 import { ShowStore } from './ShowStore';
 import { ThemeStore } from './ThemeStore';
@@ -17,6 +18,7 @@ export class RootStore {
   webSocketStore: WebSocketStore;
   themeStore: ThemeStore;
   parserStore: ParserStore;
+  mapStore: MapStore;
   apiStore: typeof apiStore;
 
   constructor() {
@@ -28,6 +30,7 @@ export class RootStore {
     this.webSocketStore = new WebSocketStore();
     this.themeStore = new ThemeStore();
     this.parserStore = new ParserStore();
+    this.mapStore = new MapStore();
     this.apiStore = apiStore;
   }
 }
@@ -42,6 +45,7 @@ export const {
   webSocketStore,
   themeStore,
   parserStore,
+  mapStore,
   apiStore: api,
 } = rootStore;
 
