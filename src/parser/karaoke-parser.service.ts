@@ -2120,15 +2120,27 @@ ${content}
       shows: Show[];
     };
   }> {
-    const baseUrl = 'https://stevesdj.com';
-    this.logger.log(`Starting Steve's DJ parsing using new multi-page approach: ${baseUrl}`);
+    const scheduleUrl = 'https://stevesdj.com/karaoke-schedule';
+    this.logger.log(`Starting Steve's DJ schedule parsing: ${scheduleUrl}`);
 
     try {
-      // Use the new parseWebsite method which handles multi-page crawling
-      const parsedData = await this.parseWebsite(baseUrl);
+      // Parse the specific karaoke schedule page directly
+      const parsedData = await this.parseWebsite(scheduleUrl);
+
+      // Override vendor information since we know it's Steve's DJ
+      parsedData.vendor = {
+        name: "Steve's DJ & Karaoke",
+        website: 'https://stevesdj.com',
+        description: 'Professional DJ and karaoke services',
+        confidence: 95,
+      };
+
+      // Clear KJs since we're not focusing on them for this parsing
+      parsedData.kjs = [];
+      parsedData.djs = [];
 
       this.logger.log(
-        `Steve's DJ parsing completed: ${parsedData.kjs?.length || 0} KJs and ${parsedData.shows?.length || 0} shows found`,
+        `Steve's DJ schedule parsing completed: ${parsedData.shows?.length || 0} shows found`,
       );
 
       // Return the parsed data without creating entities immediately
@@ -2142,7 +2154,7 @@ ${content}
         },
       };
     } catch (error) {
-      this.logger.error(`Error in Steve's DJ parsing:`, error);
+      this.logger.error(`Error in Steve's DJ schedule parsing:`, error);
       throw error;
     }
   }
