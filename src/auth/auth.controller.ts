@@ -61,6 +61,14 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req, @Res() res: Response) {
     try {
+      console.log('Google OAuth callback triggered', {
+        user: req.user ? 'User object present' : 'No user object',
+        userId: req.user?.id,
+        userEmail: req.user?.email,
+        environment: process.env.NODE_ENV,
+        frontendUrl: process.env.FRONTEND_URL,
+      });
+
       const user = req.user;
       const token = this.authService.generateToken(user);
 
@@ -75,9 +83,16 @@ export class AuthController {
 
       const frontendUrl = possibleUrls.find((url) => url) || 'http://localhost:5173';
 
+      console.log('Redirecting to frontend with token', {
+        frontendUrl,
+        redirectUrl: `${frontendUrl}/auth/success?token=${token}`,
+      });
+
       // Redirect to frontend with token
       res.redirect(`${frontendUrl}/auth/success?token=${token}`);
     } catch (error) {
+      console.error('Google OAuth callback error:', error);
+      
       const possibleUrls = [
         process.env.FRONTEND_URL,
         'http://localhost:5176',

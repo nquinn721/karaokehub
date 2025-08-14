@@ -27,6 +27,7 @@ export class AppController {
     return {
       nodeEnv: process.env.NODE_ENV,
       frontendUrl: process.env.FRONTEND_URL,
+      backendUrl: process.env.BACKEND_URL,
       allowedOrigins: process.env.ALLOWED_ORIGINS,
       hasGoogleClientId: !!process.env.GOOGLE_CLIENT_ID,
       hasGoogleClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
@@ -34,6 +35,26 @@ export class AppController {
       hasGeminiApiKey: !!process.env.GEMINI_API_KEY,
       hasOpenAiApiKey: !!process.env.OPENAI_API_KEY,
       hasOllamaConfig: !!(process.env.OLLAMA_HOST && process.env.OLLAMA_MODEL),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('api/oauth-debug')
+  getOAuthDebug(): object {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const backendUrl = isProduction
+      ? process.env.BACKEND_URL || 'https://karaokehub-203453576607.us-central1.run.app'
+      : 'http://localhost:8000';
+    
+    return {
+      environment: process.env.NODE_ENV,
+      isProduction,
+      backendUrl,
+      frontendUrl: process.env.FRONTEND_URL,
+      googleCallbackUrl: `${backendUrl}/api/auth/google/callback`,
+      hasGoogleClientId: !!process.env.GOOGLE_CLIENT_ID,
+      googleClientIdPrefix: process.env.GOOGLE_CLIENT_ID?.substring(0, 10) + '...',
+      hasGoogleClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
       timestamp: new Date().toISOString(),
     };
   }
