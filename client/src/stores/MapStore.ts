@@ -1,4 +1,4 @@
-import { makeAutoObservable, runInAction } from 'mobx';
+import { makeAutoObservable, runInAction, autorun } from 'mobx';
 import { apiStore, showStore } from './index';
 
 export interface UserLocation {
@@ -17,6 +17,13 @@ export class MapStore {
 
   constructor() {
     makeAutoObservable(this);
+    
+    // Auto-reset map bounds when shows are loaded and user location is not available
+    autorun(() => {
+      if (showStore.showsWithCoordinates.length > 0 && !this.userLocation && this.mapInstance) {
+        this.resetMapView();
+      }
+    });
   }
 
   // Initialize the map store and config

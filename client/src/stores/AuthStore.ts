@@ -271,4 +271,23 @@ export class AuthStore {
     console.log('Parsed:', stored ? JSON.parse(stored) : null);
     return stored;
   }
+
+  // Handle OAuth success callback
+  async handleAuthSuccess(token: string, navigate: (path: string) => void) {
+    try {
+      // Store the token and set authentication state
+      localStorage.setItem('token', token);
+      this.setToken(token);
+
+      // Fetch user profile with the new token
+      await this.fetchProfile();
+      
+      // Navigate to dashboard on success
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Failed to complete authentication:', error);
+      // Navigate to error page on failure
+      navigate('/auth/error');
+    }
+  }
 }

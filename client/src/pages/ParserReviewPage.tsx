@@ -36,7 +36,7 @@ import {
 } from '@mui/material';
 import { authStore, parserStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 
 const ParserReviewPage: React.FC = observer(() => {
@@ -60,8 +60,13 @@ const ParserReviewPage: React.FC = observer(() => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  useEffect(() => {
-    parserStore.fetchPendingReviews();
+  // Initialize parser store data when component mounts
+  React.useMemo(() => {
+    if (!parserStore.isInitialized) {
+      parserStore.initialize().catch(error => {
+        console.error('Failed to initialize parser store:', error);
+      });
+    }
   }, []);
 
   const handleParseUrl = async () => {

@@ -1,30 +1,19 @@
 import { Box, CircularProgress, Typography } from '@mui/material';
 import { observer } from 'mobx-react-lite';
-import { useEffect } from 'react';
+import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authStore } from '../stores';
 
 const AuthSuccess = observer(() => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-
-  useEffect(() => {
+  
+  // Handle auth success immediately - this will only run once per component lifecycle
+  React.useMemo(() => {
     const token = searchParams.get('token');
 
     if (token) {
-      // Store the token and fetch user profile
-      localStorage.setItem('token', token);
-      authStore.setToken(token);
-
-      // Fetch user profile with the new token
-      authStore
-        .fetchProfile()
-        .then(() => {
-          navigate('/dashboard');
-        })
-        .catch(() => {
-          navigate('/auth/error');
-        });
+      authStore.handleAuthSuccess(token, navigate);
     } else {
       navigate('/auth/error');
     }

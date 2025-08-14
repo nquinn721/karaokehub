@@ -18,7 +18,7 @@ import {
 import { apiStore, mapStore, showStore } from '@stores/index';
 import { APIProvider, InfoWindow, Map, Marker, useMap } from '@vis.gl/react-google-maps';
 import { observer } from 'mobx-react-lite';
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 
 export const MapComponent: React.FC = observer(() => {
   const theme = useTheme();
@@ -27,28 +27,13 @@ export const MapComponent: React.FC = observer(() => {
   // Google Maps API key from server config
   const API_KEY = apiStore.googleMapsApiKey;
 
-  // Initialize config and map store on mount
-  useEffect(() => {
-    let mounted = true;
-
-    const initConfig = async () => {
-      try {
-        await apiStore.initializeConfig();
-        if (mounted) {
-          await mapStore.initialize();
-        }
-      } catch (error) {
-        if (mounted) {
-          console.error('Failed to initialize API config or map store:', error);
-        }
-      }
-    };
-
-    initConfig();
-
-    return () => {
-      mounted = false;
-    };
+  // Initialize stores when component mounts - this will only run once per component lifecycle
+  React.useMemo(() => {
+    if (!mapStore.isInitialized) {
+      mapStore.initialize().catch((error) => {
+        console.error('Failed to initialize map store:', error);
+      });
+    }
   }, []);
 
   if (!apiStore.configLoaded) {
@@ -70,13 +55,6 @@ export const MapComponent: React.FC = observer(() => {
       </Box>
     );
   }
-
-  // Reset map view when shows load
-  useEffect(() => {
-    if (showStore.showsWithCoordinates.length > 0 && !mapStore.userLocation) {
-      mapStore.resetMapView();
-    }
-  }, [showStore.showsWithCoordinates.length, mapStore.userLocation]);
 
   const handleDayChange = (day: DayOfWeek) => {
     showStore.setSelectedDay(day);
@@ -107,11 +85,10 @@ export const MapComponent: React.FC = observer(() => {
   }> = observer(({ theme, handleMarkerClick, formatTime, onMapLoad }) => {
     const map = useMap();
 
-    useEffect(() => {
-      if (map && onMapLoad) {
-        onMapLoad(map);
-      }
-    }, [map, onMapLoad]);
+    // Call onMapLoad immediately when map is available
+    if (map && onMapLoad) {
+      onMapLoad(map);
+    }
 
     return (
       <>
