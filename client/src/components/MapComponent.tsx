@@ -15,7 +15,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { showStore } from '@stores/index';
+import { apiStore, showStore } from '@stores/index';
 import { APIProvider, InfoWindow, Map, Marker, useMap } from '@vis.gl/react-google-maps';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useRef, useState } from 'react';
@@ -29,13 +29,20 @@ export const MapComponent: React.FC = observer(() => {
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const showListRef = useRef<HTMLDivElement>(null);
 
-  // Google Maps API key from environment variable
-  const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  // Google Maps API key from server config
+  const API_KEY = apiStore.googleMapsApiKey;
+
+  if (!apiStore.configLoaded) {
+    return (
+      <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <CircularProgress />
+        <Typography sx={{ ml: 2 }}>Loading configuration...</Typography>
+      </Box>
+    );
+  }
 
   if (!API_KEY) {
-    console.error(
-      'Google Maps API key not found. Please set VITE_GOOGLE_MAPS_API_KEY in your .env file',
-    );
+    console.error('Google Maps API key not found in server configuration');
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">

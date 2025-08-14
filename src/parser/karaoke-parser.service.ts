@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { load } from 'cheerio';
 import fetch from 'node-fetch';
 import OpenAI from 'openai';
+import * as puppeteer from 'puppeteer';
 import { Repository } from 'typeorm';
 import { KJ } from '../kj/kj.entity';
 import { Show } from '../show/show.entity';
@@ -36,6 +37,9 @@ export interface ParsedKaraokeData {
     title: string;
     content: string;
     parsedAt: Date;
+    urls?: string[];
+    totalPages?: number;
+    contentLength?: number;
   };
 }
 
@@ -110,155 +114,61 @@ export class KaraokeParserService {
     this.logger.log(`Starting to parse website: ${url}`);
 
     try {
-      this.logger.log(`Starting multi-page crawling with Cheerio-first approach for ${url}`);
-
-      // Step 1: Use Cheerio to discover all relevant pages on the site
-      const discoveredPages = await this.discoverSitePages(url);
-      this.logger.log(`Discovered ${discoveredPages.length} pages to analyze`);
-
-      // Step 2: Crawl each page and combine content
-      const combinedContent = await this.crawlAndCombinePages(discoveredPages);
-      this.logger.log(
-        `Combined content from ${discoveredPages.length} pages: ${combinedContent.length} characters`,
-      );
-
-      // Step 3: Try Cheerio parsing first (no AI quota used)
-      this.logger.log('🔧 Attempting Cheerio-based parsing first...');
-      const cheerioResult = this.parseWithCheerio(combinedContent, url);
-
-      // Check if Cheerio parsing was successful
-      const cheerioSuccess = this.isParsingSuccessful(cheerioResult);
-      this.logger.log(
-        `Cheerio parsing result: ${cheerioSuccess ? 'SUCCESS' : 'NEEDS_AI_ENHANCEMENT'}`,
-      );
-
-      let finalResult: ParsedKaraokeData;
-
-      if (cheerioSuccess) {
-        // Use Cheerio results directly
-        this.logger.log('✅ Using Cheerio parsing results - no AI quota used');
-        finalResult = cheerioResult;
-      } else {
-        // Only use AI if Cheerio failed and we have AI quota available
-        if (this.shouldUseAI()) {
-          this.logger.log('🤖 Cheerio parsing insufficient, trying AI enhancement...');
-          try {
-            const contentForAI = this.prepareContentForAI(combinedContent, url);
-            const aiResult = await this.analyzeWithSmartAI(contentForAI);
-
-            // Merge Cheerio and AI results for best outcome
-            finalResult = this.mergeCheerioAndAIResults(cheerioResult, aiResult, url);
-            this.logger.log('✅ Used AI enhancement with Cheerio base');
-          } catch (aiError) {
-            this.logger.warn(
-              '❌ AI parsing failed, using Cheerio results as fallback:',
-              aiError.message,
-            );
-            finalResult = cheerioResult;
+      // Step 1: Fetch the main page content
+      this.logger.log(`Fetching content from: ${url}`);
+      const response = await fetch(url);
+      const html = await response.text();
+      
+      // Step 2: Try Cheerio parsing first (fast and reliable)
+      this.logger.log('� Attempting Cheerio-based parsing...');
+      const cheerioResult = this.parseWithCheerio(html, url);
+      
+      // Step 3: Check if we need AI enhancement
+      let finalResult: ParsedKaraokeData = cheerioResult;
+      
+      if (this.shouldUseAI() && (!cheerioResult.vendor.name || cheerioResult.vendor.name === 'Unknown Venue' || cheerioResult.shows.length === 0)) {
+        this.logger.log('🤖 Enhancing with AI analysis...');
+        try {
+          const aiContent = this.prepareContentForAI(html, url);
+          const aiResult = await this.analyzeWithSmartAI(aiContent);
+          
+          if (aiResult && aiResult.vendor && aiResult.shows && aiResult.shows.length > 0) {
+            // Use AI results if they're better
+            finalResult = {
+              vendor: aiResult.vendor.name !== 'Unknown Vendor' ? aiResult.vendor : cheerioResult.vendor,
+              kjs: [...(cheerioResult.kjs || []), ...(aiResult.kjs || [])],
+              shows: aiResult.shows.length > cheerioResult.shows.length ? aiResult.shows : cheerioResult.shows,
+              rawData: {
+                url,
+                title: this.extractTitleFromHtml(html),
+                content: html.substring(0, 2000),
+                parsedAt: new Date(),
+              }
+            };
+            this.logger.log('✅ Used AI enhancement');
           }
-        } else {
-          this.logger.log('⚠️ AI quota exhausted or unavailable, using Cheerio-only results');
-          finalResult = cheerioResult;
+        } catch (error) {
+          this.logger.warn('AI enhancement failed, using Cheerio results:', error.message);
         }
       }
 
-      // Step 3.5: Log validation info for debugging (but don't skip saving)
-      const hasValidData = this.hasValidParsedData(finalResult);
-      this.logger.log(`Parsed data validation result: ${hasValidData ? 'VALID' : 'NEEDS_REVIEW'}`);
-
-      // Step 4: Check if we already have a recent pending review for this URL
-      const existingPendingReview = await this.parsedScheduleRepository.findOne({
-        where: {
-          url: url,
-          status: ParseStatus.PENDING_REVIEW,
-        },
-        order: { createdAt: 'DESC' },
-      });
-
-      if (existingPendingReview) {
-        // Check if the existing review is recent (within last 24 hours)
-        const oneDayAgo = new Date();
-        oneDayAgo.setHours(oneDayAgo.getHours() - 24);
-
-        if (existingPendingReview.createdAt > oneDayAgo) {
-          this.logger.log(
-            `Skipping duplicate - already have pending review for ${url} from ${existingPendingReview.createdAt}`,
-          );
-
-          // Return the data from the existing review
-          const existingAnalysis = existingPendingReview.aiAnalysis;
-          return {
-            vendor: existingAnalysis.vendor,
-            kjs: existingAnalysis.kjs,
-            shows: existingAnalysis.shows,
-            rawData: {
-              url,
-              title: this.extractTitleFromHtml(combinedContent),
-              content: combinedContent.substring(0, 1000),
-              parsedAt: existingPendingReview.createdAt,
-            },
-          };
-        } else {
-          // Old review - update it instead of creating new one
-          this.logger.log(`Updating existing old pending review for ${url}`);
-          existingPendingReview.rawData = {
-            title: this.extractTitleFromHtml(combinedContent),
-            content: combinedContent.substring(0, 5000),
-            parsedAt: new Date(),
-          };
-          existingPendingReview.aiAnalysis = finalResult;
-          existingPendingReview.createdAt = new Date();
-
-          await this.parsedScheduleRepository.save(existingPendingReview);
-
-          const result: ParsedKaraokeData = {
-            vendor: finalResult.vendor,
-            kjs: finalResult.kjs,
-            shows: finalResult.shows,
-            rawData: {
-              url,
-              title: this.extractTitleFromHtml(combinedContent),
-              content: combinedContent.substring(0, 1000),
-              parsedAt: new Date(),
-            },
-          };
-
-          this.logger.log(
-            `Updated existing review for: ${url}. Found ${result.kjs.length} KJs and ${result.shows.length} shows`,
-          );
-          return result;
-        }
-      }
-
-      // Step 5: Save raw parsed data (only if no recent duplicate exists)
-      const parsedSchedule = new ParsedSchedule();
-      parsedSchedule.url = url;
-      parsedSchedule.rawData = {
-        title: this.extractTitleFromHtml(combinedContent),
-        content: combinedContent.substring(0, 5000), // Limit content size for storage
-        parsedAt: new Date(),
-      };
-      parsedSchedule.aiAnalysis = finalResult;
-      parsedSchedule.status = ParseStatus.PENDING_REVIEW;
-
-      await this.parsedScheduleRepository.save(parsedSchedule);
-
-      const result: ParsedKaraokeData = {
-        vendor: finalResult.vendor,
-        kjs: finalResult.kjs,
-        shows: finalResult.shows,
-        rawData: {
-          url,
-          title: this.extractTitleFromHtml(combinedContent),
-          content: combinedContent.substring(0, 1000),
+      // Step 4: Save to database for admin review if we found meaningful data
+      if (finalResult.shows.length > 0 || finalResult.kjs.length > 0) {
+        const parsedSchedule = new ParsedSchedule();
+        parsedSchedule.url = url;
+        parsedSchedule.rawData = {
+          title: finalResult.rawData.title,
+          content: html.substring(0, 5000),
           parsedAt: new Date(),
-        },
-      };
+        };
+        parsedSchedule.aiAnalysis = finalResult;
+        parsedSchedule.status = ParseStatus.PENDING_REVIEW;
 
-      this.logger.log(
-        `Successfully parsed website: ${url}. Found ${result.kjs.length} KJs and ${result.shows.length} shows`,
-      );
-      return result;
+        await this.parsedScheduleRepository.save(parsedSchedule);
+        this.logger.log(`✅ Saved parsed data for admin review - Found ${finalResult.kjs.length} KJs and ${finalResult.shows.length} shows`);
+      }
+
+      return finalResult;
     } catch (error) {
       this.logger.error(`Error parsing website ${url}:`, error);
       throw error;
@@ -621,46 +531,41 @@ ${content}
       });
     }
 
-    // Enhanced patterns for schedule detection
+    // Enhanced and simplified patterns for schedule detection
     const schedulePatterns = [
-      // "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve ALIBI BEACH LOUNGE"
-      /([A-Z][A-Z\s]+DAY[S]?)\s+(?:KARAOKE|DJ|MUSIC|ENTERTAINMENT)\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))\s*(?:-\s*\d{1,2}(?::\d{2})?\s*(?:PM|AM))?\s*(?:with\s+(?:DJ|KJ)\s+([A-Za-z\s]+?))?\s+([A-Z][A-Z\s&]+)/gi,
-
-      // "Monday Karaoke at Blue Moon Bar 8PM"
-      /([A-Za-z]+day)s?\s+(?:karaoke|dj|music)\s+at\s+([A-Za-z\s&']+?)\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
-
-      // "Every Tuesday - DJ Night at The Spot 9:00 PM"
-      /(?:every\s+)?([A-Za-z]+day)s?\s*[-–]\s*(?:karaoke|dj|music).*?at\s+([A-Za-z\s&']+?)\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
-
-      // General day + time patterns
-      /([A-Za-z]+day)s?\s+.*?(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
+      // "Monday 8PM" or "Monday 8:00 PM"
+      /([A-Za-z]+day)s?\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
+      
+      // "Karaoke Monday 8PM" or "DJ Monday 8PM"
+      /(?:karaoke|dj|music)\s+([A-Za-z]+day)s?\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
+      
+      // "Monday Night Karaoke 8PM"
+      /([A-Za-z]+day)\s+(?:night\s+)?(?:karaoke|dj|music)\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
+      
+      // "Every Monday 8PM"
+      /every\s+([A-Za-z]+day)s?\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
+      
+      // "Sundays 7PM-11PM" (with time ranges)
+      /([A-Za-z]+day)s?\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))\s*[-–]\s*\d{1,2}(?::\d{2})?\s*(?:PM|AM)/gi,
+      
+      // "SUNDAYS KARAOKE 7:00PM" (all caps)
+      /([A-Z]+DAYS?)\s+(?:KARAOKE|DJ|MUSIC)\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
     ];
 
     schedulePatterns.forEach((pattern) => {
       let match;
       while ((match = pattern.exec(textContent)) !== null) {
         const day = this.standardizeDayName(match[1]);
-        const time = this.standardizeTime(match[match.length - 1]); // Last capture group is usually time
-
-        let venue = vendorName;
-        let kjName = null;
-
-        // Try to extract venue and KJ from the match
-        if (match.length >= 4 && match[match.length - 2]) {
-          venue = match[match.length - 2].trim();
-        }
-        if (match.length >= 5 && match[3]) {
-          kjName = match[3].trim();
-        }
+        const time = this.standardizeTime(match[2]);
 
         if (day && time) {
           shows.push({
-            venue: this.cleanVenueName(venue),
+            venue: this.cleanVenueName(vendorName),
             date: 'recurring',
             time,
-            kjName,
+            kjName: null,
             description: `Every ${day}`,
-            confidence: 75,
+            confidence: 80,
           });
         }
       }
@@ -904,59 +809,71 @@ ${content}
   // Centralized AI prompt building
   private buildAIPrompt(content: string): string {
     return `
-You are an expert at parsing HTML content from karaoke and DJ service websites to extract structured schedule information.
+You are an expert at parsing comprehensive HTML content from karaoke and DJ service websites to extract structured schedule information.
 
-IMPORTANT: You will receive raw HTML content that may include tags, scripts, styles, and formatting. Focus on finding the actual content within the HTML and ignore structural elements.
+IMPORTANT: You are receiving COMPLETE website content from multiple pages that has been crawled and combined. This includes all relevant pages from the website (homepage, schedule pages, about pages, staff pages, etc.). Focus on finding ALL karaoke/DJ show information across the entire website.
 
-Focus on finding:
+COMPREHENSIVE ANALYSIS INSTRUCTIONS:
 
-1. VENDOR INFORMATION:
+1. VENDOR INFORMATION (Look across ALL pages):
    - Business/company name that runs karaoke shows
-   - Website URL 
-   - Brief description
-   - Confidence level (0-100)
+   - Primary website URL
+   - Business description or mission
+   - Contact information or location details
+   - Confidence level (0-100) based on clarity and consistency
 
-2. KJ/DJ INFORMATION:  
-   - Names of KJs/DJs mentioned
-   - Context about each person
-   - Confidence level (0-100)
+2. KJ/DJ INFORMATION (Extract from ALL pages):  
+   - ALL names of KJs/DJs mentioned anywhere on the website
+   - Staff pages, about pages, show descriptions
+   - Look for patterns like "with DJ Name", "hosted by", "featuring"
+   - Include context about each person if available
+   - Confidence level (0-100) based on how clearly they're identified
 
-3. SHOW INFORMATION:
-   - Specific venue names where shows happen
-   - Days of the week (full names: Monday, Tuesday, etc.)
-   - Specific times (in HH:MM format, 24-hour)
-   - Match KJs to shows if possible
-   - Look for recurring weekly schedules
-   - Confidence level (0-100)
+3. SHOW INFORMATION (Complete schedule extraction):
+   - ALL venue names where shows happen (may be multiple locations)
+   - ALL days of the week (convert to full names: Monday, Tuesday, etc.)
+   - ALL specific times (convert to 24-hour HH:MM format)
+   - Match KJs to specific shows when possible
+   - Look for recurring weekly schedules AND one-time events
+   - Include venue addresses or location details when available
+   - Special events, themed nights, or unique shows
+   - Confidence level (0-100) based on completeness and clarity
+
+PARSING PRIORITIES:
+- Extract EVERYTHING - this is complete website content, not just one page
+- Look for patterns across multiple pages that might contain schedule info
+- Pay attention to navigation menus, footer links, and page titles
+- Cross-reference information between pages for accuracy
+- Include both regular weekly shows AND special events
 
 Return valid JSON with this structure:
 {
   "vendor": {
     "name": "business name",
     "website": "website url", 
-    "description": "brief description",
-    "confidence": 85
+    "description": "comprehensive business description",
+    "confidence": 95
   },
   "kjs": [
     {
-      "name": "KJ/DJ Name",
+      "name": "Full KJ/DJ Name",
       "confidence": 90,
-      "context": "additional info"
+      "context": "where found and additional details"
     }
   ],
   "shows": [
     {
-      "venue": "Venue Name",
+      "venue": "Complete Venue Name",
       "date": "recurring",
       "time": "19:00",
-      "kjName": "KJ Name",
-      "description": "Every Monday",
-      "confidence": 80
+      "kjName": "KJ Name if specified",
+      "description": "Every Monday - additional details",
+      "confidence": 85
     }
   ]
 }
 
-WEBPAGE CONTENT:
+COMPLETE WEBSITE CONTENT:
 ${content}
     `;
   }
@@ -2070,5 +1987,26 @@ ${content}
         shows: savedShows,
       },
     };
+  }
+
+  // Calculate overall confidence score for parsed data
+  private calculateOverallConfidence(parsedData: ParsedKaraokeData): number {
+    const vendorConfidence = parsedData.vendor?.confidence || 0;
+    const kjsAvgConfidence =
+      parsedData.kjs?.length > 0
+        ? parsedData.kjs.reduce((sum, kj) => sum + (kj.confidence || 50), 0) / parsedData.kjs.length
+        : 50;
+    const showsAvgConfidence =
+      parsedData.shows?.length > 0
+        ? parsedData.shows.reduce((sum, show) => sum + (show.confidence || 50), 0) /
+          parsedData.shows.length
+        : 50;
+
+    // Weight vendor confidence most heavily, then shows, then KJs
+    const overallConfidence = Math.round(
+      vendorConfidence * 0.5 + showsAvgConfidence * 0.3 + kjsAvgConfidence * 0.2,
+    );
+
+    return Math.min(Math.max(overallConfidence, 1), 100); // Ensure 1-100 range
   }
 }

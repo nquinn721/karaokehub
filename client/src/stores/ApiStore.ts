@@ -19,6 +19,8 @@ let globalAxiosInstance: AxiosInstance;
 class ApiStore {
   public isLoading = false;
   public error: ApiError | null = null;
+  public clientConfig: { googleMapsApiKey?: string; environment?: string } | null = null;
+  public configLoaded = false;
 
   // Getter to access the non-observable axios instance
   private get axiosInstance(): AxiosInstance {
@@ -57,6 +59,8 @@ class ApiStore {
     makeAutoObservable(this);
     // Initialize axios immediately with fallback
     this.initializeAxios();
+    // Fetch client config on initialization
+    this.fetchClientConfig();
   }
 
   // Method to ensure axios is initialized
@@ -426,8 +430,37 @@ class ApiStore {
     }
   }
 
+  // Fetch client configuration from the server
+  async fetchClientConfig(): Promise<void> {
+    if (this.configLoaded) return; // Don't fetch again if already loaded
+
+    try {
+      const config = await this.get<{ googleMapsApiKey: string; environment: string }>(
+        this.endpoints.config.client,
+      );
+
+      runInAction(() => {
+        this.clientConfig = config;
+        this.configLoaded = true;
+      });
+    } catch (error) {
+      console.error('Failed to fetch client config:', error);
+      // Don't throw here - app should still work without config
+    }
+  }
+
+  // Get Google Maps API key from config
+  get googleMapsApiKey(): string | undefined {
+    return this.clientConfig?.googleMapsApiKey;
+  }
+
   // API endpoints - centralized URL management
   public readonly endpoints = {
+    // Config endpoints
+    config: {
+      client: '/config/client',
+    },
+
     // Auth endpoints
     auth: {
       login: '/auth/login',

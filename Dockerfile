@@ -1,10 +1,6 @@
 # Multi-stage build for React client
 FROM node:20-alpine AS client-builder
 
-# Accept build argument for Google Maps API key
-ARG VITE_GOOGLE_MAPS_API_KEY
-ENV VITE_GOOGLE_MAPS_API_KEY=${VITE_GOOGLE_MAPS_API_KEY}
-
 WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm ci

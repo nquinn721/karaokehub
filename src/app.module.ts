@@ -7,6 +7,7 @@ import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { ConfigApiModule } from './config/config.module';
 import { getDatabaseConfig } from './config/database.config';
 import { FavoriteModule } from './favorite/favorite.module';
 import { KJModule } from './kj/kj.module';
@@ -47,6 +48,7 @@ import { WebSocketModule } from './websocket/websocket.module';
 
     // Feature modules
     AuthModule,
+    ConfigApiModule,
     WebSocketModule,
     UserModule,
     VendorModule,

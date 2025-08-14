@@ -9,7 +9,7 @@ on:
 env:
   PROJECT_ID: heroic-footing-460117-k8
   SERVICE_NAME: karaokehub
-f  REGION: us-central1
+  REGION: us-central1
 
 jobs:
   test:
@@ -61,7 +61,6 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
-            --build-arg VITE_GOOGLE_MAPS_API_KEY=${{ secrets.VITE_GOOGLE_MAPS_API_KEY }} \
             --tag gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA \
             --tag gcr.io/$PROJECT_ID/$SERVICE_NAME:latest \
             .
@@ -89,6 +88,7 @@ jobs:
             --set-env-vars NODE_ENV=production \
             --set-env-vars FRONTEND_URL=https://karaokehub-203453576607.us-central1.run.app \
             --set-env-vars INSTANCE_CONNECTION_NAME=heroic-footing-460117-k8:us-central1:accountant \
+            --update-secrets GOOGLE_MAPS_API_KEY=KARAOKE_HUB_GOOGLE_MAPS_API_KEY:latest \
             --update-secrets DATABASE_HOST=KARAOKE_HUB_DB_HOST:latest \
             --update-secrets DATABASE_PORT=KARAOKE_HUB_DB_PORT:latest \
             --update-secrets DATABASE_NAME=KARAOKE_HUB_DB_NAME:latest \
@@ -98,8 +98,7 @@ jobs:
             --update-secrets JWT_SECRET=KARAOKE_HUB_JWT_SECRET:latest \
             --update-secrets GOOGLE_CLIENT_ID=KARAOKE_HUB_GOOGLE_CLIENT_ID:latest \
             --update-secrets GOOGLE_CLIENT_SECRET=KARAOKE_HUB_GOOGLE_CLIENT_SECRET:latest \
-            --update-secrets GEMINI_API_KEY=KARAOKE_HUB_GEMINI_API_KEY:latest \
-            --update-secrets VITE_GOOGLE_MAPS_API_KEY=KARAOKE_HUB_GOOGLE_MAPS_API_KEY:latest
+            --update-secrets GEMINI_API_KEY=KARAOKE_HUB_GEMINI_API_KEY:latest
 
       - name: Get Cloud Run URL
         run: |
