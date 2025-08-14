@@ -248,18 +248,22 @@ export class SimpleTestController {
         data: {
           vendor:
             result.savedEntities.vendor?.name || result.parsedData.vendor?.name || 'Unknown Vendor',
-          kjsCount: result.parsedData.kjs?.length || 0, // Use parsed data, not saved data
-          showsCount: result.parsedData.shows?.length || 0, // Use parsed data, not saved data
+          kjsCount: result.parsedData.kjs?.length || 0,
+          djsCount: result.parsedData.djs?.length || 0, // Show DJ count
+          showsCount: result.parsedData.shows?.length || 0,
           confidence: {
             vendor: result.parsedData.vendor?.confidence || 75,
             avgKjConfidence,
             avgShowConfidence,
           },
           parsedKjsCount: result.parsedData.kjs?.length || 0,
+          parsedDjsCount: result.parsedData.djs?.length || 0, // Show parsed DJ count
           parsedShowsCount: result.parsedData.shows?.length || 0,
           status: result.savedEntities.vendor ? 'saved' : 'pending_review',
         },
         rawShows: result.parsedData.shows || [], // Include raw show data for debugging
+        rawKJs: result.parsedData.kjs || [], // Include raw KJ data for debugging
+        rawDJs: result.parsedData.djs || [], // Include raw DJ data for debugging
       };
     } catch (error) {
       return {

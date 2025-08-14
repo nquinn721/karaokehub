@@ -3,6 +3,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { User } from '../entities/user.entity';
 import { Favorite } from '../favorite/favorite.entity';
 import { KJ } from '../kj/kj.entity';
+import { DJ } from '../dj/dj.entity';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
@@ -35,7 +36,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     // MySQL2 driver-specific options
     extra: mysql2Options,
 
-    entities: [User, Vendor, KJ, Show, Favorite, ParsedSchedule],
+    entities: [User, Vendor, KJ, DJ, Show, Favorite, ParsedSchedule],
     synchronize: !isProduction, // Only sync schema in development
     logging: !isProduction
       ? ['query', 'error', 'warn']
