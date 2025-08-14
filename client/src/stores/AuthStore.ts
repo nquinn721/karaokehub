@@ -281,7 +281,7 @@ export class AuthStore {
 
       // Fetch user profile with the new token
       await this.fetchProfile();
-      
+
       // Navigate to dashboard on success
       navigate('/dashboard');
     } catch (error) {

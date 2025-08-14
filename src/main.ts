@@ -26,7 +26,16 @@ async function bootstrap() {
           styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com'],
           imgSrc: ["'self'", 'data:', 'https:'],
-          scriptSrc: ["'self'"],
+          scriptSrc: [
+            "'self'", 
+            'https://maps.googleapis.com',
+            'https://maps.gstatic.com'
+          ],
+          connectSrc: [
+            "'self'",
+            'https://maps.googleapis.com',
+            'https://maps.gstatic.com'
+          ],
         },
       },
       crossOriginEmbedderPolicy: false,

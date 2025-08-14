@@ -1,5 +1,4 @@
-import { makeAutoObservable, runInAction, autorun } from 'mobx';
-import { apiStore, showStore } from './index';
+import { autorun, makeAutoObservable, runInAction } from 'mobx';
 
 export interface UserLocation {
   lat: number;
@@ -14,25 +13,37 @@ export class MapStore {
   public initialZoom = 13;
   public isInitialized = false;
   public locationError: string | null = null;
+  
+  // Store references to avoid circular dependencies
+  private apiStore: any = null;
+  private showStore: any = null;
 
   constructor() {
     makeAutoObservable(this);
-    
-    // Auto-reset map bounds when shows are loaded and user location is not available
-    autorun(() => {
-      if (showStore.showsWithCoordinates.length > 0 && !this.userLocation && this.mapInstance) {
-        this.resetMapView();
-      }
-    });
   }
 
-  // Initialize the map store and config
+  // Initialize the map store and set up reactive behaviors
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
+    // Import stores here to avoid circular dependency
+    const { apiStore } = await import('./ApiStore');
+    const { showStore } = await import('./ShowStore');
+    
+    // Set store references
+    this.apiStore = apiStore;
+    this.showStore = showStore;
+
     try {
       // Ensure API config is loaded
-      await apiStore.initializeConfig();
+      await this.apiStore.initializeConfig();
+
+      // Set up autorun after stores are available
+      autorun(() => {
+        if (this.showStore.showsWithCoordinates.length > 0 && !this.userLocation && this.mapInstance) {
+          this.resetMapView();
+        }
+      });
 
       // Get user location
       this.getUserLocation();
@@ -119,7 +130,7 @@ export class MapStore {
     });
 
     // Update selected show in show store
-    showStore.setSelectedShow(show);
+    this.showStore?.setSelectedShow(show);
   }
 
   // Close info window
@@ -129,19 +140,19 @@ export class MapStore {
     });
 
     // Clear selected show
-    showStore.setSelectedShow(null);
+    this.showStore?.setSelectedShow(null);
   }
 
   // Reset map view to show all shows
   resetMapView(): void {
-    if (!this.mapInstance || showStore.showsWithCoordinates.length === 0) {
+    if (!this.mapInstance || !this.showStore?.showsWithCoordinates.length) {
       return;
     }
 
     const bounds = new google.maps.LatLngBounds();
 
     // Add all show coordinates to bounds
-    showStore.showsWithCoordinates.forEach((show) => {
+    this.showStore.showsWithCoordinates.forEach((show: any) => {
       if (show.lat && show.lng) {
         bounds.extend({
           lat: show.lat,
@@ -187,12 +198,12 @@ export class MapStore {
 
   // Get Google Maps API key
   get apiKey(): string | undefined {
-    return apiStore.googleMapsApiKey;
+    return this.apiStore?.googleMapsApiKey;
   }
 
   // Check if config is loaded
   get isConfigLoaded(): boolean {
-    return apiStore.configLoaded;
+    return this.apiStore?.configLoaded || false;
   }
 
   // Get current center for map

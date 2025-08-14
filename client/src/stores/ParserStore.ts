@@ -54,7 +54,7 @@ export class ParserStore {
   // Initialize store by fetching pending reviews
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
-    
+
     await this.fetchPendingReviews();
     runInAction(() => {
       this.isInitialized = true;

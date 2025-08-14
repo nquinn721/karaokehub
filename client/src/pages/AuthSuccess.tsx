@@ -7,7 +7,7 @@ import { authStore } from '../stores';
 const AuthSuccess = observer(() => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
+
   // Handle auth success immediately - this will only run once per component lifecycle
   React.useMemo(() => {
     const token = searchParams.get('token');

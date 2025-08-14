@@ -63,7 +63,7 @@ const ParserReviewPage: React.FC = observer(() => {
   // Initialize parser store data when component mounts
   React.useMemo(() => {
     if (!parserStore.isInitialized) {
-      parserStore.initialize().catch(error => {
+      parserStore.initialize().catch((error) => {
         console.error('Failed to initialize parser store:', error);
       });
     }
