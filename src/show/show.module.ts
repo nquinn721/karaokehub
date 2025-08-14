@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { GeocodingService } from '../geocoding/geocoding.service';
 import { ShowController } from './show.controller';
 import { Show } from './show.entity';
 import { ShowService } from './show.service';
@@ -7,7 +8,7 @@ import { ShowService } from './show.service';
 @Module({
   imports: [TypeOrmModule.forFeature([Show])],
   controllers: [ShowController],
-  providers: [ShowService],
+  providers: [ShowService, GeocodingService],
   exports: [ShowService],
 })
 export class ShowModule {}

@@ -1,0 +1,64 @@
+<svg width="400" height="250" viewBox="0 0 400 250" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="rock-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#434343;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#000000;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF4081;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow3">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="250" fill="url(#rock-gradient)" rx="15"/>
+  
+  <!-- Lightning bolt -->
+  <g transform="translate(100,80)">
+    <polygon points="0,0 20,0 10,30 25,30 5,60 15,35 0,35" fill="rgba(255,255,0,0.8)" filter="url(#glow3)"/>
+  </g>
+  
+  <!-- Guitar silhouette -->
+  <g transform="translate(200,70)" filter="url(#glow3)">
+    <!-- Guitar body -->
+    <ellipse cx="0" cy="20" rx="25" ry="35" fill="rgba(255,255,255,0.9)"/>
+    <ellipse cx="0" cy="20" rx="15" ry="25" fill="rgba(0,0,0,0.3)"/>
+    <!-- Guitar neck -->
+    <rect x="-3" y="-40" width="6" height="60" fill="rgba(255,255,255,0.9)"/>
+    <!-- Guitar head -->
+    <rect x="-5" y="-50" width="10" height="15" fill="rgba(255,255,255,0.9)" rx="2"/>
+    <!-- Strings -->
+    <line x1="-2" y1="-40" x2="-2" y2="50" stroke="rgba(0,0,0,0.5)" stroke-width="0.5"/>
+    <line x1="0" y1="-40" x2="0" y2="50" stroke="rgba(0,0,0,0.5)" stroke-width="0.5"/>
+    <line x1="2" y1="-40" x2="2" y2="50" stroke="rgba(0,0,0,0.5)" stroke-width="0.5"/>
+    <!-- Sound hole -->
+    <circle cx="0" cy="20" r="8" fill="rgba(0,0,0,0.7)"/>
+  </g>
+  
+  <!-- Rock hand gesture -->
+  <g transform="translate(300,120)">
+    <path d="M0,0 Q-5,-10 -3,-20 Q0,-25 5,-20 Q8,-15 10,-10 Q12,-5 15,0 Q12,5 8,8 Q5,10 0,8 Q-5,5 0,0" fill="rgba(255,255,255,0.8)"/>
+    <circle cx="-2" cy="-15" r="2" fill="rgba(255,255,255,0.8)"/>
+    <circle cx="12" cy="-8" r="2" fill="rgba(255,255,255,0.8)"/>
+  </g>
+  
+  <!-- Title -->
+  <text x="200" y="180" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="30" font-weight="bold" filter="url(#glow3)">
+    ROCK HITS
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="200" y="210" text-anchor="middle" fill="rgba(255,255,255,0.9)" font-family="Arial, sans-serif" font-size="14" font-weight="normal">
+    Power chords and epic solos
+  </text>
+  
+  <!-- Energy waves -->
+  <g stroke="rgba(255,64,129,0.4)" stroke-width="2" fill="none">
+    <path d="M50,200 Q100,190 150,200 Q200,210 250,200 Q300,190 350,200"/>
+    <path d="M50,210 Q100,200 150,210 Q200,220 250,210 Q300,200 350,210"/>
+  </g>
+</svg>

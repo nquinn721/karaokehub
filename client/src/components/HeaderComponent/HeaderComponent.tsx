@@ -1,4 +1,10 @@
-import { faCog, faSignOutAlt, faUser, faUserShield } from '@fortawesome/free-solid-svg-icons';
+import {
+  faCog,
+  faMusic,
+  faSignOutAlt,
+  faUser,
+  faUserShield,
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   AppBar,
@@ -12,7 +18,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { authStore, uiStore } from '@stores/index';
+import { authStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -79,225 +85,298 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
         >
           <Toolbar sx={{ height: '100%', minHeight: '80px !important' }}>
             {showMenuButton && (
-              <IconButton
-                edge="start"
-                color="inherit"
-                aria-label="menu"
-                onClick={() => uiStore.toggleSidebar()}
-                sx={{ 
+              <Box
+                onClick={() => navigate('/')}
+                sx={{
                   mr: 2,
                   position: 'relative',
                   zIndex: theme.zIndex.appBar + 1, // Ensure logo is above the stripe
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  '&:hover': {
+                    transform: 'scale(1.05)',
+                    transition: 'transform 0.2s ease-in-out',
+                  },
                 }}
               >
                 <img
                   src="/images/karaoke-hub-logo.png"
                   alt="KaraokeHub Logo"
                   style={{
-                    width: '80px', // Make logo much bigger
-                    height: '80px', // Make logo much bigger
-                    transform: 'translateY(10px)', // Allow logo to expand below header
+                    width: '140px', // Make logo bigger
+                    height: '140px', // Make logo bigger
+                    transform: 'translateY(30px)', // Allow 1/3 of logo to expand below header (47px out of 140px)
                   }}
                 />
-              </IconButton>
+              </Box>
             )}
 
-          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
-            <Typography
-              variant="h6"
-              component="div"
-              onClick={() => navigate('/')}
-              sx={{
-                fontWeight: 600,
-                cursor: 'pointer',
-                color: theme.palette.mode === 'light' ? '#FFFFFF' : 'transparent',
-                background:
+            <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+              <Typography
+                variant="h6"
+                component="div"
+                onClick={() => navigate('/')}
+                sx={{
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  color: theme.palette.mode === 'light' ? '#FFFFFF' : 'transparent',
+                  background:
+                    theme.palette.mode === 'light'
+                      ? 'none'
+                      : 'linear-gradient(135deg, #8fa8f7 0%, #9d6db8 50%, #f5b8fd 100%)',
+                  WebkitBackgroundClip: theme.palette.mode === 'light' ? 'initial' : 'text',
+                  WebkitTextFillColor: theme.palette.mode === 'light' ? '#FFFFFF' : 'transparent',
+                  backgroundClip: theme.palette.mode === 'light' ? 'initial' : 'text',
+                  textShadow:
+                    theme.palette.mode === 'light' ? '1px 1px 2px rgba(0,0,0,0.3)' : 'none',
+                  display: 'inline-block',
+                  '&:hover': {
+                    opacity: 0.8,
+                    transform: 'scale(1.02)',
+                    transition: 'all 0.2s ease-in-out',
+                  },
+                }}
+              >
+                {title}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {/* Theme Toggle - Always visible */}
+              <ThemeToggle />
+
+              {/* Music Search - Always visible */}
+              <Button
+                color="primary"
+                variant={theme.palette.mode === 'light' ? 'contained' : 'outlined'}
+                size="small"
+                onClick={() => navigate('/music')}
+                startIcon={<FontAwesomeIcon icon={faMusic} />}
+                sx={
                   theme.palette.mode === 'light'
-                    ? 'none'
-                    : 'linear-gradient(135deg, #8fa8f7 0%, #9d6db8 50%, #f5b8fd 100%)',
-                WebkitBackgroundClip: theme.palette.mode === 'light' ? 'initial' : 'text',
-                WebkitTextFillColor: theme.palette.mode === 'light' ? '#FFFFFF' : 'transparent',
-                backgroundClip: theme.palette.mode === 'light' ? 'initial' : 'text',
-                textShadow: theme.palette.mode === 'light' ? '1px 1px 2px rgba(0,0,0,0.3)' : 'none',
-                display: 'inline-block',
-                '&:hover': {
-                  opacity: 0.8,
-                  transform: 'scale(1.02)',
-                  transition: 'all 0.2s ease-in-out',
-                },
-              }}
-            >
-              {title}
-            </Typography>
-          </Box>
+                    ? {
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                        color: theme.palette.primary.contrastText,
+                        borderColor: 'rgba(255, 255, 255, 0.3)',
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                        },
+                      }
+                    : {}
+                }
+              >
+                Music
+              </Button>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {/* Theme Toggle - Always visible */}
-            <ThemeToggle />
+              {authStore.isAuthenticated ? (
+                <>
+                  <Button
+                    color="primary"
+                    variant={theme.palette.mode === 'light' ? 'contained' : 'outlined'}
+                    size="small"
+                    onClick={() => navigate('/dashboard')}
+                    sx={
+                      theme.palette.mode === 'light'
+                        ? {
+                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            color: theme.palette.primary.contrastText,
+                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                            '&:hover': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                            },
+                          }
+                        : {}
+                    }
+                  >
+                    Dashboard
+                  </Button>
 
-            {authStore.isAuthenticated ? (
-              <>
-                <Button
-                  color="primary"
-                  variant={theme.palette.mode === 'light' ? 'contained' : 'outlined'}
-                  size="small"
-                  onClick={() => navigate('/dashboard')}
-                  sx={
-                    theme.palette.mode === 'light'
-                      ? {
-                          backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                          color: theme.palette.primary.contrastText,
-                          borderColor: 'rgba(255, 255, 255, 0.3)',
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                          },
-                        }
-                      : {}
-                  }
-                >
-                  Dashboard
-                </Button>
+                  <IconButton
+                    size="large"
+                    edge="end"
+                    aria-label="account of current user"
+                    aria-controls="primary-search-account-menu"
+                    aria-haspopup="true"
+                    onClick={handleMenuOpen}
+                    color="inherit"
+                  >
+                    {authStore.user?.avatar ? (
+                      <Avatar src={authStore.user.avatar} sx={{ width: 32, height: 32 }} />
+                    ) : (
+                      <FontAwesomeIcon icon={faUser} />
+                    )}
+                  </IconButton>
 
-                <IconButton
-                  size="large"
-                  edge="end"
-                  aria-label="account of current user"
-                  aria-controls="primary-search-account-menu"
-                  aria-haspopup="true"
-                  onClick={handleMenuOpen}
-                  color="inherit"
-                >
-                  {authStore.user?.avatar ? (
-                    <Avatar src={authStore.user.avatar} sx={{ width: 32, height: 32 }} />
-                  ) : (
-                    <FontAwesomeIcon icon={faUser} />
-                  )}
-                </IconButton>
-
-                <Menu
-                  anchorEl={anchorEl}
-                  anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'right',
-                  }}
-                  keepMounted
-                  transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
-                  }}
-                  open={Boolean(anchorEl)}
-                  onClose={handleMenuClose}
-                  PaperProps={{
-                    sx: {
-                      mt: 1,
-                      minWidth: 200,
-                      backgroundColor: theme.palette.background.paper,
-                      border: `1px solid ${theme.palette.divider}`,
-                    },
-                  }}
-                >
-                  {authStore.user && (
-                    <MenuItem disabled>
-                      <Box>
-                        <Typography variant="body2" color="text.primary">
-                          {authStore.user.stageName || authStore.user.name}
-                        </Typography>
-                        {authStore.user.stageName && (
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ fontSize: '0.65rem' }}
-                          >
-                            {authStore.user.name}
+                  <Menu
+                    anchorEl={anchorEl}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'right',
+                    }}
+                    keepMounted
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                    open={Boolean(anchorEl)}
+                    onClose={handleMenuClose}
+                    PaperProps={{
+                      sx: {
+                        mt: 1,
+                        minWidth: 200,
+                        backgroundColor: theme.palette.background.paper,
+                        border: `1px solid ${theme.palette.divider}`,
+                      },
+                    }}
+                  >
+                    {authStore.user && (
+                      <MenuItem disabled>
+                        <Box>
+                          <Typography variant="body2" color="text.primary">
+                            {authStore.user.stageName || authStore.user.name}
                           </Typography>
-                        )}
-                        <Typography variant="caption" color="text.secondary">
-                          {authStore.user.email}
-                        </Typography>
-                      </Box>
+                          {authStore.user.stageName && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ fontSize: '0.65rem' }}
+                            >
+                              {authStore.user.name}
+                            </Typography>
+                          )}
+                          <Typography variant="caption" color="text.secondary">
+                            {authStore.user.email}
+                          </Typography>
+                        </Box>
+                      </MenuItem>
+                    )}
+                    <MenuItem onClick={handleProfile}>
+                      <FontAwesomeIcon icon={faUser} style={{ marginRight: '8px' }} />
+                      Profile
                     </MenuItem>
-                  )}
-                  <MenuItem onClick={handleProfile}>
-                    <FontAwesomeIcon icon={faUser} style={{ marginRight: '8px' }} />
-                    Profile
-                  </MenuItem>
-                  <MenuItem onClick={handleSettings}>
-                    <FontAwesomeIcon icon={faCog} style={{ marginRight: '8px' }} />
-                    Settings
-                  </MenuItem>
-                  {authStore.isAdmin && (
-                    <MenuItem onClick={handleAdminDashboard}>
-                      <FontAwesomeIcon icon={faUserShield} style={{ marginRight: '8px' }} />
-                      Admin Dashboard
+                    <MenuItem onClick={handleSettings}>
+                      <FontAwesomeIcon icon={faCog} style={{ marginRight: '8px' }} />
+                      Settings
                     </MenuItem>
-                  )}
-                  <MenuItem onClick={handleLogout}>
-                    <FontAwesomeIcon icon={faSignOutAlt} style={{ marginRight: '8px' }} />
-                    Logout
-                  </MenuItem>
-                </Menu>
-              </>
-            ) : (
-              <>
-                <Button
-                  color="primary"
-                  variant={theme.palette.mode === 'light' ? 'contained' : 'outlined'}
-                  size="small"
-                  onClick={() => navigate('/login')}
-                  sx={
-                    theme.palette.mode === 'light'
-                      ? {
-                          backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                          color: theme.palette.primary.contrastText,
-                          borderColor: 'rgba(255, 255, 255, 0.3)',
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                          },
-                        }
-                      : {}
-                  }
-                >
-                  Login
-                </Button>
-                <Button
-                  color="primary"
-                  variant="contained"
-                  size="small"
-                  onClick={() => navigate('/register')}
-                  sx={
-                    theme.palette.mode === 'light'
-                      ? {
-                          backgroundColor: theme.palette.primary.contrastText,
-                          color: theme.palette.primary.main,
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                          },
-                        }
-                      : {}
-                  }
-                >
-                  Sign Up
-                </Button>
-              </>
-            )}
-          </Box>
-        </Toolbar>
-      </AppBar>
-      
-      {/* Horizontal gradient stripe - similar to SingSpot */}
-      <Box
-        sx={{
-          height: '8px',
-          width: '100%',
-          background: theme.palette.mode === 'light'
-            ? 'linear-gradient(90deg, #8B5CF6 0%, #A855F7 25%, #C084FC 50%, #E879F9 75%, #F0ABFC 100%)'
-            : 'linear-gradient(90deg, #6B46C1 0%, #8B5CF6 25%, #A855F7 50%, #C084FC 75%, #E879F9 100%)',
-          position: 'sticky',
-          top: '80px', // Position right below the header
-          zIndex: theme.zIndex.appBar - 1,
-        }}
-      />
-    </>
+                    {authStore.isAdmin && (
+                      <MenuItem onClick={handleAdminDashboard}>
+                        <FontAwesomeIcon icon={faUserShield} style={{ marginRight: '8px' }} />
+                        Admin Dashboard
+                      </MenuItem>
+                    )}
+                    <MenuItem onClick={handleLogout}>
+                      <FontAwesomeIcon icon={faSignOutAlt} style={{ marginRight: '8px' }} />
+                      Logout
+                    </MenuItem>
+                  </Menu>
+                </>
+              ) : (
+                <>
+                  <Button
+                    color="primary"
+                    variant={theme.palette.mode === 'light' ? 'contained' : 'outlined'}
+                    size="small"
+                    onClick={() => navigate('/login')}
+                    sx={
+                      theme.palette.mode === 'light'
+                        ? {
+                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            color: theme.palette.primary.contrastText,
+                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                            '&:hover': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                            },
+                          }
+                        : {}
+                    }
+                  >
+                    Login
+                  </Button>
+                  <Button
+                    color="primary"
+                    variant="contained"
+                    size="small"
+                    onClick={() => navigate('/register')}
+                    sx={
+                      theme.palette.mode === 'light'
+                        ? {
+                            backgroundColor: theme.palette.primary.contrastText,
+                            color: theme.palette.primary.main,
+                            '&:hover': {
+                              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            },
+                          }
+                        : {}
+                    }
+                  >
+                    Get Started
+                  </Button>
+                </>
+              )}
+            </Box>
+          </Toolbar>
+        </AppBar>
+
+        {/* Horizontal gradient stripe with tagline and content - similar to SingSpot */}
+        <Box
+          sx={{
+            height: '170px', // Increased height for more bottom padding
+            width: '100%',
+            background:
+              theme.palette.mode === 'light'
+                ? 'linear-gradient(90deg, #8B5CF6 0%, #A855F7 25%, #C084FC 50%, #E879F9 75%, #F0ABFC 100%)'
+                : 'linear-gradient(90deg, #6B46C1 0%, #8B5CF6 25%, #A855F7 50%, #C084FC 75%, #E879F9 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 0.5,
+            px: 2,
+            paddingTop: '47px', // Add padding instead of margin to push text below logo
+            paddingBottom: '20px', // Add bottom padding for better spacing
+          }}
+        >
+          <Typography
+            variant="h5"
+            sx={{
+              color: 'white',
+              fontWeight: 'bold',
+              textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
+              fontSize: { xs: '1.1rem', md: '1.3rem' }, // Slightly smaller to fit better
+            }}
+          >
+            Sing. Discover. Connect.
+          </Typography>
+
+          <Typography
+            variant="h6"
+            sx={{
+              color: 'white',
+              fontWeight: 300,
+              textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
+              fontSize: { xs: '1rem', md: '1.1rem' }, // Smaller to fit
+            }}
+          >
+            Your Karaoke Spot
+          </Typography>
+
+          <Typography
+            variant="body1"
+            sx={{
+              color: 'rgba(255, 255, 255, 0.9)',
+              textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
+              textAlign: 'center',
+              maxWidth: '600px',
+              fontSize: { xs: '0.85rem', md: '0.95rem' }, // Smaller to fit
+              lineHeight: 1.2, // Tighter line height
+            }}
+          >
+            Discover amazing karaoke venues, connect with fellow singers, and make every night
+            unforgettable
+          </Typography>
+        </Box>
+      </>
     );
   },
 );

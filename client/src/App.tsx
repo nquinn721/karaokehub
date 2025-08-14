@@ -13,6 +13,7 @@ import AuthSuccess from './pages/AuthSuccess';
 import DashboardPage from './pages/DashboardPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+import MusicPage from './pages/MusicPage';
 import ParserReviewPage from './pages/ParserReviewPage';
 import ProfilePage from './pages/ProfilePage';
 import RegisterPage from './pages/RegisterPage';
@@ -43,17 +44,18 @@ const App: React.FC = observer(() => {
         >
           <HeaderComponent />
 
-          <Box 
-            component="main" 
-            sx={{ 
-              flex: 1, 
+          <Box
+            component="main"
+            sx={{
+              flex: 1,
               p: 3,
-              paddingTop: '20px', // Add extra padding to account for larger logo extending down
+              paddingTop: '24px', // Minimal padding since secondary header is now properly positioned
             }}
           >
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<HomePage />} />
+              <Route path="/music" element={<MusicPage />} />
               <Route
                 path="/login"
                 element={

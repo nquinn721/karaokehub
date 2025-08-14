@@ -10,10 +10,11 @@ export class MapStore {
   public selectedMarkerId: string | null = null;
   public mapInstance: google.maps.Map | null = null;
   public initialCenter = { lat: 40.7128, lng: -74.006 }; // Default to NYC
-  public initialZoom = 13;
+  public initialZoom = 8; // Much more zoomed out to show whole city/region
   public isInitialized = false;
   public locationError: string | null = null;
-  
+  public hasSetInitialBounds = false; // Flag to prevent infinite autorun loops
+
   // Store references to avoid circular dependencies
   private apiStore: any = null;
   private showStore: any = null;
@@ -29,7 +30,7 @@ export class MapStore {
     // Import stores here to avoid circular dependency
     const { apiStore } = await import('./ApiStore');
     const { showStore } = await import('./ShowStore');
-    
+
     // Set store references
     this.apiStore = apiStore;
     this.showStore = showStore;
@@ -40,8 +41,17 @@ export class MapStore {
 
       // Set up autorun after stores are available
       autorun(() => {
-        if (this.showStore.showsWithCoordinates.length > 0 && !this.userLocation && this.mapInstance) {
+        // Only run this when we have shows and a map instance, but prevent infinite loops
+        if (
+          this.showStore?.showsWithCoordinates.length > 0 &&
+          this.mapInstance &&
+          !this.userLocation &&
+          !this.hasSetInitialBounds
+        ) {
           this.resetMapView();
+          runInAction(() => {
+            this.hasSetInitialBounds = true;
+          });
         }
       });
 
@@ -111,7 +121,12 @@ export class MapStore {
   }
 
   // Set the map instance
-  setMapInstance(map: google.maps.Map | null): void {
+  setMapInstance = (map: google.maps.Map | null): void => {
+    if (!this) {
+      console.error('MapStore context is undefined');
+      return;
+    }
+
     runInAction(() => {
       this.mapInstance = map;
     });
@@ -121,27 +136,37 @@ export class MapStore {
       map.panTo(this.userLocation);
       map.setZoom(14);
     }
-  }
+  };
 
   // Handle marker click
-  handleMarkerClick(show: any): void {
+  handleMarkerClick = (show: any): void => {
+    if (!this) {
+      console.error('MapStore context is undefined in handleMarkerClick');
+      return;
+    }
+
     runInAction(() => {
       this.selectedMarkerId = show.id;
     });
 
     // Update selected show in show store
     this.showStore?.setSelectedShow(show);
-  }
+  };
 
   // Close info window
-  closeInfoWindow(): void {
+  closeInfoWindow = (): void => {
+    if (!this) {
+      console.error('MapStore context is undefined in closeInfoWindow');
+      return;
+    }
+
     runInAction(() => {
       this.selectedMarkerId = null;
     });
 
     // Clear selected show
     this.showStore?.setSelectedShow(null);
-  }
+  };
 
   // Reset map view to show all shows
   resetMapView(): void {
@@ -169,10 +194,10 @@ export class MapStore {
     // Fit map to bounds
     this.mapInstance.fitBounds(bounds);
 
-    // Set minimum zoom level
+    // Set maximum zoom level to maintain city-wide view
     const listener = google.maps.event.addListener(this.mapInstance, 'bounds_changed', () => {
-      if (this.mapInstance && this.mapInstance.getZoom()! > 15) {
-        this.mapInstance.setZoom(15);
+      if (this.mapInstance && this.mapInstance.getZoom()! > 12) {
+        this.mapInstance.setZoom(12); // Prevent zooming in too close
       }
       google.maps.event.removeListener(listener);
     });
@@ -213,7 +238,7 @@ export class MapStore {
 
   // Get current zoom level
   get currentZoom(): number {
-    return this.userLocation ? 14 : this.initialZoom;
+    return this.userLocation ? 9 : this.initialZoom; // 9 = ~20 mile radius when user location available
   }
 
   // Check if a specific marker is selected
@@ -227,6 +252,7 @@ export class MapStore {
       this.mapInstance = null;
       this.selectedMarkerId = null;
       this.isInitialized = false;
+      this.hasSetInitialBounds = false; // Reset bounds flag
     });
   }
 }

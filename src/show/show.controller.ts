@@ -55,4 +55,9 @@ export class ShowController {
   remove(@Param('id') id: string) {
     return this.showService.remove(id);
   }
+
+  @Post('geocode')
+  geocodeExistingShows() {
+    return this.showService.geocodeExistingShows();
+  }
 }

@@ -2,120 +2,15 @@ import { CustomCard } from '@components/CustomCard';
 import { MapComponent } from '@components/MapComponent';
 import { faLocationDot, faMicrophone, faMobile, faUsers } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Box, Button, Container, Grid, Typography, useTheme } from '@mui/material';
-import { authStore } from '@stores/index';
+import { Box, Container, Grid, Typography, useTheme } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 
 const HomePage: React.FC = observer(() => {
   const theme = useTheme();
-  const navigate = useNavigate();
 
   return (
     <Container maxWidth="lg">
-      {/* Hero Section - Inspired by SingSpot */}
-      <Box
-        sx={{
-          textAlign: 'center',
-          py: 8,
-          background:
-            theme.palette.mode === 'light'
-              ? `linear-gradient(135deg, ${theme.palette.primary.main}15, ${theme.palette.secondary.main}10)`
-              : 'transparent',
-          borderRadius: theme.palette.mode === 'light' ? 4 : 0,
-          mb: theme.palette.mode === 'light' ? 4 : 0,
-          mx: theme.palette.mode === 'light' ? -2 : 0,
-          px: theme.palette.mode === 'light' ? 4 : 0,
-        }}
-      >
-        <Typography
-          variant="h1"
-          component="h1"
-          gutterBottom
-          sx={{
-            fontSize: { xs: '2.5rem', md: '4rem' },
-            fontWeight: 'bold',
-            mb: 2,
-            color: theme.palette.text.primary, // Use solid color instead of gradient
-          }}
-        >
-          Sing. Discover. Connect.
-        </Typography>
-
-        <Typography
-          variant="h4"
-          color="text.primary"
-          gutterBottom
-          sx={{
-            fontWeight: 300,
-            mb: 2,
-          }}
-        >
-          Your Karaoke Spot
-        </Typography>
-
-        <Typography
-          variant="h6"
-          color="text.secondary"
-          paragraph
-          sx={{ mb: 6, maxWidth: '600px', mx: 'auto' }}
-        >
-          Discover amazing karaoke venues, connect with fellow singers, and make every night
-          unforgettable
-        </Typography>
-
-        <Box sx={{ mb: 6 }}>
-          {!authStore.isAuthenticated ? (
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={() => navigate('/register')}
-                sx={{
-                  px: 4,
-                  py: 1.5,
-                  borderRadius: 3,
-                  textTransform: 'none',
-                  fontSize: '1.1rem',
-                }}
-              >
-                Get Started
-              </Button>
-              <Button
-                variant="outlined"
-                size="large"
-                onClick={() => navigate('/login')}
-                sx={{
-                  px: 4,
-                  py: 1.5,
-                  borderRadius: 3,
-                  textTransform: 'none',
-                  fontSize: '1.1rem',
-                }}
-              >
-                Sign In
-              </Button>
-            </Box>
-          ) : (
-            <Button
-              variant="contained"
-              size="large"
-              onClick={() => navigate('/dashboard')}
-              sx={{
-                px: 4,
-                py: 1.5,
-                borderRadius: 3,
-                textTransform: 'none',
-                fontSize: '1.1rem',
-              }}
-            >
-              Go to Dashboard
-            </Button>
-          )}
-        </Box>
-      </Box>
-
       {/* Map Section - Moved up to be the main feature */}
       <Box sx={{ mb: 8 }}>
         <Typography

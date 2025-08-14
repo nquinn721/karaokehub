@@ -1,9 +1,10 @@
 import { apiStore } from './ApiStore';
 import { AuthStore } from './AuthStore';
 import { FavoriteStore } from './FavoriteStore';
-import { MapStore } from './MapStore';
+import { MapStore, mapStore as mapStoreInstance } from './MapStore';
+import { MusicStore, musicStore as musicStoreInstance } from './MusicStore';
 import { ParserStore } from './ParserStore';
-import { ShowStore } from './ShowStore';
+import { ShowStore, showStore as showStoreInstance } from './ShowStore';
 import { ThemeStore } from './ThemeStore';
 import { UIStore } from './UIStore';
 import { VendorStore } from './VendorStore';
@@ -19,18 +20,20 @@ export class RootStore {
   themeStore: ThemeStore;
   parserStore: ParserStore;
   mapStore: MapStore;
+  musicStore: MusicStore;
   apiStore: typeof apiStore;
 
   constructor() {
     this.authStore = new AuthStore();
     this.uiStore = new UIStore();
-    this.showStore = new ShowStore();
+    this.showStore = showStoreInstance; // Use the singleton instance
     this.favoriteStore = new FavoriteStore();
     this.vendorStore = new VendorStore();
     this.webSocketStore = new WebSocketStore();
     this.themeStore = new ThemeStore();
     this.parserStore = new ParserStore();
-    this.mapStore = new MapStore();
+    this.mapStore = mapStoreInstance; // Use the singleton instance
+    this.musicStore = musicStoreInstance; // Use the singleton instance
     this.apiStore = apiStore;
   }
 }
@@ -46,6 +49,7 @@ export const {
   themeStore,
   parserStore,
   mapStore,
+  musicStore,
   apiStore: api,
 } = rootStore;
 

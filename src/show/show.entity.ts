@@ -67,6 +67,12 @@ export class Show {
   @Column({ nullable: true })
   imageUrl: string;
 
+  @Column({ type: 'decimal', precision: 10, scale: 8, nullable: true })
+  lat: number;
+
+  @Column({ type: 'decimal', precision: 11, scale: 8, nullable: true })
+  lng: number;
+
   @Column({ default: true })
   isActive: boolean;
 

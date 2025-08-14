@@ -1,4 +1,5 @@
 import { makeAutoObservable, runInAction } from 'mobx';
+import { geocodingService } from '../utils/geocoding';
 import { apiStore } from './ApiStore';
 
 export enum DayOfWeek {
@@ -58,7 +59,7 @@ export class ShowStore {
 
   constructor() {
     makeAutoObservable(this);
-    // Initialize with current day
+    // Initialize with current day but don't fetch automatically
     const today = new Date().getDay();
     const dayMapping = [
       DayOfWeek.SUNDAY,
@@ -77,7 +78,7 @@ export class ShowStore {
       this.selectedDay = day;
       this.selectedShow = null; // Clear selection when changing days
     });
-    this.fetchShows(day);
+    // Don't automatically fetch - let the caller decide when to fetch
   }
 
   setSelectedShow(show: Show | null) {
@@ -92,24 +93,51 @@ export class ShowStore {
 
   async fetchShows(day?: string | DayOfWeek) {
     try {
+      console.log('ShowStore fetchShows called with day:', day);
       this.setLoading(true);
 
       const endpoint = day ? apiStore.endpoints.shows.byDay(day) : apiStore.endpoints.shows.base;
+      console.log('Fetching shows from endpoint:', endpoint);
 
       const response = await apiStore.get(endpoint);
+      console.log('API response received:', response?.length || 0, 'shows');
+
+      // Set up geocoding service with API key
+      if (apiStore.googleMapsApiKey) {
+        geocodingService.setApiKey(apiStore.googleMapsApiKey);
+      }
+
+      // Geocode addresses for shows that don't have coordinates
+      const showsWithCoordinates = await Promise.all(
+        (response || []).map(async (show: Show) => {
+          // If show already has coordinates, use them
+          if (show.lat && show.lng) {
+            return show;
+          }
+
+          // Otherwise, geocode the address
+          if (show.address) {
+            try {
+              const geocodeResult = await geocodingService.geocodeAddress(show.address);
+              return {
+                ...show,
+                lat: geocodeResult.lat,
+                lng: geocodeResult.lng,
+              };
+            } catch (error) {
+              console.warn(`Failed to geocode address "${show.address}":`, error);
+              // Return show without coordinates if geocoding fails
+              return show;
+            }
+          }
+
+          // Return show without coordinates if no address
+          return show;
+        }),
+      );
 
       runInAction(() => {
-        // Add realistic coordinates based on venue addresses/names
-        // In a real app, you'd geocode addresses or store coordinates in the database
-        this.shows = (response || []).map((show: Show) => {
-          const coordinates = this.getCoordinatesFromAddress(show.address || '');
-
-          return {
-            ...show,
-            lat: coordinates.lat,
-            lng: coordinates.lng,
-          };
-        });
+        this.shows = showsWithCoordinates;
         this.isLoading = false;
       });
 
@@ -280,101 +308,38 @@ export class ShowStore {
     return this.showsForSelectedDay.filter((show) => show.lat && show.lng);
   }
 
-  // Enhanced geocoding logic for better location mapping
-  private getCoordinatesFromAddress(address: string): { lat: number; lng: number } {
-    const lowerAddress = address.toLowerCase();
-
-    // City/Region-based mapping for more accurate coordinates
-    const cityMappings = [
-      // New York Area
-      { patterns: ['brooklyn', 'bk'], coords: { lat: 40.6782, lng: -73.9442 } },
-      {
-        patterns: ['queens', 'flushing', 'astoria', 'jamaica'],
-        coords: { lat: 40.7282, lng: -73.7949 },
-      },
-      { patterns: ['bronx'], coords: { lat: 40.8448, lng: -73.8648 } },
-      {
-        patterns: ['manhattan', 'midtown', 'east village', 'west village', 'soho', 'tribeca'],
-        coords: { lat: 40.7831, lng: -73.9712 },
-      },
-      { patterns: ['staten island'], coords: { lat: 40.5795, lng: -74.1502 } },
-      { patterns: ['new york', 'nyc', 'ny'], coords: { lat: 40.7128, lng: -74.006 } },
-
-      // Other major cities that might appear in karaoke venues
-      { patterns: ['buffalo'], coords: { lat: 42.8864, lng: -78.8784 } },
-      { patterns: ['rochester'], coords: { lat: 43.1566, lng: -77.6088 } },
-      { patterns: ['syracuse'], coords: { lat: 43.0481, lng: -76.1474 } },
-      { patterns: ['albany'], coords: { lat: 42.6526, lng: -73.7562 } },
-
-      // New Jersey
-      { patterns: ['newark', 'jersey city', 'hoboken'], coords: { lat: 40.7282, lng: -74.0776 } },
-      { patterns: ['new jersey', 'nj'], coords: { lat: 40.2206, lng: -74.7564 } },
-
-      // Connecticut
-      {
-        patterns: ['bridgeport', 'new haven', 'hartford', 'stamford'],
-        coords: { lat: 41.3083, lng: -73.0176 },
-      },
-      { patterns: ['connecticut', 'ct'], coords: { lat: 41.5978, lng: -72.7554 } },
-
-      // Pennsylvania
-      { patterns: ['philadelphia', 'philly'], coords: { lat: 39.9526, lng: -75.1652 } },
-      { patterns: ['pittsburgh'], coords: { lat: 40.4406, lng: -79.9959 } },
-      { patterns: ['pennsylvania', 'pa'], coords: { lat: 40.5908, lng: -77.2098 } },
-
-      // Major metro areas that commonly have karaoke
-      { patterns: ['boston'], coords: { lat: 42.3601, lng: -71.0589 } },
-      { patterns: ['washington dc', 'dc', 'washington'], coords: { lat: 38.9072, lng: -77.0369 } },
-      { patterns: ['chicago'], coords: { lat: 41.8781, lng: -87.6298 } },
-      { patterns: ['los angeles', 'la'], coords: { lat: 34.0522, lng: -118.2437 } },
-      { patterns: ['miami'], coords: { lat: 25.7617, lng: -80.1918 } },
-      { patterns: ['atlanta'], coords: { lat: 33.749, lng: -84.388 } },
-
-      // Ohio cities
-      { patterns: ['columbus', 'columbus ohio'], coords: { lat: 39.9612, lng: -82.9988 } },
-      { patterns: ['cleveland'], coords: { lat: 41.4993, lng: -81.6944 } },
-      { patterns: ['cincinnati'], coords: { lat: 39.1031, lng: -84.512 } },
-      { patterns: ['toledo'], coords: { lat: 41.6528, lng: -83.5379 } },
-      { patterns: ['akron'], coords: { lat: 41.0814, lng: -81.519 } },
-      { patterns: ['dayton'], coords: { lat: 39.7589, lng: -84.1916 } },
-    ];
-
-    // Find matching city
-    for (const mapping of cityMappings) {
-      if (mapping.patterns.some((pattern) => lowerAddress.includes(pattern))) {
-        // Add small random variation to avoid exact overlaps
-        return {
-          lat: mapping.coords.lat + (Math.random() - 0.5) * 0.01,
-          lng: mapping.coords.lng + (Math.random() - 0.5) * 0.01,
-        };
-      }
+  // Method to geocode a single show address
+  async geocodeShow(show: Show): Promise<Show> {
+    if (!show.address || (show.lat && show.lng)) {
+      return show; // Return as-is if no address or already has coordinates
     }
 
-    // State-level fallbacks for addresses without specific cities
-    if (lowerAddress.includes('ny') || lowerAddress.includes('new york')) {
-      return { lat: 42.1657, lng: -74.9481 }; // Central NY
-    }
-    if (lowerAddress.includes('nj') || lowerAddress.includes('new jersey')) {
-      return { lat: 40.2206, lng: -74.7564 };
-    }
-    if (lowerAddress.includes('ct') || lowerAddress.includes('connecticut')) {
-      return { lat: 41.5978, lng: -72.7554 };
-    }
-    if (lowerAddress.includes('pa') || lowerAddress.includes('pennsylvania')) {
-      return { lat: 40.5908, lng: -77.2098 };
-    }
-    if (lowerAddress.includes('ma') || lowerAddress.includes('massachusetts')) {
-      return { lat: 42.2081, lng: -71.0275 };
-    }
-    if (lowerAddress.includes('oh') || lowerAddress.includes('ohio')) {
-      return { lat: 40.4173, lng: -82.9071 }; // Central Ohio
+    // Set up geocoding service with API key
+    if (apiStore.googleMapsApiKey) {
+      geocodingService.setApiKey(apiStore.googleMapsApiKey);
     }
 
-    // Default to NYC with random variation if no match found
-    return {
-      lat: 40.7128 + (Math.random() - 0.5) * 0.1,
-      lng: -74.006 + (Math.random() - 0.5) * 0.1,
-    };
+    try {
+      const geocodeResult = await geocodingService.geocodeAddress(show.address);
+      return {
+        ...show,
+        lat: geocodeResult.lat,
+        lng: geocodeResult.lng,
+      };
+    } catch (error) {
+      console.warn(`Failed to geocode show address "${show.address}":`, error);
+      return show;
+    }
+  }
+
+  // Method to clear geocoding cache if needed
+  clearGeocodingCache(): void {
+    geocodingService.clearCache();
+  }
+
+  // Method to get geocoding cache statistics
+  getGeocodingCacheStats(): { totalEntries: number; cacheSize: string } {
+    return geocodingService.getCacheStats();
   }
 }
 
