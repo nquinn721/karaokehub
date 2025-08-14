@@ -1,7 +1,7 @@
 import { DayOfWeek, DayPicker } from '@components/DayPicker';
 import { PaywallModal } from '@components/PaywallModal';
-import { faHeart, faLocationDot, faMicrophone } from '@fortawesome/free-solid-svg-icons';
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
+import { faHeart, faLocationDot, faMicrophone, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Alert,
@@ -17,7 +17,14 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { apiStore, authStore, favoriteStore, mapStore, showStore, subscriptionStore } from '@stores/index';
+import {
+  apiStore,
+  authStore,
+  favoriteStore,
+  mapStore,
+  showStore,
+  subscriptionStore,
+} from '@stores/index';
 import { APIProvider, InfoWindow, Map, Marker, useMap } from '@vis.gl/react-google-maps';
 import { observer } from 'mobx-react-lite';
 import React, { useRef, useState } from 'react';
@@ -25,10 +32,12 @@ import React, { useRef, useState } from 'react';
 export const MapComponent: React.FC = observer(() => {
   const theme = useTheme();
   const showListRef = useRef<HTMLDivElement>(null);
-  
+
   // Paywall state
   const [showPaywall, setShowPaywall] = useState(false);
-  const [paywallFeature, setPaywallFeature] = useState<'favorites' | 'friends' | 'ad_removal'>('favorites');
+  const [paywallFeature, setPaywallFeature] = useState<'favorites' | 'friends' | 'ad_removal'>(
+    'favorites',
+  );
   const [pendingFavoriteAction, setPendingFavoriteAction] = useState<{
     showId: string;
     day: string;
@@ -53,9 +62,13 @@ export const MapComponent: React.FC = observer(() => {
           console.error('Failed to fetch shows:', error);
         });
       }
-      
+
       // Fetch favorites if user is authenticated
-      if (authStore.isAuthenticated && favoriteStore.favorites.length === 0 && !favoriteStore.isLoading) {
+      if (
+        authStore.isAuthenticated &&
+        favoriteStore.favorites.length === 0 &&
+        !favoriteStore.isLoading
+      ) {
         await favoriteStore.fetchMyFavorites().catch((error) => {
           console.error('Failed to fetch favorites:', error);
         });
@@ -70,7 +83,7 @@ export const MapComponent: React.FC = observer(() => {
     if (pendingFavoriteAction && subscriptionStore.isSubscribed) {
       const executePendingAction = async () => {
         const { showId, day, action } = pendingFavoriteAction;
-        
+
         if (action === 'add') {
           const result = await favoriteStore.addFavorite({ showId, day });
           if (!result.success) {
@@ -82,11 +95,11 @@ export const MapComponent: React.FC = observer(() => {
             console.error('Failed to remove favorite after subscription:', result.error);
           }
         }
-        
+
         setPendingFavoriteAction(null);
         setShowPaywall(false);
       };
-      
+
       executePendingAction();
     }
   }, [subscriptionStore.isSubscribed, pendingFavoriteAction]);
@@ -119,7 +132,7 @@ export const MapComponent: React.FC = observer(() => {
       return;
     }
 
-    // Check if paywall should be shown  
+    // Check if paywall should be shown
     if (subscriptionStore.shouldShowPaywall('favorites')) {
       setPendingFavoriteAction({ showId, day, action: 'remove' });
       setPaywallFeature('favorites');
@@ -216,7 +229,7 @@ export const MapComponent: React.FC = observer(() => {
             position={{ lat: show.lat!, lng: show.lng! }}
             onClick={() => handleMarkerClick(show)}
             title={show.venue || show.vendor?.name || 'Karaoke Show'}
-            icon={createMicrophoneIcon(mapStore.selectedMarkerId === show.id, theme)}
+            icon={createMicrophoneIcon(mapStore.selectedMarkerId === show.id)}
           />
         ))}
 
@@ -227,6 +240,7 @@ export const MapComponent: React.FC = observer(() => {
               lat: showStore.selectedShow.lat!,
               lng: showStore.selectedShow.lng!,
             }}
+            pixelOffset={[0, -40]} // Offset to avoid covering marker
             onCloseClick={() => {
               mapStore.closeInfoWindow();
             }}
@@ -238,20 +252,80 @@ export const MapComponent: React.FC = observer(() => {
                 backgroundColor: theme.palette.background.paper,
                 borderRadius: 1,
                 boxShadow: theme.shadows[3],
+                position: 'relative',
               }}
             >
-              <Typography
-                variant="h6"
-                gutterBottom
+              {/* Close button in top right corner */}
+              <IconButton
+                size="small"
+                onClick={() => mapStore.closeInfoWindow()}
                 sx={{
-                  color: theme.palette.text.primary,
-                  fontWeight: 600,
-                  fontSize: { xs: '1rem', sm: '1.25rem' },
-                  lineHeight: 1.2,
+                  position: 'absolute',
+                  top: 4,
+                  right: 4,
+                  color: theme.palette.text.secondary,
+                  '&:hover': {
+                    color: theme.palette.text.primary,
+                    backgroundColor: theme.palette.action.hover,
+                  },
+                  p: 0.5,
                 }}
               >
-                {showStore.selectedShow.venue || showStore.selectedShow.vendor?.name}
-              </Typography>
+                <FontAwesomeIcon icon={faXmark} style={{ fontSize: '12px' }} />
+              </IconButton>
+
+              {/* Title and heart in same row */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, pr: 3 }}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: theme.palette.text.primary,
+                    fontWeight: 600,
+                    fontSize: { xs: '1rem', sm: '1.25rem' },
+                    lineHeight: 1.2,
+                    flex: 1,
+                  }}
+                >
+                  {showStore.selectedShow.venue || showStore.selectedShow.vendor?.name}
+                </Typography>
+
+                {/* Favorite button next to title */}
+                {authStore.isAuthenticated && showStore.selectedShow && (
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      const selectedShow = showStore.selectedShow;
+                      if (!selectedShow) return;
+
+                      const isFav = favoriteStore.isFavorite(selectedShow.id);
+                      if (isFav) {
+                        handleUnfavorite(selectedShow.id, showStore.selectedDay);
+                      } else {
+                        handleFavorite(selectedShow.id, showStore.selectedDay);
+                      }
+                    }}
+                    sx={{
+                      color: favoriteStore.isFavorite(showStore.selectedShow.id)
+                        ? theme.palette.error.main
+                        : theme.palette.text.secondary,
+                      '&:hover': {
+                        color: theme.palette.error.main,
+                        backgroundColor: theme.palette.error.main + '10',
+                      },
+                      p: 0.5,
+                    }}
+                  >
+                    <FontAwesomeIcon
+                      icon={
+                        favoriteStore.isFavorite(showStore.selectedShow.id)
+                          ? faHeart
+                          : faHeartRegular
+                      }
+                      style={{ fontSize: '14px' }}
+                    />
+                  </IconButton>
+                )}
+              </Box>
               {showStore.selectedShow.venue && showStore.selectedShow.vendor?.name && (
                 <Typography
                   variant="body2"
@@ -286,11 +360,11 @@ export const MapComponent: React.FC = observer(() => {
                     color: theme.palette.primary.main,
                   }}
                 />
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
+                <Typography
+                  variant="body2"
+                  sx={{
                     color: theme.palette.text.primary,
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
                   }}
                 >
                   Host: {showStore.selectedShow.dj?.name}
@@ -321,38 +395,6 @@ export const MapComponent: React.FC = observer(() => {
                   {showStore.selectedShow.description}
                 </Typography>
               )}
-              
-              {/* Favorite button for InfoWindow */}
-              {authStore.isAuthenticated && showStore.selectedShow && (
-                <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'center' }}>
-                  <IconButton
-                    onClick={() => {
-                      const selectedShow = showStore.selectedShow;
-                      if (!selectedShow) return;
-                      
-                      const isFav = favoriteStore.isFavorite(selectedShow.id);
-                      if (isFav) {
-                        handleUnfavorite(selectedShow.id, showStore.selectedDay);
-                      } else {
-                        handleFavorite(selectedShow.id, showStore.selectedDay);
-                      }
-                    }}
-                    sx={{
-                      color: favoriteStore.isFavorite(showStore.selectedShow.id) 
-                        ? theme.palette.error.main 
-                        : theme.palette.text.secondary,
-                      '&:hover': {
-                        color: theme.palette.error.main,
-                      }
-                    }}
-                  >
-                    <FontAwesomeIcon
-                      icon={favoriteStore.isFavorite(showStore.selectedShow.id) ? faHeart : faHeartRegular}
-                      style={{ fontSize: '18px' }}
-                    />
-                  </IconButton>
-                </Box>
-              )}
             </Box>
           </InfoWindow>
         )}
@@ -361,10 +403,11 @@ export const MapComponent: React.FC = observer(() => {
   });
 
   // Create microphone marker icon
-  const createMicrophoneIcon = (isSelected = false, theme: any) => {
+  const createMicrophoneIcon = (isSelected = false) => {
+    const iconColor = isSelected ? '#d32f2f' : '#f44336'; // Red colors - darker when selected, lighter when not
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-      <circle cx="16" cy="16" r="14" fill="${isSelected ? theme.palette.secondary.main : theme.palette.primary.main}" stroke="#fff" stroke-width="2"/>
+      <circle cx="16" cy="16" r="14" fill="${iconColor}" stroke="#fff" stroke-width="2"/>
       <path d="M16 20c2.21 0 3.98-1.79 3.98-4L20 10c0-2.21-1.79-4-4-4s-4 1.79-4 4v6c0 2.21 1.79 4 4 4zm6.6-4c0 4-3.4 6.8-6.6 6.8s-6.6-2.8-6.6-6.8H8c0 4.55 3.62 8.31 8 8.96V28h2v-3.04c4.38-.65 8-4.41 8-8.96h-1.4z" fill="#fff"/>
     </svg>
   `)}`;
@@ -391,21 +434,21 @@ export const MapComponent: React.FC = observer(() => {
       <DayPicker selectedDay={showStore.selectedDay} onDayChange={handleDayChange} />
 
       {/* Map and List Layout - Responsive */}
-      <Box 
-        sx={{ 
-          display: 'flex', 
+      <Box
+        sx={{
+          display: 'flex',
           flexDirection: { xs: 'column', md: 'row' }, // Stack vertically on mobile
-          gap: { xs: 2, md: 3 }, 
-          height: { xs: 'auto', md: '600px' } // Auto height on mobile
+          gap: { xs: 2, md: 3 },
+          height: { xs: 'auto', md: '600px' }, // Auto height on mobile
         }}
       >
         {/* Map Section */}
-        <Box 
-          sx={{ 
-            flex: { xs: 'none', md: 2 }, 
+        <Box
+          sx={{
+            flex: { xs: 'none', md: 2 },
             height: { xs: '300px', sm: '400px', md: '100%' }, // Responsive height
-            borderRadius: 2, 
-            overflow: 'hidden' 
+            borderRadius: 2,
+            overflow: 'hidden',
           }}
         >
           {API_KEY ? (
@@ -450,23 +493,20 @@ export const MapComponent: React.FC = observer(() => {
 
         {/* Show List Section */}
         <Box sx={{ flex: { xs: 'none', md: 1 } }}>
-          <Card 
-            sx={{ 
+          <Card
+            sx={{
               height: { xs: 'auto', md: '100%' },
-              minHeight: { xs: '200px', md: '100%' }
+              minHeight: { xs: '200px', md: '100%' },
             }}
           >
             <CardContent sx={{ height: '100%', p: 0 }}>
-              <Box 
-                sx={{ 
-                  p: { xs: 1.5, md: 2 }, 
-                  borderBottom: `1px solid ${theme.palette.divider}` 
+              <Box
+                sx={{
+                  p: { xs: 1.5, md: 2 },
+                  borderBottom: `1px solid ${theme.palette.divider}`,
                 }}
               >
-                <Typography 
-                  variant="h6" 
-                  sx={{ fontSize: { xs: '1.1rem', md: '1.25rem' } }}
-                >
+                <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', md: '1.25rem' } }}>
                   Shows for {showStore.selectedDay}
                 </Typography>
                 {showStore.isLoading ? (
@@ -508,11 +548,11 @@ export const MapComponent: React.FC = observer(() => {
                             data-show-id={show.id}
                             onClick={() => handleShowClick(show)}
                             selected={showStore.selectedShow?.id === show.id}
-                            sx={{ 
+                            sx={{
                               p: { xs: 1.5, md: 2 },
                               '&.Mui-selected': {
                                 backgroundColor: theme.palette.primary.main + '10',
-                              }
+                              },
                             }}
                           >
                             {/* Custom layout instead of ListItemText to avoid div-in-p nesting */}
@@ -526,18 +566,18 @@ export const MapComponent: React.FC = observer(() => {
                                     color: theme.palette.primary.main,
                                   }}
                                 />
-                                <Typography 
-                                  variant="subtitle1" 
+                                <Typography
+                                  variant="subtitle1"
                                   fontWeight={600}
-                                  sx={{ 
+                                  sx={{
                                     fontSize: { xs: '0.95rem', md: '1rem' },
                                     lineHeight: 1.2,
-                                    flex: 1
+                                    flex: 1,
                                   }}
                                 >
                                   {show.venue || show.vendor?.name || 'Unknown Venue'}
                                 </Typography>
-                                
+
                                 {/* Favorite button */}
                                 {authStore.isAuthenticated && (
                                   <IconButton
@@ -552,98 +592,100 @@ export const MapComponent: React.FC = observer(() => {
                                       }
                                     }}
                                     sx={{
-                                      color: favoriteStore.isFavorite(show.id) 
-                                        ? theme.palette.error.main 
+                                      color: favoriteStore.isFavorite(show.id)
+                                        ? theme.palette.error.main
                                         : theme.palette.text.secondary,
                                       '&:hover': {
                                         color: theme.palette.error.main,
-                                      }
+                                      },
                                     }}
                                   >
                                     <FontAwesomeIcon
-                                      icon={favoriteStore.isFavorite(show.id) ? faHeart : faHeartRegular}
+                                      icon={
+                                        favoriteStore.isFavorite(show.id) ? faHeart : faHeartRegular
+                                      }
                                       style={{ fontSize: '16px' }}
                                     />
                                   </IconButton>
                                 )}
                               </Box>
-                              
+
                               {/* Secondary content */}
                               <Box sx={{ mt: 0.5 }}>
                                 {show.venue && show.vendor?.name && (
                                   <Typography
                                     variant="body2"
                                     color="text.secondary"
-                                    sx={{ 
-                                      fontStyle: 'italic', 
+                                    sx={{
+                                      fontStyle: 'italic',
                                       mb: 0.5,
-                                      fontSize: { xs: '0.8rem', md: '0.875rem' }
+                                      fontSize: { xs: '0.8rem', md: '0.875rem' },
                                     }}
                                   >
                                     by {show.vendor.name}
                                   </Typography>
                                 )}
-                                <Typography 
-                                  variant="body2" 
+                                <Typography
+                                  variant="body2"
                                   color="text.secondary"
-                                  sx={{ 
+                                  sx={{
                                     mb: 0.5,
                                     fontSize: { xs: '0.8rem', md: '0.875rem' },
-                                    lineHeight: 1.3
+                                    lineHeight: 1.3,
                                   }}
                                 >
                                   {show.address}
                                 </Typography>
                                 <Box
-                                  sx={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    gap: 1, 
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1,
                                     mt: 0.5,
-                                    flexWrap: { xs: 'wrap', sm: 'nowrap' }
+                                    flexWrap: { xs: 'wrap', sm: 'nowrap' },
                                   }}
                                 >
-                                    <Typography 
-                                      variant="body2" 
-                                      color="text.secondary"
-                                      sx={{ 
-                                        fontWeight: 500,
-                                        fontSize: { xs: '0.8rem', md: '0.875rem' }
-                                      }}
-                                    >
-                                      {formatTime(show.startTime)} - {formatTime(show.endTime)}
-                                    </Typography>
-                                  </Box>
-                                  <Typography 
-                                    variant="body2" 
+                                  <Typography
+                                    variant="body2"
                                     color="text.secondary"
-                                    sx={{ 
-                                      mt: 0.5,
-                                      fontSize: { xs: '0.8rem', md: '0.875rem' }
+                                    sx={{
+                                      fontWeight: 500,
+                                      fontSize: { xs: '0.8rem', md: '0.875rem' },
                                     }}
                                   >
-                                    Host: {show.dj?.name || 'Unknown'}
+                                    {formatTime(show.startTime)} - {formatTime(show.endTime)}
                                   </Typography>
-                                  {show.description && (
-                                    <Typography
-                                      variant="body2"
-                                      color="text.secondary"
-                                      sx={{
-                                        mt: 0.5,
-                                        fontSize: { xs: '0.8rem', md: '0.875rem' },
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        display: '-webkit-box',
-                                        WebkitLineClamp: { xs: 1, md: 2 }, // Fewer lines on mobile
-                                        WebkitBoxOrient: 'vertical',
-                                        lineHeight: 1.3
-                                      }}
-                                    >
-                                      {show.description}
-                                    </Typography>
-                                  )}
                                 </Box>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{
+                                    mt: 0.5,
+                                    fontSize: { xs: '0.8rem', md: '0.875rem' },
+                                  }}
+                                >
+                                  Host: {show.dj?.name || 'Unknown'}
+                                </Typography>
+                                {show.description && (
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{
+                                      mt: 0.5,
+                                      fontSize: { xs: '0.8rem', md: '0.875rem' },
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: { xs: 1, md: 2 }, // Fewer lines on mobile
+                                      WebkitBoxOrient: 'vertical',
+                                      lineHeight: 1.3,
+                                    }}
+                                  >
+                                    {show.description}
+                                  </Typography>
+                                )}
                               </Box>
+                            </Box>
                           </ListItemButton>
                         </ListItem>
                         {index < showStore.showsForSelectedDay.length - 1 && (
@@ -658,13 +700,9 @@ export const MapComponent: React.FC = observer(() => {
           </Card>
         </Box>
       </Box>
-      
+
       {/* Paywall Modal */}
-      <PaywallModal
-        open={showPaywall}
-        onClose={handlePaywallClose}
-        feature={paywallFeature}
-      />
+      <PaywallModal open={showPaywall} onClose={handlePaywallClose} feature={paywallFeature} />
     </Box>
   );
 });

@@ -83,10 +83,12 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
             zIndex: theme.zIndex.appBar,
           }}
         >
-          <Toolbar sx={{ 
-            height: '100%', 
-            minHeight: { xs: '70px !important', md: '80px !important' } 
-          }}>
+          <Toolbar
+            sx={{
+              height: '100%',
+              minHeight: { xs: '70px !important', md: '80px !important' },
+            }}
+          >
             {showMenuButton && (
               <Box
                 onClick={() => navigate('/')}
@@ -111,11 +113,11 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                     // Responsive logo sizing
                     width: { xs: '60px', sm: '80px', md: '120px', lg: '170px' },
                     height: { xs: '60px', sm: '80px', md: '120px', lg: '170px' },
-                    transform: { 
-                      xs: 'translateY(0px)', 
-                      sm: 'translateY(5px)', 
-                      md: 'translateY(15px)', 
-                      lg: 'translateY(35px)' 
+                    transform: {
+                      xs: 'translateY(0px)',
+                      sm: 'translateY(5px)',
+                      md: 'translateY(15px)',
+                      lg: 'translateY(35px)',
                     },
                     transition: 'all 0.3s ease-in-out',
                   }}

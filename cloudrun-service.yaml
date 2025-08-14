@@ -30,11 +30,11 @@ spec:
             - name: NODE_ENV
               value: 'production'
             - name: FRONTEND_URL
-              value: 'https://karaokehub-203453576607.us-central1.run.app'
+              value: 'https://karaoke-hub.com'
             - name: BACKEND_URL
-              value: 'https://karaokehub-203453576607.us-central1.run.app'
+              value: 'https://karaoke-hub.com'
             - name: ALLOWED_ORIGINS
-              value: 'https://karaokehub-203453576607.us-central1.run.app'
+              value: 'https://karaoke-hub.com'
             - name: DATABASE_SOCKET_PATH
               value: '/cloudsql/heroic-footing-460117-k8:us-central1:accountant'
             - name: DEPLOYMENT_TIME
@@ -42,7 +42,7 @@ spec:
             - name: DATABASE_NAME
               value: 'karaoke-hub'
             - name: DATABASE_SYNCHRONIZE
-              value: 'false'
+              value: 'true'
             - name: DATABASE_USERNAME
               valueFrom:
                 secretKeyRef:

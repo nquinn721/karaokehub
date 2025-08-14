@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, Table, TableIndex, TableForeignKey } from 'typeorm';
+import { MigrationInterface, QueryRunner, Table, TableForeignKey, TableIndex } from 'typeorm';
 
 export class CreateSubscriptionsTable1692825700000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -46,7 +46,15 @@ export class CreateSubscriptionsTable1692825700000 implements MigrationInterface
           {
             name: 'status',
             type: 'enum',
-            enum: ['active', 'canceled', 'past_due', 'unpaid', 'incomplete', 'incomplete_expired', 'trialing'],
+            enum: [
+              'active',
+              'canceled',
+              'past_due',
+              'unpaid',
+              'incomplete',
+              'incomplete_expired',
+              'trialing',
+            ],
             default: "'incomplete'",
           },
           {

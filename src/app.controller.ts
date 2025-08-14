@@ -45,7 +45,7 @@ export class AppController {
     const backendUrl = isProduction
       ? process.env.BACKEND_URL || 'https://karaokehub-203453576607.us-central1.run.app'
       : 'http://localhost:8000';
-    
+
     return {
       environment: process.env.NODE_ENV,
       isProduction,

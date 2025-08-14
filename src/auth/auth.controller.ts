@@ -92,7 +92,7 @@ export class AuthController {
       res.redirect(`${frontendUrl}/auth/success?token=${token}`);
     } catch (error) {
       console.error('Google OAuth callback error:', error);
-      
+
       const possibleUrls = [
         process.env.FRONTEND_URL,
         'http://localhost:5176',

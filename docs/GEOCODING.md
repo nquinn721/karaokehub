@@ -9,13 +9,15 @@ The application now uses the Google Maps Geocoding API to convert addresses to p
 ## Features
 
 ### Frontend (Client)
+
 - **Real-time geocoding** using Google Maps Geocoding API
 - **Intelligent caching** with localStorage to avoid repeated API calls
 - **Batch geocoding** for processing multiple addresses
 - **Fallback coordinates** if geocoding fails
 - **Cache management** with expiration and cleanup
 
-### Backend (Server)  
+### Backend (Server)
+
 - **Server-side geocoding** for new shows during creation/updates
 - **Batch geocoding endpoint** for processing existing shows
 - **Database storage** of coordinates in `lat` and `lng` columns
@@ -38,7 +40,7 @@ const result = await geocodingService.geocodeAddress('123 Main St, New York, NY'
 // Geocode multiple addresses
 const results = await geocodingService.geocodeMultipleAddresses([
   '123 Main St, New York, NY',
-  'Times Square, New York, NY'
+  'Times Square, New York, NY',
 ]);
 
 // Cache management
@@ -58,7 +60,7 @@ const show = await showService.create({
 });
 
 // Manual batch geocoding via API endpoint
-POST /shows/geocode
+POST / shows / geocode;
 // Returns: { processed: 10, geocoded: 8, errors: 2 }
 ```
 
@@ -83,12 +85,14 @@ Run this migration to add coordinate columns:
 ## Caching Strategy
 
 ### Client-Side Caching
+
 - **Storage**: Browser localStorage
 - **Duration**: 24 hours
 - **Key**: Normalized address (lowercase, trimmed)
 - **Cleanup**: Automatic expiration of old entries
 
 ### Benefits
+
 - Reduces API calls and costs
 - Improves performance for repeated address lookups
 - Works offline for cached addresses
@@ -110,37 +114,42 @@ Run this migration to add coordinate columns:
 ## Configuration
 
 ### Environment Variables
+
 - `GOOGLE_MAPS_API_KEY`: Required for both client and server
 - API key must have Geocoding API enabled
 
 ### API Key Setup
-1. Enable Geocoding API in Google Cloud Console  
+
+1. Enable Geocoding API in Google Cloud Console
 2. Add API key to environment variables
 3. Configure domain restrictions if needed
 
 ## Performance Optimizations
 
 1. **Caching**: 24-hour localStorage cache
-2. **Batch processing**: Reduces API overhead  
+2. **Batch processing**: Reduces API overhead
 3. **Conditional geocoding**: Only geocodes when needed
 4. **Fallback handling**: Fast fallback for failed requests
 
 ## Migration from Hardcoded System
 
 ### What Was Removed
+
 - Hardcoded city pattern matching (90+ patterns)
 - State-level fallback mappings
 - Random coordinate variations
 
 ### What Was Added
+
 - Real Google Maps Geocoding API integration
 - Database coordinate storage
 - Intelligent caching system
 - Backend geocoding service
 
 ### Benefits
+
 - ✅ Handles any address worldwide
-- ✅ Precise positioning for exact locations  
+- ✅ Precise positioning for exact locations
 - ✅ No maintenance of hardcoded patterns
 - ✅ Professional geocoding accuracy
 - ✅ Scales to any location
@@ -162,7 +171,7 @@ await testGeocoding();
    - Ensure `GOOGLE_MAPS_API_KEY` is set
    - Check if Geocoding API is enabled
 
-2. **"OVER_QUERY_LIMIT"**  
+2. **"OVER_QUERY_LIMIT"**
    - Check Google Cloud billing
    - Implement request throttling
 

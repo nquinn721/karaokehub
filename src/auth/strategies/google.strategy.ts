@@ -42,7 +42,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       });
 
       const user = await this.authService.validateOAuthUser(profile, 'google');
-      
+
       console.log('Google OAuth validation successful', {
         userId: user?.id,
         userEmail: user?.email,
