@@ -110,7 +110,7 @@ export class KaraokeParserService {
     this.logger.log(`Starting to parse website: ${url}`);
 
     try {
-      this.logger.log(`Starting multi-page crawling and AI analysis for ${url}`);
+      this.logger.log(`Starting multi-page crawling with Cheerio-first approach for ${url}`);
 
       // Step 1: Use Cheerio to discover all relevant pages on the site
       const discoveredPages = await this.discoverSitePages(url);
@@ -122,28 +122,44 @@ export class KaraokeParserService {
         `Combined content from ${discoveredPages.length} pages: ${combinedContent.length} characters`,
       );
 
-      // Step 3: Use AI to analyze the combined content
-      const contentForAI = this.prepareContentForAI(combinedContent, url);
-      const aiResult = await this.analyzeWithSmartAI(contentForAI);
+      // Step 3: Try Cheerio parsing first (no AI quota used)
+      this.logger.log('🔧 Attempting Cheerio-based parsing first...');
+      const cheerioResult = this.parseWithCheerio(combinedContent, url);
+      
+      // Check if Cheerio parsing was successful
+      const cheerioSuccess = this.isParsingSuccessful(cheerioResult);
+      this.logger.log(`Cheerio parsing result: ${cheerioSuccess ? 'SUCCESS' : 'NEEDS_AI_ENHANCEMENT'}`);
 
-      // Step 3.5: Validate if the parsing found meaningful data
-      const hasValidData = this.hasValidParsedData(aiResult);
-      if (!hasValidData) {
-        this.logger.log(
-          `Skipping ${url} - no valid karaoke/DJ data found (0 shows, low confidence vendor)`,
-        );
-        return {
-          vendor: aiResult.vendor,
-          kjs: aiResult.kjs || [],
-          shows: aiResult.shows || [],
-          rawData: {
-            url,
-            title: this.extractTitleFromHtml(combinedContent),
-            content: combinedContent.substring(0, 1000),
-            parsedAt: new Date(),
-          },
-        };
+      let finalResult: ParsedKaraokeData;
+
+      if (cheerioSuccess) {
+        // Use Cheerio results directly
+        this.logger.log('✅ Using Cheerio parsing results - no AI quota used');
+        finalResult = cheerioResult;
+      } else {
+        // Only use AI if Cheerio failed and we have AI quota available
+        if (this.shouldUseAI()) {
+          this.logger.log('🤖 Cheerio parsing insufficient, trying AI enhancement...');
+          try {
+            const contentForAI = this.prepareContentForAI(combinedContent, url);
+            const aiResult = await this.analyzeWithSmartAI(contentForAI);
+            
+            // Merge Cheerio and AI results for best outcome
+            finalResult = this.mergeCheerioAndAIResults(cheerioResult, aiResult, url);
+            this.logger.log('✅ Used AI enhancement with Cheerio base');
+          } catch (aiError) {
+            this.logger.warn('❌ AI parsing failed, using Cheerio results as fallback:', aiError.message);
+            finalResult = cheerioResult;
+          }
+        } else {
+          this.logger.log('⚠️ AI quota exhausted or unavailable, using Cheerio-only results');
+          finalResult = cheerioResult;
+        }
       }
+
+      // Step 3.5: Log validation info for debugging (but don't skip saving)
+      const hasValidData = this.hasValidParsedData(finalResult);
+      this.logger.log(`Parsed data validation result: ${hasValidData ? 'VALID' : 'NEEDS_REVIEW'}`);
 
       // Step 4: Check if we already have a recent pending review for this URL
       const existingPendingReview = await this.parsedScheduleRepository.findOne({
@@ -185,15 +201,15 @@ export class KaraokeParserService {
             content: combinedContent.substring(0, 5000),
             parsedAt: new Date(),
           };
-          existingPendingReview.aiAnalysis = aiResult;
+          existingPendingReview.aiAnalysis = finalResult;
           existingPendingReview.createdAt = new Date();
 
           await this.parsedScheduleRepository.save(existingPendingReview);
 
           const result: ParsedKaraokeData = {
-            vendor: aiResult.vendor,
-            kjs: aiResult.kjs,
-            shows: aiResult.shows,
+            vendor: finalResult.vendor,
+            kjs: finalResult.kjs,
+            shows: finalResult.shows,
             rawData: {
               url,
               title: this.extractTitleFromHtml(combinedContent),
@@ -217,15 +233,15 @@ export class KaraokeParserService {
         content: combinedContent.substring(0, 5000), // Limit content size for storage
         parsedAt: new Date(),
       };
-      parsedSchedule.aiAnalysis = aiResult;
+      parsedSchedule.aiAnalysis = finalResult;
       parsedSchedule.status = ParseStatus.PENDING_REVIEW;
 
       await this.parsedScheduleRepository.save(parsedSchedule);
 
       const result: ParsedKaraokeData = {
-        vendor: aiResult.vendor,
-        kjs: aiResult.kjs,
-        shows: aiResult.shows,
+        vendor: finalResult.vendor,
+        kjs: finalResult.kjs,
+        shows: finalResult.shows,
         rawData: {
           url,
           title: this.extractTitleFromHtml(combinedContent),
@@ -401,12 +417,12 @@ ${content}
     }
   }
 
-  // Smart AI provider selection with quota management (Gemini > OpenAI)
+  // Smart AI provider selection with quota management (Gemini only, avoid OpenAI)
   private async analyzeWithSmartAI(content: string): Promise<any> {
     this.logger.log('🔍 Analyzing with Smart AI - checking providers...');
 
-    // Using cloud AI providers only
-    this.logger.log('📡 Using cloud AI providers - Gemini primary, OpenAI fallback');
+    // Using cloud AI providers only - GEMINI ONLY to avoid OpenAI quota issues
+    this.logger.log('� Using Gemini AI only to avoid OpenAI quota issues');
 
     // Try Gemini first if available and quota not exhausted
     if (
@@ -423,31 +439,17 @@ ${content}
         );
         return result;
       } catch (error) {
-        this.logger.warn('❌ Gemini AI failed, switching to OpenAI fallback:', error.message);
+        this.logger.warn('❌ Gemini AI failed:', error.message);
         if (error.message.includes('quota') || error.message.includes('limit')) {
           this.geminiQuotaExhausted = true;
         }
-      }
-    } else {
-      this.logger.log('⚠️ Gemini not available or quota exhausted');
-    }
-
-    // Final fallback to OpenAI
-    if (this.openai) {
-      try {
-        this.logger.log('🤖 Trying OpenAI as final fallback...');
-        const result = await this.analyzeWithOpenAI(content);
-        this.logger.log('✅ Used OpenAI as final fallback');
-        return result;
-      } catch (error) {
-        this.logger.error('❌ OpenAI also failed:', error);
+        // Don't fall back to OpenAI - just throw the error
         throw error;
       }
     } else {
-      this.logger.log('⚠️ OpenAI not available');
+      this.logger.log('⚠️ Gemini not available or quota exhausted');
+      throw new Error('No AI providers available - Gemini quota exhausted and OpenAI disabled to prevent quota issues');
     }
-
-    throw new Error('No AI providers available or all failed');
   }
 
   // OpenAI fallback method
@@ -478,68 +480,34 @@ ${content}
 
     return this.fallbackParsing(text);
   }
-  // Cheerio-based parsing (no AI quota usage)
+  // Enhanced Cheerio-based parsing (no AI quota usage)
   private parseWithCheerio(html: string, url: string): ParsedKaraokeData {
     const $ = load(html);
 
-    // Extract vendor information
-    const title = $('title').text() || $('h1').first().text() || 'Unknown Venue';
+    // Extract vendor information with multiple strategies
+    const titleText = $('title').text() || '';
+    const h1Text = $('h1').first().text() || '';
+    const businessName = this.extractBusinessName($, titleText, h1Text);
+    
     const vendor = {
-      name: this.cleanVendorName(title),
+      name: businessName,
       website: url,
       description: $('meta[name="description"]').attr('content') || '',
-      confidence: 60, // Lower confidence for non-AI parsing
+      confidence: businessName !== 'Unknown Venue' ? 75 : 30,
     };
 
-    // Look for common karaoke/DJ patterns
-    const kjs: any[] = [];
-    const shows: any[] = [];
+    // Enhanced KJ/DJ detection
+    const kjs = this.extractKJsFromContent($);
 
-    // Find KJ names (look for common patterns)
-    const kjPatterns = [
-      /DJ\s+([A-Za-z\s]+)/gi,
-      /KJ\s+([A-Za-z\s]+)/gi,
-      /Host[:\s]+([A-Za-z\s]+)/gi,
-    ];
+    // Enhanced show/schedule detection
+    const shows = this.extractShowsFromContent($, vendor.name);
 
     const textContent = $('body').text() || $.html();
-    kjPatterns.forEach((pattern) => {
-      let match;
-      while ((match = pattern.exec(textContent)) !== null) {
-        const name = match[1].trim();
-        if (name && name.length > 1 && name.length < 30) {
-          kjs.push({
-            name,
-            confidence: 70,
-            context: 'Found via pattern matching',
-          });
-        }
-      }
-    });
 
-    // Look for schedule patterns
-    const schedulePatterns = [
-      /([A-Za-z]+day)s?\s+.*?(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
-      /([A-Za-z]+day)s?\s+.*?karaoke.*?(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
-    ];
-
-    schedulePatterns.forEach((pattern) => {
-      let match;
-      while ((match = pattern.exec(textContent)) !== null) {
-        const day = this.standardizeDayName(match[1]);
-        const time = this.standardizeTime(match[2]);
-
-        if (day && time) {
-          shows.push({
-            venue: vendor.name,
-            date: 'recurring',
-            time,
-            description: `Every ${day}`,
-            confidence: 65,
-          });
-        }
-      }
-    });
+    this.logger.log(`🔧 Cheerio parsing results:
+      - Vendor: ${vendor.name} (confidence: ${vendor.confidence}%)
+      - KJs: ${kjs.length} found
+      - Shows: ${shows.length} found`);
 
     return {
       vendor,
@@ -547,11 +515,198 @@ ${content}
       shows: this.deduplicateShows(shows),
       rawData: {
         url,
-        title,
+        title: titleText || h1Text || 'No title found',
         content: textContent.substring(0, 1000),
         parsedAt: new Date(),
       },
     };
+  }
+
+  // Enhanced business name extraction
+  private extractBusinessName($: any, titleText: string, h1Text: string): string {
+    // Try various strategies to get business name
+    const candidates = [
+      titleText.split(' - ')[0].split(' | ')[0],
+      h1Text,
+      $('.business-name').text(),
+      $('.company-name').text(),
+      $('.logo-text').text(),
+      $('meta[property="og:site_name"]').attr('content'),
+    ].filter(name => name && name.trim() && name.length > 2);
+
+    if (candidates.length > 0) {
+      // Clean and return the best candidate
+      return this.cleanVendorName(candidates[0]);
+    }
+
+    return 'Unknown Venue';
+  }
+
+  // Enhanced KJ extraction
+  private extractKJsFromContent($: any): any[] {
+    const kjs: any[] = [];
+    const textContent = $('body').text();
+
+    // Enhanced patterns for KJ detection
+    const kjPatterns = [
+      /(?:DJ|KJ|Host|Jockey)\s+([A-Za-z][A-Za-z\s]{1,25})/gi,
+      /with\s+([A-Za-z][A-Za-z\s]{1,25})\s*(?:DJ|KJ)/gi,
+      /([A-Za-z][A-Za-z\s]{1,25})\s*(?:will be|is)\s*(?:your\s*)?(?:DJ|KJ|host)/gi,
+      /(?:featuring|with|hosted by)\s+([A-Za-z][A-Za-z\s]{1,25})/gi,
+    ];
+
+    // Look in specific sections
+    const kjSections = $('.staff, .team, .dj, .kj, .host, [class*="staff"], [class*="team"], [class*="dj"]');
+    kjSections.each((_, element) => {
+      const sectionText = $(element).text();
+      kjPatterns.forEach(pattern => {
+        let match;
+        while ((match = pattern.exec(sectionText)) !== null) {
+          const name = match[1].trim();
+          if (this.isValidKJName(name)) {
+            kjs.push({
+              name,
+              confidence: 80,
+              context: 'Found in staff/team section',
+            });
+          }
+        }
+      });
+    });
+
+    // Fallback to general content if no specific sections found
+    if (kjs.length === 0) {
+      kjPatterns.forEach((pattern) => {
+        let match;
+        while ((match = pattern.exec(textContent)) !== null) {
+          const name = match[1].trim();
+          if (this.isValidKJName(name)) {
+            kjs.push({
+              name,
+              confidence: 70,
+              context: 'Found via pattern matching',
+            });
+          }
+        }
+      });
+    }
+
+    return kjs;
+  }
+
+  // Enhanced show extraction
+  private extractShowsFromContent($: any, vendorName: string): any[] {
+    const shows: any[] = [];
+    const textContent = $('body').text();
+
+    // Look for schedule sections first
+    const scheduleSections = $('.schedule, .calendar, .events, [class*="schedule"], [class*="calendar"], [class*="event"]');
+    
+    if (scheduleSections.length > 0) {
+      scheduleSections.each((_, element) => {
+        const sectionText = $(element).text();
+        const sectionShows = this.extractShowsFromText(sectionText, vendorName, 85);
+        shows.push(...sectionShows);
+      });
+    }
+
+    // Enhanced patterns for schedule detection
+    const schedulePatterns = [
+      // "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve ALIBI BEACH LOUNGE"
+      /([A-Z][A-Z\s]+DAY[S]?)\s+(?:KARAOKE|DJ|MUSIC|ENTERTAINMENT)\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))\s*(?:-\s*\d{1,2}(?::\d{2})?\s*(?:PM|AM))?\s*(?:with\s+(?:DJ|KJ)\s+([A-Za-z\s]+?))?\s+([A-Z][A-Z\s&]+)/gi,
+      
+      // "Monday Karaoke at Blue Moon Bar 8PM"
+      /([A-Za-z]+day)s?\s+(?:karaoke|dj|music)\s+at\s+([A-Za-z\s&']+?)\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
+      
+      // "Every Tuesday - DJ Night at The Spot 9:00 PM"
+      /(?:every\s+)?([A-Za-z]+day)s?\s*[-–]\s*(?:karaoke|dj|music).*?at\s+([A-Za-z\s&']+?)\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
+      
+      // General day + time patterns
+      /([A-Za-z]+day)s?\s+.*?(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
+    ];
+
+    schedulePatterns.forEach((pattern) => {
+      let match;
+      while ((match = pattern.exec(textContent)) !== null) {
+        const day = this.standardizeDayName(match[1]);
+        const time = this.standardizeTime(match[match.length - 1]); // Last capture group is usually time
+        
+        let venue = vendorName;
+        let kjName = null;
+        
+        // Try to extract venue and KJ from the match
+        if (match.length >= 4 && match[match.length - 2]) {
+          venue = match[match.length - 2].trim();
+        }
+        if (match.length >= 5 && match[3]) {
+          kjName = match[3].trim();
+        }
+
+        if (day && time) {
+          shows.push({
+            venue: this.cleanVenueName(venue),
+            date: 'recurring',
+            time,
+            kjName,
+            description: `Every ${day}`,
+            confidence: 75,
+          });
+        }
+      }
+    });
+
+    return shows;
+  }
+
+  // Helper: Extract shows from text content
+  private extractShowsFromText(text: string, defaultVenue: string, confidence: number): any[] {
+    const shows: any[] = [];
+    
+    // Enhanced schedule patterns
+    const patterns = [
+      /([A-Za-z]+day)s?\s+.*?(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
+      /([A-Za-z]+day)s?\s+.*?karaoke.*?(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
+    ];
+
+    patterns.forEach((pattern) => {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        const day = this.standardizeDayName(match[1]);
+        const time = this.standardizeTime(match[2]);
+
+        if (day && time) {
+          shows.push({
+            venue: defaultVenue,
+            date: 'recurring',
+            time,
+            description: `Every ${day}`,
+            confidence,
+          });
+        }
+      }
+    });
+
+    return shows;
+  }
+
+  // Helper: Validate KJ names
+  private isValidKJName(name: string): boolean {
+    if (!name || name.length < 2 || name.length > 30) return false;
+    
+    // Filter out common false positives
+    const blacklist = ['and', 'the', 'with', 'your', 'our', 'will', 'more', 'info', 'call', 'night', 'music', 'karaoke', 'party'];
+    const lowercaseName = name.toLowerCase().trim();
+    
+    return !blacklist.some(word => lowercaseName.includes(word));
+  }
+
+  // Helper: Clean venue names
+  private cleanVenueName(venue: string): string {
+    return venue
+      .replace(/[^\w\s&'-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .substring(0, 100);
   }
 
   // Check if parsing was successful enough to skip AI
@@ -569,6 +724,75 @@ ${content}
     );
 
     return success;
+  }
+
+  // Check if we should use AI (quota available and not exhausted)
+  private shouldUseAI(): boolean {
+    const hasGemini = this.genAI && !this.geminiQuotaExhausted && this.dailyGeminiCalls < this.MAX_DAILY_GEMINI_CALLS;
+    const hasOpenAI = this.openai; // We'll be more careful with OpenAI usage
+    
+    const shouldUse = hasGemini; // Only use Gemini for now, avoid OpenAI to prevent quota issues
+    
+    this.logger.log(`AI availability check:
+      - Gemini available: ${hasGemini} (calls: ${this.dailyGeminiCalls}/${this.MAX_DAILY_GEMINI_CALLS})
+      - OpenAI available: ${hasOpenAI} (but avoiding due to quota)
+      - Will use AI: ${shouldUse}`);
+    
+    return shouldUse;
+  }
+
+  // Merge Cheerio results with AI results for better data
+  private mergeCheerioAndAIResults(cheerioResult: ParsedKaraokeData, aiResult: any, url: string): ParsedKaraokeData {
+    this.logger.log('🔄 Merging Cheerio and AI results...');
+    
+    // Use AI vendor info if it's better than Cheerio's
+    const vendor = {
+      name: (aiResult.vendor?.name && aiResult.vendor.name !== 'Unknown Vendor') ? aiResult.vendor.name : cheerioResult.vendor.name,
+      website: aiResult.vendor?.website || cheerioResult.vendor.website || url,
+      description: aiResult.vendor?.description || cheerioResult.vendor.description,
+      confidence: Math.max(aiResult.vendor?.confidence || 0, cheerioResult.vendor.confidence),
+    };
+
+    // Combine KJs from both sources (deduped)
+    const combinedKJs = [...(cheerioResult.kjs || [])];
+    if (aiResult.kjs) {
+      for (const aiKj of aiResult.kjs) {
+        if (!combinedKJs.some(kj => kj.name.toLowerCase() === aiKj.name.toLowerCase())) {
+          combinedKJs.push(aiKj);
+        }
+      }
+    }
+
+    // Combine shows from both sources (prefer AI shows if they have better data)
+    const combinedShows = [...(cheerioResult.shows || [])];
+    if (aiResult.shows) {
+      for (const aiShow of aiResult.shows) {
+        // Check if we already have a similar show from Cheerio
+        const existingIndex = combinedShows.findIndex(show => 
+          show.venue.toLowerCase().includes(aiShow.venue.toLowerCase()) ||
+          aiShow.venue.toLowerCase().includes(show.venue.toLowerCase())
+        );
+        
+        if (existingIndex >= 0) {
+          // Replace with AI version if it has more complete data
+          if (aiShow.venue && aiShow.time && aiShow.confidence > 40) {
+            combinedShows[existingIndex] = aiShow;
+          }
+        } else {
+          combinedShows.push(aiShow);
+        }
+      }
+    }
+
+    const mergedResult: ParsedKaraokeData = {
+      vendor,
+      kjs: combinedKJs,
+      shows: combinedShows,
+      rawData: cheerioResult.rawData,
+    };
+
+    this.logger.log(`Merge results: ${mergedResult.kjs.length} KJs, ${mergedResult.shows.length} shows`);
+    return mergedResult;
   }
 
   // Helper methods for Cheerio parsing
@@ -933,28 +1157,48 @@ ${content}
     };
   }
 
-  // NEW: Check if parsed data has enough meaningful content to warrant a pending review
+  // NEW: Check if parsed data has enough meaningful content (for informational purposes)
   private hasValidParsedData(aiResult: any): boolean {
+    // Check if we have basic structure
+    if (!aiResult) {
+      this.logger.warn('❌ No AI result received');
+      return false;
+    }
+
     // Must have shows to be considered valid (KJs are optional)
     const hasShows = aiResult.shows && aiResult.shows.length > 0;
 
-    // Vendor should have reasonable confidence and not be "Unknown"
-    const hasValidVendor =
-      aiResult.vendor &&
-      aiResult.vendor.confidence > 30 &&
+    // Vendor should exist and have a name
+    const hasVendor = aiResult.vendor && aiResult.vendor.name && aiResult.vendor.name.trim() !== '';
+    
+    // Check vendor confidence (informational)
+    const hasDecentVendorConfidence = aiResult.vendor && aiResult.vendor.confidence > 30;
+    
+    // Check if vendor name looks meaningful
+    const hasReasonableVendorName = hasVendor && 
       aiResult.vendor.name !== 'Unknown Vendor' &&
-      aiResult.vendor.name !== 'Unknown Venue';
+      aiResult.vendor.name !== 'Unknown Venue' &&
+      aiResult.vendor.name.length > 2;
 
     // At least one show should have reasonable confidence
-    const hasConfidentShows = hasShows && aiResult.shows.some((show: any) => show.confidence > 50);
+    const hasConfidentShows = hasShows && aiResult.shows.some((show: any) => show.confidence > 30);
 
-    const isValid = hasShows && hasValidVendor && hasConfidentShows;
+    // At least one show should have required fields
+    const hasCompleteShows = hasShows && aiResult.shows.some((show: any) => 
+      show.venue && show.venue.trim() !== '' && show.time
+    );
 
-    this.logger.log(`Validation check for parsed data:
-      - Has shows: ${hasShows} (${aiResult.shows?.length || 0} shows)
-      - Valid vendor: ${hasValidVendor} (${aiResult.vendor?.name}, confidence: ${aiResult.vendor?.confidence})
-      - Confident shows: ${hasConfidentShows}
-      - Overall valid: ${isValid}`);
+    const isValid = hasShows && hasReasonableVendorName && hasDecentVendorConfidence && hasConfidentShows && hasCompleteShows;
+
+    this.logger.log(`📊 Parsed data quality assessment:
+      ✅ Has AI result: ${!!aiResult}
+      ${hasShows ? '✅' : '❌'} Has shows: ${aiResult.shows?.length || 0}
+      ${hasVendor ? '✅' : '❌'} Has vendor name: "${aiResult.vendor?.name || 'None'}"
+      ${hasDecentVendorConfidence ? '✅' : '❌'} Vendor confidence: ${aiResult.vendor?.confidence || 0}%
+      ${hasReasonableVendorName ? '✅' : '❌'} Reasonable vendor name: ${hasReasonableVendorName}
+      ${hasConfidentShows ? '✅' : '❌'} Has confident shows: ${hasConfidentShows}
+      ${hasCompleteShows ? '✅' : '❌'} Has complete show data: ${hasCompleteShows}
+      🎯 Overall quality: ${isValid ? 'HIGH' : 'NEEDS_MANUAL_REVIEW'}`);
 
     return isValid;
   }
@@ -1144,6 +1388,27 @@ ${content}
         })),
       },
     };
+  }
+
+  // NEW: Debug method to get all parsed schedules
+  async getAllParsedSchedulesForDebug(): Promise<any[]> {
+    const allParsedSchedules = await this.parsedScheduleRepository.find({
+      take: 20,
+      order: { createdAt: 'DESC' },
+    });
+
+    return allParsedSchedules.map(ps => ({
+      id: ps.id,
+      url: ps.url,
+      status: ps.status,
+      createdAt: ps.createdAt,
+      vendorName: ps.aiAnalysis?.vendor?.name || 'No vendor',
+      vendorConfidence: ps.aiAnalysis?.vendor?.confidence || 0,
+      kjsCount: ps.aiAnalysis?.kjs?.length || 0,
+      showsCount: ps.aiAnalysis?.shows?.length || 0,
+      hasRawData: !!ps.rawData,
+      hasAiAnalysis: !!ps.aiAnalysis,
+    }));
   }
 
   async rejectParsedData(parsedScheduleId: string, reason?: string): Promise<void> {

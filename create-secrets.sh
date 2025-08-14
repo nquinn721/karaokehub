@@ -24,7 +24,17 @@ echo -n "YOUR_GOOGLE_CLIENT_SECRET" | gcloud secrets create KARAOKE_HUB_GOOGLE_C
 echo "Creating Gemini API key secret..."
 echo -n "YOUR_GEMINI_API_KEY" | gcloud secrets create KARAOKE_HUB_GEMINI_API_KEY --data-file=-
 
+# Google Maps API Key
+echo "Creating Google Maps API key secret..."
+echo -n "AIzaSyCJgu_sx8VjMTj7iphIekriBeTjeKjHuiY" | gcloud secrets create KARAOKE_HUB_GOOGLE_MAPS_API_KEY --data-file=-
+
+# OpenAI API Key (replace with your actual key)
+echo "Creating OpenAI API key secret..."
+echo -n "YOUR_OPENAI_API_KEY" | gcloud secrets create KARAOKE_HUB_OPENAI_API_KEY --data-file=-
+
 echo "✅ Secrets created successfully!"
 echo "🔗 Remember to:"
 echo "   1. Update Google OAuth secrets with your actual credentials"
-echo "   2. Grant Cloud Run service account access to secrets"
+echo "   2. Update Gemini API key secret with your actual key"  
+echo "   3. Update OpenAI API key secret with your actual key"
+echo "   4. Grant Cloud Run service account access to secrets"

@@ -121,6 +121,21 @@ export class ParserController {
     };
   }
 
+  @Get('debug/parsed-schedules')
+  async getDebugParsedSchedules() {
+    try {
+      // Get all parsed schedules for debugging
+      const allParsedSchedules = await this.parserService.getAllParsedSchedulesForDebug();
+      return {
+        success: true,
+        data: allParsedSchedules,
+      };
+    } catch (error) {
+      this.logger.error('❌ Failed to get debug parsed schedules:', error);
+      throw error;
+    }
+  }
+
   @Post('parse-stevesdj')
   async parseStevesdj() {
     const result = await this.parserService.parseStevesdj();

@@ -16,7 +16,7 @@ spec:
     spec:
       containerConcurrency: 80
       timeoutSeconds: 300
-      serviceAccountName: karaokehub-service-account@heroic-footing-460117-k8.iam.gserviceaccount.com
+      serviceAccountName: 203453576607-compute@developer.gserviceaccount.com
       containers:
         - image: gcr.io/heroic-footing-460117-k8/karaokehub:latest
           ports:
@@ -74,6 +74,11 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: KARAOKE_HUB_OPENAI_API_KEY
+                  key: latest
+            - name: VITE_GOOGLE_MAPS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_GOOGLE_MAPS_API_KEY
                   key: latest
             # Ollama configuration (disabled in Cloud Run by default)
             # Uncomment and set these if you deploy a separate Ollama service:
