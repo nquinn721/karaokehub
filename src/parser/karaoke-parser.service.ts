@@ -110,32 +110,28 @@ export class KaraokeParserService {
     this.logger.log(`Starting to parse website: ${url}`);
 
     try {
-      this.logger.log(`Cache disabled for debugging - parsing fresh data for ${url}`);
+      this.logger.log(`Starting multi-page crawling and AI analysis for ${url}`);
 
-      // Fetch the webpage content
-      const response = await fetch(url);
-      const html = await response.text();
+      // Step 1: Use Cheerio to discover all relevant pages on the site
+      const discoveredPages = await this.discoverSitePages(url);
+      this.logger.log(`Discovered ${discoveredPages.length} pages to analyze`);
 
-      // Try Cheerio-based parsing first (no AI quota usage)
-      const cheerioResult = this.parseWithCheerio(html, url);
+      // Step 2: Crawl each page and combine content
+      const combinedContent = await this.crawlAndCombinePages(discoveredPages);
+      this.logger.log(
+        `Combined content from ${discoveredPages.length} pages: ${combinedContent.length} characters`,
+      );
 
-      // If Cheerio parsing was successful enough, use it
-      if (this.isParsingSuccessful(cheerioResult)) {
-        this.logger.log(`Successfully parsed ${url} with Cheerio (no AI quota used)`);
-        return cheerioResult;
-      }
-
-      // Fallback to AI parsing with smart provider selection
-      const truncatedHtml = html.length > 100000 ? html.substring(0, 100000) + '...' : html;
-      const contentForAI = this.prepareContentForAI(truncatedHtml, url);
+      // Step 3: Use AI to analyze the combined content
+      const contentForAI = this.prepareContentForAI(combinedContent, url);
       const aiResult = await this.analyzeWithSmartAI(contentForAI);
 
-      // Save raw parsed data
+      // Step 4: Save raw parsed data
       const parsedSchedule = new ParsedSchedule();
       parsedSchedule.url = url;
       parsedSchedule.rawData = {
-        title: this.extractTitleFromHtml(html),
-        content: truncatedHtml.substring(0, 5000), // Limit content size for storage
+        title: this.extractTitleFromHtml(combinedContent),
+        content: combinedContent.substring(0, 5000), // Limit content size for storage
         parsedAt: new Date(),
       };
       parsedSchedule.aiAnalysis = aiResult;
@@ -149,8 +145,8 @@ export class KaraokeParserService {
         shows: aiResult.shows,
         rawData: {
           url,
-          title: this.extractTitleFromHtml(html),
-          content: truncatedHtml.substring(0, 1000),
+          title: this.extractTitleFromHtml(combinedContent),
+          content: combinedContent.substring(0, 1000),
           parsedAt: new Date(),
         },
       };
@@ -170,12 +166,19 @@ export class KaraokeParserService {
     const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
     const title = titleMatch ? titleMatch[1] : 'No title found';
 
+    // Extract clean text content focusing on schedule information
+    const cleanText = this.extractCleanText(html);
+
+    // Increase content size to avoid losing schedule data, but prioritize schedule-relevant content
+    const contentLength = Math.min(cleanText.length, 80000); // Increased from 50000
+    const truncatedContent = cleanText.substring(0, contentLength);
+
     return `
 URL: ${url}
 TITLE: ${title}
 
-RAW HTML CONTENT:
-${html.substring(0, 50000)} ${html.length > 50000 ? '...[truncated]' : ''}
+CLEAN TEXT CONTENT (focusing on schedule information):
+${truncatedContent} ${cleanText.length > contentLength ? '...[truncated]' : ''}
     `.trim();
   }
 
@@ -189,68 +192,38 @@ ${html.substring(0, 50000)} ${html.length > 50000 ? '...[truncated]' : ''}
       const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
       const prompt = `
-You are an expert at parsing HTML content from karaoke and DJ service websites to extract structured schedule information. 
-
-IMPORTANT: You will receive raw HTML content that may include tags, scripts, styles, and formatting. Focus on finding the actual content within the HTML and ignore structural elements.
+You are an expert at parsing website content from karaoke and DJ service websites to extract structured schedule information.
 
 Focus on finding:
 
 1. VENDOR INFORMATION:
-   - Business/company name that runs karaoke shows (look in <title>, <h1>, business contact info)
+   - Business/company name that runs karaoke shows
    - Website URL (from the provided URL)
    - Brief description of the business
    - Confidence level (0-100)
 
 2. KJ (Karaoke Jockey) INFORMATION:
    - Names of KJs/DJs mentioned (they may be called "DJs", "KJs", "Hosts", "Staff", or "Team")
-   - Look for staff pages, team pages, or about sections
    - Any context about each KJ/DJ
    - Confidence level for each (0-100)
 
-3. SHOW INFORMATION (MOST IMPORTANT - Look for weekly schedules):
+3. SHOW INFORMATION (MOST IMPORTANT):
    - Extract SPECIFIC venue names where shows happen (bars, restaurants, clubs, halls)
-   - Extract SPECIFIC days of the week (Monday, Tuesday, etc.) - not abbreviations
-   - Extract SPECIFIC times (start and end times if available)
+   - Extract SPECIFIC days of the week (Monday, Tuesday, etc.)
+   - Extract SPECIFIC times (convert to 24-hour format like "19:00")
    - Look for recurring weekly schedules, not just one-time events
    - Match KJs/DJs to specific shows if mentioned
-   - Look for addresses or location details
-   - Pay special attention to schedule tables, lists, or structured data within HTML
-   - If you see "Multiple locations" or similar, try to extract individual venue names
-   - Look for venue names like "Joe's Bar", "Main Street Grill", "VFW Post 123", "ALIBI BEACH LOUNGE", etc.
-   - Times are often in evening hours (6PM-11PM range)
-   - If times are ranges like "7PM-11PM", use "19:00" for time field
-   - Days should be full day names (Monday, Tuesday, etc.) but may appear as "SUNDAYS", "MONDAYS" etc.
-   - If no specific date, use "recurring" for weekly shows
    - Focus on actual venue names, not generic descriptions
-   - EXAMPLE FORMAT to look for: "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve ALIBI BEACH LOUNGE"
-     This should extract: venue="ALIBI BEACH LOUNGE", day="Sunday", time="19:00", kjName="DJ Steve"
+   - EXAMPLE: "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve ALIBI BEACH LOUNGE"
+     Should extract: venue="ALIBI BEACH LOUNGE", day="Sunday", time="19:00", kjName="DJ Steve"
 
-PARSING NOTES FOR HTML:
-- Ignore <script>, <style>, <nav>, <footer> content
-- Focus on <body>, <main>, <div>, <table> content
-- Table rows (<tr>) often contain schedule information
-- Links (<a href="">) may point to venue websites or contact pages
-- Pay attention to structured data and repeated patterns
-
-Please return the response as a valid JSON object with this exact structure:
-   - SPECIFICALLY look for formats like "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve ALIBI BEACH LOUNGE"
-   - Parse formats that start with day of week (SUNDAYS, MONDAYS, etc.) followed by time ranges and venue names
-   - Extract venue names that appear after time ranges or DJ/KJ names
-   - Look for patterns like "DAY + KARAOKE + TIME + with + DJ/KJ + VENUE"
-   - Confidence level for each (0-100)
-
-IMPORTANT PARSING GUIDELINES:
+IMPORTANT GUIDELINES:
 - Prioritize recurring weekly karaoke schedules over one-time events
-- Look for venue names like "Joe's Bar", "Main Street Grill", "VFW Post 123", "ALIBI BEACH LOUNGE", etc.
-- Times are often in evening hours (6PM-11PM range)
-- If times are ranges like "7PM-11PM", use "19:00" for time field
-- Days should be full day names (Monday, Tuesday, etc.) but may appear as "SUNDAYS", "MONDAYS" etc.
+- If times are ranges like "7PM-11PM", use start time ("19:00")
 - If no specific date, use "recurring" for weekly shows
-- Focus on actual venue names, not generic descriptions
-- EXAMPLE FORMAT to look for: "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve ALIBI BEACH LOUNGE"
-  This should extract: venue="ALIBI BEACH LOUNGE", day="Sunday", time="19:00", kjName="DJ Steve"
+- Only include information you're reasonably confident about
 
-Please return the response as a valid JSON object with this exact structure:
+Return valid JSON with this exact structure:
 {
   "vendor": {
     "name": "business name",
@@ -268,18 +241,16 @@ Please return the response as a valid JSON object with this exact structure:
   "shows": [
     {
       "venue": "Specific Venue Name",
-      "date": "recurring" (for weekly shows) or "YYYY-MM-DD",
-      "time": "19:00" (start time in HH:MM format),
+      "date": "recurring",
+      "time": "19:00",
       "kjName": "KJ Name if specified",
-      "description": "day of week and additional details (e.g., 'Every Monday')",
+      "description": "Every Monday",
       "confidence": 80
     }
   ]
 }
 
-Only include information you're reasonably confident about. For shows, prioritize finding actual venue names and specific days/times over generic information. Focus especially on weekly recurring karaoke schedules.
-
-WEBPAGE CONTENT TO ANALYZE:
+WEBSITE CONTENT TO ANALYZE:
 ${content}
       `;
 
@@ -506,8 +477,15 @@ ${content}
     const hasShows = result.shows && result.shows.length > 0;
     const hasKJs = result.kjs && result.kjs.length > 0;
 
-    // Consider successful if we have vendor + (shows OR KJs)
-    return hasVendor && (hasShows || hasKJs);
+    // Only consider successful if we have vendor + shows (KJs are optional)
+    // This ensures we don't skip AI parsing when we haven't found actual show data
+    const success = hasVendor && hasShows;
+
+    this.logger.log(
+      `Cheerio parsing assessment: vendor=${hasVendor}, shows=${result.shows?.length || 0}, kjs=${result.kjs?.length || 0}, success=${success}`,
+    );
+
+    return success;
   }
 
   // Helper methods for Cheerio parsing
@@ -678,6 +656,182 @@ ${content}
         .replace(/<[^>]*>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+    }
+  }
+
+  // NEW: Discover all relevant pages on a website using Cheerio
+  private async discoverSitePages(baseUrl: string): Promise<string[]> {
+    this.logger.log(`Discovering pages on ${baseUrl}`);
+
+    try {
+      const response = await fetch(baseUrl);
+      const html = await response.text();
+      const $ = load(html);
+
+      const discoveredUrls = new Set<string>();
+      discoveredUrls.add(baseUrl); // Always include the base URL
+
+      // Extract all internal links
+      $('a[href]').each((_, element) => {
+        const href = $(element).attr('href');
+        if (href) {
+          const fullUrl = this.resolveUrl(href, baseUrl);
+          if (this.isRelevantPage(fullUrl, baseUrl)) {
+            discoveredUrls.add(fullUrl);
+          }
+        }
+      });
+
+      // Add common karaoke/DJ related pages that might not be linked
+      const commonPages = [
+        '/schedule',
+        '/karaoke',
+        '/karaoke-schedule',
+        '/shows',
+        '/events',
+        '/calendar',
+        '/locations',
+        '/venues',
+        '/where-we-play',
+        '/weekly-schedule',
+        '/staff',
+        '/team',
+        '/djs',
+        '/about',
+        '/music-bingo',
+        '/trivia',
+        '/services',
+      ];
+
+      for (const page of commonPages) {
+        const fullUrl = this.resolveUrl(page, baseUrl);
+        discoveredUrls.add(fullUrl);
+      }
+
+      const pages = Array.from(discoveredUrls);
+      this.logger.log(
+        `Discovered ${pages.length} pages: ${pages.slice(0, 10).join(', ')}${pages.length > 10 ? '...' : ''}`,
+      );
+
+      return pages;
+    } catch (error) {
+      this.logger.warn(`Error discovering pages for ${baseUrl}:`, error.message);
+      return [baseUrl]; // Fallback to just the base URL
+    }
+  }
+
+  // NEW: Crawl multiple pages and combine their content
+  private async crawlAndCombinePages(urls: string[]): Promise<string> {
+    let combinedContent = '';
+    let successCount = 0;
+
+    for (const url of urls) {
+      try {
+        this.logger.log(`Crawling page: ${url}`);
+        const response = await fetch(url);
+
+        if (response.status === 200) {
+          const html = await response.text();
+          const cleanText = this.extractCleanText(html);
+
+          if (cleanText.length > 100) {
+            // Only include pages with substantial content
+            combinedContent += `\n\n--- Content from ${url} ---\n${cleanText}`;
+            successCount++;
+            this.logger.log(`✅ Successfully crawled ${url} - ${cleanText.length} characters`);
+          } else {
+            this.logger.log(`⚠️ Skipped ${url} - insufficient content (${cleanText.length} chars)`);
+          }
+        } else {
+          this.logger.log(`❌ Failed to crawl ${url} - HTTP ${response.status}`);
+        }
+      } catch (error) {
+        this.logger.log(`❌ Error crawling ${url}: ${error.message}`);
+      }
+
+      // Be respectful - add delay between requests
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    this.logger.log(`Crawling completed: ${successCount}/${urls.length} pages successful`);
+    return combinedContent;
+  }
+
+  // Helper: Resolve relative URLs to absolute URLs
+  private resolveUrl(href: string, baseUrl: string): string {
+    try {
+      const base = new URL(baseUrl);
+      return new URL(href, base).toString();
+    } catch {
+      return href; // Return as-is if URL resolution fails
+    }
+  }
+
+  // Helper: Check if a URL is relevant for parsing (same domain, relevant paths)
+  private isRelevantPage(url: string, baseUrl: string): boolean {
+    try {
+      const urlObj = new URL(url);
+      const baseObj = new URL(baseUrl);
+
+      // Must be same domain
+      if (urlObj.hostname !== baseObj.hostname) {
+        return false;
+      }
+
+      // Skip certain file types and paths
+      const pathname = urlObj.pathname.toLowerCase();
+      const skipPatterns = [
+        '.jpg',
+        '.jpeg',
+        '.png',
+        '.gif',
+        '.pdf',
+        '.doc',
+        '.docx',
+        '/admin',
+        '/wp-admin',
+        '/login',
+        '/cart',
+        '/checkout',
+        '/api/',
+        '/assets/',
+        '/images/',
+        '/css/',
+        '/js/',
+      ];
+
+      if (skipPatterns.some((pattern) => pathname.includes(pattern))) {
+        return false;
+      }
+
+      // Include relevant paths
+      const relevantPatterns = [
+        'schedule',
+        'karaoke',
+        'shows',
+        'events',
+        'calendar',
+        'locations',
+        'venues',
+        'staff',
+        'team',
+        'dj',
+        'about',
+        'music',
+        'bingo',
+        'trivia',
+        'entertainment',
+        'services',
+      ];
+
+      // Include homepage and pages with relevant keywords
+      return (
+        pathname === '/' ||
+        pathname === '' ||
+        relevantPatterns.some((pattern) => pathname.includes(pattern))
+      );
+    } catch {
+      return false;
     }
   }
 
