@@ -32,6 +32,10 @@ spec:
               value: '8080'
             - name: FRONTEND_URL
               value: 'https://karaokehub-203453576607.us-central1.run.app'
+            - name: BACKEND_URL
+              value: 'https://karaokehub-203453576607.us-central1.run.app'
+            - name: ALLOWED_ORIGINS
+              value: 'https://karaokehub-203453576607.us-central1.run.app'
             - name: DATABASE_HOST
               value: '35.196.192.156'
             - name: DATABASE_PORT

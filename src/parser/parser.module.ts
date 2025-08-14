@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DJ } from '../dj/dj.entity';
 import { KJ } from '../kj/kj.entity';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
@@ -8,7 +9,7 @@ import { ParsedSchedule } from './parsed-schedule.entity';
 import { ParserController, SimpleTestController } from './parser.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Vendor, KJ, Show, ParsedSchedule])],
+  imports: [TypeOrmModule.forFeature([Vendor, KJ, DJ, Show, ParsedSchedule])],
   controllers: [ParserController, SimpleTestController],
   providers: [KaraokeParserService],
   exports: [KaraokeParserService],

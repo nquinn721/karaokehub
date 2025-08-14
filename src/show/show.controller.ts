@@ -46,6 +46,11 @@ export class ShowController {
     return this.showService.findByKJ(kjId);
   }
 
+  @Get('dj/:djId')
+  findByDJ(@Param('djId') djId: string) {
+    return this.showService.findByDJ(djId);
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateShowDto: UpdateShowDto) {
     return this.showService.update(id, updateShowDto);

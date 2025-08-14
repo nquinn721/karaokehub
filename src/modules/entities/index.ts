@@ -1,4 +1,5 @@
 // Re-export entities from their new modular locations
+export * from '../../dj/dj.entity';
 export * from '../../entities/user.entity';
 export * from '../../favorite/favorite.entity';
 export * from '../../kj/kj.entity';

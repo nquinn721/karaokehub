@@ -7,6 +7,7 @@ import fetch from 'node-fetch';
 import OpenAI from 'openai';
 import * as puppeteer from 'puppeteer';
 import { Repository } from 'typeorm';
+import { DJ } from '../dj/dj.entity';
 import { KJ } from '../kj/kj.entity';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
@@ -24,11 +25,17 @@ export interface ParsedKaraokeData {
     confidence: number;
     context?: string;
   }>;
+  djs: Array<{
+    name: string;
+    confidence: number;
+    context?: string;
+  }>;
   shows: Array<{
     venue: string;
     date: string;
     time: string;
     kjName?: string;
+    djName?: string;
     description?: string;
     confidence: number;
   }>;
@@ -57,6 +64,8 @@ export class KaraokeParserService {
     private vendorRepository: Repository<Vendor>,
     @InjectRepository(KJ)
     private kjRepository: Repository<KJ>,
+    @InjectRepository(DJ)
+    private djRepository: Repository<DJ>,
     @InjectRepository(Show)
     private showRepository: Repository<Show>,
     @InjectRepository(ParsedSchedule)
@@ -114,36 +123,96 @@ export class KaraokeParserService {
     this.logger.log(`Starting to parse website: ${url}`);
 
     try {
-      // Step 1: Fetch the main page content
-      this.logger.log(`Fetching content from: ${url}`);
-      const response = await fetch(url);
-      const html = await response.text();
-      
-      // Step 2: Try Cheerio parsing first (fast and reliable)
+      // Step 1: Try fast fetch first, fallback to Puppeteer only if needed
+      this.logger.log(`📄 Attempting fast HTTP fetch...`);
+      let html: string;
+      let usedPuppeteer = false;
+
+      try {
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+        const response = await fetch(url, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          },
+        });
+        clearTimeout(timeoutId);
+        html = await response.text();
+        this.logger.log(`✅ Fast fetch successful - ${html.length} characters`);
+      } catch (fetchError) {
+        this.logger.warn(`⚠️ Fast fetch failed, trying Puppeteer: ${fetchError.message}`);
+        try {
+          html = await this.fetchWithPuppeteer(url);
+          usedPuppeteer = true;
+          this.logger.log(`🎭 Puppeteer fetch successful - ${html.length} characters`);
+        } catch (puppeteerError) {
+          this.logger.error(`❌ Both fetch methods failed: ${puppeteerError.message}`);
+          throw new Error(`Failed to fetch content: ${puppeteerError.message}`);
+        }
+      }
+
+      // Step 2: For Steve's DJ, also fetch the karaoke schedule page (with timeout)
+      let scheduleHtml = '';
+      if (url.includes('stevesdj.com')) {
+        this.logger.log("🎯 Detected Steve's DJ - fetching schedule page...");
+        try {
+          // Add timeout for schedule page fetch
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+          const scheduleResponse = await fetch('https://stevesdj.com/karaoke-schedule', {
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          scheduleHtml = await scheduleResponse.text();
+          html = html + '\n\n=== KARAOKE SCHEDULE PAGE ===\n\n' + scheduleHtml;
+          this.logger.log(`📅 Schedule page added - combined ${html.length} characters`);
+        } catch (scheduleError) {
+          this.logger.warn('Failed to fetch schedule page:', scheduleError.message);
+        }
+      } // Step 2: Try Cheerio parsing first (fast and reliable)
       this.logger.log('� Attempting Cheerio-based parsing...');
       const cheerioResult = this.parseWithCheerio(html, url);
-      
-      // Step 3: Check if we need AI enhancement
+
+      // Step 3: Check if we need AI enhancement (be more conservative to save time)
       let finalResult: ParsedKaraokeData = cheerioResult;
-      
-      if (this.shouldUseAI() && (!cheerioResult.vendor.name || cheerioResult.vendor.name === 'Unknown Venue' || cheerioResult.shows.length === 0)) {
-        this.logger.log('🤖 Enhancing with AI analysis...');
+
+      // Only use AI if Cheerio parsing completely failed AND we have AI available
+      const cheerioFailed =
+        !cheerioResult.vendor.name ||
+        cheerioResult.vendor.name === 'Unknown Venue' ||
+        cheerioResult.shows.length === 0;
+
+      const shouldEnhanceWithAI =
+        this.shouldUseAI() && cheerioFailed && !this.isParsingSuccessful(cheerioResult);
+
+      if (shouldEnhanceWithAI) {
+        this.logger.log('🤖 Cheerio results insufficient, enhancing with AI analysis...');
         try {
           const aiContent = this.prepareContentForAI(html, url);
           const aiResult = await this.analyzeWithSmartAI(aiContent);
-          
+
           if (aiResult && aiResult.vendor && aiResult.shows && aiResult.shows.length > 0) {
             // Use AI results if they're better
             finalResult = {
-              vendor: aiResult.vendor.name !== 'Unknown Vendor' ? aiResult.vendor : cheerioResult.vendor,
+              vendor:
+                aiResult.vendor.name !== 'Unknown Vendor' ? aiResult.vendor : cheerioResult.vendor,
               kjs: [...(cheerioResult.kjs || []), ...(aiResult.kjs || [])],
-              shows: aiResult.shows.length > cheerioResult.shows.length ? aiResult.shows : cheerioResult.shows,
+              djs: [...(cheerioResult.djs || []), ...(aiResult.djs || [])],
+              shows:
+                aiResult.shows.length > cheerioResult.shows.length
+                  ? aiResult.shows
+                  : cheerioResult.shows,
               rawData: {
                 url,
                 title: this.extractTitleFromHtml(html),
                 content: html.substring(0, 2000),
                 parsedAt: new Date(),
-              }
+              },
             };
             this.logger.log('✅ Used AI enhancement');
           }
@@ -152,26 +221,99 @@ export class KaraokeParserService {
         }
       }
 
-      // Step 4: Save to database for admin review if we found meaningful data
+      // Step 4: Save to database for admin review if we found meaningful data (make async for speed)
       if (finalResult.shows.length > 0 || finalResult.kjs.length > 0) {
-        const parsedSchedule = new ParsedSchedule();
-        parsedSchedule.url = url;
-        parsedSchedule.rawData = {
-          title: finalResult.rawData.title,
-          content: html.substring(0, 5000),
-          parsedAt: new Date(),
-        };
-        parsedSchedule.aiAnalysis = finalResult;
-        parsedSchedule.status = ParseStatus.PENDING_REVIEW;
-
-        await this.parsedScheduleRepository.save(parsedSchedule);
-        this.logger.log(`✅ Saved parsed data for admin review - Found ${finalResult.kjs.length} KJs and ${finalResult.shows.length} shows`);
+        // Don't await database save to speed up response time
+        this.saveToDatabase(finalResult, html, url).catch((error) => {
+          this.logger.error('Background database save failed:', error.message);
+        });
       }
 
       return finalResult;
     } catch (error) {
       this.logger.error(`Error parsing website ${url}:`, error);
       throw error;
+    }
+  }
+
+  // Separate method for database saving (can be async)
+  private async saveToDatabase(
+    finalResult: ParsedKaraokeData,
+    html: string,
+    url: string,
+  ): Promise<void> {
+    try {
+      const parsedSchedule = new ParsedSchedule();
+      parsedSchedule.url = url;
+      parsedSchedule.rawData = {
+        title: finalResult.rawData.title,
+        content: html.substring(0, 5000),
+        parsedAt: new Date(),
+      };
+      parsedSchedule.aiAnalysis = finalResult;
+      parsedSchedule.status = ParseStatus.PENDING_REVIEW;
+
+      await this.parsedScheduleRepository.save(parsedSchedule);
+      this.logger.log(
+        `✅ Saved parsed data for admin review - Found ${finalResult.kjs.length} KJs and ${finalResult.shows.length} shows`,
+      );
+    } catch (error) {
+      this.logger.error('Failed to save to database:', error.message);
+      throw error;
+    }
+  }
+
+  // New method for Puppeteer-based content fetching
+  private async fetchWithPuppeteer(url: string): Promise<string> {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-gpu',
+      ],
+    });
+
+    try {
+      const page = await browser.newPage();
+
+      // Set user agent to avoid bot detection
+      await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      );
+
+      // Navigate to page and wait for content (reduced timeout)
+      await page.goto(url, {
+        waitUntil: 'domcontentloaded', // Faster than 'networkidle0'
+        timeout: 15000, // Reduced from 30000
+      });
+
+      // Reduced wait time for lazy-loaded content
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Reduced from 2000
+
+      // Try to wait for common content indicators
+      try {
+        await Promise.race([
+          page.waitForSelector('body', { timeout: 5000 }),
+          page.waitForSelector('[class*="schedule"]', { timeout: 5000 }),
+          page.waitForSelector('[class*="karaoke"]', { timeout: 5000 }),
+          page.waitForSelector('[class*="event"]', { timeout: 5000 }),
+        ]);
+      } catch (waitError) {
+        this.logger.log('No specific selectors found, proceeding with page content');
+      }
+
+      // Get the rendered HTML content
+      const html = await page.content();
+
+      return html;
+    } finally {
+      await browser.close();
     }
   }
 
@@ -183,8 +325,8 @@ export class KaraokeParserService {
     // Extract clean text content focusing on schedule information
     const cleanText = this.extractCleanText(html);
 
-    // Increase content size to avoid losing schedule data, but prioritize schedule-relevant content
-    const contentLength = Math.min(cleanText.length, 80000); // Increased from 50000
+    // Significantly reduce content size for much faster processing
+    const contentLength = Math.min(cleanText.length, 15000); // Reduced from 40000 for much faster AI processing
     const truncatedContent = cleanText.substring(0, contentLength);
 
     return `
@@ -192,7 +334,7 @@ URL: ${url}
 TITLE: ${title}
 
 CLEAN TEXT CONTENT (focusing on schedule information):
-${truncatedContent} ${cleanText.length > contentLength ? '...[truncated]' : ''}
+${truncatedContent} ${cleanText.length > contentLength ? '...[truncated for performance]' : ''}
     `.trim();
   }
 
@@ -216,9 +358,10 @@ Focus on finding:
    - Brief description of the business
    - Confidence level (0-100)
 
-2. KJ (Karaoke Jockey) INFORMATION:
-   - Names of KJs/DJs mentioned (they may be called "DJs", "KJs", "Hosts", "Staff", or "Team")
-   - Any context about each KJ/DJ
+2. DJ/KJ (Disc Jockey / Karaoke Jockey) INFORMATION:
+   - Names of DJs/KJs mentioned (they may be called "DJs", "KJs", "Hosts", "Staff", or "Team")
+   - NOTE: DJs and KJs are the same people in karaoke context - people who host karaoke shows
+   - Any context about each DJ/KJ
    - Confidence level for each (0-100)
 
 3. SHOW INFORMATION (MOST IMPORTANT):
@@ -252,12 +395,20 @@ Return valid JSON with this exact structure:
       "context": "additional info about this person"
     }
   ],
+  "djs": [
+    {
+      "name": "DJ/KJ Name",
+      "confidence": 90,
+      "context": "additional info about this person"
+    }
+  ],
   "shows": [
     {
       "venue": "Specific Venue Name",
       "date": "recurring",
       "time": "19:00",
       "kjName": "KJ Name if specified",
+      "djName": "DJ Name if specified",
       "description": "Every Monday",
       "confidence": 80
     }
@@ -415,6 +566,7 @@ ${content}
 
     // Enhanced KJ/DJ detection
     const kjs = this.extractKJsFromContent($);
+    const djs = this.extractDJsFromContent($);
 
     // Enhanced show/schedule detection
     const shows = this.extractShowsFromContent($, vendor.name);
@@ -424,11 +576,13 @@ ${content}
     this.logger.log(`🔧 Cheerio parsing results:
       - Vendor: ${vendor.name} (confidence: ${vendor.confidence}%)
       - KJs: ${kjs.length} found
+      - DJs: ${djs.length} found
       - Shows: ${shows.length} found`);
 
     return {
       vendor,
       kjs: this.deduplicateKJs(kjs),
+      djs: this.deduplicateDJs(djs),
       shows: this.deduplicateShows(shows),
       rawData: {
         url,
@@ -513,6 +667,60 @@ ${content}
     return kjs;
   }
 
+  // Enhanced DJ extraction (same as KJ but for DJ patterns)
+  private extractDJsFromContent($: any): any[] {
+    const djs: any[] = [];
+    const textContent = $('body').text();
+
+    // Enhanced patterns for DJ detection
+    const djPatterns = [
+      /(?:DJ|KJ|Host|Jockey)\s+([A-Za-z][A-Za-z\s]{1,25})/gi,
+      /with\s+([A-Za-z][A-Za-z\s]{1,25})\s*(?:DJ|KJ)/gi,
+      /([A-Za-z][A-Za-z\s]{1,25})\s*(?:will be|is)\s*(?:your\s*)?(?:DJ|KJ|host)/gi,
+      /(?:featuring|with|hosted by)\s+([A-Za-z][A-Za-z\s]{1,25})/gi,
+    ];
+
+    // Look in specific sections
+    const djSections = $(
+      '.staff, .team, .dj, .kj, .host, [class*="staff"], [class*="team"], [class*="dj"]',
+    );
+    djSections.each((_, element) => {
+      const sectionText = $(element).text();
+      djPatterns.forEach((pattern) => {
+        let match;
+        while ((match = pattern.exec(sectionText)) !== null) {
+          const name = match[1].trim();
+          if (this.isValidDJName(name)) {
+            djs.push({
+              name,
+              confidence: 80,
+              context: 'Found in staff/team section',
+            });
+          }
+        }
+      });
+    });
+
+    // Fallback to general content if no specific sections found
+    if (djs.length === 0) {
+      djPatterns.forEach((pattern) => {
+        let match;
+        while ((match = pattern.exec(textContent)) !== null) {
+          const name = match[1].trim();
+          if (this.isValidDJName(name)) {
+            djs.push({
+              name,
+              confidence: 70,
+              context: 'Found via pattern matching',
+            });
+          }
+        }
+      });
+    }
+
+    return djs;
+  }
+
   // Enhanced show extraction
   private extractShowsFromContent($: any, vendorName: string): any[] {
     const shows: any[] = [];
@@ -535,19 +743,19 @@ ${content}
     const schedulePatterns = [
       // "Monday 8PM" or "Monday 8:00 PM"
       /([A-Za-z]+day)s?\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
-      
+
       // "Karaoke Monday 8PM" or "DJ Monday 8PM"
       /(?:karaoke|dj|music)\s+([A-Za-z]+day)s?\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
-      
+
       // "Monday Night Karaoke 8PM"
       /([A-Za-z]+day)\s+(?:night\s+)?(?:karaoke|dj|music)\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
-      
+
       // "Every Monday 8PM"
       /every\s+([A-Za-z]+day)s?\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
-      
+
       // "Sundays 7PM-11PM" (with time ranges)
       /([A-Za-z]+day)s?\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))\s*[-–]\s*\d{1,2}(?::\d{2})?\s*(?:PM|AM)/gi,
-      
+
       // "SUNDAYS KARAOKE 7:00PM" (all caps)
       /([A-Z]+DAYS?)\s+(?:KARAOKE|DJ|MUSIC)\s+(\d{1,2}(?::\d{2})?\s*(?:PM|AM))/gi,
     ];
@@ -607,6 +815,31 @@ ${content}
 
   // Helper: Validate KJ names
   private isValidKJName(name: string): boolean {
+    if (!name || name.length < 2 || name.length > 30) return false;
+
+    // Filter out common false positives
+    const blacklist = [
+      'and',
+      'the',
+      'with',
+      'your',
+      'our',
+      'will',
+      'more',
+      'info',
+      'call',
+      'night',
+      'music',
+      'karaoke',
+      'party',
+    ];
+    const lowercaseName = name.toLowerCase().trim();
+
+    return !blacklist.some((word) => lowercaseName.includes(word));
+  }
+
+  // Helper: Validate DJ names (same as KJ names)
+  private isValidDJName(name: string): boolean {
     if (!name || name.length < 2 || name.length > 30) return false;
 
     // Filter out common false positives
@@ -728,6 +961,7 @@ ${content}
     const mergedResult: ParsedKaraokeData = {
       vendor,
       kjs: combinedKJs,
+      djs: [], // Initialize empty DJs for now, will be populated from AI results
       shows: combinedShows,
       rawData: cheerioResult.rawData,
     };
@@ -790,6 +1024,16 @@ ${content}
     const seen = new Set();
     return kjs.filter((kj) => {
       const key = kj.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  private deduplicateDJs(djs: any[]): any[] {
+    const seen = new Set();
+    return djs.filter((dj) => {
+      const key = dj.name.toLowerCase();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;

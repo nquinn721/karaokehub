@@ -6,6 +6,7 @@ import { DayOfWeek, Show } from './show.entity';
 export interface CreateShowDto {
   vendorId: string;
   kjId: string;
+  djId: string;
   address: string;
   day: DayOfWeek;
   startTime: string;
@@ -16,6 +17,7 @@ export interface CreateShowDto {
 export interface UpdateShowDto {
   vendorId?: string;
   kjId?: string;
+  djId?: string;
   address?: string;
   day?: DayOfWeek;
   startTime?: string;
@@ -39,35 +41,42 @@ export class ShowService {
   async findAll(): Promise<Show[]> {
     return await this.showRepository.find({
       where: { isActive: true },
-      relations: ['vendor', 'kj', 'favorites'],
+      relations: ['vendor', 'kj', 'dj', 'favorites'],
     });
   }
 
   async findOne(id: string): Promise<Show> {
     return await this.showRepository.findOne({
       where: { id, isActive: true },
-      relations: ['vendor', 'kj', 'favorites'],
+      relations: ['vendor', 'kj', 'dj', 'favorites'],
     });
   }
 
   async findByVendor(vendorId: string): Promise<Show[]> {
     return await this.showRepository.find({
       where: { vendorId, isActive: true },
-      relations: ['vendor', 'kj', 'favorites'],
+      relations: ['vendor', 'kj', 'dj', 'favorites'],
     });
   }
 
   async findByKJ(kjId: string): Promise<Show[]> {
     return await this.showRepository.find({
       where: { kjId, isActive: true },
-      relations: ['vendor', 'kj', 'favorites'],
+      relations: ['vendor', 'kj', 'dj', 'favorites'],
+    });
+  }
+
+  async findByDJ(djId: string): Promise<Show[]> {
+    return await this.showRepository.find({
+      where: { djId, isActive: true },
+      relations: ['vendor', 'kj', 'dj', 'favorites'],
     });
   }
 
   async findByDay(day: DayOfWeek): Promise<Show[]> {
     return await this.showRepository.find({
       where: { day, isActive: true },
-      relations: ['vendor', 'kj', 'favorites'],
+      relations: ['vendor', 'kj', 'dj', 'favorites'],
     });
   }
 

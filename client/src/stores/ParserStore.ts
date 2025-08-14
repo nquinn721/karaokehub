@@ -14,11 +14,18 @@ export interface ParsedKJData {
   context?: string;
 }
 
+export interface ParsedDJData {
+  name: string;
+  confidence: number;
+  context?: string;
+}
+
 export interface ParsedShowData {
   venue: string;
   date: string;
   time: string;
   kjName?: string;
+  djName?: string;
   description?: string;
   confidence: number;
 }
@@ -30,6 +37,7 @@ export interface ParsedScheduleItem {
   aiAnalysis: {
     vendor: ParsedVendorData;
     kjs: ParsedKJData[];
+    djs: ParsedDJData[];
     shows: ParsedShowData[];
   };
   status: 'pending' | 'pending_review' | 'approved' | 'rejected';

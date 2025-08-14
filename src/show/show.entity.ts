@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { DJ } from '../dj/dj.entity';
 import { Favorite } from '../favorite/favorite.entity';
 import { KJ } from '../kj/kj.entity';
 import { Vendor } from '../vendor/vendor.entity';
@@ -32,6 +33,9 @@ export class Show {
 
   @Column('uuid', { nullable: true })
   kjId: string;
+
+  @Column('uuid', { nullable: true })
+  djId: string;
 
   @Column({ nullable: true })
   address: string;
@@ -84,6 +88,10 @@ export class Show {
   @ManyToOne(() => KJ, (kj) => kj.shows)
   @JoinColumn({ name: 'kjId' })
   kj: KJ;
+
+  @ManyToOne(() => DJ, (dj) => dj.shows)
+  @JoinColumn({ name: 'djId' })
+  dj: DJ;
 
   @OneToMany(() => Favorite, (favorite) => favorite.show)
   favorites: Favorite[];

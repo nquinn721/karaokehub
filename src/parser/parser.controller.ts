@@ -200,8 +200,8 @@ export class ParserController {
       message: "Steve's DJ website parsed and data saved for review",
       data: {
         vendor: result.savedEntities.vendor?.name || result.parsedData.vendor?.name || 'Unknown',
-        kjsCount: result.savedEntities.kjs.length,
-        showsCount: result.savedEntities.shows.length,
+        kjsCount: result.parsedData.kjs?.length || 0, // Use parsed data, not saved data
+        showsCount: result.parsedData.shows?.length || 0, // Use parsed data, not saved data
         confidence: {
           vendor: result.parsedData.vendor?.confidence || 50,
           avgKjConfidence,
@@ -225,14 +225,36 @@ export class SimpleTestController {
   async testParseStevesdj() {
     try {
       const result = await this.parserService.parseStevesdj();
+
+      // Calculate confidence averages
+      const avgKjConfidence =
+        result.parsedData.kjs?.length > 0
+          ? Math.round(
+              result.parsedData.kjs.reduce((sum, kj) => sum + (kj.confidence || 70), 0) /
+                result.parsedData.kjs.length,
+            )
+          : 70;
+      const avgShowConfidence =
+        result.parsedData.shows?.length > 0
+          ? Math.round(
+              result.parsedData.shows.reduce((sum, show) => sum + (show.confidence || 80), 0) /
+                result.parsedData.shows.length,
+            )
+          : 80;
+
       return {
         success: true,
         message: "Steve's DJ website parsed successfully",
         data: {
           vendor:
             result.savedEntities.vendor?.name || result.parsedData.vendor?.name || 'Unknown Vendor',
-          kjsCount: result.savedEntities.kjs.length,
-          showsCount: result.savedEntities.shows.length,
+          kjsCount: result.parsedData.kjs?.length || 0, // Use parsed data, not saved data
+          showsCount: result.parsedData.shows?.length || 0, // Use parsed data, not saved data
+          confidence: {
+            vendor: result.parsedData.vendor?.confidence || 75,
+            avgKjConfidence,
+            avgShowConfidence,
+          },
           parsedKjsCount: result.parsedData.kjs?.length || 0,
           parsedShowsCount: result.parsedData.shows?.length || 0,
           status: result.savedEntities.vendor ? 'saved' : 'pending_review',

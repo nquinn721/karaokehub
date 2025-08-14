@@ -9,6 +9,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { ConfigApiModule } from './config/config.module';
 import { getDatabaseConfig } from './config/database.config';
+import { DJModule } from './dj/dj.module';
 import { FavoriteModule } from './favorite/favorite.module';
 import { KJModule } from './kj/kj.module';
 import { ParserModule } from './parser/parser.module';
@@ -53,6 +54,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     UserModule,
     VendorModule,
     KJModule,
+    DJModule,
     ShowModule,
     FavoriteModule,
     ParserModule,

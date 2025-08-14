@@ -491,12 +491,20 @@ class ApiStore {
       byVendor: (vendorId: string) => `/kjs/vendor/${vendorId}`,
     },
 
+    // DJ endpoints  
+    djs: {
+      base: '/djs',
+      byId: (id: string) => `/djs/${id}`,
+      byVendor: (vendorId: string) => `/djs/vendor/${vendorId}`,
+    },
+
     // Show endpoints
     shows: {
       base: '/shows',
       byId: (id: string) => `/shows/${id}`,
       byVendor: (vendorId: string) => `/shows/vendor/${vendorId}`,
       byKJ: (kjId: string) => `/shows/kj/${kjId}`,
+      byDJ: (djId: string) => `/shows/dj/${djId}`,
       byDay: (day: string) => `/shows?day=${day}`,
     },
 

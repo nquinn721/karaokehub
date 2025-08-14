@@ -20,10 +20,12 @@ import React from 'react';
 export interface ParseResults {
   vendor: string;
   kjsCount: number;
+  djsCount: number;
   showsCount: number;
   confidence: {
     vendor: number;
     avgKjConfidence: number;
+    avgDjConfidence: number;
     avgShowConfidence: number;
   };
   url?: string;
@@ -50,6 +52,7 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
   const confidence = results.confidence || {
     vendor: 50,
     avgKjConfidence: 50,
+    avgDjConfidence: 50,
     avgShowConfidence: 50,
   };
 
@@ -177,6 +180,40 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
             </Card>
           </Grid>
 
+          <Grid item xs={12} sm={6} md={3}>
+            <Card variant="outlined" sx={{ height: '100%' }}>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Box sx={{ mb: 2 }}>
+                  <FontAwesomeIcon
+                    icon={faUsers}
+                    style={{ fontSize: '2rem', color: theme.palette.primary.main }}
+                  />
+                </Box>
+                <Typography variant="h6" gutterBottom>
+                  DJs Found
+                </Typography>
+                <Typography variant="h4" color="primary" sx={{ mb: 2 }}>
+                  {results.djsCount || 0}
+                </Typography>
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    Avg Confidence: {Math.round(confidence.avgDjConfidence)}%
+                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={confidence.avgDjConfidence}
+                    sx={{
+                      mt: 1,
+                      '& .MuiLinearProgress-bar': {
+                        backgroundColor: getConfidenceColor(confidence.avgDjConfidence),
+                      },
+                    }}
+                  />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
           <Grid item xs={12} sm={4}>
             <Card variant="outlined" sx={{ height: '100%' }}>
               <CardContent sx={{ textAlign: 'center' }}>
@@ -221,7 +258,7 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
           </Typography>
 
           <Grid container spacing={2} sx={{ mt: 2 }}>
-            <Grid item xs={4}>
+            <Grid item xs={6}>
               <Typography variant="body2" color="text.secondary">
                 Vendor Confidence
               </Typography>
@@ -236,7 +273,22 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
               </Typography>
             </Grid>
 
-            <Grid item xs={4}>
+            <Grid item xs={6}>
+              <Typography variant="body2" color="text.secondary">
+                Show Detection
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{
+                  color: getConfidenceColor(confidence.avgShowConfidence),
+                  fontWeight: 600,
+                }}
+              >
+                {getConfidenceLabel(confidence.avgShowConfidence)}
+              </Typography>
+            </Grid>
+
+            <Grid item xs={6}>
               <Typography variant="body2" color="text.secondary">
                 KJ Detection
               </Typography>
@@ -251,18 +303,18 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
               </Typography>
             </Grid>
 
-            <Grid item xs={4}>
+            <Grid item xs={6}>
               <Typography variant="body2" color="text.secondary">
-                Show Detection
+                DJ Detection
               </Typography>
               <Typography
                 variant="body1"
                 sx={{
-                  color: getConfidenceColor(confidence.avgShowConfidence),
+                  color: getConfidenceColor(confidence.avgDjConfidence),
                   fontWeight: 600,
                 }}
               >
-                {getConfidenceLabel(confidence.avgShowConfidence)}
+                {getConfidenceLabel(confidence.avgDjConfidence)}
               </Typography>
             </Grid>
           </Grid>
