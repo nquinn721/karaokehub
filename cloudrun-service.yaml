@@ -79,7 +79,7 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_OPENAI_API_KEY
                   key: latest
-            - name: VITE_GOOGLE_MAPS_API_KEY
+            - name: GOOGLE_MAPS_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: KARAOKE_HUB_GOOGLE_MAPS_API_KEY
