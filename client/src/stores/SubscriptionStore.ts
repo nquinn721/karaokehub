@@ -33,7 +33,7 @@ export class SubscriptionStore {
   async fetchSubscriptionStatus() {
     try {
       this.setLoading(true);
-      const response = await apiStore.get('/api/subscription/status');
+      const response = await apiStore.get('/subscription/status');
 
       runInAction(() => {
         this.subscriptionStatus = response;
@@ -55,7 +55,7 @@ export class SubscriptionStore {
   async createCheckoutSession(plan: 'ad_free' | 'premium') {
     try {
       this.setLoading(true);
-      const response = await apiStore.post('/api/subscription/create-checkout-session', {
+      const response = await apiStore.post('/subscription/create-checkout-session', {
         plan,
       });
 
@@ -82,7 +82,7 @@ export class SubscriptionStore {
   async createPortalSession() {
     try {
       this.setLoading(true);
-      const response = await apiStore.post('/api/subscription/create-portal-session');
+      const response = await apiStore.post('/subscription/create-portal-session');
 
       runInAction(() => {
         this.isLoading = false;
