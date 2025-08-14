@@ -59,8 +59,8 @@ class ApiStore {
     makeAutoObservable(this);
     // Initialize axios immediately with fallback
     this.initializeAxios();
-    // Fetch client config on initialization
-    this.fetchClientConfig();
+    // Don't fetch config immediately - wait until it's needed
+    // this.fetchClientConfig();
   }
 
   // Method to ensure axios is initialized
@@ -430,6 +430,13 @@ class ApiStore {
     }
   }
 
+  // Initialize client config - call this early in app lifecycle
+  async initializeConfig(): Promise<void> {
+    if (!this.configLoaded) {
+      await this.fetchClientConfig();
+    }
+  }
+
   // Fetch client configuration from the server
   async fetchClientConfig(): Promise<void> {
     if (this.configLoaded) return; // Don't fetch again if already loaded
@@ -451,6 +458,7 @@ class ApiStore {
 
   // Get Google Maps API key from config
   get googleMapsApiKey(): string | undefined {
+    // Return current value without triggering async fetch
     return this.clientConfig?.googleMapsApiKey;
   }
 

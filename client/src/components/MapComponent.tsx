@@ -32,6 +32,27 @@ export const MapComponent: React.FC = observer(() => {
   // Google Maps API key from server config
   const API_KEY = apiStore.googleMapsApiKey;
 
+  // Initialize config on mount
+  useEffect(() => {
+    let mounted = true;
+    
+    const initConfig = async () => {
+      try {
+        await apiStore.initializeConfig();
+      } catch (error) {
+        if (mounted) {
+          console.error('Failed to initialize API config:', error);
+        }
+      }
+    };
+
+    initConfig();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   if (!apiStore.configLoaded) {
     return (
       <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -422,7 +443,11 @@ export const MapComponent: React.FC = observer(() => {
                               secondary={
                                 <Box sx={{ mt: 0.5 }}>
                                   {show.venue && show.vendor?.name && (
-                                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mb: 0.5 }}>
+                                    <Typography
+                                      variant="body2"
+                                      color="text.secondary"
+                                      sx={{ fontStyle: 'italic', mb: 0.5 }}
+                                    >
                                       by {show.vendor.name}
                                     </Typography>
                                   )}
