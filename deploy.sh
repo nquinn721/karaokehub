@@ -6,7 +6,7 @@ echo "🚀 Deploying KaraokeHub to Google Cloud Run using Cloud Build..."
 # Configuration
 PROJECT_ID="heroic-footing-460117-k8"
 SERVICE_NAME="karaokehub"
-REGION="us-east1"
+REGION="us-central1"
 
 # Set the project
 echo "📋 Setting project to ${PROJECT_ID}..."
@@ -18,7 +18,7 @@ gcloud builds submit --config cloudbuild.yaml .
 
 if [ $? -eq 0 ]; then
     echo "✅ Deployment complete!"
-    echo "🌍 Service URL: https://karaokehub-203453576607.us-east1.run.app"
+    echo "🌍 Service URL: https://karaokehub-203453576607.us-central1.run.app"
     
     # Show deployment status
     echo "📊 Checking deployment status..."

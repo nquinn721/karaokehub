@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { KaraokeParserService } from './karaoke-parser.service';
@@ -6,6 +6,8 @@ import { KaraokeParserService } from './karaoke-parser.service';
 @Controller('admin/parser')
 @UseGuards(AuthGuard('jwt'), AdminGuard)
 export class ParserController {
+  private readonly logger = new Logger(ParserController.name);
+
   constructor(private readonly parserService: KaraokeParserService) {}
 
   @Post('parse-website')
@@ -34,14 +36,64 @@ export class ParserController {
       showIds?: string[];
     },
   ) {
-    await this.parserService.approveSelectedItems(id, selectedItems);
-    return { success: true, message: 'Selected items approved and saved successfully' };
+    try {
+      this.logger.log(`🔍 Approving selected items for schedule ${id}`, selectedItems);
+
+      const result = await this.parserService.approveSelectedItems(id, selectedItems);
+
+      this.logger.log(`✅ Approval result:`, {
+        vendor: result.vendor ? `${result.vendor.name} (ID: ${result.vendor.id})` : 'None',
+        kjsCount: result.kjs.length,
+        showsCount: result.shows.length,
+        kjsDetails: result.kjs.map((kj) => `${kj.name} (ID: ${kj.id})`),
+        showsDetails: result.shows.map((show) => `${show.venue} at ${show.time} (ID: ${show.id})`),
+      });
+
+      return {
+        success: true,
+        message: 'Selected items approved and saved successfully',
+        data: result,
+        summary: {
+          vendor: result.vendor ? 1 : 0,
+          kjs: result.kjs.length,
+          shows: result.shows.length,
+        },
+      };
+    } catch (error) {
+      this.logger.error('❌ Failed to approve selected items:', error);
+      throw error;
+    }
   }
 
   @Patch('approve-all/:id')
   async approveAllItems(@Param('id') id: string) {
-    await this.parserService.approveAllItems(id);
-    return { success: true, message: 'All items approved and saved successfully' };
+    try {
+      this.logger.log(`🔍 Approving all items for schedule ${id}`);
+
+      const result = await this.parserService.approveAllItems(id);
+
+      this.logger.log(`✅ Approval result:`, {
+        vendor: result.vendor ? `${result.vendor.name} (ID: ${result.vendor.id})` : 'None',
+        kjsCount: result.kjs.length,
+        showsCount: result.shows.length,
+        kjsDetails: result.kjs.map((kj) => `${kj.name} (ID: ${kj.id})`),
+        showsDetails: result.shows.map((show) => `${show.venue} at ${show.time} (ID: ${show.id})`),
+      });
+
+      return {
+        success: true,
+        message: 'All items approved and saved successfully',
+        data: result,
+        summary: {
+          vendor: result.vendor ? 1 : 0,
+          kjs: result.kjs.length,
+          shows: result.shows.length,
+        },
+      };
+    } catch (error) {
+      this.logger.error('❌ Failed to approve all items:', error);
+      throw error;
+    }
   }
 
   @Patch('reject/:id')
@@ -50,38 +102,22 @@ export class ParserController {
     return { success: true, message: 'Data rejected successfully' };
   }
 
-  @Post('parse-and-save')
-  async parseAndSaveWebsite(@Body() body: { url: string; autoApprove?: boolean }) {
-    const result = await this.parserService.parseAndSaveWebsite(
-      body.url,
-      body.autoApprove || false,
-    );
+  @Post('cleanup-invalid-reviews')
+  async cleanupInvalidPendingReviews() {
+    const removedCount = await this.parserService.cleanupInvalidPendingReviews();
     return {
       success: true,
-      message: 'Website parsed and data saved successfully',
-      data: {
-        vendor: result.savedEntities?.vendor?.name || 'Unknown',
-        kjsCount: result.savedEntities?.kjs?.length || 0,
-        showsCount: result.savedEntities?.shows?.length || 0,
-        confidence: {
-          vendor: result.parsedData?.vendor?.confidence || 0,
-          avgKjConfidence:
-            result.parsedData?.kjs?.length > 0
-              ? Math.round(
-                  result.parsedData.kjs.reduce((sum, kj) => sum + kj.confidence, 0) /
-                    result.parsedData.kjs.length,
-                )
-              : 0,
-          avgShowConfidence:
-            result.parsedData?.shows?.length > 0
-              ? Math.round(
-                  result.parsedData.shows.reduce((sum, show) => sum + show.confidence, 0) /
-                    result.parsedData.shows.length,
-                )
-              : 0,
-        },
-      },
-      entities: result.savedEntities,
+      message: `Cleaned up ${removedCount} invalid pending reviews`,
+      removedCount,
+    };
+  }
+
+  @Get('debug/entities-count')
+  async getEntitiesCount() {
+    const debug = await this.parserService.getEntitiesDebugInfo();
+    return {
+      success: true,
+      data: debug,
     };
   }
 
@@ -98,23 +134,6 @@ export class ParserController {
         parsedKjsCount: result.parsedData.kjs?.length || 0,
         parsedShowsCount: result.parsedData.shows?.length || 0,
         status: result.savedEntities.vendor ? 'saved' : 'pending_review',
-        confidence: {
-          vendor: result.parsedData.vendor?.confidence || 0,
-          avgKjConfidence:
-            result.parsedData.kjs?.length > 0
-              ? Math.round(
-                  result.parsedData.kjs.reduce((sum, kj) => sum + kj.confidence, 0) /
-                    result.parsedData.kjs.length,
-                )
-              : 0,
-          avgShowConfidence:
-            result.parsedData.shows?.length > 0
-              ? Math.round(
-                  result.parsedData.shows.reduce((sum, show) => sum + show.confidence, 0) /
-                    result.parsedData.shows.length,
-                )
-              : 0,
-        },
       },
       entities: result.savedEntities,
     };
@@ -141,34 +160,26 @@ export class SimpleTestController {
           parsedKjsCount: result.parsedData.kjs?.length || 0,
           parsedShowsCount: result.parsedData.shows?.length || 0,
           status: result.savedEntities.vendor ? 'saved' : 'pending_review',
-          confidence: {
-            vendor: result.parsedData.vendor?.confidence || 0,
-            avgKjConfidence:
-              result.parsedData.kjs?.length > 0
-                ? Math.round(
-                    result.parsedData.kjs.reduce((sum, kj) => sum + kj.confidence, 0) /
-                      result.parsedData.kjs.length,
-                  )
-                : 0,
-            avgShowConfidence:
-              result.parsedData.shows?.length > 0
-                ? Math.round(
-                    result.parsedData.shows.reduce((sum, show) => sum + show.confidence, 0) /
-                      result.parsedData.shows.length,
-                  )
-                : 0,
-          },
         },
         rawShows: result.parsedData.shows || [], // Include raw show data for debugging
-        // Debug info
-        debug: {
-          parsedData: result.parsedData,
-          savedEntities: {
-            vendor: result.savedEntities.vendor,
-            kjsCount: result.savedEntities.kjs.length,
-            showsCount: result.savedEntities.shows.length,
-          },
-        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        stack: error.stack,
+      };
+    }
+  }
+
+  @Post('cleanup')
+  async testCleanupInvalidReviews() {
+    try {
+      const removedCount = await this.parserService.cleanupInvalidPendingReviews();
+      return {
+        success: true,
+        message: `Cleaned up ${removedCount} invalid pending reviews`,
+        removedCount,
       };
     } catch (error) {
       return {

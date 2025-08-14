@@ -9,7 +9,7 @@ on:
 env:
   PROJECT_ID: heroic-footing-460117-k8
   SERVICE_NAME: karaokehub
-  REGION: us-east1
+  REGION: us-central1
 
 jobs:
   test:
@@ -86,7 +86,7 @@ jobs:
             --concurrency 80 \
             --add-cloudsql-instances heroic-footing-460117-k8:us-central1:accountant \
             --set-env-vars NODE_ENV=production \
-            --set-env-vars FRONTEND_URL=https://karaokehub-203453576607.us-east1.run.app \
+            --set-env-vars FRONTEND_URL=https://karaokehub-203453576607.us-central1.run.app \
             --set-env-vars INSTANCE_CONNECTION_NAME=heroic-footing-460117-k8:us-central1:accountant \
             --update-secrets DATABASE_HOST=KARAOKE_HUB_DB_HOST:latest \
             --update-secrets DATABASE_PORT=KARAOKE_HUB_DB_PORT:latest \

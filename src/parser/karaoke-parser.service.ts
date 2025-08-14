@@ -126,7 +126,90 @@ export class KaraokeParserService {
       const contentForAI = this.prepareContentForAI(combinedContent, url);
       const aiResult = await this.analyzeWithSmartAI(contentForAI);
 
-      // Step 4: Save raw parsed data
+      // Step 3.5: Validate if the parsing found meaningful data
+      const hasValidData = this.hasValidParsedData(aiResult);
+      if (!hasValidData) {
+        this.logger.log(
+          `Skipping ${url} - no valid karaoke/DJ data found (0 shows, low confidence vendor)`,
+        );
+        return {
+          vendor: aiResult.vendor,
+          kjs: aiResult.kjs || [],
+          shows: aiResult.shows || [],
+          rawData: {
+            url,
+            title: this.extractTitleFromHtml(combinedContent),
+            content: combinedContent.substring(0, 1000),
+            parsedAt: new Date(),
+          },
+        };
+      }
+
+      // Step 4: Check if we already have a recent pending review for this URL
+      const existingPendingReview = await this.parsedScheduleRepository.findOne({
+        where: {
+          url: url,
+          status: ParseStatus.PENDING_REVIEW,
+        },
+        order: { createdAt: 'DESC' },
+      });
+
+      if (existingPendingReview) {
+        // Check if the existing review is recent (within last 24 hours)
+        const oneDayAgo = new Date();
+        oneDayAgo.setHours(oneDayAgo.getHours() - 24);
+
+        if (existingPendingReview.createdAt > oneDayAgo) {
+          this.logger.log(
+            `Skipping duplicate - already have pending review for ${url} from ${existingPendingReview.createdAt}`,
+          );
+
+          // Return the data from the existing review
+          const existingAnalysis = existingPendingReview.aiAnalysis;
+          return {
+            vendor: existingAnalysis.vendor,
+            kjs: existingAnalysis.kjs,
+            shows: existingAnalysis.shows,
+            rawData: {
+              url,
+              title: this.extractTitleFromHtml(combinedContent),
+              content: combinedContent.substring(0, 1000),
+              parsedAt: existingPendingReview.createdAt,
+            },
+          };
+        } else {
+          // Old review - update it instead of creating new one
+          this.logger.log(`Updating existing old pending review for ${url}`);
+          existingPendingReview.rawData = {
+            title: this.extractTitleFromHtml(combinedContent),
+            content: combinedContent.substring(0, 5000),
+            parsedAt: new Date(),
+          };
+          existingPendingReview.aiAnalysis = aiResult;
+          existingPendingReview.createdAt = new Date();
+
+          await this.parsedScheduleRepository.save(existingPendingReview);
+
+          const result: ParsedKaraokeData = {
+            vendor: aiResult.vendor,
+            kjs: aiResult.kjs,
+            shows: aiResult.shows,
+            rawData: {
+              url,
+              title: this.extractTitleFromHtml(combinedContent),
+              content: combinedContent.substring(0, 1000),
+              parsedAt: new Date(),
+            },
+          };
+
+          this.logger.log(
+            `Updated existing review for: ${url}. Found ${result.kjs.length} KJs and ${result.shows.length} shows`,
+          );
+          return result;
+        }
+      }
+
+      // Step 5: Save raw parsed data (only if no recent duplicate exists)
       const parsedSchedule = new ParsedSchedule();
       parsedSchedule.url = url;
       parsedSchedule.rawData = {
@@ -850,6 +933,32 @@ ${content}
     };
   }
 
+  // NEW: Check if parsed data has enough meaningful content to warrant a pending review
+  private hasValidParsedData(aiResult: any): boolean {
+    // Must have shows to be considered valid (KJs are optional)
+    const hasShows = aiResult.shows && aiResult.shows.length > 0;
+
+    // Vendor should have reasonable confidence and not be "Unknown"
+    const hasValidVendor =
+      aiResult.vendor &&
+      aiResult.vendor.confidence > 30 &&
+      aiResult.vendor.name !== 'Unknown Vendor' &&
+      aiResult.vendor.name !== 'Unknown Venue';
+
+    // At least one show should have reasonable confidence
+    const hasConfidentShows = hasShows && aiResult.shows.some((show: any) => show.confidence > 50);
+
+    const isValid = hasShows && hasValidVendor && hasConfidentShows;
+
+    this.logger.log(`Validation check for parsed data:
+      - Has shows: ${hasShows} (${aiResult.shows?.length || 0} shows)
+      - Valid vendor: ${hasValidVendor} (${aiResult.vendor?.name}, confidence: ${aiResult.vendor?.confidence})
+      - Confident shows: ${hasConfidentShows}
+      - Overall valid: ${isValid}`);
+
+    return isValid;
+  }
+
   async approveAndSaveParsedData(parsedScheduleId: string, approvedData: any): Promise<void> {
     const parsedSchedule = await this.parsedScheduleRepository.findOne({
       where: { id: parsedScheduleId },
@@ -935,6 +1044,106 @@ ${content}
       where: { status: ParseStatus.PENDING_REVIEW },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  // NEW: Clean up pending reviews that have no useful data
+  async cleanupInvalidPendingReviews(): Promise<number> {
+    this.logger.log('Starting cleanup of invalid pending reviews...');
+
+    const pendingReviews = await this.getPendingReviews();
+    let removedCount = 0;
+
+    for (const review of pendingReviews) {
+      const hasValidData = this.hasValidParsedData(review.aiAnalysis);
+
+      if (!hasValidData) {
+        this.logger.log(`Removing invalid pending review for ${review.url} - no useful data found`);
+        await this.parsedScheduleRepository.remove(review);
+        removedCount++;
+      }
+    }
+
+    this.logger.log(
+      `Cleanup completed: removed ${removedCount} invalid pending reviews out of ${pendingReviews.length} total`,
+    );
+    return removedCount;
+  }
+
+  // NEW: Debug method to check entities state
+  async getEntitiesDebugInfo(): Promise<{
+    vendors: { count: number; recent: any[] };
+    kjs: { count: number; recent: any[] };
+    shows: { count: number; recent: any[] };
+    pendingReviews: { count: number; recent: any[] };
+  }> {
+    const vendorsCount = await this.vendorRepository.count();
+    const recentVendors = await this.vendorRepository.find({
+      take: 5,
+      order: { createdAt: 'DESC' },
+    });
+
+    const kjsCount = await this.kjRepository.count();
+    const recentKJs = await this.kjRepository.find({
+      take: 5,
+      order: { createdAt: 'DESC' },
+      relations: ['vendor'],
+    });
+
+    const showsCount = await this.showRepository.count();
+    const recentShows = await this.showRepository.find({
+      take: 5,
+      order: { createdAt: 'DESC' },
+      relations: ['vendor', 'kj'],
+    });
+
+    const pendingReviewsCount = await this.parsedScheduleRepository.count({
+      where: { status: ParseStatus.PENDING_REVIEW },
+    });
+    const recentPendingReviews = await this.parsedScheduleRepository.find({
+      where: { status: ParseStatus.PENDING_REVIEW },
+      take: 5,
+      order: { createdAt: 'DESC' },
+    });
+
+    return {
+      vendors: {
+        count: vendorsCount,
+        recent: recentVendors.map((v) => ({
+          id: v.id,
+          name: v.name,
+          createdAt: v.createdAt,
+        })),
+      },
+      kjs: {
+        count: kjsCount,
+        recent: recentKJs.map((kj) => ({
+          id: kj.id,
+          name: kj.name,
+          vendor: kj.vendor?.name,
+          createdAt: kj.createdAt,
+        })),
+      },
+      shows: {
+        count: showsCount,
+        recent: recentShows.map((s) => ({
+          id: s.id,
+          venue: s.venue,
+          time: s.time,
+          vendor: s.vendor?.name,
+          kj: s.kj?.name,
+          createdAt: s.createdAt,
+        })),
+      },
+      pendingReviews: {
+        count: pendingReviewsCount,
+        recent: recentPendingReviews.map((pr) => ({
+          id: pr.id,
+          url: pr.url,
+          status: pr.status,
+          createdAt: pr.createdAt,
+        })),
+      },
+    };
   }
 
   async rejectParsedData(parsedScheduleId: string, reason?: string): Promise<void> {
@@ -1054,8 +1263,21 @@ ${content}
               const savedKj = await this.kjRepository.save(kj);
               result.kjs.push(savedKj);
               this.logger.log(`✅ Created KJ: ${kj.name} (ID: ${savedKj.id})`);
+
+              // Immediately verify the save worked
+              const verifyKj = await this.kjRepository.findOne({ where: { id: savedKj.id } });
+              if (!verifyKj) {
+                this.logger.error(`❌ KJ save verification failed for: ${kj.name}`);
+              } else {
+                this.logger.log(`✅ KJ save verified: ${verifyKj.name}`);
+              }
             } catch (error) {
               this.logger.error(`❌ Failed to save KJ: ${kj.name}`, error);
+              this.logger.error(`KJ data being saved:`, {
+                name: kj.name,
+                vendorId: kj.vendorId,
+                isActive: kj.isActive,
+              });
               // Continue with other KJs even if one fails
             }
           } else {
@@ -1120,8 +1342,25 @@ ${content}
             this.logger.log(
               `✅ Created show: ${show.venue} on ${show.date || 'recurring'} at ${show.time} (ID: ${savedShow.id})`,
             );
+
+            // Immediately verify the save worked
+            const verifyShow = await this.showRepository.findOne({ where: { id: savedShow.id } });
+            if (!verifyShow) {
+              this.logger.error(`❌ Show save verification failed for: ${show.venue}`);
+            } else {
+              this.logger.log(`✅ Show save verified: ${verifyShow.venue}`);
+            }
           } catch (error) {
             this.logger.error(`❌ Failed to save show: ${show.venue}`, error);
+            this.logger.error(`Show data being saved:`, {
+              venue: show.venue,
+              date: show.date,
+              time: show.time,
+              vendorId: show.vendorId,
+              kjId: show.kjId,
+              isActive: show.isActive,
+              notes: show.notes,
+            });
             // Continue with other shows even if one fails
           }
         } else {
@@ -1154,6 +1393,51 @@ ${content}
     this.logger.log(
       `✅ Removed parsed schedule ${parsedScheduleId} - items processed and saved to database`,
     );
+
+    // Re-fetch the created entities with their full data to ensure they were saved correctly
+    if (result.vendor) {
+      const refreshedVendor = await this.vendorRepository.findOne({
+        where: { id: result.vendor.id },
+      });
+      if (refreshedVendor) {
+        result.vendor = refreshedVendor;
+        this.logger.log(`✅ Verified vendor in database: ${refreshedVendor.name}`);
+      } else {
+        this.logger.error(`❌ Vendor not found in database after save: ${result.vendor.id}`);
+      }
+    }
+
+    // Re-fetch KJs to verify they were saved
+    const refreshedKJs = [];
+    for (const kj of result.kjs) {
+      const refreshedKJ = await this.kjRepository.findOne({
+        where: { id: kj.id },
+        relations: ['vendor'],
+      });
+      if (refreshedKJ) {
+        refreshedKJs.push(refreshedKJ);
+        this.logger.log(`✅ Verified KJ in database: ${refreshedKJ.name}`);
+      } else {
+        this.logger.error(`❌ KJ not found in database after save: ${kj.id}`);
+      }
+    }
+    result.kjs = refreshedKJs;
+
+    // Re-fetch shows to verify they were saved
+    const refreshedShows = [];
+    for (const show of result.shows) {
+      const refreshedShow = await this.showRepository.findOne({
+        where: { id: show.id },
+        relations: ['vendor', 'kj'],
+      });
+      if (refreshedShow) {
+        refreshedShows.push(refreshedShow);
+        this.logger.log(`✅ Verified show in database: ${refreshedShow.venue}`);
+      } else {
+        this.logger.error(`❌ Show not found in database after save: ${show.id}`);
+      }
+    }
+    result.shows = refreshedShows;
 
     // Final summary
     this.logger.log(`📋 APPROVAL SUMMARY:
