@@ -14,7 +14,18 @@ export class ThemeStore {
       name: 'ThemeStore',
       properties: ['mode'],
       storage: window.localStorage,
-    });
+    })
+      .then(() => {
+        // If no preference was stored, explicitly set dark mode
+        const stored = window.localStorage.getItem('ThemeStore');
+        if (!stored || !JSON.parse(stored).mode) {
+          this.mode = 'dark';
+        }
+      })
+      .catch(() => {
+        // Fallback to dark mode if persistence fails
+        this.mode = 'dark';
+      });
   }
 
   setTheme(mode: ThemeMode) {
@@ -23,6 +34,10 @@ export class ThemeStore {
 
   toggleTheme() {
     this.mode = this.mode === 'dark' ? 'light' : 'dark';
+  }
+
+  resetToDefault() {
+    this.mode = 'dark';
   }
 
   get isDark() {

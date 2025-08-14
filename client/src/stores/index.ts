@@ -1,6 +1,7 @@
 import { apiStore } from './ApiStore';
 import { AuthStore } from './AuthStore';
 import { FavoriteStore } from './FavoriteStore';
+import { FeedbackStore, feedbackStore as feedbackStoreInstance } from './FeedbackStore';
 import { MapStore, mapStore as mapStoreInstance } from './MapStore';
 import { MusicStore, musicStore as musicStoreInstance } from './MusicStore';
 import { ParserStore } from './ParserStore';
@@ -9,7 +10,7 @@ import {
   SubscriptionStore,
   subscriptionStore as subscriptionStoreInstance,
 } from './SubscriptionStore';
-import { ThemeStore } from './ThemeStore';
+import { ThemeStore, themeStore as themeStoreInstance } from './ThemeStore';
 import { UIStore } from './UIStore';
 import { VendorStore } from './VendorStore';
 import { WebSocketStore } from './WebSocketStore';
@@ -19,6 +20,7 @@ export class RootStore {
   uiStore: UIStore;
   showStore: ShowStore;
   favoriteStore: FavoriteStore;
+  feedbackStore: FeedbackStore;
   vendorStore: VendorStore;
   webSocketStore: WebSocketStore;
   themeStore: ThemeStore;
@@ -33,9 +35,10 @@ export class RootStore {
     this.uiStore = new UIStore();
     this.showStore = showStoreInstance; // Use the singleton instance
     this.favoriteStore = new FavoriteStore();
+    this.feedbackStore = feedbackStoreInstance; // Use the singleton instance
     this.vendorStore = new VendorStore();
     this.webSocketStore = new WebSocketStore();
-    this.themeStore = new ThemeStore();
+    this.themeStore = themeStoreInstance; // Use the singleton instance
     this.parserStore = new ParserStore();
     this.mapStore = mapStoreInstance; // Use the singleton instance
     this.musicStore = musicStoreInstance; // Use the singleton instance
@@ -50,9 +53,9 @@ export const {
   uiStore,
   showStore,
   favoriteStore,
+  feedbackStore,
   vendorStore,
   webSocketStore,
-  themeStore,
   parserStore,
   mapStore,
   musicStore,
@@ -61,6 +64,7 @@ export const {
 } = rootStore;
 
 // Export individual stores
+export { themeStore } from './ThemeStore';
 export { apiStore };
 
 // Make stores available globally for debugging

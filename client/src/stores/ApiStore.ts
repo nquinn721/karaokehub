@@ -477,7 +477,6 @@ class ApiStore {
       profile: '/auth/profile',
       google: '/auth/google',
       github: '/auth/github',
-      makeMeAdmin: '/auth/make-me-admin',
     },
 
     // User endpoints

@@ -5,12 +5,14 @@ import { ThemeProvider } from '@theme/ThemeProvider';
 import { observer } from 'mobx-react-lite';
 import React from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import FeedbackButton from './components/FeedbackButton';
 
 // Pages
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AuthError from './pages/AuthError';
 import AuthSuccess from './pages/AuthSuccess';
 import DashboardPage from './pages/DashboardPage';
+import FeedbackManagementPage from './pages/FeedbackManagementPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import MusicPage from './pages/MusicPage';
@@ -129,11 +131,22 @@ const App: React.FC = observer(() => {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/admin/feedback"
+                element={
+                  <ProtectedRoute>
+                    <FeedbackManagementPage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Catch all route */}
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </Box>
+
+          {/* Global Feedback Button */}
+          <FeedbackButton />
         </Box>
       </Router>
     </ThemeProvider>

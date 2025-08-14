@@ -180,36 +180,6 @@ export class AuthStore {
     }
   }
 
-  async makeMeAdmin() {
-    try {
-      this.setLoading(true);
-      const response = await apiStore.post(apiStore.endpoints.auth.makeMeAdmin);
-
-      runInAction(() => {
-        if (response.user) {
-          this.user = response.user;
-        }
-        this.isLoading = false;
-      });
-
-      // Force refresh profile to ensure admin status is properly loaded
-      await this.refreshProfile();
-
-      return {
-        success: true,
-        message: response.message || 'You are now an admin!',
-      };
-    } catch (error: any) {
-      runInAction(() => {
-        this.isLoading = false;
-      });
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Failed to promote to admin',
-      };
-    }
-  }
-
   // OAuth login methods
   loginWithGoogle() {
     const googleUrl = `${apiStore.environmentInfo.baseURL}${apiStore.endpoints.auth.google}`;

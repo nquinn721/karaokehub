@@ -1,13 +1,23 @@
 import { DayOfWeek, DayPicker } from '@components/DayPicker';
 import { PaywallModal } from '@components/PaywallModal';
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
-import { faHeart, faLocationDot, faMicrophone, faXmark } from '@fortawesome/free-solid-svg-icons';
+import {
+  faClock,
+  faHeart,
+  faLocationDot,
+  faMapMarkerAlt,
+  faMicrophone,
+  faMusic,
+  faUser,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Alert,
   Box,
   Card,
   CardContent,
+  Chip,
   CircularProgress,
   Divider,
   IconButton,
@@ -247,12 +257,27 @@ export const MapComponent: React.FC = observer(() => {
           >
             <Box
               sx={{
-                maxWidth: { xs: 260, sm: 280 },
-                p: { xs: 1, sm: 1.5 },
+                maxWidth: { xs: '280px', sm: '320px' },
+                minWidth: { xs: '250px', sm: '280px' },
+                p: { xs: 1.5, sm: 2 },
                 backgroundColor: theme.palette.background.paper,
-                borderRadius: 1,
-                boxShadow: theme.shadows[3],
+                borderRadius: 2,
+                boxShadow: theme.shadows[8],
                 position: 'relative',
+                maxHeight: { xs: '320px', sm: 'auto' },
+                overflow: 'auto',
+                border: `1px solid ${theme.palette.divider}`,
+                // Custom scrollbar styling
+                '&::-webkit-scrollbar': {
+                  width: '4px',
+                },
+                '&::-webkit-scrollbar-track': {
+                  background: theme.palette.action.hover,
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  background: theme.palette.primary.main,
+                  borderRadius: '2px',
+                },
               }}
             >
               {/* Close button in top right corner */}
@@ -261,14 +286,20 @@ export const MapComponent: React.FC = observer(() => {
                 onClick={() => mapStore.closeInfoWindow()}
                 sx={{
                   position: 'absolute',
-                  top: 4,
-                  right: 4,
+                  top: 8,
+                  right: 8,
                   color: theme.palette.text.secondary,
+                  backgroundColor: theme.palette.background.default,
+                  border: `1px solid ${theme.palette.divider}`,
+                  width: 28,
+                  height: 28,
                   '&:hover': {
                     color: theme.palette.text.primary,
                     backgroundColor: theme.palette.action.hover,
+                    transform: 'scale(1.1)',
                   },
-                  p: 0.5,
+                  transition: 'all 0.2s ease',
+                  zIndex: 1,
                 }}
               >
                 <FontAwesomeIcon icon={faXmark} style={{ fontSize: '12px' }} />
@@ -524,9 +555,24 @@ export const MapComponent: React.FC = observer(() => {
                 ref={showListRef}
                 sx={{
                   height: { xs: 'auto', md: 'calc(100% - 80px)' },
-                  maxHeight: { xs: '400px', md: 'none' }, // Limit height on mobile
+                  maxHeight: { xs: '320px', md: 'none' }, // Further reduce height on mobile
                   overflow: 'auto',
                   p: 0,
+                  // Custom scrollbar styling
+                  '&::-webkit-scrollbar': {
+                    width: { xs: '6px', md: '8px' },
+                  },
+                  '&::-webkit-scrollbar-track': {
+                    background: theme.palette.action.hover,
+                    borderRadius: '4px',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    background: theme.palette.primary.main,
+                    borderRadius: '4px',
+                    '&:hover': {
+                      background: theme.palette.primary.dark,
+                    },
+                  },
                 }}
               >
                 {showStore.isLoading ? (
@@ -540,43 +586,230 @@ export const MapComponent: React.FC = observer(() => {
                     </Typography>
                   </Box>
                 ) : (
-                  <List sx={{ p: 0 }}>
+                  <List sx={{ p: 0, m: '5px' }}>
                     {showStore.showsForSelectedDay.map((show, index) => (
                       <React.Fragment key={show.id}>
-                        <ListItem sx={{ p: 0 }}>
+                        <ListItem
+                          sx={{ p: 0, mb: { xs: 0.25, md: 0.75 }, mx: { xs: 0.25, md: 0.75 } }}
+                        >
                           <ListItemButton
                             data-show-id={show.id}
                             onClick={() => handleShowClick(show)}
                             selected={showStore.selectedShow?.id === show.id}
                             sx={{
-                              p: { xs: 1.5, md: 2 },
+                              p: { xs: 1.5, md: 2.5 },
+                              borderRadius: 2,
+                              transition: 'all 0.2s ease',
+                              border: `1px solid ${theme.palette.divider}`,
+                              backgroundColor: theme.palette.background.paper,
+                              minHeight: { xs: '105px', md: '130px' }, // Slightly taller to accommodate address on separate line
+                              '&:hover': {
+                                backgroundColor: theme.palette.action.hover,
+                                border: `1px solid ${theme.palette.primary.main}`,
+                                transform: 'translateY(-2px)',
+                                boxShadow: theme.shadows[4],
+                              },
                               '&.Mui-selected': {
-                                backgroundColor: theme.palette.primary.main + '10',
+                                backgroundColor: theme.palette.primary.main + '15',
+                                border: `2px solid ${theme.palette.primary.main}`,
+                                '&:hover': {
+                                  backgroundColor: theme.palette.primary.main + '20',
+                                },
                               },
                             }}
                           >
                             {/* Custom layout instead of ListItemText to avoid div-in-p nesting */}
-                            <Box sx={{ py: 1, px: 0 }}>
-                              {/* Primary content */}
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                <FontAwesomeIcon
-                                  icon={faMicrophone}
-                                  style={{
-                                    fontSize: '14px',
-                                    color: theme.palette.primary.main,
-                                  }}
-                                />
-                                <Typography
-                                  variant="subtitle1"
-                                  fontWeight={600}
+                            <Box sx={{ py: { xs: 0.5, md: 1 }, px: 0, width: '100%' }}>
+                              {/* Primary content - Compact mobile layout */}
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: { xs: 1.5, md: 2 },
+                                  mb: { xs: 0.5, md: 0.5 },
+                                }}
+                              >
+                                {/* Icon column */}
+                                <Box
                                   sx={{
-                                    fontSize: { xs: '0.95rem', md: '1rem' },
-                                    lineHeight: 1.2,
-                                    flex: 1,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: 0.5,
+                                    minWidth: { xs: '24px', md: '28px' },
                                   }}
                                 >
-                                  {show.venue || show.vendor?.name || 'Unknown Venue'}
-                                </Typography>
+                                  <FontAwesomeIcon
+                                    icon={faMicrophone}
+                                    style={{
+                                      fontSize: '16px',
+                                      color: theme.palette.primary.main,
+                                    }}
+                                  />
+                                  <Box
+                                    sx={{
+                                      width: '2px',
+                                      height: { xs: '20px', md: '30px' },
+                                      backgroundColor: theme.palette.primary.main,
+                                      opacity: 0.3,
+                                      borderRadius: '1px',
+                                    }}
+                                  />
+                                </Box>
+
+                                {/* Main content */}
+                                <Box sx={{ flex: 1, minWidth: 0 }}>
+                                  {/* Venue name and time */}
+                                  <Box
+                                    sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}
+                                  >
+                                    <Typography
+                                      variant="subtitle1"
+                                      fontWeight={600}
+                                      sx={{
+                                        fontSize: { xs: '0.95rem', md: '1.1rem' },
+                                        lineHeight: 1.2,
+                                        flex: 1,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {show.venue || show.vendor?.name || 'Unknown Venue'}
+                                    </Typography>
+
+                                    {/* Time badge */}
+                                    <Box
+                                      sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 0.5,
+                                        backgroundColor: theme.palette.primary.main + '15',
+                                        border: `1px solid ${theme.palette.primary.main + '30'}`,
+                                        borderRadius: 1,
+                                        px: { xs: 0.75, md: 1 },
+                                        py: 0.25,
+                                        minWidth: 'fit-content',
+                                      }}
+                                    >
+                                      <FontAwesomeIcon
+                                        icon={faClock}
+                                        style={{
+                                          fontSize: '10px',
+                                          color: theme.palette.primary.main,
+                                        }}
+                                      />
+                                      <Typography
+                                        variant="caption"
+                                        sx={{
+                                          fontWeight: 600,
+                                          fontSize: { xs: '0.7rem', md: '0.75rem' },
+                                          color: theme.palette.primary.main,
+                                          whiteSpace: 'nowrap',
+                                        }}
+                                      >
+                                        {formatTime(show.startTime)} - {formatTime(show.endTime)}
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+
+                                  {/* Compact info rows */}
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                    {/* DJ/Host info */}
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                      <FontAwesomeIcon
+                                        icon={faUser}
+                                        style={{
+                                          fontSize: '11px',
+                                          color: theme.palette.text.secondary,
+                                        }}
+                                      />
+                                      <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                        sx={{
+                                          fontSize: { xs: '0.75rem', md: '0.8rem' },
+                                          fontWeight: 500,
+                                        }}
+                                      >
+                                        {show.dj?.name || 'Unknown Host'}
+                                      </Typography>
+                                    </Box>
+
+                                    {/* Location info on separate line */}
+                                    <Box
+                                      sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}
+                                    >
+                                      <FontAwesomeIcon
+                                        icon={faMapMarkerAlt}
+                                        style={{
+                                          fontSize: '11px',
+                                          color: theme.palette.text.secondary,
+                                          marginTop: '2px', // Align with first line of text
+                                        }}
+                                      />
+                                      <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                        sx={{
+                                          fontSize: { xs: '0.75rem', md: '0.8rem' },
+                                          lineHeight: 1.3,
+                                          wordBreak: 'break-word',
+                                        }}
+                                      >
+                                        {show.address}
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+
+                                  {/* Badges section */}
+                                  <Box
+                                    sx={{ mt: 0.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}
+                                  >
+                                    {/* Vendor chip */}
+                                    {show.vendor?.name && (
+                                      <Chip
+                                        label={show.vendor.name}
+                                        size="small"
+                                        sx={{
+                                          height: '22px',
+                                          fontSize: { xs: '0.65rem', md: '0.7rem' },
+                                          fontWeight: 500,
+                                          backgroundColor: theme.palette.info.main + '15',
+                                          color: theme.palette.info.main,
+                                          border: `1px solid ${theme.palette.info.main + '30'}`,
+                                          '& .MuiChip-label': {
+                                            px: 0.75,
+                                          },
+                                        }}
+                                      />
+                                    )}
+
+                                    {/* Show type badge */}
+                                    <Box
+                                      sx={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 0.5,
+                                        backgroundColor: theme.palette.secondary.main + '15',
+                                        color: theme.palette.secondary.main,
+                                        px: 1,
+                                        py: 0.25,
+                                        borderRadius: 0.75,
+                                        fontSize: { xs: '0.7rem', md: '0.75rem' },
+                                        fontWeight: 500,
+                                      }}
+                                    >
+                                      <FontAwesomeIcon
+                                        icon={faMusic}
+                                        style={{
+                                          fontSize: '10px',
+                                        }}
+                                      />
+                                      Karaoke
+                                    </Box>
+                                  </Box>
+                                </Box>
 
                                 {/* Favorite button */}
                                 {authStore.isAuthenticated && (
@@ -594,9 +827,12 @@ export const MapComponent: React.FC = observer(() => {
                                     sx={{
                                       color: favoriteStore.isFavorite(show.id)
                                         ? theme.palette.error.main
-                                        : theme.palette.text.secondary,
+                                        : theme.palette.text.disabled,
+                                      width: { xs: '36px', md: '40px' },
+                                      height: { xs: '36px', md: '40px' },
                                       '&:hover': {
                                         color: theme.palette.error.main,
+                                        backgroundColor: theme.palette.error.main + '10',
                                       },
                                     }}
                                   >
@@ -607,82 +843,6 @@ export const MapComponent: React.FC = observer(() => {
                                       style={{ fontSize: '16px' }}
                                     />
                                   </IconButton>
-                                )}
-                              </Box>
-
-                              {/* Secondary content */}
-                              <Box sx={{ mt: 0.5 }}>
-                                {show.venue && show.vendor?.name && (
-                                  <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                    sx={{
-                                      fontStyle: 'italic',
-                                      mb: 0.5,
-                                      fontSize: { xs: '0.8rem', md: '0.875rem' },
-                                    }}
-                                  >
-                                    by {show.vendor.name}
-                                  </Typography>
-                                )}
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                  sx={{
-                                    mb: 0.5,
-                                    fontSize: { xs: '0.8rem', md: '0.875rem' },
-                                    lineHeight: 1.3,
-                                  }}
-                                >
-                                  {show.address}
-                                </Typography>
-                                <Box
-                                  sx={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 1,
-                                    mt: 0.5,
-                                    flexWrap: { xs: 'wrap', sm: 'nowrap' },
-                                  }}
-                                >
-                                  <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                    sx={{
-                                      fontWeight: 500,
-                                      fontSize: { xs: '0.8rem', md: '0.875rem' },
-                                    }}
-                                  >
-                                    {formatTime(show.startTime)} - {formatTime(show.endTime)}
-                                  </Typography>
-                                </Box>
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                  sx={{
-                                    mt: 0.5,
-                                    fontSize: { xs: '0.8rem', md: '0.875rem' },
-                                  }}
-                                >
-                                  Host: {show.dj?.name || 'Unknown'}
-                                </Typography>
-                                {show.description && (
-                                  <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                    sx={{
-                                      mt: 0.5,
-                                      fontSize: { xs: '0.8rem', md: '0.875rem' },
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      display: '-webkit-box',
-                                      WebkitLineClamp: { xs: 1, md: 2 }, // Fewer lines on mobile
-                                      WebkitBoxOrient: 'vertical',
-                                      lineHeight: 1.3,
-                                    }}
-                                  >
-                                    {show.description}
-                                  </Typography>
                                 )}
                               </Box>
                             </Box>

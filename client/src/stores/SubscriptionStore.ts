@@ -22,6 +22,18 @@ export class SubscriptionStore {
 
   constructor() {
     makeAutoObservable(this);
+    // Initialize with default subscription status to prevent undefined errors
+    this.initializeDefaultStatus();
+  }
+
+  private initializeDefaultStatus() {
+    this.subscriptionStatus = {
+      subscription: null,
+      features: {
+        adFree: false,
+        premium: false,
+      },
+    };
   }
 
   setLoading(loading: boolean) {
@@ -36,7 +48,14 @@ export class SubscriptionStore {
       const response = await apiStore.get('/subscription/status');
 
       runInAction(() => {
-        this.subscriptionStatus = response;
+        // Ensure we have a valid structure with proper defaults
+        this.subscriptionStatus = {
+          subscription: response?.subscription || null,
+          features: {
+            adFree: response?.features?.adFree || false,
+            premium: response?.features?.premium || false,
+          },
+        };
         this.isLoading = false;
       });
 
@@ -44,6 +63,8 @@ export class SubscriptionStore {
     } catch (error: any) {
       runInAction(() => {
         this.isLoading = false;
+        // Keep default structure even on error
+        this.initializeDefaultStatus();
       });
       return {
         success: false,
@@ -106,11 +127,11 @@ export class SubscriptionStore {
 
   // Getters for easy access to subscription features
   get hasAdFreeAccess(): boolean {
-    return this.subscriptionStatus?.features.adFree || false;
+    return this.subscriptionStatus?.features?.adFree || false;
   }
 
   get hasPremiumAccess(): boolean {
-    return this.subscriptionStatus?.features.premium || false;
+    return this.subscriptionStatus?.features?.premium || false;
   }
 
   get currentPlan(): 'free' | 'ad_free' | 'premium' {

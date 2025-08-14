@@ -4,6 +4,7 @@ import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
 import { Favorite } from '../favorite/favorite.entity';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
+import { UrlToParse } from '../parser/url-to-parse.entity';
 import { Show } from '../show/show.entity';
 import { Subscription } from '../subscription/subscription.entity';
 import { Vendor } from '../vendor/vendor.entity';
@@ -18,8 +19,8 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     password: configService.get('DATABASE_PASSWORD', 'password'),
     database: configService.get('DATABASE_NAME', 'karaoke-hub'),
 
-    entities: [User, Vendor, DJ, Show, Favorite, ParsedSchedule, Subscription],
-    synchronize: !isProduction, // Only sync schema in development
+    entities: [User, Vendor, DJ, Show, Favorite, ParsedSchedule, Subscription, UrlToParse],
+    synchronize: true, // Enable sync if explicitly set or in development
     logging: !isProduction
       ? ['error', 'warn'] // Only log errors and warnings, no queries
       : configService.get('DATABASE_LOGGING') === 'true'

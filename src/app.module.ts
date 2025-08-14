@@ -11,6 +11,7 @@ import { ConfigApiModule } from './config/config.module';
 import { getDatabaseConfig } from './config/database.config';
 import { DJModule } from './dj/dj.module';
 import { FavoriteModule } from './favorite/favorite.module';
+import { FeedbackModule } from './feedback/feedback.module';
 import { MusicModule } from './music/music.module';
 import { ParserModule } from './parser/parser.module';
 import { ShowModule } from './show/show.module';
@@ -57,6 +58,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     DJModule,
     ShowModule,
     FavoriteModule,
+    FeedbackModule,
     ParserModule,
     MusicModule,
     SubscriptionModule,

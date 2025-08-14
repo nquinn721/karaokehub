@@ -10,6 +10,7 @@ import {
   faPause,
   faPlay,
   faSearch,
+  faTimes,
   faUser,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -53,7 +54,7 @@ export const MusicPage: React.FC = observer(() => {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   // Get search query from URL params
   const urlSearchQuery = searchParams.get('q') || '';
@@ -77,6 +78,28 @@ export const MusicPage: React.FC = observer(() => {
   };
 
   const currentView = getCurrentView();
+
+  // Clean up audio when component unmounts
+  useEffect(() => {
+    return () => {
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.src = '';
+        setCurrentlyPlaying(null);
+        setAudioElement(null);
+      }
+    };
+  }, [audioElement]);
+
+  // Stop music when navigating within the music section
+  useEffect(() => {
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.src = '';
+      setCurrentlyPlaying(null);
+      setAudioElement(null);
+    }
+  }, [location.pathname, location.search]); // React to route changes
 
   useEffect(() => {
     // Clear any previous results when component mounts
@@ -130,20 +153,15 @@ export const MusicPage: React.FC = observer(() => {
     const value = event.target.value;
     setSearchQuery(value);
 
-    // Update URL search params as user types (debounced)
-    if (value.trim()) {
-      const timeoutId = setTimeout(() => {
-        setSearchParams({ q: value });
-      }, 500);
-      return () => clearTimeout(timeoutId);
-    }
-
     musicStore.setSearchQuery(value);
+
     if (value.trim().length >= 2) {
-      // Use setSuggestions for now since fetchSuggestions doesn't exist
-      musicStore.setSuggestions([]);
+      // Get suggestions for autocomplete
+      musicStore.getSuggestions(value);
     } else {
+      // Clear suggestions if input is too short
       musicStore.setSuggestions([]);
+      musicStore.setShowSuggestions(false);
     }
   };
 
@@ -153,7 +171,10 @@ export const MusicPage: React.FC = observer(() => {
   };
 
   const handleInputFocus = () => {
-    if (searchQuery.trim() && musicStore.suggestions.length > 0) {
+    if (searchQuery.trim() && searchQuery.length >= 2) {
+      // Get fresh suggestions when focusing
+      musicStore.getSuggestions(searchQuery);
+    } else if (searchQuery.trim() && musicStore.suggestions.length > 0) {
       musicStore.setShowSuggestions(true);
     }
   };
@@ -176,6 +197,14 @@ export const MusicPage: React.FC = observer(() => {
   const handleCategoryClick = async (categoryId: string) => {
     navigate(`/music/category/${categoryId}`);
     await musicStore.loadCategoryMusic(categoryId);
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    musicStore.setSearchQuery('');
+    musicStore.setSuggestions([]);
+    musicStore.setShowSuggestions(false);
+    musicStore.clearResults();
   };
 
   // Generate breadcrumbs based on current route
@@ -341,9 +370,26 @@ export const MusicPage: React.FC = observer(() => {
                     <FontAwesomeIcon icon={faSearch} />
                   </InputAdornment>
                 ),
-                endAdornment: musicStore.isLoading && (
+                endAdornment: (
                   <InputAdornment position="end">
-                    <CircularProgress size={20} />
+                    {searchQuery && (
+                      <IconButton
+                        size="small"
+                        onClick={handleClearSearch}
+                        sx={{
+                          mr: musicStore.isLoading ? 1 : 0,
+                          color: 'text.secondary',
+                          '&:hover': {
+                            color: 'text.primary',
+                            backgroundColor: 'action.hover',
+                          },
+                        }}
+                        aria-label="Clear search"
+                      >
+                        <FontAwesomeIcon icon={faTimes} style={{ fontSize: '14px' }} />
+                      </IconButton>
+                    )}
+                    {musicStore.isLoading && <CircularProgress size={20} />}
                   </InputAdornment>
                 ),
               }}

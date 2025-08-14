@@ -1,6 +1,5 @@
 import { BannerAd, WideAd } from '@components/AdPlaceholder';
 import { CustomCard } from '@components/CustomCard';
-import { NotificationDialog, NotificationType } from '@components/NotificationDialog';
 import { SEO, seoConfigs } from '@components/SEO';
 import {
   faCog,
@@ -11,51 +10,12 @@ import {
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Alert, Box, Button, Container, Grid, Typography } from '@mui/material';
-import { apiStore, authStore, subscriptionStore } from '@stores/index';
+import { Box, Container, Grid, Typography } from '@mui/material';
+import { authStore, subscriptionStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
-import React, { useState } from 'react';
+import React from 'react';
 
 const DashboardPage: React.FC = observer(() => {
-  const [notificationDialog, setNotificationDialog] = useState<{
-    open: boolean;
-    type: NotificationType;
-    title: string;
-    message: string;
-  }>({
-    open: false,
-    type: 'info',
-    title: '',
-    message: '',
-  });
-
-  const showNotification = (type: NotificationType, title: string, message: string) => {
-    setNotificationDialog({
-      open: true,
-      type,
-      title,
-      message,
-    });
-  };
-
-  const handleMakeAdmin = async () => {
-    try {
-      const response = await apiStore.post('/auth/make-me-admin', {});
-      if (response.success) {
-        // Refresh the user profile to get updated isAdmin status
-        await authStore.fetchProfile();
-        showNotification(
-          'success',
-          'Admin Access Granted',
-          'You are now an admin! Refresh the page to see the admin dropdown.',
-        );
-      }
-    } catch (error) {
-      console.error('Failed to promote to admin:', error);
-      showNotification('error', 'Promotion Failed', 'Failed to promote to admin');
-    }
-  };
-
   return (
     <>
       <SEO {...seoConfigs.dashboard} />
@@ -64,18 +24,6 @@ const DashboardPage: React.FC = observer(() => {
           <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4 }}>
             Welcome back, {authStore.user?.name}!
           </Typography>
-
-          {/* Temporary Admin Promotion Button - Remove in production */}
-          {!authStore.isAdmin && (
-            <Alert severity="info" sx={{ mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant="body2">Test feature: Promote yourself to admin</Typography>
-                <Button variant="contained" size="small" onClick={handleMakeAdmin}>
-                  Make Me Admin
-                </Button>
-              </Box>
-            </Alert>
-          )}
 
           {/* Ad placement after welcome section - only show if not ad-free */}
           {!subscriptionStore.hasAdFreeAccess && (
@@ -194,15 +142,6 @@ const DashboardPage: React.FC = observer(() => {
               <WideAd />
             </Box>
           )}
-
-          {/* Notification Dialog */}
-          <NotificationDialog
-            open={notificationDialog.open}
-            onClose={() => setNotificationDialog((prev) => ({ ...prev, open: false }))}
-            type={notificationDialog.type}
-            title={notificationDialog.title}
-            message={notificationDialog.message}
-          />
         </Box>
       </Container>
     </>

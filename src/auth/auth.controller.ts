@@ -155,18 +155,6 @@ export class AuthController {
     };
   }
 
-  // Temporary route to promote yourself to admin (remove in production)
-  @Post('make-me-admin')
-  @UseGuards(AuthGuard('jwt'))
-  async makeMeAdmin(@Req() req) {
-    const user = await this.userService.updateAdminStatus(req.user.id, true);
-    return {
-      success: true,
-      message: 'You are now an admin!',
-      user,
-    };
-  }
-
   // Logout endpoint (client should clear token)
   @Post('logout')
   async logout() {
