@@ -482,51 +482,51 @@ export const MusicPage: React.FC = observer(() => {
                           </IconButton>
                         )}
                       </ListItemIcon>
-                      <ListItemText
-                        primary={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="h6" component="span" fontWeight={600}>
-                              {song.title}
-                            </Typography>
-                            {song.year && (
-                              <Chip
-                                label={song.year}
-                                size="small"
-                                variant="outlined"
-                                sx={{ fontSize: '0.75rem' }}
-                              />
-                            )}
-                          </Box>
-                        }
-                        secondary={
-                          <Box sx={{ mt: 0.5 }}>
-                            <Typography variant="body2" color="text.secondary">
-                              {[
-                                song.artist,
-                                song.album,
-                                song.duration ? formatDuration(song.duration) : null,
-                                song.country,
-                                song.previewUrl ? '🎵 Preview Available' : null,
-                              ]
-                                .filter(Boolean)
-                                .join(' • ')}
-                            </Typography>
-                            {song.tags && song.tags.length > 0 && (
-                              <Box sx={{ mt: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                                {song.tags.slice(0, 3).map((tag) => (
-                                  <Chip
-                                    key={tag}
-                                    label={tag}
-                                    size="small"
-                                    variant="outlined"
-                                    sx={{ fontSize: '0.7rem', height: '20px' }}
-                                  />
-                                ))}
-                              </Box>
-                            )}
-                          </Box>
-                        }
-                      />
+                      {/* Custom layout instead of ListItemText to avoid div-in-p nesting */}
+                      <Box sx={{ py: 1, px: 0, flex: 1 }}>
+                        {/* Primary content */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="h6" component="span" fontWeight={600}>
+                            {song.title}
+                          </Typography>
+                          {song.year && (
+                            <Chip
+                              label={song.year}
+                              size="small"
+                              variant="outlined"
+                              sx={{ fontSize: '0.75rem' }}
+                            />
+                          )}
+                        </Box>
+                        
+                        {/* Secondary content */}
+                        <Box sx={{ mt: 0.5 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            {[
+                              song.artist,
+                              song.album,
+                              song.duration ? formatDuration(song.duration) : null,
+                              song.country,
+                              song.previewUrl ? '🎵 Preview Available' : null,
+                            ]
+                              .filter(Boolean)
+                              .join(' • ')}
+                          </Typography>
+                          {song.tags && song.tags.length > 0 && (
+                            <Box sx={{ mt: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                              {song.tags.slice(0, 3).map((tag) => (
+                                <Chip
+                                  key={tag}
+                                  label={tag}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{ fontSize: '0.7rem', height: '20px' }}
+                                />
+                              ))}
+                            </Box>
+                          )}
+                        </Box>
+                      </Box>
 
                       {/* Heart icon for favorites */}
                       <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>

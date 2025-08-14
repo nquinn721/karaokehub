@@ -11,7 +11,6 @@ import {
   List,
   ListItem,
   ListItemButton,
-  ListItemText,
   Typography,
   useTheme,
 } from '@mui/material';
@@ -35,7 +34,7 @@ export const MapComponent: React.FC = observer(() => {
           console.error('Failed to initialize map store:', error);
         });
       }
-      
+
       // Fetch shows if we haven't already
       if (showStore.shows.length === 0 && !showStore.isLoading) {
         await showStore.fetchShows().catch((error) => {
@@ -43,7 +42,7 @@ export const MapComponent: React.FC = observer(() => {
         });
       }
     };
-    
+
     initializeStores();
   }, []);
 
@@ -141,8 +140,8 @@ export const MapComponent: React.FC = observer(() => {
           >
             <Box
               sx={{
-                maxWidth: 280,
-                p: 1,
+                maxWidth: { xs: 260, sm: 280 },
+                p: { xs: 1, sm: 1.5 },
                 backgroundColor: theme.palette.background.paper,
                 borderRadius: 1,
                 boxShadow: theme.shadows[3],
@@ -154,6 +153,8 @@ export const MapComponent: React.FC = observer(() => {
                 sx={{
                   color: theme.palette.text.primary,
                   fontWeight: 600,
+                  fontSize: { xs: '1rem', sm: '1.25rem' },
+                  lineHeight: 1.2,
                 }}
               >
                 {showStore.selectedShow.venue || showStore.selectedShow.vendor?.name}
@@ -166,6 +167,7 @@ export const MapComponent: React.FC = observer(() => {
                     color: theme.palette.text.secondary,
                     fontStyle: 'italic',
                     mb: 1,
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
                   }}
                 >
                   by {showStore.selectedShow.vendor.name}
@@ -177,6 +179,8 @@ export const MapComponent: React.FC = observer(() => {
                 sx={{
                   color: theme.palette.text.secondary,
                   mb: 1.5,
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  lineHeight: 1.3,
                 }}
               >
                 {showStore.selectedShow.address}
@@ -185,11 +189,17 @@ export const MapComponent: React.FC = observer(() => {
                 <FontAwesomeIcon
                   icon={faMicrophone}
                   style={{
-                    fontSize: '14px',
+                    fontSize: '12px',
                     color: theme.palette.primary.main,
                   }}
                 />
-                <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    color: theme.palette.text.primary,
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                  }}
+                >
                   Host: {showStore.selectedShow.dj?.name}
                 </Typography>
               </Box>
@@ -197,7 +207,7 @@ export const MapComponent: React.FC = observer(() => {
                 <FontAwesomeIcon
                   icon={faLocationDot}
                   style={{
-                    fontSize: '14px',
+                    fontSize: '12px',
                     color: theme.palette.secondary.main,
                   }}
                 />
@@ -255,10 +265,24 @@ export const MapComponent: React.FC = observer(() => {
       {/* Day Picker */}
       <DayPicker selectedDay={showStore.selectedDay} onDayChange={handleDayChange} />
 
-      {/* Map and List Layout */}
-      <Box sx={{ display: 'flex', gap: 3, height: '600px' }}>
+      {/* Map and List Layout - Responsive */}
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', md: 'row' }, // Stack vertically on mobile
+          gap: { xs: 2, md: 3 }, 
+          height: { xs: 'auto', md: '600px' } // Auto height on mobile
+        }}
+      >
         {/* Map Section */}
-        <Box sx={{ flex: 2, borderRadius: 2, overflow: 'hidden' }}>
+        <Box 
+          sx={{ 
+            flex: { xs: 'none', md: 2 }, 
+            height: { xs: '300px', sm: '400px', md: '100%' }, // Responsive height
+            borderRadius: 2, 
+            overflow: 'hidden' 
+          }}
+        >
           {API_KEY ? (
             <APIProvider apiKey={API_KEY}>
               <Map
@@ -300,11 +324,26 @@ export const MapComponent: React.FC = observer(() => {
         </Box>
 
         {/* Show List Section */}
-        <Box sx={{ flex: 1 }}>
-          <Card sx={{ height: '100%' }}>
+        <Box sx={{ flex: { xs: 'none', md: 1 } }}>
+          <Card 
+            sx={{ 
+              height: { xs: 'auto', md: '100%' },
+              minHeight: { xs: '200px', md: '100%' }
+            }}
+          >
             <CardContent sx={{ height: '100%', p: 0 }}>
-              <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
-                <Typography variant="h6">Shows for {showStore.selectedDay}</Typography>
+              <Box 
+                sx={{ 
+                  p: { xs: 1.5, md: 2 }, 
+                  borderBottom: `1px solid ${theme.palette.divider}` 
+                }}
+              >
+                <Typography 
+                  variant="h6" 
+                  sx={{ fontSize: { xs: '1.1rem', md: '1.25rem' } }}
+                >
+                  Shows for {showStore.selectedDay}
+                </Typography>
                 {showStore.isLoading ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                     <CircularProgress size={24} />
@@ -319,7 +358,8 @@ export const MapComponent: React.FC = observer(() => {
               <Box
                 ref={showListRef}
                 sx={{
-                  height: 'calc(100% - 80px)',
+                  height: { xs: 'auto', md: 'calc(100% - 80px)' },
+                  maxHeight: { xs: '400px', md: 'none' }, // Limit height on mobile
                   overflow: 'auto',
                   p: 0,
                 }}
@@ -329,7 +369,7 @@ export const MapComponent: React.FC = observer(() => {
                     <CircularProgress />
                   </Box>
                 ) : showStore.showsForSelectedDay.length === 0 ? (
-                  <Box sx={{ textAlign: 'center', p: 4 }}>
+                  <Box sx={{ textAlign: 'center', p: { xs: 3, md: 4 } }}>
                     <Typography variant="body2" color="text.secondary">
                       No shows found for {showStore.selectedDay}
                     </Typography>
@@ -343,45 +383,90 @@ export const MapComponent: React.FC = observer(() => {
                             data-show-id={show.id}
                             onClick={() => handleShowClick(show)}
                             selected={showStore.selectedShow?.id === show.id}
-                            sx={{ p: 2 }}
-                          >
-                            <ListItemText
-                              primary={
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <FontAwesomeIcon
-                                    icon={faMicrophone}
-                                    style={{
-                                      fontSize: '14px',
-                                      color: theme.palette.primary.main,
-                                    }}
-                                  />
-                                  <Typography variant="subtitle1" fontWeight={600}>
-                                    {show.venue || show.vendor?.name || 'Unknown Venue'}
-                                  </Typography>
-                                </Box>
+                            sx={{ 
+                              p: { xs: 1.5, md: 2 },
+                              '&.Mui-selected': {
+                                backgroundColor: theme.palette.primary.main + '10',
                               }
-                              secondary={
-                                <Box sx={{ mt: 0.5 }}>
-                                  {show.venue && show.vendor?.name && (
-                                    <Typography
-                                      variant="body2"
-                                      color="text.secondary"
-                                      sx={{ fontStyle: 'italic', mb: 0.5 }}
-                                    >
-                                      by {show.vendor.name}
-                                    </Typography>
-                                  )}
-                                  <Typography variant="body2" color="text.secondary">
-                                    {show.address}
-                                  </Typography>
-                                  <Box
-                                    sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}
+                            }}
+                          >
+                            {/* Custom layout instead of ListItemText to avoid div-in-p nesting */}
+                            <Box sx={{ py: 1, px: 0 }}>
+                              {/* Primary content */}
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                <FontAwesomeIcon
+                                  icon={faMicrophone}
+                                  style={{
+                                    fontSize: '14px',
+                                    color: theme.palette.primary.main,
+                                  }}
+                                />
+                                <Typography 
+                                  variant="subtitle1" 
+                                  fontWeight={600}
+                                  sx={{ 
+                                    fontSize: { xs: '0.95rem', md: '1rem' },
+                                    lineHeight: 1.2
+                                  }}
+                                >
+                                  {show.venue || show.vendor?.name || 'Unknown Venue'}
+                                </Typography>
+                              </Box>
+                              
+                              {/* Secondary content */}
+                              <Box sx={{ mt: 0.5 }}>
+                                {show.venue && show.vendor?.name && (
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ 
+                                      fontStyle: 'italic', 
+                                      mb: 0.5,
+                                      fontSize: { xs: '0.8rem', md: '0.875rem' }
+                                    }}
                                   >
-                                    <Typography variant="body2" color="text.secondary">
+                                    by {show.vendor.name}
+                                  </Typography>
+                                )}
+                                <Typography 
+                                  variant="body2" 
+                                  color="text.secondary"
+                                  sx={{ 
+                                    mb: 0.5,
+                                    fontSize: { xs: '0.8rem', md: '0.875rem' },
+                                    lineHeight: 1.3
+                                  }}
+                                >
+                                  {show.address}
+                                </Typography>
+                                <Box
+                                  sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 1, 
+                                    mt: 0.5,
+                                    flexWrap: { xs: 'wrap', sm: 'nowrap' }
+                                  }}
+                                >
+                                    <Typography 
+                                      variant="body2" 
+                                      color="text.secondary"
+                                      sx={{ 
+                                        fontWeight: 500,
+                                        fontSize: { xs: '0.8rem', md: '0.875rem' }
+                                      }}
+                                    >
                                       {formatTime(show.startTime)} - {formatTime(show.endTime)}
                                     </Typography>
                                   </Box>
-                                  <Typography variant="body2" color="text.secondary">
+                                  <Typography 
+                                    variant="body2" 
+                                    color="text.secondary"
+                                    sx={{ 
+                                      mt: 0.5,
+                                      fontSize: { xs: '0.8rem', md: '0.875rem' }
+                                    }}
+                                  >
                                     Host: {show.dj?.name || 'Unknown'}
                                   </Typography>
                                   {show.description && (
@@ -390,22 +475,25 @@ export const MapComponent: React.FC = observer(() => {
                                       color="text.secondary"
                                       sx={{
                                         mt: 0.5,
+                                        fontSize: { xs: '0.8rem', md: '0.875rem' },
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
                                         display: '-webkit-box',
-                                        WebkitLineClamp: 2,
+                                        WebkitLineClamp: { xs: 1, md: 2 }, // Fewer lines on mobile
                                         WebkitBoxOrient: 'vertical',
+                                        lineHeight: 1.3
                                       }}
                                     >
                                       {show.description}
                                     </Typography>
                                   )}
                                 </Box>
-                              }
-                            />
+                              </Box>
                           </ListItemButton>
                         </ListItem>
-                        {index < showStore.showsForSelectedDay.length - 1 && <Divider />}
+                        {index < showStore.showsForSelectedDay.length - 1 && (
+                          <Divider sx={{ mx: { xs: 1.5, md: 2 } }} />
+                        )}
                       </React.Fragment>
                     ))}
                   </List>
