@@ -1350,184 +1350,14 @@ ${content}
     };
   }> {
     const baseUrl = 'https://stevesdj.com';
-    this.logger.log(`Starting enhanced parsing for Steve's DJ website: ${baseUrl}`);
+    this.logger.log(`Starting Steve's DJ parsing using new multi-page approach: ${baseUrl}`);
 
     try {
-      // Define key pages to crawl for show information
-      const pagesToCrawl = [
-        baseUrl, // Homepage
-        `${baseUrl}/karaoke-schedule`, // Main karaoke schedule page
-        `${baseUrl}/music-bingo-trivia`, // Music bingo schedule page
-        `${baseUrl}/schedule`,
-        `${baseUrl}/calendar`,
-        `${baseUrl}/events`,
-        `${baseUrl}/venues`,
-        `${baseUrl}/where-we-play`,
-        `${baseUrl}/weekly-schedule`,
-        `${baseUrl}/locations`,
-        `${baseUrl}/shows`,
-        `${baseUrl}/staff`,
-        `${baseUrl}/team`,
-        `${baseUrl}/djs`,
-        `${baseUrl}/about`,
-      ];
-
-      let combinedContent = '';
-      let allLinks: any[] = [];
-      let pageTitle = '';
-
-      // Crawl multiple pages to gather comprehensive information
-      for (const url of pagesToCrawl) {
-        try {
-          this.logger.log(`Crawling page: ${url}`);
-          const response = await fetch(url);
-
-          if (response.status === 200) {
-            const html = await response.text();
-
-            if (!pageTitle) {
-              pageTitle = this.extractTitleFromHtml(html) || "Steve's DJ Website";
-            }
-
-            const bodyText = this.extractCleanText(html);
-            // Extract links using regex instead of cheerio
-            const linkMatches = [
-              ...html.matchAll(/<a[^>]*href\s*=\s*["']([^"']*)["'][^>]*>([^<]*)<\/a>/gi),
-            ];
-            const links = linkMatches.map((match) => ({
-              text: match[2].trim(),
-              href: match[1],
-              page: url,
-            }));
-
-            combinedContent += `\n\n--- Content from ${url} ---\n${bodyText}`;
-            allLinks.push(...links);
-
-            this.logger.log(`Successfully crawled ${url} - ${bodyText.length} characters`);
-          } else {
-            this.logger.log(`Page ${url} not found (${response.status}), skipping`);
-          }
-        } catch (error) {
-          this.logger.log(`Error crawling ${url}: ${error.message}, continuing with other pages`);
-        }
-
-        // Add delay between requests to be respectful
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
+      // Use the new parseWebsite method which handles multi-page crawling
+      const parsedData = await this.parseWebsite(baseUrl);
 
       this.logger.log(
-        `Crawling completed. Total content length: ${combinedContent.length} characters`,
-      );
-      this.logger.log(`Total links found: ${allLinks.length}`);
-
-      // Prepare enhanced content for AI analysis - combine all content into HTML-like format
-      const combinedHtml = `<html>
-<head><title>${pageTitle}</title></head>
-<body>
-${combinedContent}
-
-Links found:
-${allLinks.map((link) => `<a href="${link.href}">${link.text}</a> (from ${link.page})`).join('\n')}
-</body>
-</html>`;
-
-      const contentForAI = this.prepareContentForAI(combinedHtml, baseUrl);
-
-      // Debug: Log key information about the content being analyzed
-      this.logger.log(`Content for AI analysis: ${contentForAI.length} characters`);
-      this.logger.log(
-        `Content includes "SUNDAYS": ${contentForAI.includes('SUNDAYS') ? 'YES' : 'NO'}`,
-      );
-      this.logger.log(`Content includes "ALIBI": ${contentForAI.includes('ALIBI') ? 'YES' : 'NO'}`);
-      this.logger.log(
-        `Content includes "7:00PM": ${contentForAI.includes('7:00PM') ? 'YES' : 'NO'}`,
-      );
-      this.logger.log(
-        `Content includes "BEACH LOUNGE": ${contentForAI.includes('BEACH LOUNGE') ? 'YES' : 'NO'}`,
-      );
-      this.logger.log(
-        `Content includes "karaoke" (case-insensitive): ${contentForAI.toLowerCase().includes('karaoke') ? 'YES' : 'NO'}`,
-      );
-
-      // Log content from karaoke-schedule page specifically
-      const karaokeScheduleContent =
-        combinedContent.split('--- Content from ')[1]?.split('---')[0] || '';
-      if (karaokeScheduleContent.includes('/karaoke-schedule')) {
-        const schedulePageContent =
-          combinedContent
-            .split('--- Content from https://stevesdj.com/karaoke-schedule ---')[1]
-            ?.split('--- Content from ')[0] || '';
-        this.logger.log(`[KARAOKE-SCHEDULE PAGE] Content length: ${schedulePageContent.length}`);
-        this.logger.log(
-          `[KARAOKE-SCHEDULE PAGE] First 1500 chars: ${schedulePageContent.substring(0, 1500)}`,
-        );
-        this.logger.log(
-          `[KARAOKE-SCHEDULE PAGE] Contains SUNDAYS: ${schedulePageContent.includes('SUNDAYS')}`,
-        );
-        this.logger.log(
-          `[KARAOKE-SCHEDULE PAGE] Contains ALIBI: ${schedulePageContent.includes('ALIBI')}`,
-        );
-      }
-
-      this.logger.log(`Content preview (first 500 chars): ${contentForAI.substring(0, 500)}`);
-
-      // Use the enhanced content with the existing AI analysis
-      let aiResult;
-      try {
-        this.logger.log('🤖 Starting AI analysis...');
-        aiResult = await this.analyzeWithSmartAI(contentForAI);
-        this.logger.log(`🤖 AI analysis completed. Result: ${JSON.stringify(aiResult, null, 2)}`);
-
-        if (!aiResult) {
-          throw new Error('AI analysis returned null/undefined');
-        }
-      } catch (error) {
-        this.logger.error('❌ AI analysis failed, using fallback data:', error);
-        aiResult = {
-          vendor: {
-            name: "Steve's DJ",
-            website: baseUrl,
-            description: 'Karaoke and entertainment services (fallback)',
-            confidence: 0.3,
-          },
-          kjs: [],
-          shows: [],
-        };
-      }
-
-      // Save raw parsed data for the main URL
-      const parsedSchedule = new ParsedSchedule();
-      parsedSchedule.url = baseUrl;
-      parsedSchedule.rawData = {
-        title: pageTitle,
-        content: combinedContent.substring(0, 10000), // Limit for storage
-        links: allLinks.slice(0, 50), // Limit links
-        parsedAt: new Date(),
-      };
-      parsedSchedule.aiAnalysis = aiResult;
-      parsedSchedule.status = ParseStatus.PENDING_REVIEW; // Put in pending reviews instead of auto-approving
-
-      await this.parsedScheduleRepository.save(parsedSchedule);
-
-      const parsedData: ParsedKaraokeData = {
-        vendor: aiResult.vendor || {
-          name: "Steve's DJ",
-          website: baseUrl,
-          description: 'Karaoke and entertainment services',
-          confidence: 0.5,
-        },
-        kjs: aiResult.kjs || [],
-        shows: aiResult.shows || [],
-        rawData: {
-          url: baseUrl,
-          title: pageTitle,
-          content: combinedContent.substring(0, 1000),
-          parsedAt: new Date(),
-        },
-      };
-
-      this.logger.log(
-        `Enhanced parsing found: ${parsedData.kjs?.length || 0} KJs and ${parsedData.shows?.length || 0} shows`,
+        `Steve's DJ parsing completed: ${parsedData.kjs?.length || 0} KJs and ${parsedData.shows?.length || 0} shows found`,
       );
 
       // Return the parsed data without creating entities immediately
@@ -1541,7 +1371,7 @@ ${allLinks.map((link) => `<a href="${link.href}">${link.text}</a> (from ${link.p
         },
       };
     } catch (error) {
-      this.logger.error(`Error in enhanced Steve's DJ parsing:`, error);
+      this.logger.error(`Error in Steve's DJ parsing:`, error);
       throw error;
     }
   }
