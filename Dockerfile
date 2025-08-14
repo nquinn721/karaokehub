@@ -5,7 +5,11 @@ WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm ci
 
-COPY client/ ./
+COPY client/src ./src
+COPY client/public ./public
+COPY client/index.html ./
+COPY client/vite.config.ts ./
+COPY client/tsconfig*.json ./
 ENV DOCKER_BUILD=true
 RUN npm run build
 
@@ -21,7 +25,7 @@ COPY --from=client-builder /app/client/dist ./client/dist
 
 # Ensure public directory exists and copy client public assets if they exist
 RUN mkdir -p ./public/images/shows
-COPY --from=client-builder /app/client/public ./public
+COPY --from=client-builder /app/client/public/ ./public/
 
 RUN npm run build
 
