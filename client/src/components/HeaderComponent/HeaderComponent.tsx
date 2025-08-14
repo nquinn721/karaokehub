@@ -79,11 +79,14 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               theme.palette.mode === 'light'
                 ? theme.palette.primary.contrastText // White text on solid primary
                 : theme.palette.text.primary, // Current dark mode text
-            height: '80px', // Make header taller
+            height: { xs: '70px', md: '80px' }, // Responsive header height
             zIndex: theme.zIndex.appBar,
           }}
         >
-          <Toolbar sx={{ height: '100%', minHeight: '80px !important' }}>
+          <Toolbar sx={{ 
+            height: '100%', 
+            minHeight: { xs: '70px !important', md: '80px !important' } 
+          }}>
             {showMenuButton && (
               <Box
                 onClick={() => navigate('/')}
@@ -100,13 +103,21 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   },
                 }}
               >
-                <img
+                <Box
+                  component="img"
                   src="/images/karaoke-hub-logo.png"
                   alt="KaraokeHub Logo"
-                  style={{
-                    width: '170px', // Make logo bigger
-                    height: '170px', // Make logo bigger
-                    transform: 'translateY(35px)', // Allow more space for larger logo to expand below header
+                  sx={{
+                    // Responsive logo sizing
+                    width: { xs: '60px', sm: '80px', md: '120px', lg: '170px' },
+                    height: { xs: '60px', sm: '80px', md: '120px', lg: '170px' },
+                    transform: { 
+                      xs: 'translateY(0px)', 
+                      sm: 'translateY(5px)', 
+                      md: 'translateY(15px)', 
+                      lg: 'translateY(35px)' 
+                    },
+                    transition: 'all 0.3s ease-in-out',
                   }}
                 />
               </Box>
