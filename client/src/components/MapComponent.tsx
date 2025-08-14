@@ -1,5 +1,7 @@
 import { DayOfWeek, DayPicker } from '@components/DayPicker';
-import { faLocationDot, faMicrophone } from '@fortawesome/free-solid-svg-icons';
+import { PaywallModal } from '@components/PaywallModal';
+import { faHeart, faLocationDot, faMicrophone } from '@fortawesome/free-solid-svg-icons';
+import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Alert,
@@ -8,20 +10,30 @@ import {
   CardContent,
   CircularProgress,
   Divider,
+  IconButton,
   List,
   ListItem,
   ListItemButton,
   Typography,
   useTheme,
 } from '@mui/material';
-import { apiStore, mapStore, showStore } from '@stores/index';
+import { apiStore, authStore, favoriteStore, mapStore, showStore, subscriptionStore } from '@stores/index';
 import { APIProvider, InfoWindow, Map, Marker, useMap } from '@vis.gl/react-google-maps';
 import { observer } from 'mobx-react-lite';
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 
 export const MapComponent: React.FC = observer(() => {
   const theme = useTheme();
   const showListRef = useRef<HTMLDivElement>(null);
+  
+  // Paywall state
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [paywallFeature, setPaywallFeature] = useState<'favorites' | 'friends' | 'ad_removal'>('favorites');
+  const [pendingFavoriteAction, setPendingFavoriteAction] = useState<{
+    showId: string;
+    day: string;
+    action: 'add' | 'remove';
+  } | null>(null);
 
   // Google Maps API key from server config
   const API_KEY = apiStore.googleMapsApiKey;
@@ -41,10 +53,91 @@ export const MapComponent: React.FC = observer(() => {
           console.error('Failed to fetch shows:', error);
         });
       }
+      
+      // Fetch favorites if user is authenticated
+      if (authStore.isAuthenticated && favoriteStore.favorites.length === 0 && !favoriteStore.isLoading) {
+        await favoriteStore.fetchMyFavorites().catch((error) => {
+          console.error('Failed to fetch favorites:', error);
+        });
+      }
     };
 
     initializeStores();
   }, []);
+
+  // Watch for subscription changes and execute pending actions
+  React.useEffect(() => {
+    if (pendingFavoriteAction && subscriptionStore.isSubscribed) {
+      const executePendingAction = async () => {
+        const { showId, day, action } = pendingFavoriteAction;
+        
+        if (action === 'add') {
+          const result = await favoriteStore.addFavorite({ showId, day });
+          if (!result.success) {
+            console.error('Failed to add favorite after subscription:', result.error);
+          }
+        } else if (action === 'remove') {
+          const result = await favoriteStore.removeFavoriteByShow(showId);
+          if (!result.success) {
+            console.error('Failed to remove favorite after subscription:', result.error);
+          }
+        }
+        
+        setPendingFavoriteAction(null);
+        setShowPaywall(false);
+      };
+      
+      executePendingAction();
+    }
+  }, [subscriptionStore.isSubscribed, pendingFavoriteAction]);
+
+  // Favorite handling functions
+  const handleFavorite = async (showId: string, day: string) => {
+    if (!authStore.isAuthenticated) {
+      // Handle unauthenticated user
+      console.log('User not authenticated - redirect to login');
+      return;
+    }
+
+    // Check if paywall should be shown
+    if (subscriptionStore.shouldShowPaywall('favorites')) {
+      setPendingFavoriteAction({ showId, day, action: 'add' });
+      setPaywallFeature('favorites');
+      setShowPaywall(true);
+      return;
+    }
+
+    // User has access, add favorite directly
+    const result = await favoriteStore.addFavorite({ showId, day });
+    if (!result.success) {
+      console.error('Failed to add favorite:', result.error);
+    }
+  };
+
+  const handleUnfavorite = async (showId: string, day: string) => {
+    if (!authStore.isAuthenticated) {
+      return;
+    }
+
+    // Check if paywall should be shown  
+    if (subscriptionStore.shouldShowPaywall('favorites')) {
+      setPendingFavoriteAction({ showId, day, action: 'remove' });
+      setPaywallFeature('favorites');
+      setShowPaywall(true);
+      return;
+    }
+
+    // User has access, remove favorite directly
+    const result = await favoriteStore.removeFavoriteByShow(showId);
+    if (!result.success) {
+      console.error('Failed to remove favorite:', result.error);
+    }
+  };
+
+  const handlePaywallClose = () => {
+    setShowPaywall(false);
+    setPendingFavoriteAction(null);
+  };
 
   if (!apiStore.configLoaded) {
     return (
@@ -228,6 +321,38 @@ export const MapComponent: React.FC = observer(() => {
                   {showStore.selectedShow.description}
                 </Typography>
               )}
+              
+              {/* Favorite button for InfoWindow */}
+              {authStore.isAuthenticated && showStore.selectedShow && (
+                <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'center' }}>
+                  <IconButton
+                    onClick={() => {
+                      const selectedShow = showStore.selectedShow;
+                      if (!selectedShow) return;
+                      
+                      const isFav = favoriteStore.isFavorite(selectedShow.id);
+                      if (isFav) {
+                        handleUnfavorite(selectedShow.id, showStore.selectedDay);
+                      } else {
+                        handleFavorite(selectedShow.id, showStore.selectedDay);
+                      }
+                    }}
+                    sx={{
+                      color: favoriteStore.isFavorite(showStore.selectedShow.id) 
+                        ? theme.palette.error.main 
+                        : theme.palette.text.secondary,
+                      '&:hover': {
+                        color: theme.palette.error.main,
+                      }
+                    }}
+                  >
+                    <FontAwesomeIcon
+                      icon={favoriteStore.isFavorite(showStore.selectedShow.id) ? faHeart : faHeartRegular}
+                      style={{ fontSize: '18px' }}
+                    />
+                  </IconButton>
+                </Box>
+              )}
             </Box>
           </InfoWindow>
         )}
@@ -406,11 +531,41 @@ export const MapComponent: React.FC = observer(() => {
                                   fontWeight={600}
                                   sx={{ 
                                     fontSize: { xs: '0.95rem', md: '1rem' },
-                                    lineHeight: 1.2
+                                    lineHeight: 1.2,
+                                    flex: 1
                                   }}
                                 >
                                   {show.venue || show.vendor?.name || 'Unknown Venue'}
                                 </Typography>
+                                
+                                {/* Favorite button */}
+                                {authStore.isAuthenticated && (
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const isFav = favoriteStore.isFavorite(show.id);
+                                      if (isFav) {
+                                        handleUnfavorite(show.id, showStore.selectedDay);
+                                      } else {
+                                        handleFavorite(show.id, showStore.selectedDay);
+                                      }
+                                    }}
+                                    sx={{
+                                      color: favoriteStore.isFavorite(show.id) 
+                                        ? theme.palette.error.main 
+                                        : theme.palette.text.secondary,
+                                      '&:hover': {
+                                        color: theme.palette.error.main,
+                                      }
+                                    }}
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={favoriteStore.isFavorite(show.id) ? faHeart : faHeartRegular}
+                                      style={{ fontSize: '16px' }}
+                                    />
+                                  </IconButton>
+                                )}
                               </Box>
                               
                               {/* Secondary content */}
@@ -503,6 +658,13 @@ export const MapComponent: React.FC = observer(() => {
           </Card>
         </Box>
       </Box>
+      
+      {/* Paywall Modal */}
+      <PaywallModal
+        open={showPaywall}
+        onClose={handlePaywallClose}
+        feature={paywallFeature}
+      />
     </Box>
   );
 });
