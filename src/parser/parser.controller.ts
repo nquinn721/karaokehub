@@ -136,9 +136,65 @@ export class ParserController {
     }
   }
 
+  @Post('parse-and-save')
+  async parseAndSaveWebsite(@Body() body: { url: string; autoApprove?: boolean }) {
+    try {
+      this.logger.log(`🌐 Parse and save website: ${body.url}, autoApprove: ${body.autoApprove}`);
+
+      const parsedData = await this.parserService.parseWebsite(body.url);
+
+      // Calculate confidence scores from the parsed data
+      const avgKjConfidence =
+        parsedData.kjs?.length > 0
+          ? parsedData.kjs.reduce((sum, kj) => sum + (kj.confidence || 50), 0) /
+            parsedData.kjs.length
+          : 0;
+
+      const avgShowConfidence =
+        parsedData.shows?.length > 0
+          ? parsedData.shows.reduce((sum, show) => sum + (show.confidence || 50), 0) /
+            parsedData.shows.length
+          : 0;
+
+      return {
+        success: true,
+        message: body.autoApprove
+          ? 'Website parsed and saved automatically'
+          : 'Website parsed and saved for review',
+        data: {
+          vendor: parsedData.vendor?.name || 'Unknown',
+          kjsCount: parsedData.kjs?.length || 0,
+          showsCount: parsedData.shows?.length || 0,
+          confidence: {
+            vendor: parsedData.vendor?.confidence || 50,
+            avgKjConfidence,
+            avgShowConfidence,
+          },
+        },
+      };
+    } catch (error) {
+      this.logger.error('❌ Failed to parse and save website:', error);
+      throw error;
+    }
+  }
+
   @Post('parse-stevesdj')
   async parseStevesdj() {
     const result = await this.parserService.parseStevesdj();
+
+    // Calculate confidence scores from the parsed data
+    const avgKjConfidence =
+      result.parsedData.kjs?.length > 0
+        ? result.parsedData.kjs.reduce((sum, kj) => sum + (kj.confidence || 50), 0) /
+          result.parsedData.kjs.length
+        : 0;
+
+    const avgShowConfidence =
+      result.parsedData.shows?.length > 0
+        ? result.parsedData.shows.reduce((sum, show) => sum + (show.confidence || 50), 0) /
+          result.parsedData.shows.length
+        : 0;
+
     return {
       success: true,
       message: "Steve's DJ website parsed and data saved for review",
@@ -146,6 +202,11 @@ export class ParserController {
         vendor: result.savedEntities.vendor?.name || result.parsedData.vendor?.name || 'Unknown',
         kjsCount: result.savedEntities.kjs.length,
         showsCount: result.savedEntities.shows.length,
+        confidence: {
+          vendor: result.parsedData.vendor?.confidence || 50,
+          avgKjConfidence,
+          avgShowConfidence,
+        },
         parsedKjsCount: result.parsedData.kjs?.length || 0,
         parsedShowsCount: result.parsedData.shows?.length || 0,
         status: result.savedEntities.vendor ? 'saved' : 'pending_review',

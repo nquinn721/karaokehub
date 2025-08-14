@@ -46,6 +46,13 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
 
   if (!results) return null;
 
+  // Provide default values for confidence if missing
+  const confidence = results.confidence || {
+    vendor: 50,
+    avgKjConfidence: 50,
+    avgShowConfidence: 50,
+  };
+
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 80) return theme.palette.success.main;
     if (confidence >= 60) return theme.palette.warning.main;
@@ -115,19 +122,19 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
                   Vendor
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {results.vendor}
+                  {results.vendor || 'Unknown Vendor'}
                 </Typography>
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="caption" color="text.secondary" display="block">
-                    Confidence: {results.confidence.vendor}%
+                    Confidence: {confidence.vendor}%
                   </Typography>
                   <LinearProgress
                     variant="determinate"
-                    value={results.confidence.vendor}
+                    value={confidence.vendor}
                     sx={{
                       mt: 1,
                       '& .MuiLinearProgress-bar': {
-                        backgroundColor: getConfidenceColor(results.confidence.vendor),
+                        backgroundColor: getConfidenceColor(confidence.vendor),
                       },
                     }}
                   />
@@ -149,19 +156,19 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
                   KJs Found
                 </Typography>
                 <Typography variant="h4" color="secondary" sx={{ mb: 2 }}>
-                  {results.kjsCount}
+                  {results.kjsCount || 0}
                 </Typography>
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="caption" color="text.secondary" display="block">
-                    Avg Confidence: {Math.round(results.confidence.avgKjConfidence)}%
+                    Avg Confidence: {Math.round(confidence.avgKjConfidence)}%
                   </Typography>
                   <LinearProgress
                     variant="determinate"
-                    value={results.confidence.avgKjConfidence}
+                    value={confidence.avgKjConfidence}
                     sx={{
                       mt: 1,
                       '& .MuiLinearProgress-bar': {
-                        backgroundColor: getConfidenceColor(results.confidence.avgKjConfidence),
+                        backgroundColor: getConfidenceColor(confidence.avgKjConfidence),
                       },
                     }}
                   />
@@ -183,19 +190,19 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
                   Shows Found
                 </Typography>
                 <Typography variant="h4" color="success.main" sx={{ mb: 2 }}>
-                  {results.showsCount}
+                  {results.showsCount || 0}
                 </Typography>
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="caption" color="text.secondary" display="block">
-                    Avg Confidence: {Math.round(results.confidence.avgShowConfidence)}%
+                    Avg Confidence: {Math.round(confidence.avgShowConfidence)}%
                   </Typography>
                   <LinearProgress
                     variant="determinate"
-                    value={results.confidence.avgShowConfidence}
+                    value={confidence.avgShowConfidence}
                     sx={{
                       mt: 1,
                       '& .MuiLinearProgress-bar': {
-                        backgroundColor: getConfidenceColor(results.confidence.avgShowConfidence),
+                        backgroundColor: getConfidenceColor(confidence.avgShowConfidence),
                       },
                     }}
                   />
@@ -221,11 +228,11 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
               <Typography
                 variant="body1"
                 sx={{
-                  color: getConfidenceColor(results.confidence.vendor),
+                  color: getConfidenceColor(confidence.vendor),
                   fontWeight: 600,
                 }}
               >
-                {getConfidenceLabel(results.confidence.vendor)}
+                {getConfidenceLabel(confidence.vendor)}
               </Typography>
             </Grid>
 
@@ -236,11 +243,11 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
               <Typography
                 variant="body1"
                 sx={{
-                  color: getConfidenceColor(results.confidence.avgKjConfidence),
+                  color: getConfidenceColor(confidence.avgKjConfidence),
                   fontWeight: 600,
                 }}
               >
-                {getConfidenceLabel(results.confidence.avgKjConfidence)}
+                {getConfidenceLabel(confidence.avgKjConfidence)}
               </Typography>
             </Grid>
 
@@ -251,11 +258,11 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
               <Typography
                 variant="body1"
                 sx={{
-                  color: getConfidenceColor(results.confidence.avgShowConfidence),
+                  color: getConfidenceColor(confidence.avgShowConfidence),
                   fontWeight: 600,
                 }}
               >
-                {getConfidenceLabel(results.confidence.avgShowConfidence)}
+                {getConfidenceLabel(confidence.avgShowConfidence)}
               </Typography>
             </Grid>
           </Grid>
