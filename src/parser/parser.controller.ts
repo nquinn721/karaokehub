@@ -112,6 +112,16 @@ export class ParserController {
     };
   }
 
+  @Post('cleanup-all-pending-reviews')
+  async cleanupAllPendingReviews() {
+    const removedCount = await this.parserService.cleanupAllPendingReviews();
+    return {
+      success: true,
+      message: `Cleaned up ${removedCount} pending reviews`,
+      removedCount,
+    };
+  }
+
   @Get('debug/entities-count')
   async getEntitiesCount() {
     const debug = await this.parserService.getEntitiesDebugInfo();
@@ -281,6 +291,24 @@ export class SimpleTestController {
       return {
         success: true,
         message: `Cleaned up ${removedCount} invalid pending reviews`,
+        removedCount,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        stack: error.stack,
+      };
+    }
+  }
+
+  @Post('cleanup-all')
+  async testCleanupAllReviews() {
+    try {
+      const removedCount = await this.parserService.cleanupAllPendingReviews();
+      return {
+        success: true,
+        message: `Cleaned up ${removedCount} pending reviews`,
         removedCount,
       };
     } catch (error) {

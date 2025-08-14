@@ -1518,6 +1518,23 @@ ${content}
     return removedCount;
   }
 
+  // NEW: Clean up ALL pending reviews (for development/testing)
+  async cleanupAllPendingReviews(): Promise<number> {
+    this.logger.log('Starting cleanup of ALL pending reviews...');
+
+    const pendingReviews = await this.getPendingReviews();
+    const removedCount = pendingReviews.length;
+
+    if (removedCount > 0) {
+      await this.parsedScheduleRepository.remove(pendingReviews);
+      this.logger.log(`Cleanup completed: removed ${removedCount} pending reviews`);
+    } else {
+      this.logger.log('No pending reviews to clean up');
+    }
+
+    return removedCount;
+  }
+
   // NEW: Debug method to check entities state
   async getEntitiesDebugInfo(): Promise<{
     vendors: { count: number; recent: any[] };
