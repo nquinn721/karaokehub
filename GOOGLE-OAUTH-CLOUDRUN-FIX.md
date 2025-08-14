@@ -18,9 +18,10 @@ Google OAuth login doesn't work in Cloud Run due to several configuration issues
 **Problem:** Used `FRONTEND_URL` for OAuth callback instead of backend URL.
 
 **Fix:** Now uses `BACKEND_URL` for production callback:
+
 ```typescript
 const backendUrl = isProduction
-  ? configService.get<string>('BACKEND_URL') || 
+  ? configService.get<string>('BACKEND_URL') ||
     'https://karaokehub-203453576607.us-central1.run.app'
   : 'http://localhost:8000';
 
@@ -32,6 +33,7 @@ const backendUrl = isProduction
 **File: `cloudrun-service.yaml`**
 
 Added missing environment variables:
+
 ```yaml
 - name: BACKEND_URL
   value: 'https://karaokehub-203453576607.us-central1.run.app'
@@ -44,6 +46,7 @@ Added missing environment variables:
 **File: `.env.example`**
 
 Added URL configuration section:
+
 ```bash
 # URL Configuration
 FRONTEND_URL=http://localhost:5173
@@ -69,6 +72,7 @@ BACKEND_URL=http://localhost:8000
 ### 2. Verify Google Secrets in Cloud Run
 
 Make sure these secrets exist in Google Secret Manager:
+
 ```bash
 # Check if secrets exist
 gcloud secrets list | grep GOOGLE
@@ -102,6 +106,7 @@ gcloud run deploy karaokehub \
 ```
 
 Or commit and push to trigger GitHub Actions deployment:
+
 ```bash
 git add .
 git commit -m "fix: Configure Google OAuth callback URLs for Cloud Run"
@@ -111,6 +116,7 @@ git push origin main
 ## 🧪 Testing the Fix
 
 ### 1. Local Development Testing
+
 1. Start both servers: `npm run start:dev` and `cd client && npm run dev`
 2. Visit: `http://localhost:5173/login`
 3. Click "Continue with Google"
@@ -118,8 +124,9 @@ git push origin main
 5. After Google auth, should return to: `http://localhost:5173/auth/success?token=...`
 
 ### 2. Production Testing
+
 1. Visit: `https://karaokehub-203453576607.us-central1.run.app/login`
-2. Click "Continue with Google" 
+2. Click "Continue with Google"
 3. Should redirect to: `https://karaokehub-203453576607.us-central1.run.app/api/auth/google`
 4. After Google auth, should return to: `https://karaokehub-203453576607.us-central1.run.app/auth/success?token=...`
 
@@ -128,11 +135,13 @@ git push origin main
 ### Check OAuth Flow URLs
 
 **Development:**
+
 - Initiate: `http://localhost:8000/api/auth/google`
 - Callback: `http://localhost:8000/api/auth/google/callback`
 - Success: `http://localhost:5173/auth/success?token=...`
 
 **Production:**
+
 - Initiate: `https://karaokehub-203453576607.us-central1.run.app/api/auth/google`
 - Callback: `https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback`
 - Success: `https://karaokehub-203453576607.us-central1.run.app/auth/success?token=...`
@@ -149,23 +158,21 @@ gcloud logs read --service=karaokehub --filter="resource.labels.service_name=kar
 
 ### Common Error Messages
 
-1. **"redirect_uri_mismatch"**: 
+1. **"redirect_uri_mismatch"**:
    - Update Google Cloud Console redirect URIs to match exact backend URL
-   
-2. **"OAuth client not found"**: 
+2. **"OAuth client not found"**:
    - Check Google Client ID/Secret are correctly stored in Secret Manager
-   
-3. **CORS errors**: 
+3. **CORS errors**:
    - Verify ALLOWED_ORIGINS includes frontend URL
 
-4. **"Cannot GET /api/auth/google/callback"**: 
+4. **"Cannot GET /api/auth/google/callback"**:
    - Check if OAuth routes are properly registered in AuthController
 
 ## 📋 Verification Checklist
 
 - [ ] Google Cloud Console redirect URIs updated
 - [ ] Google OAuth secrets exist in Secret Manager
-- [ ] Service account has access to secrets  
+- [ ] Service account has access to secrets
 - [ ] Cloud Run environment variables updated
 - [ ] Application redeployed to Cloud Run
 - [ ] OAuth flow works in production
@@ -177,15 +184,17 @@ gcloud logs read --service=karaokehub --filter="resource.labels.service_name=kar
 
 The primary issue was that the Google OAuth Strategy was configured with the **frontend URL** for the callback, but Google OAuth requires calling the **backend API endpoint** to complete the authentication flow.
 
-**Before:** 
+**Before:**
+
 ```
 Callback URL: https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback
 (Frontend URL + API path = WRONG)
 ```
 
 **After:**
+
 ```
-Callback URL: https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback  
+Callback URL: https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback
 (Backend URL + API path = CORRECT)
 ```
 

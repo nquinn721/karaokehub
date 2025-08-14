@@ -7,8 +7,9 @@ The code has been fixed to resolve Google OAuth issues in Cloud Run. **Manual co
 ## 🔧 Code Changes Applied
 
 ### ✅ Fixed Files:
+
 1. **`src/auth/strategies/google.strategy.ts`** - Fixed callback URL to use backend URL
-2. **`src/auth/strategies/github.strategy.ts`** - Fixed callback URL for consistency  
+2. **`src/auth/strategies/github.strategy.ts`** - Fixed callback URL for consistency
 3. **`cloudrun-service.yaml`** - Added BACKEND_URL and ALLOWED_ORIGINS
 4. **`.env.example`** - Added URL configuration section
 
@@ -25,7 +26,7 @@ Run this script to update Google OAuth secrets:
 ### Step 2: Update Google Cloud Console (CRITICAL)
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Navigate to **APIs & Services** → **Credentials**  
+2. Navigate to **APIs & Services** → **Credentials**
 3. Find your OAuth 2.0 Client ID
 4. Update **Authorized redirect URIs** to include:
    - `https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback` (production)
@@ -46,11 +47,13 @@ gcloud run deploy karaokehub --source . --region us-central1 --allow-unauthentic
 ## 🧪 Testing After Deployment
 
 ### Production Test:
+
 1. Visit: `https://karaokehub-203453576607.us-central1.run.app/login`
 2. Click **"Continue with Google"**
 3. Should successfully authenticate and redirect back
 
 ### Expected OAuth Flow:
+
 1. **Initiate**: `https://karaokehub-203453576607.us-central1.run.app/api/auth/google`
 2. **Google Auth**: User authenticates with Google
 3. **Callback**: `https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback`

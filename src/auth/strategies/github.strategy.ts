@@ -13,7 +13,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
     // Use the backend URL for OAuth callback
     const isProduction = configService.get<string>('NODE_ENV') === 'production';
     const backendUrl = isProduction
-      ? configService.get<string>('BACKEND_URL') || 
+      ? configService.get<string>('BACKEND_URL') ||
         'https://karaokehub-203453576607.us-central1.run.app'
       : 'http://localhost:8000';
 
@@ -25,11 +25,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
     });
   }
 
-  async validate(
-    accessToken: string,
-    refreshToken: string,
-    profile: any,
-  ): Promise<any> {
+  async validate(accessToken: string, refreshToken: string, profile: any): Promise<any> {
     try {
       const user = await this.authService.validateOAuthUser(profile, 'github');
       return user;
