@@ -186,7 +186,7 @@ export class MusicStore {
   }
 
   // Debounced autocomplete search
-  private autocompleteTimeout: NodeJS.Timeout | null = null;
+  private autocompleteTimeout: number | null = null;
 
   async getSuggestions(query: string) {
     if (query.length < 3) {
@@ -201,7 +201,7 @@ export class MusicStore {
     }
 
     // Set a new timeout for debouncing
-    this.autocompleteTimeout = setTimeout(async () => {
+    this.autocompleteTimeout = window.setTimeout(async () => {
       try {
         this.setLoadingSuggestions(true);
 
