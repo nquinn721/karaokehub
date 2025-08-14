@@ -81,7 +81,8 @@ dist/
 
 # Gatsby files
 .cache/
-public
+# Only ignore root public directory, not client/public
+/public
 
 # Storybook build outputs
 .out
