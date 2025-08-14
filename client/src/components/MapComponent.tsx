@@ -15,7 +15,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { apiStore, showStore, mapStore } from '@stores/index';
+import { apiStore, mapStore, showStore } from '@stores/index';
 import { APIProvider, InfoWindow, Map, Marker, useMap } from '@vis.gl/react-google-maps';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useRef } from 'react';
@@ -104,145 +104,138 @@ export const MapComponent: React.FC = observer(() => {
     handleMarkerClick: (show: any) => void;
     formatTime: (time: string) => string;
     onMapLoad: (map: google.maps.Map) => void;
-  }> = observer(
-    ({
-      theme,
-      handleMarkerClick,
-      formatTime,
-      onMapLoad,
-    }) => {
-      const map = useMap();
+  }> = observer(({ theme, handleMarkerClick, formatTime, onMapLoad }) => {
+    const map = useMap();
 
-      useEffect(() => {
-        if (map && onMapLoad) {
-          onMapLoad(map);
-        }
-      }, [map, onMapLoad]);
+    useEffect(() => {
+      if (map && onMapLoad) {
+        onMapLoad(map);
+      }
+    }, [map, onMapLoad]);
 
-      return (
-        <>
-          {/* User Location Marker */}
-          {mapStore.userLocation && (
-            <Marker
-              position={mapStore.userLocation}
-              icon={`data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+    return (
+      <>
+        {/* User Location Marker */}
+        {mapStore.userLocation && (
+          <Marker
+            position={mapStore.userLocation}
+            icon={`data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
               <circle cx="12" cy="12" r="8" fill="${theme.palette.info.main}" stroke="#fff" stroke-width="2"/>
               <circle cx="12" cy="12" r="3" fill="#fff"/>
             </svg>
           `)}`}
-              title="Your Location"
-            />
-          )}
+            title="Your Location"
+          />
+        )}
 
-          {/* Show Markers with Microphone Icons */}
-          {showStore.showsWithCoordinates.map((show: any) => (
-            <Marker
-              key={show.id}
-              position={{ lat: show.lat!, lng: show.lng! }}
-              onClick={() => handleMarkerClick(show)}
-              title={show.venue || show.vendor?.name || 'Karaoke Show'}
-              icon={createMicrophoneIcon(mapStore.selectedMarkerId === show.id, theme)}
-            />
-          ))}
+        {/* Show Markers with Microphone Icons */}
+        {showStore.showsWithCoordinates.map((show: any) => (
+          <Marker
+            key={show.id}
+            position={{ lat: show.lat!, lng: show.lng! }}
+            onClick={() => handleMarkerClick(show)}
+            title={show.venue || show.vendor?.name || 'Karaoke Show'}
+            icon={createMicrophoneIcon(mapStore.selectedMarkerId === show.id, theme)}
+          />
+        ))}
 
-          {/* Info Window for Selected Show */}
-          {mapStore.selectedMarkerId && showStore.selectedShow && (
-            <InfoWindow
-              position={{
-                lat: showStore.selectedShow.lat!,
-                lng: showStore.selectedShow.lng!,
-              }}
-              onCloseClick={() => {
-                mapStore.closeInfoWindow();
+        {/* Info Window for Selected Show */}
+        {mapStore.selectedMarkerId && showStore.selectedShow && (
+          <InfoWindow
+            position={{
+              lat: showStore.selectedShow.lat!,
+              lng: showStore.selectedShow.lng!,
+            }}
+            onCloseClick={() => {
+              mapStore.closeInfoWindow();
+            }}
+          >
+            <Box
+              sx={{
+                maxWidth: 280,
+                p: 1,
+                backgroundColor: theme.palette.background.paper,
+                borderRadius: 1,
+                boxShadow: theme.shadows[3],
               }}
             >
-              <Box
+              <Typography
+                variant="h6"
+                gutterBottom
                 sx={{
-                  maxWidth: 280,
-                  p: 1,
-                  backgroundColor: theme.palette.background.paper,
-                  borderRadius: 1,
-                  boxShadow: theme.shadows[3],
+                  color: theme.palette.text.primary,
+                  fontWeight: 600,
                 }}
               >
-                <Typography
-                  variant="h6"
-                  gutterBottom
-                  sx={{
-                    color: theme.palette.text.primary,
-                    fontWeight: 600,
-                  }}
-                >
-                  {showStore.selectedShow.venue || showStore.selectedShow.vendor?.name}
-                </Typography>
-                {showStore.selectedShow.venue && showStore.selectedShow.vendor?.name && (
-                  <Typography
-                    variant="body2"
-                    gutterBottom
-                    sx={{
-                      color: theme.palette.text.secondary,
-                      fontStyle: 'italic',
-                      mb: 1,
-                    }}
-                  >
-                    by {showStore.selectedShow.vendor.name}
-                  </Typography>
-                )}
+                {showStore.selectedShow.venue || showStore.selectedShow.vendor?.name}
+              </Typography>
+              {showStore.selectedShow.venue && showStore.selectedShow.vendor?.name && (
                 <Typography
                   variant="body2"
                   gutterBottom
                   sx={{
                     color: theme.palette.text.secondary,
-                    mb: 1.5,
+                    fontStyle: 'italic',
+                    mb: 1,
                   }}
                 >
-                  {showStore.selectedShow.address}
+                  by {showStore.selectedShow.vendor.name}
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <FontAwesomeIcon
-                    icon={faMicrophone}
-                    style={{
-                      fontSize: '14px',
-                      color: theme.palette.primary.main,
-                    }}
-                  />
-                  <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
-                    Host: {showStore.selectedShow.dj?.name}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <FontAwesomeIcon
-                    icon={faLocationDot}
-                    style={{
-                      fontSize: '14px',
-                      color: theme.palette.secondary.main,
-                    }}
-                  />
-                  <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
-                    {formatTime(showStore.selectedShow.startTime)} -{' '}
-                    {formatTime(showStore.selectedShow.endTime)}
-                  </Typography>
-                </Box>
-                {showStore.selectedShow.description && (
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      mt: 1,
-                      color: theme.palette.text.secondary,
-                      fontStyle: 'italic',
-                    }}
-                  >
-                    {showStore.selectedShow.description}
-                  </Typography>
-                )}
+              )}
+              <Typography
+                variant="body2"
+                gutterBottom
+                sx={{
+                  color: theme.palette.text.secondary,
+                  mb: 1.5,
+                }}
+              >
+                {showStore.selectedShow.address}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <FontAwesomeIcon
+                  icon={faMicrophone}
+                  style={{
+                    fontSize: '14px',
+                    color: theme.palette.primary.main,
+                  }}
+                />
+                <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
+                  Host: {showStore.selectedShow.dj?.name}
+                </Typography>
               </Box>
-            </InfoWindow>
-          )}
-        </>
-      );
-    },
-  );
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <FontAwesomeIcon
+                  icon={faLocationDot}
+                  style={{
+                    fontSize: '14px',
+                    color: theme.palette.secondary.main,
+                  }}
+                />
+                <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
+                  {formatTime(showStore.selectedShow.startTime)} -{' '}
+                  {formatTime(showStore.selectedShow.endTime)}
+                </Typography>
+              </Box>
+              {showStore.selectedShow.description && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mt: 1,
+                    color: theme.palette.text.secondary,
+                    fontStyle: 'italic',
+                  }}
+                >
+                  {showStore.selectedShow.description}
+                </Typography>
+              )}
+            </Box>
+          </InfoWindow>
+        )}
+      </>
+    );
+  });
 
   // Create microphone marker icon
   const createMicrophoneIcon = (isSelected = false, theme: any) => {
