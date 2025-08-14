@@ -14,6 +14,7 @@ import { FavoriteModule } from './favorite/favorite.module';
 import { MusicModule } from './music/music.module';
 import { ParserModule } from './parser/parser.module';
 import { ShowModule } from './show/show.module';
+import { SubscriptionModule } from './subscription/subscription.module';
 import { UserModule } from './user/user.module';
 import { VendorModule } from './vendor/vendor.module';
 import { WebSocketModule } from './websocket/websocket.module';
@@ -58,6 +59,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     FavoriteModule,
     ParserModule,
     MusicModule,
+    SubscriptionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

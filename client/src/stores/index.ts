@@ -5,6 +5,10 @@ import { MapStore, mapStore as mapStoreInstance } from './MapStore';
 import { MusicStore, musicStore as musicStoreInstance } from './MusicStore';
 import { ParserStore } from './ParserStore';
 import { ShowStore, showStore as showStoreInstance } from './ShowStore';
+import {
+  SubscriptionStore,
+  subscriptionStore as subscriptionStoreInstance,
+} from './SubscriptionStore';
 import { ThemeStore } from './ThemeStore';
 import { UIStore } from './UIStore';
 import { VendorStore } from './VendorStore';
@@ -21,6 +25,7 @@ export class RootStore {
   parserStore: ParserStore;
   mapStore: MapStore;
   musicStore: MusicStore;
+  subscriptionStore: SubscriptionStore;
   apiStore: typeof apiStore;
 
   constructor() {
@@ -34,6 +39,7 @@ export class RootStore {
     this.parserStore = new ParserStore();
     this.mapStore = mapStoreInstance; // Use the singleton instance
     this.musicStore = musicStoreInstance; // Use the singleton instance
+    this.subscriptionStore = subscriptionStoreInstance; // Use the singleton instance
     this.apiStore = apiStore;
   }
 }
@@ -50,6 +56,7 @@ export const {
   parserStore,
   mapStore,
   musicStore,
+  subscriptionStore,
   apiStore: api,
 } = rootStore;
 

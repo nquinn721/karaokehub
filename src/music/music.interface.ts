@@ -10,6 +10,14 @@ export interface MusicSearchResult {
   disambiguation?: string;
   tags?: string[];
   score?: number;
+  // Album artwork URLs
+  albumArt?: {
+    small?: string; // 100x100
+    medium?: string; // 300x300
+    large?: string; // 600x600
+  };
+  // Track preview URL (30-second preview)
+  previewUrl?: string;
 }
 
 export interface ArtistSearchResult {

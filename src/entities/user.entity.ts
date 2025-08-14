@@ -7,6 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Favorite } from '../favorite/favorite.entity';
+import { Subscription } from '../subscription/subscription.entity';
 
 @Entity('users')
 export class User {
@@ -40,6 +41,10 @@ export class User {
   @Column({ default: false })
   isAdmin: boolean;
 
+  // Subscription fields
+  @Column({ nullable: true })
+  stripeCustomerId: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -49,4 +54,7 @@ export class User {
   // Relationships
   @OneToMany(() => Favorite, (favorite) => favorite.user)
   favorites: Favorite[];
+
+  @OneToMany(() => Subscription, (subscription) => subscription.user)
+  subscriptions: Subscription[];
 }

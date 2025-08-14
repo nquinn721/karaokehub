@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DayOfWeek } from '../show/show.entity';
+import { SubscriptionService } from '../subscription/subscription.service';
 import { Favorite } from './favorite.entity';
 
 export interface CreateFavoriteDto {
@@ -15,9 +16,21 @@ export class FavoriteService {
   constructor(
     @InjectRepository(Favorite)
     private favoriteRepository: Repository<Favorite>,
+    private subscriptionService: SubscriptionService,
   ) {}
 
   async create(createFavoriteDto: CreateFavoriteDto): Promise<Favorite> {
+    // Check if user has premium access (required for favorites)
+    const hasPremiumAccess = await this.subscriptionService.hasPremiumAccess(
+      createFavoriteDto.userId,
+    );
+
+    if (!hasPremiumAccess) {
+      throw new ForbiddenException(
+        'Premium subscription required to add favorites. Upgrade to access this feature.',
+      );
+    }
+
     const favorite = this.favoriteRepository.create(createFavoriteDto);
     return await this.favoriteRepository.save(favorite);
   }

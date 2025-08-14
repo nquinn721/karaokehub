@@ -29,11 +29,22 @@ export const MapComponent: React.FC = observer(() => {
 
   // Initialize stores when component mounts - this will only run once per component lifecycle
   React.useMemo(() => {
-    if (!mapStore.isInitialized) {
-      mapStore.initialize().catch((error) => {
-        console.error('Failed to initialize map store:', error);
-      });
-    }
+    const initializeStores = async () => {
+      if (!mapStore.isInitialized) {
+        await mapStore.initialize().catch((error) => {
+          console.error('Failed to initialize map store:', error);
+        });
+      }
+      
+      // Fetch shows if we haven't already
+      if (showStore.shows.length === 0 && !showStore.isLoading) {
+        await showStore.fetchShows().catch((error) => {
+          console.error('Failed to fetch shows:', error);
+        });
+      }
+    };
+    
+    initializeStores();
   }, []);
 
   if (!apiStore.configLoaded) {

@@ -1,5 +1,7 @@
 import { CustomCard } from '@components/CustomCard';
+import { BannerAd, WideAd } from '@components/AdPlaceholder';
 import { NotificationDialog, NotificationType } from '@components/NotificationDialog';
+import { SEO, seoConfigs } from '@components/SEO';
 import {
   faCog,
   faHeadphones,
@@ -10,7 +12,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Alert, Box, Button, Container, Grid, Typography } from '@mui/material';
-import { apiStore, authStore } from '@stores/index';
+import { apiStore, authStore, subscriptionStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useState } from 'react';
 
@@ -55,7 +57,9 @@ const DashboardPage: React.FC = observer(() => {
   };
 
   return (
-    <Container maxWidth="lg">
+    <>
+      <SEO {...seoConfigs.dashboard} />
+      <Container maxWidth="lg">
       <Box sx={{ py: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 4 }}>
           Welcome back, {authStore.user?.name}!
@@ -71,6 +75,13 @@ const DashboardPage: React.FC = observer(() => {
               </Button>
             </Box>
           </Alert>
+        )}
+
+        {/* Ad placement after welcome section - only show if not ad-free */}
+        {!subscriptionStore.hasAdFreeAccess && (
+          <Box sx={{ mb: 4 }}>
+            <BannerAd />
+          </Box>
         )}
 
         <Grid container spacing={3}>
@@ -177,6 +188,13 @@ const DashboardPage: React.FC = observer(() => {
           </Grid>
         </Grid>
 
+        {/* Ad placement at bottom - only show if not ad-free */}
+        {!subscriptionStore.hasAdFreeAccess && (
+          <Box sx={{ mt: 4, mb: 2 }}>
+            <WideAd />
+          </Box>
+        )}
+
         {/* Notification Dialog */}
         <NotificationDialog
           open={notificationDialog.open}
@@ -187,6 +205,7 @@ const DashboardPage: React.FC = observer(() => {
         />
       </Box>
     </Container>
+    </>
   );
 });
 

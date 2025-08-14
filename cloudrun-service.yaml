@@ -83,6 +83,25 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_GOOGLE_MAPS_API_KEY
                   key: latest
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_STRIPE_SECRET_KEY
+                  key: latest
+            - name: STRIPE_PUBLISHABLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_STRIPE_PUBLISHABLE_KEY
+                  key: latest
+            - name: STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_STRIPE_WEBHOOK_SECRET
+                  key: latest
+            - name: STRIPE_AD_FREE_PRICE_ID
+              value: 'price_ad_free_monthly'
+            - name: STRIPE_PREMIUM_PRICE_ID
+              value: 'price_premium_monthly'
             # Ollama configuration (disabled in Cloud Run by default)
             # Uncomment and set these if you deploy a separate Ollama service:
             # - name: ENABLE_OLLAMA

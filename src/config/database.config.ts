@@ -5,6 +5,7 @@ import { User } from '../entities/user.entity';
 import { Favorite } from '../favorite/favorite.entity';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { Show } from '../show/show.entity';
+import { Subscription } from '../subscription/subscription.entity';
 import { Vendor } from '../vendor/vendor.entity';
 
 export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => {
@@ -17,7 +18,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     password: configService.get('DATABASE_PASSWORD', 'password'),
     database: configService.get('DATABASE_NAME', 'karaoke-hub'),
 
-    entities: [User, Vendor, DJ, Show, Favorite, ParsedSchedule],
+    entities: [User, Vendor, DJ, Show, Favorite, ParsedSchedule, Subscription],
     synchronize: !isProduction, // Only sync schema in development
     logging: !isProduction
       ? ['error', 'warn'] // Only log errors and warnings, no queries
@@ -30,8 +31,8 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       maxQueryExecutionTime: 5000,
     }),
 
-    // Migration configuration
-    migrations: ['dist/migrations/*.js'],
+    // Migration configuration - disabled in development since we use synchronize
+    migrations: isProduction ? ['dist/migrations/*.js'] : [],
     migrationsTableName: 'migrations',
     migrationsRun: false, // We'll run migrations manually
   };

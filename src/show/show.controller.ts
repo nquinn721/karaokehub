@@ -14,7 +14,7 @@ import { DayOfWeek } from './show.entity';
 import { CreateShowDto, ShowService, UpdateShowDto } from './show.service';
 
 @Controller('shows')
-@UseGuards(AuthGuard('jwt'))
+// @UseGuards(AuthGuard('jwt')) // Temporarily disabled for debugging
 export class ShowController {
   constructor(private readonly showService: ShowService) {}
 

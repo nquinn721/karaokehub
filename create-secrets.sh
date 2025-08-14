@@ -32,9 +32,16 @@ echo -n "AIzaSyCJgu_sx8VjMTj7iphIekriBeTjeKjHuiY" | gcloud secrets create KARAOK
 echo "Creating OpenAI API key secret..."
 echo -n "YOUR_OPENAI_API_KEY" | gcloud secrets create KARAOKE_HUB_OPENAI_API_KEY --data-file=-
 
+# Stripe secrets (you'll need to set these manually)
+echo "Creating Stripe secrets (empty - set these manually)..."
+echo -n "sk_test_your_secret_key_here" | gcloud secrets create KARAOKE_HUB_STRIPE_SECRET_KEY --data-file=-
+echo -n "pk_test_your_publishable_key_here" | gcloud secrets create KARAOKE_HUB_STRIPE_PUBLISHABLE_KEY --data-file=-
+echo -n "whsec_your_webhook_secret_here" | gcloud secrets create KARAOKE_HUB_STRIPE_WEBHOOK_SECRET --data-file=-
+
 echo "✅ Secrets created successfully!"
 echo "🔗 Remember to:"
 echo "   1. Update Google OAuth secrets with your actual credentials"
 echo "   2. Update Gemini API key secret with your actual key"  
 echo "   3. Update OpenAI API key secret with your actual key"
-echo "   4. Grant Cloud Run service account access to secrets"
+echo "   4. Update Stripe secrets with your actual Stripe keys"
+echo "   5. Grant Cloud Run service account access to secrets"

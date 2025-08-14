@@ -104,9 +104,9 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   src="/images/karaoke-hub-logo.png"
                   alt="KaraokeHub Logo"
                   style={{
-                    width: '140px', // Make logo bigger
-                    height: '140px', // Make logo bigger
-                    transform: 'translateY(30px)', // Allow 1/3 of logo to expand below header (47px out of 140px)
+                    width: '170px', // Make logo bigger
+                    height: '170px', // Make logo bigger
+                    transform: 'translateY(35px)', // Allow more space for larger logo to expand below header
                   }}
                 />
               </Box>
@@ -317,65 +317,6 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
             </Box>
           </Toolbar>
         </AppBar>
-
-        {/* Horizontal gradient stripe with tagline and content - similar to SingSpot */}
-        <Box
-          sx={{
-            height: '170px', // Increased height for more bottom padding
-            width: '100%',
-            background:
-              theme.palette.mode === 'light'
-                ? 'linear-gradient(90deg, #8B5CF6 0%, #A855F7 25%, #C084FC 50%, #E879F9 75%, #F0ABFC 100%)'
-                : 'linear-gradient(90deg, #6B46C1 0%, #8B5CF6 25%, #A855F7 50%, #C084FC 75%, #E879F9 100%)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 0.5,
-            px: 2,
-            paddingTop: '47px', // Add padding instead of margin to push text below logo
-            paddingBottom: '20px', // Add bottom padding for better spacing
-          }}
-        >
-          <Typography
-            variant="h5"
-            sx={{
-              color: 'white',
-              fontWeight: 'bold',
-              textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
-              fontSize: { xs: '1.1rem', md: '1.3rem' }, // Slightly smaller to fit better
-            }}
-          >
-            Sing. Discover. Connect.
-          </Typography>
-
-          <Typography
-            variant="h6"
-            sx={{
-              color: 'white',
-              fontWeight: 300,
-              textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
-              fontSize: { xs: '1rem', md: '1.1rem' }, // Smaller to fit
-            }}
-          >
-            Your Karaoke Spot
-          </Typography>
-
-          <Typography
-            variant="body1"
-            sx={{
-              color: 'rgba(255, 255, 255, 0.9)',
-              textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
-              textAlign: 'center',
-              maxWidth: '600px',
-              fontSize: { xs: '0.85rem', md: '0.95rem' }, // Smaller to fit
-              lineHeight: 1.2, // Tighter line height
-            }}
-          >
-            Discover amazing karaoke venues, connect with fellow singers, and make every night
-            unforgettable
-          </Typography>
-        </Box>
       </>
     );
   },
