@@ -72,7 +72,7 @@ export class KaraokeParserService {
 
       // Extract clean text content using Puppeteer
       const textContent = await this.extractTextContentWithPuppeteer(url);
-      
+
       // Log content preview for debugging
       this.logger.debug(`Content preview (first 500 chars): ${textContent.substring(0, 500)}...`);
       this.logger.log(`Extracted content length: ${textContent.length} characters`);
@@ -383,10 +383,18 @@ ${textContent}`;
       this.logger.debug(`Parsed JSON data:`, parsedData);
 
       // Log vendor detection for debugging
-      if (!parsedData.vendor || !parsedData.vendor.name || parsedData.vendor.name === 'Unknown Business') {
-        this.logger.warn(`Vendor not detected from AI, falling back to URL-based generation for ${url}`);
+      if (
+        !parsedData.vendor ||
+        !parsedData.vendor.name ||
+        parsedData.vendor.name === 'Unknown Business'
+      ) {
+        this.logger.warn(
+          `Vendor not detected from AI, falling back to URL-based generation for ${url}`,
+        );
       } else {
-        this.logger.log(`Vendor detected: ${parsedData.vendor.name} (confidence: ${parsedData.vendor.confidence})`);
+        this.logger.log(
+          `Vendor detected: ${parsedData.vendor.name} (confidence: ${parsedData.vendor.confidence})`,
+        );
       }
 
       // Ensure required structure with defaults
@@ -422,10 +430,10 @@ ${textContent}`;
     try {
       const urlObj = new URL(url);
       const domain = urlObj.hostname.replace('www.', '');
-      
+
       // Extract business name from domain
       let businessName = 'Unknown Business';
-      
+
       if (domain.includes('stevesdj.com')) {
         businessName = "Steve's DJ Services";
       } else if (domain.includes('dj')) {
@@ -556,7 +564,7 @@ ${textContent}`;
       // 3. Create or Update Shows
       const showsCreated = [];
       const showsUpdated = [];
-      
+
       for (const showData of data.shows) {
         // Parse the date and time
         let parsedDate: Date;
@@ -583,9 +591,7 @@ ${textContent}`;
           const updated = await this.updateShowWithNewData(existingShow, showData, dj?.id);
           if (updated) {
             showsUpdated.push(existingShow);
-            this.logger.log(
-              `Updated existing show: ${existingShow.venue} with new data`
-            );
+            this.logger.log(`Updated existing show: ${existingShow.venue} with new data`);
           }
         } else {
           // Create new show
@@ -608,7 +614,7 @@ ${textContent}`;
 
   private async findExistingShow(showData: any, vendorId: string, parsedDate: Date): Promise<any> {
     // Try multiple matching strategies to find duplicates
-    
+
     // Strategy 1: Exact venue, date, and vendor match
     let existingShow = await this.showRepository.findOne({
       where: {
@@ -617,11 +623,11 @@ ${textContent}`;
         vendorId: vendorId,
       },
     });
-    
+
     if (existingShow) {
       return existingShow;
     }
-    
+
     // Strategy 2: Venue and day of week match (for recurring shows)
     if (showData.day) {
       const dayLower = showData.day.toLowerCase();
@@ -632,12 +638,12 @@ ${textContent}`;
           vendorId: vendorId,
         },
       });
-      
+
       if (existingShow) {
         return existingShow;
       }
     }
-    
+
     // Strategy 3: Venue and time match (for shows with same venue and time)
     if (showData.time) {
       existingShow = await this.showRepository.findOne({
@@ -647,18 +653,18 @@ ${textContent}`;
           vendorId: vendorId,
         },
       });
-      
+
       if (existingShow) {
         return existingShow;
       }
     }
-    
+
     // Strategy 4: Address match (for same venue with slightly different names)
     if (showData.address) {
       const allShowsForVendor = await this.showRepository.find({
         where: { vendorId: vendorId },
       });
-      
+
       for (const show of allShowsForVendor) {
         if (show.address && this.isSimilarAddress(showData.address, show.address)) {
           // If addresses match and venues are similar, consider it a duplicate
@@ -668,7 +674,7 @@ ${textContent}`;
         }
       }
     }
-    
+
     return null;
   }
 
@@ -683,79 +689,104 @@ ${textContent}`;
     const normalize = (venue: string) => venue.toLowerCase().replace(/[^a-z0-9]/g, '');
     const norm1 = normalize(venue1);
     const norm2 = normalize(venue2);
-    
+
     // Check if one venue name contains the other or they're very similar
     return norm1.includes(norm2) || norm2.includes(norm1) || norm1 === norm2;
   }
 
-  private async updateShowWithNewData(existingShow: any, showData: any, djId?: string): Promise<boolean> {
+  private async updateShowWithNewData(
+    existingShow: any,
+    showData: any,
+    djId?: string,
+  ): Promise<boolean> {
     let hasUpdates = false;
-    
+
     // Update fields only if new data exists and existing field is empty
     if (showData.address && !existingShow.address) {
       existingShow.address = showData.address;
       hasUpdates = true;
     }
-    
+
     if (showData.venuePhone && !existingShow.venuePhone) {
       existingShow.venuePhone = showData.venuePhone;
       hasUpdates = true;
     }
-    
+
     if (showData.venueWebsite && !existingShow.venueWebsite) {
       existingShow.venueWebsite = showData.venueWebsite;
       hasUpdates = true;
     }
-    
+
     if (showData.startTime && !existingShow.startTime) {
       existingShow.startTime = showData.startTime;
       hasUpdates = true;
     }
-    
+
     if (showData.endTime && !existingShow.endTime) {
       existingShow.endTime = showData.endTime;
       hasUpdates = true;
     }
-    
+
     if (showData.description && !existingShow.description) {
       existingShow.description = showData.description;
       hasUpdates = true;
     }
-    
+
     if (showData.notes && !existingShow.notes) {
       existingShow.notes = showData.notes;
       hasUpdates = true;
     }
-    
+
     if (djId && !existingShow.djId) {
       existingShow.djId = djId;
       hasUpdates = true;
     }
-    
+
     if (showData.day && !existingShow.day) {
       const dayLower = showData.day.toLowerCase();
-      const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      const validDays = [
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday',
+      ];
       if (validDays.includes(dayLower)) {
         existingShow.day = dayLower;
         hasUpdates = true;
       }
     }
-    
+
     // Save updates if any were made
     if (hasUpdates) {
       await this.showRepository.save(existingShow);
       this.logger.log(`Updated show ${existingShow.venue} with new data`);
     }
-    
+
     return hasUpdates;
   }
 
-  private async createNewShow(showData: any, vendorId: string, djId?: string, parsedDate?: Date): Promise<any> {
+  private async createNewShow(
+    showData: any,
+    vendorId: string,
+    djId?: string,
+    parsedDate?: Date,
+  ): Promise<any> {
     // Parse day of week from the day field
     let dayOfWeek = null;
     if (showData.day) {
       const dayLower = showData.day.toLowerCase();
-      const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      const validDays = [
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday',
+      ];
       if (validDays.includes(dayLower)) {
         dayOfWeek = dayLower;
       }

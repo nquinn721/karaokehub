@@ -185,15 +185,10 @@ const ParserReviewPage: React.FC = observer(() => {
     
     const result = await parserStore.parseSelectedUrl(selectedUrlToParse);
     if (result.success) {
-      // Reset selection
+      // Reset selection after successful parsing
       setSelectedUrlToParse('');
-      console.log('Successfully parsed URL:', selectedUrlToParse);
-    } else if (result.error) {
-      console.error('Failed to parse URL:', result.error);
     }
-  };
-
-  const getConfidenceColor = (confidence: number) => {
+  };  const getConfidenceColor = (confidence: number) => {
     if (confidence >= 80) return theme.palette.success.main;
     if (confidence >= 60) return theme.palette.warning.main;
     return theme.palette.error.main;
@@ -234,7 +229,7 @@ const ParserReviewPage: React.FC = observer(() => {
               Select a URL from your saved list to parse:
             </Typography>
           </Box>
-          
+
           {parserStore.isLoading ? (
             <Box sx={{ textAlign: 'center', py: 2 }}>
               <Typography>Loading URLs...</Typography>
@@ -612,7 +607,10 @@ const ParserReviewPage: React.FC = observer(() => {
                                 value={show.venuePhone || ''}
                                 onChange={(e) => {
                                   const newShows = [...editedData.shows];
-                                  newShows[index] = { ...newShows[index], venuePhone: e.target.value };
+                                  newShows[index] = {
+                                    ...newShows[index],
+                                    venuePhone: e.target.value,
+                                  };
                                   setEditedData({ ...editedData, shows: newShows });
                                 }}
                                 fullWidth
@@ -626,7 +624,10 @@ const ParserReviewPage: React.FC = observer(() => {
                                 value={show.venueWebsite || ''}
                                 onChange={(e) => {
                                   const newShows = [...editedData.shows];
-                                  newShows[index] = { ...newShows[index], venueWebsite: e.target.value };
+                                  newShows[index] = {
+                                    ...newShows[index],
+                                    venueWebsite: e.target.value,
+                                  };
                                   setEditedData({ ...editedData, shows: newShows });
                                 }}
                                 fullWidth

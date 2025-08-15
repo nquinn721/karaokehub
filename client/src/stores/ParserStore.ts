@@ -221,7 +221,7 @@ export class ParserStore {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       this.setLoading(true);
-      
+
       // Get the review data
       const review = this.getPendingReviewById(reviewId);
       if (!review) {
@@ -229,8 +229,8 @@ export class ParserStore {
       }
 
       // Use the approve-schedule endpoint with the modified data
-      await apiStore.post(`/parser/approve-schedule/${reviewId}`, { 
-        approvedData: review.aiAnalysis 
+      await apiStore.post(`/parser/approve-schedule/${reviewId}`, {
+        approvedData: review.aiAnalysis,
       });
 
       // Refresh pending reviews
@@ -286,16 +286,6 @@ export class ParserStore {
     }
   }
 
-  // Update review comments (stub implementation)
-  async updateReviewComments(reviewId: string, comments: string): Promise<void> {
-    try {
-      // TODO: Implement actual update logic
-      console.log('Updating review comments:', reviewId, comments);
-    } catch (error) {
-      console.error('Failed to update comments:', error);
-    }
-  }
-
   // Helper method to get count of pending reviews
   get pendingReviewsCount(): number {
     return this.pendingReviews.length;
@@ -313,7 +303,7 @@ export class ParserStore {
       this.setError(null);
 
       const response = await apiStore.get('/parser/urls');
-      
+
       runInAction(() => {
         // The apiStore.get() already returns response.data, so response should be the array directly
         this.urlsToParse = Array.isArray(response) ? response : [];
@@ -336,7 +326,7 @@ export class ParserStore {
       this.setError(null);
 
       await apiStore.post('/parser/urls', { url });
-      
+
       // Refresh the list after adding
       await this.fetchUrlsToParse();
 
@@ -356,7 +346,7 @@ export class ParserStore {
       this.setError(null);
 
       await apiStore.post('/parser/parse-and-save-website', { url });
-      
+
       // Refresh pending reviews to see newly parsed data
       await this.fetchPendingReviews();
 
@@ -367,6 +357,16 @@ export class ParserStore {
       return { success: false, error: errorMessage };
     } finally {
       this.setLoading(false);
+    }
+  }
+
+  // Update review comments (stub implementation)
+  async updateReviewComments(reviewId: string, comments: string): Promise<void> {
+    try {
+      // TODO: Implement actual update logic when backend endpoint is available
+      console.log('Updating review comments:', reviewId, comments);
+    } catch (error) {
+      console.error('Failed to update comments:', error);
     }
   }
 }

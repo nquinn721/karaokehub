@@ -431,7 +431,7 @@ export const MapComponent: React.FC = observer(() => {
                   {formatTime(showStore.selectedShow.endTime)}
                 </Typography>
               </Box>
-              
+
               {/* Contact Information */}
               {showStore.selectedShow.venuePhone && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -459,7 +459,7 @@ export const MapComponent: React.FC = observer(() => {
                   </Typography>
                 </Box>
               )}
-              
+
               {showStore.selectedShow.venueWebsite && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <FontAwesomeIcon
@@ -471,7 +471,11 @@ export const MapComponent: React.FC = observer(() => {
                   />
                   <Typography
                     component="a"
-                    href={showStore.selectedShow.venueWebsite.startsWith('http') ? showStore.selectedShow.venueWebsite : `https://${showStore.selectedShow.venueWebsite}`}
+                    href={
+                      showStore.selectedShow.venueWebsite.startsWith('http')
+                        ? showStore.selectedShow.venueWebsite
+                        : `https://${showStore.selectedShow.venueWebsite}`
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     variant="body2"
@@ -488,7 +492,7 @@ export const MapComponent: React.FC = observer(() => {
                   </Typography>
                 </Box>
               )}
-              
+
               {showStore.selectedShow.description && (
                 <Typography
                   variant="body2"
@@ -838,9 +842,13 @@ export const MapComponent: React.FC = observer(() => {
 
                                     {/* Contact info */}
                                     {(show.venuePhone || show.venueWebsite) && (
-                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                                      <Box
+                                        sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}
+                                      >
                                         {show.venuePhone && (
-                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                          <Box
+                                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                                          >
                                             <FontAwesomeIcon
                                               icon={faPhone}
                                               style={{
@@ -860,7 +868,9 @@ export const MapComponent: React.FC = observer(() => {
                                           </Box>
                                         )}
                                         {show.venueWebsite && (
-                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                          <Box
+                                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                                          >
                                             <FontAwesomeIcon
                                               icon={faExternalLinkAlt}
                                               style={{
@@ -870,7 +880,11 @@ export const MapComponent: React.FC = observer(() => {
                                             />
                                             <Typography
                                               component="a"
-                                              href={show.venueWebsite.startsWith('http') ? show.venueWebsite : `https://${show.venueWebsite}`}
+                                              href={
+                                                show.venueWebsite.startsWith('http')
+                                                  ? show.venueWebsite
+                                                  : `https://${show.venueWebsite}`
+                                              }
                                               target="_blank"
                                               rel="noopener noreferrer"
                                               variant="body2"
@@ -1131,13 +1145,19 @@ export const MapComponent: React.FC = observer(() => {
                                 color: theme.palette.text.secondary,
                               }}
                             />
-                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ fontSize: '0.75rem' }}
+                            >
                               {show.dj?.name || 'Unknown Host'}
                             </Typography>
                           </Box>
 
                           {/* Address */}
-                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}>
+                          <Box
+                            sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}
+                          >
                             <FontAwesomeIcon
                               icon={faMapMarkerAlt}
                               style={{
@@ -1157,7 +1177,9 @@ export const MapComponent: React.FC = observer(() => {
 
                           {/* Contact info */}
                           {(show.venuePhone || show.venueWebsite) && (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3, mt: 0.5 }}>
+                            <Box
+                              sx={{ display: 'flex', flexDirection: 'column', gap: 0.3, mt: 0.5 }}
+                            >
                               {show.venuePhone && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                   <FontAwesomeIcon
@@ -1195,7 +1217,11 @@ export const MapComponent: React.FC = observer(() => {
                                   />
                                   <Typography
                                     component="a"
-                                    href={show.venueWebsite.startsWith('http') ? show.venueWebsite : `https://${show.venueWebsite}`}
+                                    href={
+                                      show.venueWebsite.startsWith('http')
+                                        ? show.venueWebsite
+                                        : `https://${show.venueWebsite}`
+                                    }
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     variant="body2"

@@ -14,8 +14,23 @@ export class ParserController {
   async parseWebsite(@Body() body: { url: string }) {
     try {
       console.log('Parsing URL:', body.url);
+
+      // First, try to add URL to the urls_to_parse table
+      let urlToParse;
+      try {
+        urlToParse = await this.urlToParseService.create(body.url);
+        console.log('URL added to urls_to_parse table:', urlToParse.id);
+      } catch (error) {
+        console.log('URL may already exist in urls_to_parse table, continuing with parsing');
+      }
+
+      // Then parse the website
       const result = await this.karaokeParserService.parseWebsite(body.url);
-      return result;
+
+      return {
+        ...result,
+        urlToParseId: urlToParse?.id,
+      };
     } catch (error) {
       console.error('Error parsing website:', error);
       throw new HttpException('Failed to parse website', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -26,11 +41,24 @@ export class ParserController {
   async parseAndSaveWebsite(@Body() body: { url: string }) {
     try {
       console.log('Parsing and saving URL:', body.url);
+
+      // First, try to add URL to the urls_to_parse table
+      let urlToParse;
+      try {
+        urlToParse = await this.urlToParseService.create(body.url);
+        console.log('URL added to urls_to_parse table:', urlToParse.id);
+      } catch (error) {
+        console.log('URL may already exist in urls_to_parse table, continuing with parsing');
+      }
+
+      // Then parse and save the website
       const result = await this.karaokeParserService.parseAndSaveWebsite(body.url);
+
       return {
         message: 'Website parsed and saved for admin review',
         parsedScheduleId: result.parsedScheduleId,
         data: result.data,
+        urlToParseId: urlToParse?.id,
       };
     } catch (error) {
       console.error('Error parsing and saving website:', error);
@@ -46,6 +74,51 @@ export class ParserController {
     } catch (error) {
       console.error('Error getting pending reviews:', error);
       throw new HttpException('Failed to get pending reviews', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('approve-schedule/:id')
+  async approveSchedule(@Param('id') id: string, @Body() body: { approvedData: any }) {
+    try {
+      const result = await this.karaokeParserService.approveAndSaveParsedData(
+        id,
+        body.approvedData,
+      );
+      return {
+        message: 'Schedule approved and saved successfully',
+        result,
+      };
+    } catch (error) {
+      console.error('Error approving schedule:', error);
+      throw new HttpException('Failed to approve schedule', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('approve-all/:id')
+  async approveAll(@Param('id') id: string) {
+    try {
+      const result = await this.karaokeParserService.approveAllItems(id);
+      return {
+        message: 'All items approved and saved successfully',
+        result,
+      };
+    } catch (error) {
+      console.error('Error approving all items:', error);
+      throw new HttpException('Failed to approve all items', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('reject-schedule/:id')
+  async rejectSchedule(@Param('id') id: string, @Body() body: { reason?: string }) {
+    try {
+      const result = await this.karaokeParserService.rejectSchedule(id, body.reason);
+      return {
+        message: 'Schedule rejected successfully',
+        result,
+      };
+    } catch (error) {
+      console.error('Error rejecting schedule:', error);
+      throw new HttpException('Failed to reject schedule', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
