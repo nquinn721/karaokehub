@@ -54,8 +54,15 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
         border: `1px solid ${theme.palette.divider}`,
       }}
     >
-      <CardContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            mb: { xs: 1.5, sm: 3 },
+          }}
+        >
           <FontAwesomeIcon
             icon={faCalendarDay}
             style={{
@@ -69,6 +76,7 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
             component="h3"
             sx={{
               fontWeight: 600,
+              fontSize: { xs: '1rem', sm: '1.25rem' },
               background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
@@ -84,8 +92,8 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
             display: 'flex',
             flexWrap: 'wrap',
             justifyContent: 'center',
-            gap: 1.5,
-            mb: 3,
+            gap: { xs: 0.5, sm: 1.5 },
+            mb: { xs: 2, sm: 3 },
           }}
         >
           {days.map((day) => {
@@ -96,10 +104,10 @@ export const DayPicker: React.FC<DayPickerProps> = ({ selectedDay, onDayChange }
                 onClick={() => onDayChange(day)}
                 variant={isSelected ? 'contained' : 'outlined'}
                 sx={{
-                  minWidth: { xs: 48, sm: 72 },
-                  height: { xs: 48, sm: 56 },
-                  borderRadius: 3,
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  minWidth: { xs: 28, sm: 72 },
+                  height: { xs: 28, sm: 56 },
+                  borderRadius: { xs: 1.5, sm: 3 },
+                  fontSize: { xs: '0.5rem', sm: '0.875rem' },
                   fontWeight: 600,
                   textTransform: 'none',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',

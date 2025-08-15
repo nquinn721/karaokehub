@@ -20,6 +20,7 @@ import ParserReviewPage from './pages/ParserReviewPage';
 import ProfilePage from './pages/ProfilePage';
 import RegisterPage from './pages/RegisterPage';
 import SettingsPage from './pages/SettingsPage';
+import SubmitShowPage from './pages/SubmitShowPage';
 
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -68,6 +69,9 @@ const App: React.FC = observer(() => {
               <Route path="/music/category/:categoryId" element={<MusicPage />} />
               <Route path="/music/artist/:artistId" element={<MusicPage />} />
               <Route path="/music/song/:songId" element={<MusicPage />} />
+
+              {/* Submit Show Page */}
+              <Route path="/submit" element={<SubmitShowPage />} />
 
               <Route
                 path="/login"

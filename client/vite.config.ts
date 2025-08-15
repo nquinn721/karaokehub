@@ -5,6 +5,8 @@ import { defineConfig } from 'vite';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  root: '.', // Set root to current directory
+  publicDir: 'public', // Use the public directory for static assets
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

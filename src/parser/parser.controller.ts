@@ -66,6 +66,75 @@ export class ParserController {
     }
   }
 
+  @Post('submit-manual-show')
+  async submitManualShow(
+    @Body()
+    body: {
+      vendorId: string;
+      venue: string;
+      address?: string;
+      day: string;
+      startTime: string;
+      endTime?: string;
+      djName?: string;
+      description?: string;
+      venuePhone?: string;
+      venueWebsite?: string;
+    },
+  ) {
+    try {
+      console.log('Submitting manual show:', body);
+
+      // Create manual show submission in a format similar to parsed data
+      const manualShowData = {
+        vendor: {
+          name: 'Manual Submission', // This will be updated to match the actual vendor
+          website: body.venueWebsite || '',
+          description: body.description || '',
+          confidence: 1.0,
+        },
+        djs: body.djName
+          ? [
+              {
+                name: body.djName,
+                confidence: 1.0,
+              },
+            ]
+          : [],
+        shows: [
+          {
+            venue: body.venue,
+            date: body.day, // This could be enhanced to handle specific dates
+            time: body.startTime,
+            endTime: body.endTime,
+            djName: body.djName,
+            description: body.description,
+            address: body.address,
+            venuePhone: body.venuePhone,
+            venueWebsite: body.venueWebsite,
+            confidence: 1.0,
+          },
+        ],
+      };
+
+      // For now, we'll add this to the parsed schedules for admin review
+      // This ensures manual submissions go through the same review process
+      const manualEntry = await this.karaokeParserService.saveManualSubmissionForReview(
+        body.vendorId,
+        manualShowData,
+      );
+
+      return {
+        success: true,
+        message: 'Manual show submitted successfully for review',
+        data: manualEntry,
+      };
+    } catch (error) {
+      console.error('Error submitting manual show:', error);
+      throw new HttpException('Failed to submit manual show', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   @Get('pending-reviews')
   async getPendingReviews() {
     try {

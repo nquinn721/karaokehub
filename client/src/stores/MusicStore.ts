@@ -512,21 +512,24 @@ export class MusicStore {
       // For category loading, we'll search for multiple queries from the category
       const allResults: MusicSearchResult[] = [];
 
-      // Get more varied results for pagination
-      const queriesPerPage = Math.max(1, Math.floor(category.queries.length / 3));
-      const startIdx = loadMore ? (this.currentPage * queriesPerPage) % category.queries.length : 0;
-      const endIdx = Math.min(startIdx + queriesPerPage, category.queries.length);
-
-      const queriesToUse = category.queries.slice(startIdx, endIdx);
-      if (queriesToUse.length === 0 && category.queries.length > 0) {
-        // If we've cycled through all queries, start over with different limit
-        queriesToUse.push(...category.queries.slice(0, queriesPerPage));
-      }
-
-      for (const query of queriesToUse) {
-        const response = await apiStore.get(`/music/search?q=${encodeURIComponent(query)}&limit=6`);
-        if (response && Array.isArray(response)) {
-          allResults.push(...response);
+      if (loadMore) {
+        // For pagination, use different queries or search terms
+        const startIdx = this.currentPage * 2;
+        const queriesToUse = category.queries.slice(startIdx, startIdx + 2);
+        
+        for (const query of queriesToUse) {
+          const response = await apiStore.get(`/music/search?q=${encodeURIComponent(query)}&limit=15`);
+          if (response && Array.isArray(response)) {
+            allResults.push(...response);
+          }
+        }
+      } else {
+        // Initial load - search with all queries but get more results per query
+        for (const query of category.queries) {
+          const response = await apiStore.get(`/music/search?q=${encodeURIComponent(query)}&limit=12`);
+          if (response && Array.isArray(response)) {
+            allResults.push(...response);
+          }
         }
       }
 
@@ -542,8 +545,8 @@ export class MusicStore {
           this.isLoading = false;
         }
 
-        // Update pagination state
-        this.hasMoreSongs = allResults.length > 0 && this.currentPage < 5; // Limit to 5 pages for categories
+        // Update pagination state - more generous pagination
+        this.hasMoreSongs = this.currentPage < Math.ceil(category.queries.length / 2) - 1;
         if (loadMore) {
           this.currentPage++;
         } else {

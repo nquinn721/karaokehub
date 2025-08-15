@@ -1,4 +1,6 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Res } from '@nestjs/common';
+import { Response } from 'express';
+import { join } from 'path';
 import { AppService } from './app.service';
 import { KaraokeParserService } from './parser/karaoke-parser.service';
 
@@ -91,5 +93,31 @@ export class AppController {
         stack: error.stack,
       };
     }
+  }
+
+  // Specific client routes that should serve the React app
+  @Get(['/', '/dashboard', '/submit'])
+  serveClient(@Res() res: Response) {
+    // Set cache-busting headers to force HTML refresh
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    // Add a timestamp parameter to the HTML to force browser refresh
+    const indexPath = join(__dirname, '..', 'public', 'index.html');
+    res.sendFile(indexPath);
+  }
+
+  // Handle /music client route specifically (after API routes are handled)
+  @Get('music')
+  serveMusicPage(@Res() res: Response) {
+    // Set cache-busting headers to force HTML refresh
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    // Add a timestamp parameter to the HTML to force browser refresh
+    const indexPath = join(__dirname, '..', 'public', 'index.html');
+    res.sendFile(indexPath);
   }
 }

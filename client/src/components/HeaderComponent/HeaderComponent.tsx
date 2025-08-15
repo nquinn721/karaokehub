@@ -1,7 +1,9 @@
 import {
   faBars,
   faCog,
+  faHome,
   faMusic,
+  faPlus,
   faSignOutAlt,
   faTimes,
   faUser,
@@ -110,46 +112,50 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
             sx={{
               height: '100%',
               minHeight: { xs: '60px !important', md: '80px !important' }, // Reduced mobile toolbar height
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between', // This creates three sections
             }}
           >
-            {showMenuButton && (
-              <Box
-                onClick={() => navigate('/')}
-                sx={{
-                  mr: 2,
-                  position: 'relative',
-                  zIndex: theme.zIndex.appBar + 1, // Ensure logo is above the stripe
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  '&:hover': {
-                    transform: 'scale(1.05)',
-                    transition: 'transform 0.2s ease-in-out',
-                  },
-                }}
-              >
+            {/* Left Section: Logo and Title */}
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              {showMenuButton && (
                 <Box
-                  component="img"
-                  src="/images/karaoke-hub-logo.png"
-                  alt="KaraokeHub Logo"
+                  onClick={() => navigate('/')}
                   sx={{
-                    // Responsive logo sizing - made mobile logo bigger
-                    width: { xs: '100px', sm: '100px', md: '120px', lg: '170px' },
-                    height: { xs: '100px', sm: '100px', md: '120px', lg: '170px' },
-                    transform: {
-                      xs: 'translateY(0px)', // No vertical translation
-                      sm: 'translateY(5px)',
-                      md: 'translateY(15px)',
-                      lg: 'translateY(35px)',
+                    mr: 2,
+                    position: 'relative',
+                    zIndex: theme.zIndex.appBar + 1, // Ensure logo is above the stripe
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                      transition: 'transform 0.2s ease-in-out',
                     },
-                    marginTop: { xs: '40px', sm: 0, md: 0, lg: 0 }, // Add margin-top for mobile
-                    transition: 'all 0.3s ease-in-out',
                   }}
-                />
-              </Box>
-            )}
+                >
+                  <Box
+                    component="img"
+                    src="/images/karaoke-hub-logo.png"
+                    alt="KaraokeHub Logo"
+                    sx={{
+                      // Responsive logo sizing - made mobile logo bigger
+                      width: { xs: '100px', sm: '100px', md: '120px', lg: '170px' },
+                      height: { xs: '100px', sm: '100px', md: '120px', lg: '170px' },
+                      transform: {
+                        xs: 'translateY(0px)', // No vertical translation
+                        sm: 'translateY(5px)',
+                        md: 'translateY(15px)',
+                        lg: 'translateY(35px)',
+                      },
+                      marginTop: { xs: '40px', sm: 0, md: 0, lg: 0 }, // Add margin-top for mobile
+                      transition: 'all 0.3s ease-in-out',
+                    }}
+                  />
+                </Box>
+              )}
 
-            <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
               <Typography
                 variant="h6"
                 component="div"
@@ -178,7 +184,139 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                 {title}
               </Typography>
             </Box>
+            {/* Center Section: Navigation Links (Desktop Only) */}
+            <Box
+              sx={{
+                display: { xs: 'none', md: 'flex' },
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexGrow: 1,
+                height: '100%',
+                gap: 2,
+              }}
+            >
+              {/* Home */}
+              <Button
+                variant="text"
+                size="medium"
+                onClick={() => navigate('/')}
+                startIcon={<FontAwesomeIcon icon={faHome} />}
+                sx={{
+                  color: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  fontSize: '1rem',
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    backgroundColor:
+                      theme.palette.mode === 'light'
+                        ? 'rgba(255, 255, 255, 0.1)'
+                        : 'rgba(255, 255, 255, 0.05)',
+                    transform: 'translateY(-1px)',
+                  },
+                }}
+              >
+                Home
+              </Button>
 
+              {/* Music Search */}
+              <Button
+                variant="text"
+                size="medium"
+                onClick={() => navigate('/music')}
+                startIcon={<FontAwesomeIcon icon={faMusic} />}
+                sx={{
+                  color: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  fontSize: '1rem',
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    backgroundColor:
+                      theme.palette.mode === 'light'
+                        ? 'rgba(255, 255, 255, 0.1)'
+                        : 'rgba(255, 255, 255, 0.05)',
+                    transform: 'translateY(-1px)',
+                  },
+                }}
+              >
+                Music
+              </Button>
+
+              {/* Submit Show */}
+              <Button
+                variant="text"
+                size="medium"
+                onClick={() => navigate('/submit')}
+                startIcon={<FontAwesomeIcon icon={faPlus} />}
+                sx={{
+                  color: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  fontSize: '1rem',
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    backgroundColor:
+                      theme.palette.mode === 'light'
+                        ? 'rgba(255, 255, 255, 0.1)'
+                        : 'rgba(255, 255, 255, 0.05)',
+                    transform: 'translateY(-1px)',
+                  },
+                }}
+              >
+                Submit Show
+              </Button>
+
+              {/* Dashboard (if authenticated) */}
+              {authStore.isAuthenticated && (
+                <Button
+                  variant="text"
+                  size="medium"
+                  onClick={() => navigate('/dashboard')}
+                  sx={{
+                    color: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                    fontWeight: 500,
+                    textTransform: 'none',
+                    fontSize: '1rem',
+                    px: 2,
+                    py: 1,
+                    borderRadius: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease-in-out',
+                    '&:hover': {
+                      backgroundColor:
+                        theme.palette.mode === 'light'
+                          ? 'rgba(255, 255, 255, 0.1)'
+                          : 'rgba(255, 255, 255, 0.05)',
+                      transform: 'translateY(-1px)',
+                    },
+                  }}
+                >
+                  Dashboard
+                </Button>
+              )}
+            </Box>{' '}
+            {/* Right Section: User Controls and Mobile Menu */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {/* Mobile Hamburger Menu - Only visible on small screens */}
               <IconButton
@@ -192,57 +330,13 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                 <FontAwesomeIcon icon={faBars} />
               </IconButton>
 
-              {/* Desktop Navigation - Hidden on small screens */}
+              {/* Desktop Controls - Hidden on small screens */}
               <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
-                {/* Theme Toggle - Always visible on desktop */}
+                {/* Theme Toggle */}
                 <ThemeToggle />
-
-                {/* Music Search - Always visible on desktop */}
-                <Button
-                  color="primary"
-                  variant={theme.palette.mode === 'light' ? 'contained' : 'outlined'}
-                  size="small"
-                  onClick={() => navigate('/music')}
-                  startIcon={<FontAwesomeIcon icon={faMusic} />}
-                  sx={
-                    theme.palette.mode === 'light'
-                      ? {
-                          backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                          color: theme.palette.primary.contrastText,
-                          borderColor: 'rgba(255, 255, 255, 0.3)',
-                          '&:hover': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                          },
-                        }
-                      : {}
-                  }
-                >
-                  Music
-                </Button>
 
                 {authStore.isAuthenticated ? (
                   <>
-                    <Button
-                      color="primary"
-                      variant={theme.palette.mode === 'light' ? 'contained' : 'outlined'}
-                      size="small"
-                      onClick={() => navigate('/dashboard')}
-                      sx={
-                        theme.palette.mode === 'light'
-                          ? {
-                              backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                              color: theme.palette.primary.contrastText,
-                              borderColor: 'rgba(255, 255, 255, 0.3)',
-                              '&:hover': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                              },
-                            }
-                          : {}
-                      }
-                    >
-                      Dashboard
-                    </Button>
-
                     <IconButton
                       size="large"
                       edge="end"
@@ -255,7 +349,9 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                       {authStore.user?.avatar ? (
                         <Avatar src={authStore.user.avatar} sx={{ width: 32, height: 32 }} />
                       ) : (
-                        <FontAwesomeIcon icon={faUser} />
+                        <Avatar sx={{ width: 32, height: 32 }}>
+                          <FontAwesomeIcon icon={faUser} />
+                        </Avatar>
                       )}
                     </IconButton>
 
@@ -409,6 +505,16 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
             </ListItem>
 
             <Divider sx={{ my: 1 }} />
+
+            {/* Home */}
+            <ListItem disablePadding>
+              <ListItemButton onClick={() => handleMobileNavigation('/')}>
+                <ListItemIcon>
+                  <FontAwesomeIcon icon={faHome} />
+                </ListItemIcon>
+                <ListItemText primary="Home" />
+              </ListItemButton>
+            </ListItem>
 
             {/* Music */}
             <ListItem disablePadding>

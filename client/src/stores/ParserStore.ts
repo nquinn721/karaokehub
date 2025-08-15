@@ -369,6 +369,24 @@ export class ParserStore {
       console.error('Failed to update comments:', error);
     }
   }
+
+  // Submit manual show data
+  async submitManualShow(showData: any): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await apiStore.post('/parser/submit-manual-show', showData);
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to submit manual show';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
 }
 
 export const parserStore = new ParserStore();

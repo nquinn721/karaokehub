@@ -525,7 +525,7 @@ export const MusicPage: React.FC = observer(() => {
                           {category.title}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Discover amazing songs
+                          Discover amazing {category.title.toLowerCase()} songs
                         </Typography>
                       </CardContent>
                     </Card>
@@ -877,7 +877,7 @@ export const MusicPage: React.FC = observer(() => {
               variant="contained"
               onClick={() => {
                 setLoginModalOpen(false);
-                navigate('/auth/login?redirect=/music');
+                navigate('/login');
               }}
             >
               Sign In

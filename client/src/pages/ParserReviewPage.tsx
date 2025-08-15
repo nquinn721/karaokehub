@@ -182,13 +182,14 @@ const ParserReviewPage: React.FC = observer(() => {
 
   const handleParseFromDropdown = async () => {
     if (!selectedUrlToParse) return;
-    
+
     const result = await parserStore.parseSelectedUrl(selectedUrlToParse);
     if (result.success) {
       // Reset selection after successful parsing
       setSelectedUrlToParse('');
     }
-  };  const getConfidenceColor = (confidence: number) => {
+  };
+  const getConfidenceColor = (confidence: number) => {
     if (confidence >= 80) return theme.palette.success.main;
     if (confidence >= 60) return theme.palette.warning.main;
     return theme.palette.error.main;

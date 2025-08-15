@@ -1058,4 +1058,41 @@ ${textContent}`;
       take: 100,
     });
   }
+
+  /**
+   * Save manual show submission for admin review
+   */
+  async saveManualSubmissionForReview(vendorId: string, manualData: any): Promise<ParsedSchedule> {
+    try {
+      // Get vendor info for the manual submission
+      const vendor = await this.vendorRepository.findOne({
+        where: { id: vendorId },
+      });
+
+      if (!vendor) {
+        throw new Error(`Vendor with ID ${vendorId} not found`);
+      }
+
+      // Update the vendor info in manual data
+      manualData.vendor.name = vendor.name;
+      manualData.vendor.website = vendor.website || manualData.vendor.website;
+
+      // Create a parsed schedule entry for the manual submission
+      const parsedSchedule = this.parsedScheduleRepository.create({
+        url: `manual-submission-${Date.now()}`,
+        rawData: { manualSubmission: true, submittedAt: new Date() },
+        aiAnalysis: manualData,
+        status: ParseStatus.PENDING,
+        vendorId: vendorId,
+      });
+
+      const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
+
+      this.logger.log(`Created manual submission for review: ${savedSchedule.id}`);
+      return savedSchedule;
+    } catch (error) {
+      this.logger.error('Error saving manual submission for review:', error);
+      throw error;
+    }
+  }
 }

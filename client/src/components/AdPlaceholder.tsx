@@ -1,6 +1,6 @@
 import { faAd } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Box, Paper, Skeleton, Typography } from '@mui/material';
+import { Box, Paper, Skeleton, Typography, useTheme } from '@mui/material';
 import React from 'react';
 
 interface AdPlaceholderProps {
@@ -18,6 +18,7 @@ const AD_SIZES = {
 
 export const AdPlaceholder: React.FC<AdPlaceholderProps> = ({ size, className }) => {
   const dimensions = AD_SIZES[size];
+  const theme = useTheme();
 
   return (
     <Box className={className} sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
@@ -30,8 +31,9 @@ export const AdPlaceholder: React.FC<AdPlaceholderProps> = ({ size, className })
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#f5f5f5',
-          border: '1px dashed #ccc',
+          backgroundColor: theme.palette.background.paper,
+          border: `2px solid ${theme.palette.divider}`,
+          borderRadius: 2,
           position: 'relative',
           overflow: 'hidden',
         }}
@@ -64,11 +66,12 @@ export const AdPlaceholder: React.FC<AdPlaceholderProps> = ({ size, className })
         >
           <FontAwesomeIcon
             icon={faAd}
-            style={{ fontSize: size === 'banner' ? '24px' : '32px', color: '#999' }}
+            style={{ fontSize: size === 'banner' ? '20px' : '28px', color: theme.palette.primary.main, opacity: 0.8 }}
           />
           <Typography
             variant={size === 'banner' ? 'caption' : 'body2'}
-            color="text.secondary"
+            color="primary"
+            fontWeight={500}
             textAlign="center"
           >
             Advertisement
