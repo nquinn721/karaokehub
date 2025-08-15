@@ -22,13 +22,17 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
   FormControlLabel,
   Grid,
   IconButton,
+  InputLabel,
   List,
   ListItem,
   ListItemText,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   TextField,
   Typography,
@@ -49,6 +53,7 @@ const ParserReviewPage: React.FC = observer(() => {
   const [reviewComments, setReviewComments] = useState('');
   const [parseResults, setParseResults] = useState<ParseResults | null>(null);
   const [parseResultsDialogOpen, setParseResultsDialogOpen] = useState(false);
+  const [selectedUrlToParse, setSelectedUrlToParse] = useState<string>('');
 
   // Granular approval state
   const [selectedVendor, setSelectedVendor] = useState(false);
@@ -67,6 +72,10 @@ const ParserReviewPage: React.FC = observer(() => {
         console.error('Failed to initialize parser store:', error);
       });
     }
+    // Also fetch URLs to parse
+    parserStore.fetchUrlsToParse().catch((error) => {
+      console.error('Failed to fetch URLs to parse:', error);
+    });
   }, []);
 
   const handleParseUrl = async () => {
@@ -171,33 +180,16 @@ const ParserReviewPage: React.FC = observer(() => {
     }
   };
 
-  const handleParseStevesdj = async () => {
-    const result = await parserStore.parseStevesdj();
-    if (result.success && result.data) {
-      // Show success dialog with details
-      const avgDjConfidence =
-        result.data.djs?.length > 0
-          ? result.data.djs.reduce((sum: number, dj: any) => sum + dj.confidence, 0) /
-            result.data.djs.length
-          : 0;
-      const avgShowConfidence =
-        result.data.shows?.length > 0
-          ? result.data.shows.reduce((sum: number, show: any) => sum + show.confidence, 0) /
-            result.data.shows.length
-          : 0;
-
-      setParseResults({
-        vendor: result.data.vendor,
-        djsCount: result.data.djs?.length || 0,
-        showsCount: result.data.shows?.length || 0,
-        confidence: {
-          vendor: result.data.vendor?.confidence || 0,
-          avgDjConfidence: avgDjConfidence,
-          avgShowConfidence: avgShowConfidence,
-        },
-        url: "Steve's DJ Website",
-      });
-      setParseResultsDialogOpen(true);
+  const handleParseFromDropdown = async () => {
+    if (!selectedUrlToParse) return;
+    
+    const result = await parserStore.parseSelectedUrl(selectedUrlToParse);
+    if (result.success) {
+      // Reset selection
+      setSelectedUrlToParse('');
+      console.log('Successfully parsed URL:', selectedUrlToParse);
+    } else if (result.error) {
+      console.error('Failed to parse URL:', result.error);
     }
   };
 
@@ -220,26 +212,13 @@ const ParserReviewPage: React.FC = observer(() => {
             Karaoke Parser & Review
           </Typography>
 
-          <Stack direction="row" spacing={2}>
-            <LoadingButton
-              variant="outlined"
-              color="primary"
-              onClick={handleParseStevesdj}
-              loading={parserStore.isLoading}
-              startIcon={<FontAwesomeIcon icon={faMicrophone} />}
-              sx={{ textTransform: 'none' }}
-            >
-              Parse Steve's DJ
-            </LoadingButton>
-
-            <Button
-              variant="contained"
-              onClick={() => setUrlToParseDialog(true)}
-              startIcon={<FontAwesomeIcon icon={faGlobe} />}
-            >
-              Parse New Website
-            </Button>
-          </Stack>
+          <Button
+            variant="contained"
+            onClick={() => setUrlToParseDialog(true)}
+            startIcon={<FontAwesomeIcon icon={faGlobe} />}
+          >
+            Parse New Website
+          </Button>
         </Box>
 
         {parserStore.error && (
@@ -247,6 +226,61 @@ const ParserReviewPage: React.FC = observer(() => {
             {parserStore.error}
           </Alert>
         )}
+
+        {/* URL Parsing Section */}
+        <CustomCard title="Parse Saved URLs" sx={{ mb: 3 }}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Select a URL from your saved list to parse:
+            </Typography>
+          </Box>
+          
+          {parserStore.isLoading ? (
+            <Box sx={{ textAlign: 'center', py: 2 }}>
+              <Typography>Loading URLs...</Typography>
+            </Box>
+          ) : parserStore.urlsToParse.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 2 }}>
+              <Typography color="text.secondary">
+                No URLs saved yet. Add some URLs using the "Parse New Website" button!
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <FormControl fullWidth>
+                <InputLabel>Select URL to Parse</InputLabel>
+                <Select
+                  value={selectedUrlToParse}
+                  onChange={(e) => setSelectedUrlToParse(e.target.value as string)}
+                  label="Select URL to Parse"
+                >
+                  {parserStore.urlsToParse.map((urlItem) => (
+                    <MenuItem key={urlItem.id} value={urlItem.url}>
+                      <Box>
+                        <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                          {urlItem.url}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Added: {new Date(urlItem.createdAt).toLocaleDateString()}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <LoadingButton
+                variant="contained"
+                onClick={handleParseFromDropdown}
+                disabled={!selectedUrlToParse || parserStore.isLoading}
+                loading={parserStore.isLoading}
+                startIcon={<FontAwesomeIcon icon={faGlobe} />}
+                sx={{ minWidth: '120px', flexShrink: 0 }}
+              >
+                Parse
+              </LoadingButton>
+            </Box>
+          )}
+        </CustomCard>
 
         <Grid container spacing={3}>
           {/* Pending Reviews List */}

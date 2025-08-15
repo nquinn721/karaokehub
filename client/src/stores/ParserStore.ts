@@ -41,8 +41,16 @@ export interface ParsedScheduleItem {
   vendor?: any; // Vendor entity
 }
 
+export interface UrlToParse {
+  id: number;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class ParserStore {
   pendingReviews: ParsedScheduleItem[] = [];
+  urlsToParse: UrlToParse[] = [];
   isLoading = false;
   error: string | null = null;
   isInitialized = false;
@@ -161,37 +169,6 @@ export class ParserStore {
       return { success: true, data: result };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to test Puppeteer parsing';
-      this.setError(errorMessage);
-      return { success: false, error: errorMessage };
-    } finally {
-      this.setLoading(false);
-    }
-  }
-
-  async parseStevesdj(): Promise<{
-    success: boolean;
-    error?: string;
-    data?: any;
-    parsedScheduleId?: string;
-  }> {
-    try {
-      this.setLoading(true);
-      this.setError(null);
-
-      // Use the new parse-and-save-website endpoint with Steve's DJ URL
-      const stevesdjUrl = 'https://stevesdj.com/karaoke-schedule'; // Updated to correct karaoke schedule page
-      const result = await apiStore.post('/parser/parse-and-save-website', { url: stevesdjUrl });
-
-      // Refresh pending reviews to show the new entry
-      await this.fetchPendingReviews();
-
-      return {
-        success: true,
-        data: result.data,
-        parsedScheduleId: result.parsedScheduleId,
-      };
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || "Failed to parse Steve's DJ website";
       this.setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -327,6 +304,70 @@ export class ParserStore {
   // Helper method to check if there are any pending reviews
   get hasPendingReviews(): boolean {
     return this.pendingReviews.length > 0;
+  }
+
+  // URL management methods
+  async fetchUrlsToParse(): Promise<void> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      const response = await apiStore.get('/parser/urls');
+      
+      runInAction(() => {
+        // The apiStore.get() already returns response.data, so response should be the array directly
+        this.urlsToParse = Array.isArray(response) ? response : [];
+      });
+    } catch (error: any) {
+      console.error('Error fetching URLs:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to fetch URLs to parse';
+      this.setError(errorMessage);
+      runInAction(() => {
+        this.urlsToParse = [];
+      });
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async addUrlToParse(url: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await apiStore.post('/parser/urls', { url });
+      
+      // Refresh the list after adding
+      await this.fetchUrlsToParse();
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to add URL';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async parseSelectedUrl(url: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await apiStore.post('/parser/parse-and-save-website', { url });
+      
+      // Refresh pending reviews to see newly parsed data
+      await this.fetchPendingReviews();
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to parse URL';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
   }
 }
 

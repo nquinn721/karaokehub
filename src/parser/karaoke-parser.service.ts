@@ -553,8 +553,10 @@ ${textContent}`;
         djMap.set(djData.name, dj);
       }
 
-      // 3. Create Shows
+      // 3. Create or Update Shows
       const showsCreated = [];
+      const showsUpdated = [];
+      
       for (const showData of data.shows) {
         // Parse the date and time
         let parsedDate: Date;
@@ -573,86 +575,230 @@ ${textContent}`;
         // Find the appropriate DJ
         const dj = showData.djName ? djMap.get(showData.djName) : null;
 
-        // Check if show already exists to avoid duplicates
-        const existingShow = await this.showRepository.findOne({
-          where: {
-            venue: showData.venue,
-            date: parsedDate,
-            vendorId: vendor.id,
-          },
-        });
+        // Enhanced duplicate detection - check multiple criteria for better matching
+        const existingShow = await this.findExistingShow(showData, vendor.id, parsedDate);
 
-        if (!existingShow) {
-          // Parse day of week from the day field
-          let dayOfWeek = null;
-          if (showData.day) {
-            const dayLower = showData.day.toLowerCase();
-            const validDays = [
-              'monday',
-              'tuesday',
-              'wednesday',
-              'thursday',
-              'friday',
-              'saturday',
-              'sunday',
-            ];
-            if (validDays.includes(dayLower)) {
-              dayOfWeek = dayLower;
-            }
+        if (existingShow) {
+          // Update existing show with new data (only if new data is not null/empty)
+          const updated = await this.updateShowWithNewData(existingShow, showData, dj?.id);
+          if (updated) {
+            showsUpdated.push(existingShow);
+            this.logger.log(
+              `Updated existing show: ${existingShow.venue} with new data`
+            );
           }
-
-          // Parse start and end times
-          let startTime = null;
-          let endTime = null;
-
-          if (showData.startTime) {
-            try {
-              startTime = showData.startTime;
-            } catch (error) {
-              this.logger.warn(`Could not parse startTime: ${showData.startTime}`);
-            }
-          }
-
-          if (showData.endTime) {
-            try {
-              endTime = showData.endTime;
-            } catch (error) {
-              this.logger.warn(`Could not parse endTime: ${showData.endTime}`);
-            }
-          }
-
-          const show = this.showRepository.create({
-            venue: showData.venue,
-            address: showData.address || null,
-            venuePhone: showData.venuePhone || null,
-            venueWebsite: showData.venueWebsite || null,
-            date: parsedDate,
-            time: showData.time,
-            startTime: startTime,
-            endTime: endTime,
-            day: dayOfWeek,
-            description: showData.description || `Show at ${showData.venue}`,
-            notes: showData.notes || null,
-            vendorId: vendor.id,
-            djId: dj?.id || null,
-            isActive: true,
-          });
-
-          const savedShow = await this.showRepository.save(show);
-          showsCreated.push(savedShow);
+        } else {
+          // Create new show
+          const newShow = await this.createNewShow(showData, vendor.id, dj?.id, parsedDate);
+          showsCreated.push(newShow);
           this.logger.log(
-            `Created show: ${savedShow.venue} on ${savedShow.date} ${dj ? `with DJ: ${dj.name}` : ''}`,
+            `Created new show: ${newShow.venue} on ${newShow.date} ${dj ? `with DJ: ${dj.name}` : ''}`,
           );
         }
       }
 
       this.logger.log(
-        `Successfully created entities: Vendor: ${vendor.name}, DJs: ${djMap.size}, Shows: ${showsCreated.length}`,
+        `Successfully processed entities: Vendor: ${vendor.name}, DJs: ${djMap.size}, Shows Created: ${showsCreated.length}, Shows Updated: ${showsUpdated.length}`,
       );
     } catch (error) {
       this.logger.error(`Error creating entities from approved data:`, error);
       throw error;
     }
+  }
+
+  private async findExistingShow(showData: any, vendorId: string, parsedDate: Date): Promise<any> {
+    // Try multiple matching strategies to find duplicates
+    
+    // Strategy 1: Exact venue, date, and vendor match
+    let existingShow = await this.showRepository.findOne({
+      where: {
+        venue: showData.venue,
+        date: parsedDate,
+        vendorId: vendorId,
+      },
+    });
+    
+    if (existingShow) {
+      return existingShow;
+    }
+    
+    // Strategy 2: Venue and day of week match (for recurring shows)
+    if (showData.day) {
+      const dayLower = showData.day.toLowerCase();
+      existingShow = await this.showRepository.findOne({
+        where: {
+          venue: showData.venue,
+          day: dayLower as any,
+          vendorId: vendorId,
+        },
+      });
+      
+      if (existingShow) {
+        return existingShow;
+      }
+    }
+    
+    // Strategy 3: Venue and time match (for shows with same venue and time)
+    if (showData.time) {
+      existingShow = await this.showRepository.findOne({
+        where: {
+          venue: showData.venue,
+          time: showData.time,
+          vendorId: vendorId,
+        },
+      });
+      
+      if (existingShow) {
+        return existingShow;
+      }
+    }
+    
+    // Strategy 4: Address match (for same venue with slightly different names)
+    if (showData.address) {
+      const allShowsForVendor = await this.showRepository.find({
+        where: { vendorId: vendorId },
+      });
+      
+      for (const show of allShowsForVendor) {
+        if (show.address && this.isSimilarAddress(showData.address, show.address)) {
+          // If addresses match and venues are similar, consider it a duplicate
+          if (this.isSimilarVenue(showData.venue, show.venue)) {
+            return show;
+          }
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  private isSimilarAddress(addr1: string, addr2: string): boolean {
+    // Simple similarity check for addresses
+    const normalize = (addr: string) => addr.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return normalize(addr1) === normalize(addr2);
+  }
+
+  private isSimilarVenue(venue1: string, venue2: string): boolean {
+    // Simple similarity check for venue names
+    const normalize = (venue: string) => venue.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const norm1 = normalize(venue1);
+    const norm2 = normalize(venue2);
+    
+    // Check if one venue name contains the other or they're very similar
+    return norm1.includes(norm2) || norm2.includes(norm1) || norm1 === norm2;
+  }
+
+  private async updateShowWithNewData(existingShow: any, showData: any, djId?: string): Promise<boolean> {
+    let hasUpdates = false;
+    
+    // Update fields only if new data exists and existing field is empty
+    if (showData.address && !existingShow.address) {
+      existingShow.address = showData.address;
+      hasUpdates = true;
+    }
+    
+    if (showData.venuePhone && !existingShow.venuePhone) {
+      existingShow.venuePhone = showData.venuePhone;
+      hasUpdates = true;
+    }
+    
+    if (showData.venueWebsite && !existingShow.venueWebsite) {
+      existingShow.venueWebsite = showData.venueWebsite;
+      hasUpdates = true;
+    }
+    
+    if (showData.startTime && !existingShow.startTime) {
+      existingShow.startTime = showData.startTime;
+      hasUpdates = true;
+    }
+    
+    if (showData.endTime && !existingShow.endTime) {
+      existingShow.endTime = showData.endTime;
+      hasUpdates = true;
+    }
+    
+    if (showData.description && !existingShow.description) {
+      existingShow.description = showData.description;
+      hasUpdates = true;
+    }
+    
+    if (showData.notes && !existingShow.notes) {
+      existingShow.notes = showData.notes;
+      hasUpdates = true;
+    }
+    
+    if (djId && !existingShow.djId) {
+      existingShow.djId = djId;
+      hasUpdates = true;
+    }
+    
+    if (showData.day && !existingShow.day) {
+      const dayLower = showData.day.toLowerCase();
+      const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      if (validDays.includes(dayLower)) {
+        existingShow.day = dayLower;
+        hasUpdates = true;
+      }
+    }
+    
+    // Save updates if any were made
+    if (hasUpdates) {
+      await this.showRepository.save(existingShow);
+      this.logger.log(`Updated show ${existingShow.venue} with new data`);
+    }
+    
+    return hasUpdates;
+  }
+
+  private async createNewShow(showData: any, vendorId: string, djId?: string, parsedDate?: Date): Promise<any> {
+    // Parse day of week from the day field
+    let dayOfWeek = null;
+    if (showData.day) {
+      const dayLower = showData.day.toLowerCase();
+      const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      if (validDays.includes(dayLower)) {
+        dayOfWeek = dayLower;
+      }
+    }
+
+    // Parse start and end times
+    let startTime = null;
+    let endTime = null;
+
+    if (showData.startTime) {
+      try {
+        startTime = showData.startTime;
+      } catch (error) {
+        this.logger.warn(`Could not parse startTime: ${showData.startTime}`);
+      }
+    }
+
+    if (showData.endTime) {
+      try {
+        endTime = showData.endTime;
+      } catch (error) {
+        this.logger.warn(`Could not parse endTime: ${showData.endTime}`);
+      }
+    }
+
+    const show = this.showRepository.create({
+      venue: showData.venue,
+      address: showData.address || null,
+      venuePhone: showData.venuePhone || null,
+      venueWebsite: showData.venueWebsite || null,
+      date: parsedDate,
+      time: showData.time,
+      startTime: startTime,
+      endTime: endTime,
+      day: dayOfWeek,
+      description: showData.description || `Show at ${showData.venue}`,
+      notes: showData.notes || null,
+      vendorId: vendorId,
+      djId: djId || null,
+      isActive: true,
+    });
+
+    return await this.showRepository.save(show);
   }
 
   async rejectParsedData(parsedScheduleId: string, reason?: string): Promise<void> {

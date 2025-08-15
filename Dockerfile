@@ -28,7 +28,9 @@ COPY --from=client-builder /app/client/dist ./client/dist
 
 # Ensure public directory exists and copy client public assets if they exist
 RUN mkdir -p ./public/images/shows
-# Copy public assets from client build
+# Copy client build output (index.html, assets, etc.) to public directory
+COPY --from=client-builder /app/client/dist/ ./public/
+# Copy additional public assets from client public directory if they exist
 COPY --from=client-builder /app/client/public/ ./public/
 
 RUN npm run build
@@ -67,6 +69,7 @@ COPY --from=server-builder --chown=nestjs:nodejs /app/package*.json ./
 
 # Create public directory and copy contents
 RUN mkdir -p ./public/images/shows
+# Copy client build files and public assets
 COPY --from=server-builder --chown=nestjs:nodejs /app/public/ ./public/
 
 USER nestjs
