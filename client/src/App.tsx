@@ -6,7 +6,9 @@ import { observer } from 'mobx-react-lite';
 import React from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import FeedbackButton from './components/FeedbackButton';
+import FooterComponent from './components/FooterComponent';
 import GlobalNotifications from './components/GlobalNotifications';
+import PostLoginModal from './components/PostLoginModalNew';
 
 // Pages
 import AdminDashboardPage from './pages/AdminDashboardPage';
@@ -18,6 +20,7 @@ import FeedbackManagementPage from './pages/FeedbackManagementPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import MusicPage from './pages/MusicPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import ProfilePage from './pages/ProfilePage';
 import RegisterPage from './pages/RegisterPage';
 import SettingsPage from './pages/SettingsPage';
@@ -52,6 +55,8 @@ const App: React.FC = observer(() => {
             component="main"
             sx={{
               flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
               p: 3,
               paddingTop: '24px', // Minimal padding since secondary header is now properly positioned
               '&:has([data-homepage])': {
@@ -60,102 +65,113 @@ const App: React.FC = observer(() => {
               },
             }}
           >
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<HomePage />} />
+            <Box sx={{ flex: 1 }}>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<HomePage />} />
 
-              {/* Music Routes with nested navigation */}
-              <Route path="/music" element={<MusicPage />} />
-              <Route path="/music/search" element={<MusicPage />} />
-              <Route path="/music/category/:categoryId" element={<MusicPage />} />
-              <Route path="/music/artist/:artistId" element={<MusicPage />} />
-              <Route path="/music/song/:songId" element={<MusicPage />} />
+                {/* Music Routes with nested navigation */}
+                <Route path="/music" element={<MusicPage />} />
+                <Route path="/music/search" element={<MusicPage />} />
+                <Route path="/music/category/:categoryId" element={<MusicPage />} />
+                <Route path="/music/artist/:artistId" element={<MusicPage />} />
+                <Route path="/music/song/:songId" element={<MusicPage />} />
 
-              {/* Submit Show Page */}
-              <Route path="/submit" element={<SubmitShowPage />} />
+                {/* Submit Show Page */}
+                <Route path="/submit" element={<SubmitShowPage />} />
 
-              <Route
-                path="/login"
-                element={
-                  <PublicRoute>
-                    <LoginPage />
-                  </PublicRoute>
-                }
-              />
-              <Route
-                path="/register"
-                element={
-                  <PublicRoute>
-                    <RegisterPage />
-                  </PublicRoute>
-                }
-              />
+                <Route
+                  path="/login"
+                  element={
+                    <PublicRoute>
+                      <LoginPage />
+                    </PublicRoute>
+                  }
+                />
+                <Route
+                  path="/register"
+                  element={
+                    <PublicRoute>
+                      <RegisterPage />
+                    </PublicRoute>
+                  }
+                />
 
-              {/* Auth callback routes */}
-              <Route path="/auth/success" element={<AuthSuccess />} />
-              <Route path="/auth/error" element={<AuthError />} />
+                {/* Auth callback routes */}
+                <Route path="/auth/success" element={<AuthSuccess />} />
+                <Route path="/auth/error" element={<AuthError />} />
 
-              {/* Protected Routes */}
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <DashboardPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <ProfilePage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <ProtectedRoute>
-                    <SettingsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute>
-                    <AdminDashboardPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/parser"
-                element={
-                  <ProtectedRoute>
-                    <AdminParserPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/feedback"
-                element={
-                  <ProtectedRoute>
-                    <FeedbackManagementPage />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Public pages */}
+                <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
 
-              {/* Catch all route */}
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
+                {/* Protected Routes */}
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <SettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute>
+                      <AdminDashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/parser"
+                  element={
+                    <ProtectedRoute>
+                      <AdminParserPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/feedback"
+                  element={
+                    <ProtectedRoute>
+                      <FeedbackManagementPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Catch all route */}
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </Box>
           </Box>
 
-          {/* Global Feedback Button */}
-          <FeedbackButton />
-
-          {/* Global Notifications */}
-          <GlobalNotifications />
+          {/* Footer */}
+          <FooterComponent />
         </Box>
+
+        {/* Global Feedback Button */}
+        <FeedbackButton />
+
+        {/* Global Notifications */}
+        <GlobalNotifications />
+
+        {/* Post Login Modal */}
+        <PostLoginModal />
       </Router>
     </ThemeProvider>
   );

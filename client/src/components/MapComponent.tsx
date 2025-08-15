@@ -68,9 +68,6 @@ export const MapComponent: React.FC = observer(() => {
   // Login modal state
   const [loginModalOpen, setLoginModalOpen] = useState(false);
 
-  // Fullscreen state
-  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
-
   // Google Maps API key from server config
   const API_KEY = apiStore.googleMapsApiKey;
 
@@ -92,7 +89,7 @@ export const MapComponent: React.FC = observer(() => {
   }, [apiStore.configLoaded]);
 
   // Initialize stores when component mounts - this will only run once per component lifecycle
-  React.useMemo(() => {
+  React.useEffect(() => {
     const initializeStores = async () => {
       if (!mapStore.isInitialized) {
         await mapStore.initialize().catch((error) => {
@@ -100,9 +97,9 @@ export const MapComponent: React.FC = observer(() => {
         });
       }
 
-      // Fetch shows if we haven't already
+      // Fetch shows for the current selected day
       if (showStore.shows.length === 0 && !showStore.isLoading) {
-        await showStore.fetchShows().catch((error) => {
+        await showStore.fetchShows(showStore.selectedDay).catch((error) => {
           console.error('Failed to fetch shows:', error);
         });
       }
@@ -120,12 +117,7 @@ export const MapComponent: React.FC = observer(() => {
     };
 
     initializeStores();
-
-    // Cleanup when component unmounts
-    return () => {
-      mapStore.cleanup();
-    };
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
 
   // Watch for subscription changes and execute pending actions
   React.useEffect(() => {
@@ -152,18 +144,6 @@ export const MapComponent: React.FC = observer(() => {
       executePendingAction();
     }
   }, [subscriptionStore.isSubscribed, pendingFavoriteAction]);
-
-  // Fullscreen detection
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsMapFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
-  }, []);
 
   // Favorite handling functions
   const handleFavorite = async (showId: string, day: string) => {
@@ -239,6 +219,10 @@ export const MapComponent: React.FC = observer(() => {
 
   const handleDayChange = (day: DayOfWeek) => {
     showStore.setSelectedDay(day);
+    // Fetch shows for the new day
+    showStore.fetchShows(day).catch((error) => {
+      console.error('Failed to fetch shows for day:', day, error);
+    });
   };
 
   const handleMarkerClick = (show: any) => {
@@ -270,6 +254,559 @@ export const MapComponent: React.FC = observer(() => {
     if (map && onMapLoad) {
       onMapLoad(map);
     }
+
+    // Enhanced fullscreen detection with custom controls
+    useEffect(() => {
+      if (!map) return;
+
+      console.log('Map instance available, setting up fullscreen detection');
+
+      // Create custom control for fullscreen show list
+      const createShowListControl = () => {
+        const controlDiv = document.createElement('div');
+        controlDiv.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          width: 400px;
+          z-index: 2147483647;
+          pointer-events: auto;
+          background: transparent;
+          transition: transform 0.3s ease-in-out;
+          transform: translateX(0);
+          display: none;
+        `;
+        controlDiv.id = 'fullscreen-show-list';
+
+        // Create toggle button container
+        const toggleContainer = document.createElement('div');
+        toggleContainer.style.cssText = `
+          position: absolute;
+          right: -16px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: ${theme.palette.background.paper};
+          border: 1px solid ${theme.palette.divider};
+          border-left: none;
+          border-radius: 0 6px 6px 0;
+          box-shadow: 2px 0 8px rgba(0,0,0,0.3);
+          cursor: pointer;
+          padding: 8px 4px;
+          z-index: 2147483648;
+          transition: all 0.2s ease;
+        `;
+
+        // Create toggle button
+        const toggleButton = document.createElement('div');
+        toggleButton.style.cssText = `
+          color: ${theme.palette.primary.main};
+          font-size: 20px;
+          font-weight: bold;
+          user-select: none;
+          transition: transform 0.3s ease;
+        `;
+        toggleButton.innerHTML = '«';
+
+        // State for panel (starts open)
+        let isOpen = true;
+
+        // Make toggle state accessible globally for show clicks
+        (window as any).fullscreenPanelState = {
+          isOpen: true,
+          toggleButton: null,
+          controlDiv: null,
+        };
+
+        // Toggle functionality
+        const togglePanel = () => {
+          isOpen = !isOpen;
+          (window as any).fullscreenPanelState.isOpen = isOpen;
+
+          if (isOpen) {
+            controlDiv.style.transform = 'translateX(0)';
+            toggleButton.innerHTML = '«';
+          } else {
+            controlDiv.style.transform = 'translateX(-100%)';
+            toggleButton.innerHTML = '»';
+          }
+        };
+
+        toggleContainer.addEventListener('click', togglePanel);
+        toggleContainer.appendChild(toggleButton);
+
+        // Create content panel
+        const contentPanel = document.createElement('div');
+        contentPanel.style.cssText = `
+          position: absolute;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          width: 400px;
+          background: ${theme.palette.background.paper};
+          border-right: 1px solid ${theme.palette.divider};
+          box-shadow: 2px 0 20px rgba(0,0,0,0.3);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        `;
+
+        // Create header with count
+        const headerDiv = document.createElement('div');
+        headerDiv.style.cssText = `
+          background: ${theme.palette.background.paper};
+          color: ${theme.palette.text.primary};
+          padding: 16px;
+          font-family: Roboto, sans-serif;
+          border-bottom: 1px solid ${theme.palette.divider};
+        `;
+
+        // Create title
+        const titleDiv = document.createElement('div');
+        titleDiv.style.cssText = `font-weight: 600; font-size: 1.1rem; margin-bottom: 4px;`;
+        titleDiv.textContent = `Shows for ${showStore.selectedDay}`;
+
+        // Create count
+        const countDiv = document.createElement('div');
+        countDiv.style.cssText = `font-size: 0.875rem; color: ${theme.palette.text.secondary};`;
+        countDiv.textContent = `${showStore.showsForSelectedDay.length} show(s) found`;
+
+        headerDiv.appendChild(titleDiv);
+        headerDiv.appendChild(countDiv);
+
+        const contentDiv = document.createElement('div');
+        contentDiv.style.cssText = `
+          flex: 1;
+          overflow-y: auto;
+          padding: 0;
+          margin: 5px;
+          padding-right: 10px;
+          /* Custom scrollbar styling */
+          &::-webkit-scrollbar {
+            width: 8px;
+          }
+          &::-webkit-scrollbar-track {
+            background: ${theme.palette.action.hover};
+            border-radius: 4px;
+          }
+          &::-webkit-scrollbar-thumb {
+            background: ${theme.palette.primary.main};
+            border-radius: 4px;
+          }
+          &::-webkit-scrollbar-thumb:hover {
+            background: ${theme.palette.primary.dark};
+          }
+        `;
+        contentDiv.id = 'fullscreen-show-content';
+
+        // Assemble the structure
+        contentPanel.appendChild(headerDiv);
+        contentPanel.appendChild(contentDiv);
+        controlDiv.appendChild(contentPanel);
+        controlDiv.appendChild(toggleContainer);
+
+        // Store references for global access
+        (window as any).fullscreenPanelState.toggleButton = toggleButton;
+        (window as any).fullscreenPanelState.controlDiv = controlDiv;
+
+        // Add global event listener to prevent panel from being hidden by any external clicks
+        const preventPanelHiding = (event: Event) => {
+          const panel = document.getElementById('fullscreen-show-list');
+          const panelState = (window as any).fullscreenPanelState;
+
+          // If clicking within the panel, ensure it stays open
+          if (panel && panelState && event.target) {
+            const target = event.target as HTMLElement;
+            if (panel.contains(target)) {
+              console.log('Click within panel detected, ensuring panel stays open');
+              setTimeout(() => {
+                if (panelState.isOpen) {
+                  panel.style.display = 'block';
+                  panel.style.transform = 'translateX(0)';
+                }
+              }, 10);
+            }
+          }
+        };
+
+        // Attach the listener to the control div
+        controlDiv.addEventListener('click', preventPanelHiding);
+        controlDiv.addEventListener('mousedown', preventPanelHiding);
+
+        return controlDiv;
+      };
+
+      const showListControl = createShowListControl();
+
+      // Function to update the control content
+      const updateShowListControl = () => {
+        const contentDiv = document.getElementById('fullscreen-show-content');
+        if (!contentDiv) return;
+
+        if (showStore.isLoading) {
+          contentDiv.innerHTML = `
+            <div style="display: flex; justify-content: center; padding: 40px;">
+              <div style="width: 24px; height: 24px; border: 3px solid ${theme.palette.action.disabled}; border-top: 3px solid ${theme.palette.primary.main}; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            </div>
+            <style>
+              @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            </style>
+          `;
+        } else if (showStore.showsForSelectedDay.length === 0) {
+          contentDiv.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: ${theme.palette.text.secondary}; font-family: Roboto, sans-serif;">
+              No shows found for ${showStore.selectedDay}
+            </div>
+          `;
+        } else {
+          contentDiv.innerHTML = showStore.showsForSelectedDay
+            .map(
+              (show) => `
+            <div style="
+              padding: 0;
+              margin: 0 6px 12px 6px;
+            ">
+              <div style="
+                padding: 20px;
+                border-radius: 8px;
+                transition: all 0.2s ease;
+                border: 1px solid ${theme.palette.divider};
+                background: ${theme.palette.background.paper};
+                cursor: pointer;
+                position: relative;
+                ${
+                  showStore.selectedShow?.id === show.id
+                    ? `
+                  background: ${theme.palette.primary.main}15;
+                  border: 2px solid ${theme.palette.primary.main};
+                `
+                    : ''
+                }
+              " onclick="event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation(); console.log('Show card clicked:', '${show.id}'); window.mapComponentHandleShowClick && window.mapComponentHandleShowClick('${show.id}'); return false;" 
+                 onmouseover="
+                   this.style.backgroundColor='${theme.palette.action.hover}';
+                   this.style.border='1px solid ${theme.palette.primary.main}';
+                   this.style.transform='translateY(-2px)';
+                   this.style.boxShadow='0 4px 8px rgba(0,0,0,0.12)';
+                 " 
+                 onmouseout="
+                   this.style.backgroundColor='${showStore.selectedShow?.id === show.id ? theme.palette.primary.main + '15' : theme.palette.background.paper}';
+                   this.style.border='${showStore.selectedShow?.id === show.id ? '2px solid ' + theme.palette.primary.main : '1px solid ' + theme.palette.divider}';
+                   this.style.transform='translateY(0)';
+                   this.style.boxShadow='none';
+                 ">
+                
+                <!-- Heart icon (favorite) - top right -->
+                <div style="
+                  position: absolute;
+                  top: 16px;
+                  right: 16px;
+                  color: ${theme.palette.text.secondary};
+                  font-size: 20px;
+                  cursor: pointer;
+                ">♡</div>
+                
+                <!-- Main content layout -->
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                  <!-- Icon column with microphone and vertical line -->
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 24px;">
+                    <div style="
+                      color: ${theme.palette.primary.main};
+                      font-size: 16px;
+                      background: ${theme.palette.primary.main}20;
+                      width: 32px;
+                      height: 32px;
+                      border-radius: 50%;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                    ">🎤</div>
+                    <div style="
+                      width: 2px;
+                      height: 40px;
+                      background: linear-gradient(to bottom, ${theme.palette.primary.main}, transparent);
+                      border-radius: 1px;
+                    "></div>
+                  </div>
+                  
+                  <!-- Main content -->
+                  <div style="flex: 1; min-width: 0;">
+                    <!-- Venue name -->
+                    <div style="
+                      font-weight: 600;
+                      margin-bottom: 8px;
+                      font-size: 1.25rem;
+                      line-height: 1.2;
+                      color: ${theme.palette.text.primary};
+                      font-family: Roboto, sans-serif;
+                    ">
+                      ${show.venue || show.vendor?.name || 'Unknown Venue'}
+                    </div>
+                    
+                    ${
+                      show.startTime
+                        ? `
+                    <!-- Time with clock icon -->
+                    <div style="
+                      display: flex;
+                      align-items: center;
+                      gap: 6px;
+                      margin-bottom: 8px;
+                      background: ${theme.palette.primary.main}15;
+                      padding: 4px 8px;
+                      border-radius: 12px;
+                      width: fit-content;
+                    ">
+                      <div style="color: ${theme.palette.primary.main}; font-size: 12px;">�</div>
+                      <div style="
+                        font-weight: 600;
+                        font-size: 0.875rem;
+                        color: ${theme.palette.primary.main};
+                        font-family: Roboto, sans-serif;
+                      ">
+                        ${formatTime(show.startTime)} - ${formatTime(show.endTime)}
+                      </div>
+                    </div>
+                    `
+                        : ''
+                    }
+                    
+                    <!-- DJ/Host info with person icon -->
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                      <div style="color: ${theme.palette.text.secondary}; font-size: 14px;">👤</div>
+                      <div style="
+                        font-size: 0.875rem;
+                        font-weight: 500;
+                        color: ${theme.palette.text.secondary};
+                        font-family: Roboto, sans-serif;
+                      ">
+                        ${show.dj?.name || 'Unknown Host'}
+                      </div>
+                    </div>
+                    
+                    <!-- Location info with map pin icon -->
+                    <div style="display: flex; align-items: flex-start; gap: 6px; margin-bottom: 12px;">
+                      <div style="
+                        color: ${theme.palette.text.secondary};
+                        font-size: 14px;
+                        margin-top: 1px;
+                      ">📍</div>
+                      <div style="
+                        font-size: 0.875rem;
+                        line-height: 1.3;
+                        color: ${theme.palette.text.secondary};
+                        font-family: Roboto, sans-serif;
+                      ">
+                        ${show.address}
+                      </div>
+                    </div>
+                    
+                    <!-- Tags section -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+                      ${
+                        show.vendor?.name
+                          ? `
+                      <div style="
+                        background: ${theme.palette.info.main}20;
+                        color: ${theme.palette.info.main};
+                        padding: 3px 8px;
+                        border-radius: 12px;
+                        font-size: 0.75rem;
+                        font-weight: 500;
+                        font-family: Roboto, sans-serif;
+                      ">${show.vendor.name}</div>
+                      `
+                          : ''
+                      }
+                      
+                      <div style="
+                        background: ${theme.palette.secondary.main}20;
+                        color: ${theme.palette.secondary.main};
+                        padding: 3px 8px;
+                        border-radius: 12px;
+                        font-size: 0.75rem;
+                        font-weight: 500;
+                        font-family: Roboto, sans-serif;
+                        display: flex;
+                        align-items: center;
+                        gap: 4px;
+                      ">
+                        <span>🎵</span>
+                        Karaoke
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `,
+            )
+            .join('');
+        }
+      };
+
+      // Add global handler for show clicks in fullscreen
+      (window as any).mapComponentHandleShowClick = (showId: string) => {
+        const show = showStore.showsForSelectedDay.find((s) => s.id === showId);
+        if (show) {
+          // Set selected show in store
+          showStore.setSelectedShow(show);
+
+          // Center map on show location with proper zoom
+          if (mapStore.mapInstance) {
+            const geocodedShow = mapStore.geocodedShows.find((s) => s.id === show.id);
+            if (geocodedShow) {
+              const location = { lat: geocodedShow.lat, lng: geocodedShow.lng };
+
+              // Use setCenter and setZoom for immediate centering
+              mapStore.mapInstance.setCenter(location);
+              mapStore.mapInstance.setZoom(16);
+
+              // Update selected marker
+              mapStore.selectedMarkerId = show.id;
+            }
+          }
+
+          // Function to ensure panel stays open
+          const ensurePanelOpen = () => {
+            const panelState = (window as any).fullscreenPanelState;
+            const panel = document.getElementById('fullscreen-show-list');
+
+            if (panel && panelState) {
+              // Force panel to be visible and in correct position
+              panel.style.display = 'block !important';
+              panel.style.visibility = 'visible !important';
+              panel.style.transform = 'translateX(0) !important';
+              panel.style.opacity = '1 !important';
+
+              // Update toggle button state
+              if (panelState.toggleButton) {
+                panelState.toggleButton.innerHTML = '«';
+              }
+
+              // Force state to open
+              panelState.isOpen = true;
+
+              console.log('Panel forcefully ensured open after show click');
+            } else {
+              console.log('Panel or panelState not found:', {
+                panel: !!panel,
+                panelState: !!panelState,
+              });
+            }
+          };
+
+          // Ensure panel stays open immediately and after multiple delays
+          ensurePanelOpen();
+          setTimeout(ensurePanelOpen, 10);
+          setTimeout(ensurePanelOpen, 50);
+          setTimeout(ensurePanelOpen, 100);
+          setTimeout(ensurePanelOpen, 200);
+          setTimeout(ensurePanelOpen, 500);
+
+          // Update the fullscreen show list to reflect selection
+          updateShowListControl();
+        }
+      };
+
+      const fullscreenChangeHandler = () => {
+        const isFullscreen = !!document.fullscreenElement;
+        console.log('Fullscreen changed:', isFullscreen);
+        console.log('Document fullscreen element:', document.fullscreenElement);
+        console.log('isMapFullscreen:', isFullscreen);
+
+        if (isFullscreen) {
+          // Add controls to map when entering fullscreen
+          // First try the fullscreen element, then fallback to map container
+          const fullscreenElement = document.fullscreenElement as HTMLElement;
+          const mapDiv =
+            fullscreenElement || (document.querySelector('#map-container') as HTMLElement);
+
+          console.log('🎯 Attempting to add controls to:', mapDiv);
+
+          if (mapDiv) {
+            // Add show list control
+            if (!document.getElementById('fullscreen-show-list')) {
+              mapDiv.appendChild(showListControl);
+              updateShowListControl();
+              showListControl.style.display = 'block';
+
+              // Ensure panel starts in open position
+              const panelState = (window as any).fullscreenPanelState;
+              if (panelState && panelState.controlDiv) {
+                panelState.controlDiv.style.transform = 'translateX(0)';
+                if (panelState.toggleButton) {
+                  panelState.toggleButton.innerHTML = '«';
+                }
+                panelState.isOpen = true;
+              }
+
+              console.log('✅ Added show list control to fullscreen element');
+            } else {
+              // Panel already exists, ensure it stays in correct state
+              const panelState = (window as any).fullscreenPanelState;
+              if (panelState && panelState.isOpen && panelState.controlDiv) {
+                panelState.controlDiv.style.display = 'block';
+                panelState.controlDiv.style.transform = 'translateX(0)';
+              }
+            }
+          } else {
+            console.log('❌ Could not find target element for controls');
+          }
+        } else {
+          // Remove controls when exiting fullscreen
+          const existingControl = document.getElementById('fullscreen-show-list');
+          if (existingControl) {
+            existingControl.remove();
+          }
+        }
+      };
+
+      document.addEventListener('fullscreenchange', fullscreenChangeHandler);
+
+      // Also check initial state
+      const initialState = !!document.fullscreenElement;
+      console.log('Initial fullscreen state:', initialState);
+
+      // Observe show store changes to update content
+      const updateContent = () => {
+        updateShowListControl();
+        // Update header text
+        const headerDiv = showListControl.querySelector('div') as HTMLDivElement;
+        if (headerDiv) {
+          const titleDiv = headerDiv.querySelector('div:first-child') as HTMLDivElement;
+          const countDiv = headerDiv.querySelector('div:last-child') as HTMLDivElement;
+          if (titleDiv) titleDiv.textContent = `Shows for ${showStore.selectedDay}`;
+          if (countDiv)
+            countDiv.textContent = `${showStore.showsForSelectedDay.length} show(s) found`;
+        }
+      };
+
+      // Update content when store changes
+      updateContent();
+
+      return () => {
+        document.removeEventListener('fullscreenchange', fullscreenChangeHandler);
+        // Clean up global handler
+        delete (window as any).mapComponentHandleShowClick;
+        // Clean up any remaining controls
+        const existingControl = document.getElementById('fullscreen-show-list');
+        if (existingControl) {
+          existingControl.remove();
+        }
+        const existingButton = document.getElementById('fullscreen-show-button');
+        if (existingButton) {
+          existingButton.remove();
+        }
+      };
+    }, [
+      map,
+      showStore.shows,
+      showStore.selectedDay,
+      showStore.isLoading,
+      showStore.selectedShow,
+      theme,
+    ]);
 
     return (
       <>
@@ -609,6 +1146,7 @@ export const MapComponent: React.FC = observer(() => {
       >
         {/* Map Section */}
         <Box
+          id="map-container"
           sx={{
             flex: { xs: 'none', md: 2 },
             height: { xs: '300px', sm: '400px', md: '100%' }, // Responsive height
@@ -622,8 +1160,8 @@ export const MapComponent: React.FC = observer(() => {
               <APIProvider apiKey={API_KEY} region="US" language="en" version="weekly">
                 <Map
                   style={{ width: '100%', height: '100%' }}
-                  defaultCenter={mapStore.currentCenter}
-                  defaultZoom={mapStore.currentZoom}
+                  defaultCenter={mapStore.mapInitialCenter}
+                  defaultZoom={mapStore.mapInitialZoom}
                   gestureHandling={'greedy'}
                   disableDefaultUI={false}
                   clickableIcons={true}
@@ -633,6 +1171,11 @@ export const MapComponent: React.FC = observer(() => {
                   mapTypeControl={false}
                   scaleControl={false}
                   rotateControl={false}
+                  onBoundsChanged={(e) => {
+                    if (e.detail.center && e.detail.zoom) {
+                      mapStore.updateMapPosition(e.detail.center, e.detail.zoom);
+                    }
+                  }}
                 >
                   <MapContent
                     theme={theme}
@@ -642,29 +1185,6 @@ export const MapComponent: React.FC = observer(() => {
                   />
                 </Map>
               </APIProvider>
-
-              {/* Current Location Button */}
-              <IconButton
-                onClick={() => mapStore.goToCurrentLocation()}
-                sx={{
-                  position: 'absolute',
-                  top: 16,
-                  right: 16,
-                  backgroundColor: 'white',
-                  boxShadow: 2,
-                  '&:hover': {
-                    backgroundColor: 'grey.100',
-                  },
-                  zIndex: 1000,
-                }}
-                title={
-                  mapStore.hasLocationPermission()
-                    ? 'Go to current location'
-                    : 'Request location permission and go to current location'
-                }
-              >
-                <FontAwesomeIcon icon={faLocationArrow} />
-              </IconButton>
 
               {/* Location Error Alert */}
               {mapStore.locationError && (
@@ -730,24 +1250,51 @@ export const MapComponent: React.FC = observer(() => {
             <CardContent sx={{ height: '100%', p: 0 }}>
               <Box
                 sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                   p: { xs: 1.5, md: 2 },
                   borderBottom: `1px solid ${theme.palette.divider}`,
                 }}
               >
-                <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', md: '1.25rem' } }}>
-                  Shows for {showStore.selectedDay}
-                </Typography>
-                {showStore.isLoading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                    <CircularProgress size={24} />
-                  </Box>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    {showStore.showsForSelectedDay.length} show(s) found
+                <Box>
+                  <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', md: '1.25rem' } }}>
+                    Shows for {showStore.selectedDay}
                   </Typography>
-                )}
-              </Box>
+                  {showStore.isLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                      <CircularProgress size={24} />
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      {showStore.showsForSelectedDay.length} show(s) found
+                    </Typography>
+                  )}
+                </Box>
 
+                {/* Current Location Button */}
+                <IconButton
+                  onClick={() => mapStore.goToCurrentLocation()}
+                  size="small"
+                  sx={{
+                    backgroundColor: 'background.paper',
+                    border: `1px solid ${theme.palette.divider}`,
+                    color: 'primary.main',
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                    },
+                    minWidth: 36,
+                    height: 36,
+                  }}
+                  title={
+                    mapStore.hasLocationPermission()
+                      ? 'Go to current location'
+                      : 'Request location permission and go to current location'
+                  }
+                >
+                  <FontAwesomeIcon icon={faLocationArrow} size="sm" />
+                </IconButton>
+              </Box>{' '}
               <Box
                 ref={showListRef}
                 sx={{
@@ -1117,300 +1664,6 @@ export const MapComponent: React.FC = observer(() => {
         </Box>
       </Box>
 
-      {/* Fullscreen Show List Overlay */}
-      {isMapFullscreen && (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: { xs: '100%', sm: '400px' },
-            height: '100vh',
-            backgroundColor: theme.palette.background.paper,
-            boxShadow: theme.shadows[10],
-            zIndex: 1000,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            border: `1px solid ${theme.palette.divider}`,
-          }}
-        >
-          {/* Header */}
-          <Box
-            sx={{
-              p: 2,
-              borderBottom: `1px solid ${theme.palette.divider}`,
-              backgroundColor: theme.palette.primary.main,
-              color: theme.palette.primary.contrastText,
-            }}
-          >
-            <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
-              Shows for {showStore.selectedDay}
-            </Typography>
-            {showStore.isLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
-                <CircularProgress size={20} sx={{ color: 'inherit' }} />
-              </Box>
-            ) : (
-              <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.5 }}>
-                {showStore.showsForSelectedDay.length} show(s) found
-              </Typography>
-            )}
-          </Box>
-
-          {/* Show List */}
-          <Box
-            sx={{
-              flex: 1,
-              overflow: 'auto',
-              '&::-webkit-scrollbar': {
-                width: '6px',
-              },
-              '&::-webkit-scrollbar-track': {
-                background: theme.palette.action.hover,
-                borderRadius: '4px',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                background: theme.palette.primary.main,
-                borderRadius: '4px',
-                '&:hover': {
-                  background: theme.palette.primary.dark,
-                },
-              },
-            }}
-          >
-            {showStore.isLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : showStore.showsForSelectedDay.length === 0 ? (
-              <Box sx={{ textAlign: 'center', p: 4 }}>
-                <Typography variant="body2" color="text.secondary">
-                  No shows found for {showStore.selectedDay}
-                </Typography>
-              </Box>
-            ) : (
-              <List sx={{ p: 1 }}>
-                {showStore.showsForSelectedDay.map((show, index) => (
-                  <React.Fragment key={show.id}>
-                    <ListItem sx={{ p: 0, mb: 1 }}>
-                      <ListItemButton
-                        onClick={() => handleShowClick(show)}
-                        selected={showStore.selectedShow?.id === show.id}
-                        sx={{
-                          p: 2,
-                          borderRadius: 2,
-                          border: `1px solid ${theme.palette.divider}`,
-                          backgroundColor: theme.palette.background.paper,
-                          '&:hover': {
-                            backgroundColor: theme.palette.action.hover,
-                            border: `1px solid ${theme.palette.primary.main}`,
-                          },
-                          '&.Mui-selected': {
-                            backgroundColor: theme.palette.primary.main + '15',
-                            border: `2px solid ${theme.palette.primary.main}`,
-                            '&:hover': {
-                              backgroundColor: theme.palette.primary.main + '20',
-                            },
-                          },
-                        }}
-                      >
-                        <Box sx={{ width: '100%' }}>
-                          {/* Venue name and favorite button */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                            <FontAwesomeIcon
-                              icon={faMicrophone}
-                              style={{
-                                fontSize: '14px',
-                                color: theme.palette.primary.main,
-                              }}
-                            />
-                            <Typography
-                              variant="subtitle2"
-                              fontWeight={600}
-                              sx={{ flex: 1, fontSize: '0.9rem' }}
-                            >
-                              {show.venue || show.vendor?.name || 'Unknown Venue'}
-                            </Typography>
-
-                            {/* Favorite button */}
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-
-                                const isFav =
-                                  authStore.isAuthenticated && favoriteStore.isFavorite(show.id);
-                                if (isFav) {
-                                  handleUnfavorite(show.id, showStore.selectedDay);
-                                } else {
-                                  handleFavorite(show.id, showStore.selectedDay);
-                                }
-                              }}
-                              sx={{
-                                color:
-                                  authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
-                                    ? theme.palette.error.main
-                                    : theme.palette.text.disabled,
-                                width: '32px',
-                                height: '32px',
-                                opacity: authStore.isAuthenticated ? 1 : 0.6,
-                                '&:hover': {
-                                  color: theme.palette.error.main,
-                                  backgroundColor: theme.palette.error.main + '10',
-                                },
-                              }}
-                            >
-                              <FontAwesomeIcon
-                                icon={
-                                  authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
-                                    ? faHeart
-                                    : faHeartRegular
-                                }
-                                style={{ fontSize: '14px' }}
-                              />
-                            </IconButton>
-                          </Box>
-
-                          {/* Time */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                            <FontAwesomeIcon
-                              icon={faClock}
-                              style={{
-                                fontSize: '10px',
-                                color: theme.palette.primary.main,
-                              }}
-                            />
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                color: theme.palette.primary.main,
-                              }}
-                            >
-                              {formatTime(show.startTime)} - {formatTime(show.endTime)}
-                            </Typography>
-                          </Box>
-
-                          {/* DJ info */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                            <FontAwesomeIcon
-                              icon={faUser}
-                              style={{
-                                fontSize: '10px',
-                                color: theme.palette.text.secondary,
-                              }}
-                            />
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{ fontSize: '0.75rem' }}
-                            >
-                              {show.dj?.name || 'Unknown Host'}
-                            </Typography>
-                          </Box>
-
-                          {/* Address */}
-                          <Box
-                            sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}
-                          >
-                            <FontAwesomeIcon
-                              icon={faMapMarkerAlt}
-                              style={{
-                                fontSize: '10px',
-                                color: theme.palette.text.secondary,
-                                marginTop: '2px',
-                              }}
-                            />
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{ fontSize: '0.75rem', lineHeight: 1.3 }}
-                            >
-                              {show.address}
-                            </Typography>
-                          </Box>
-
-                          {/* Contact info */}
-                          {(show.venuePhone || show.venueWebsite) && (
-                            <Box
-                              sx={{ display: 'flex', flexDirection: 'column', gap: 0.3, mt: 0.5 }}
-                            >
-                              {show.venuePhone && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                  <FontAwesomeIcon
-                                    icon={faPhone}
-                                    style={{
-                                      fontSize: '9px',
-                                      color: theme.palette.success.main,
-                                    }}
-                                  />
-                                  <Typography
-                                    component="a"
-                                    href={`tel:${show.venuePhone}`}
-                                    variant="body2"
-                                    sx={{
-                                      fontSize: '0.7rem',
-                                      color: theme.palette.success.main,
-                                      textDecoration: 'none',
-                                      '&:hover': {
-                                        textDecoration: 'underline',
-                                      },
-                                    }}
-                                  >
-                                    {show.venuePhone}
-                                  </Typography>
-                                </Box>
-                              )}
-                              {show.venueWebsite && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                  <FontAwesomeIcon
-                                    icon={faExternalLinkAlt}
-                                    style={{
-                                      fontSize: '9px',
-                                      color: theme.palette.info.main,
-                                    }}
-                                  />
-                                  <Typography
-                                    component="a"
-                                    href={
-                                      show.venueWebsite.startsWith('http')
-                                        ? show.venueWebsite
-                                        : `https://${show.venueWebsite}`
-                                    }
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    variant="body2"
-                                    sx={{
-                                      fontSize: '0.7rem',
-                                      color: theme.palette.info.main,
-                                      textDecoration: 'none',
-                                      '&:hover': {
-                                        textDecoration: 'underline',
-                                      },
-                                    }}
-                                  >
-                                    Website
-                                  </Typography>
-                                </Box>
-                              )}
-                            </Box>
-                          )}
-                        </Box>
-                      </ListItemButton>
-                    </ListItem>
-                    {index < showStore.showsForSelectedDay.length - 1 && (
-                      <Divider sx={{ my: 0.5, mx: 1 }} />
-                    )}
-                  </React.Fragment>
-                ))}
-              </List>
-            )}
-          </Box>
-        </Box>
-      )}
-
       {/* Paywall Modal */}
       <PaywallModal open={showPaywall} onClose={handlePaywallClose} feature={paywallFeature} />
 
@@ -1418,10 +1671,10 @@ export const MapComponent: React.FC = observer(() => {
       <LocalSubscriptionModal
         open={showLocalSubscription}
         onClose={() => setShowLocalSubscription(false)}
-        feature={paywallFeature}
+        feature="favorites"
       />
 
-      {/* Login Required Modal */}
+      {/* Login Modal */}
       <Dialog
         open={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
@@ -1435,35 +1688,22 @@ export const MapComponent: React.FC = observer(() => {
           </Box>
         </DialogTitle>
         <DialogContent>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            You must have an account to save shows to your favorites.
+          <Typography variant="body1" paragraph>
+            Create an account to save your favorite karaoke venues and get personalized
+            recommendations.
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Create an account or sign in to:
+            It's quick, free, and helps you discover the best karaoke experiences in your area!
           </Typography>
-          <Box component="ul" sx={{ mt: 1, pl: 2 }}>
-            <Typography component="li" variant="body2" color="text.secondary">
-              Save your favorite karaoke shows
-            </Typography>
-            <Typography component="li" variant="body2" color="text.secondary">
-              Get notifications about your favorite venues
-            </Typography>
-            <Typography component="li" variant="body2" color="text.secondary">
-              Access premium features
-            </Typography>
-          </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 3, gap: 2 }}>
-          <Button onClick={() => setLoginModalOpen(false)} variant="outlined">
-            Cancel
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setLoginModalOpen(false)} color="inherit">
+            Maybe Later
           </Button>
           <Button
             onClick={() => {
               setLoginModalOpen(false);
-              window.open(
-                `${apiStore.environmentInfo.baseURL.replace('/api', '')}/auth/google`,
-                '_self',
-              );
+              authStore.loginWithGoogle();
             }}
             variant="contained"
             startIcon={<FontAwesomeIcon icon={faGoogle} />}
@@ -1475,3 +1715,5 @@ export const MapComponent: React.FC = observer(() => {
     </Box>
   );
 });
+
+export default MapComponent;

@@ -8,6 +8,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  stageName?: string;
   avatar?: string;
   provider?: string;
   providerId?: string;

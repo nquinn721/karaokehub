@@ -27,6 +27,8 @@ export class AuthStore {
   token: string | null = null;
   isLoading = false;
   isAuthenticated = false;
+  showPostLoginModal = false;
+  isNewUser = false;
 
   constructor() {
     makeAutoObservable(this);
@@ -93,6 +95,10 @@ export class AuthStore {
         this.token = response.token;
         this.isAuthenticated = true;
         this.isLoading = false;
+        this.isNewUser = false;
+
+        // Show modal if user doesn't have a stage name
+        this.showPostLoginModal = !response.user?.stageName;
       });
 
       // Set token in API store
@@ -128,6 +134,10 @@ export class AuthStore {
         this.token = response.token;
         this.isAuthenticated = true;
         this.isLoading = false;
+        this.isNewUser = true;
+
+        // Always show modal for new users
+        this.showPostLoginModal = true;
       });
 
       // Set token in API store
@@ -215,23 +225,40 @@ export class AuthStore {
 
   async updateProfile(updateData: { name?: string; stageName?: string; avatar?: string }) {
     if (!this.user) {
-      throw new Error('No user logged in');
+      return {
+        success: false,
+        error: 'No user logged in',
+      };
     }
 
-    this.isLoading = true;
     try {
+      this.setLoading(true);
       const response = await apiStore.patch(`/users/${this.user.id}`, updateData);
+
       runInAction(() => {
         this.user = { ...this.user!, ...response.data };
+        this.isLoading = false;
       });
-      return response.data;
-    } catch (error) {
-      throw error;
-    } finally {
+
+      return { success: true, data: response.data };
+    } catch (error: any) {
       runInAction(() => {
         this.isLoading = false;
       });
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update profile',
+      };
     }
+  }
+
+  setShowPostLoginModal(show: boolean) {
+    this.showPostLoginModal = show;
+  }
+
+  closePostLoginModal() {
+    this.showPostLoginModal = false;
+    this.isNewUser = false;
   }
 
   // Getter to check if current user is admin

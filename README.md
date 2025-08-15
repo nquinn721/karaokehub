@@ -10,6 +10,9 @@ A full-stack karaoke application built with React, NestJS, and real-time WebSock
 - **Backend**: NestJS with WebSocket support
 - **Authentication**: JWT + OAuth (Google, GitHub)
 - **Real-time**: Socket.IO for live karaoke sessions
+- **AI Parsing**: Gemini AI for website & image content extraction
+- **Image Recognition**: Parse event details from social media images
+- **Admin Dashboard**: Complete CRUD operations with feedback system
 - **Deployment**: Docker + Google Cloud Run with CI/CD
 
 ## 🚀 Quick Start
@@ -144,6 +147,79 @@ KaraokePal/
 - `GET /api/auth/google` - Google OAuth
 - `GET /api/auth/github` - GitHub OAuth
 - `GET /api/auth/profile` - Get user profile
+
+### 🖼️ Image Parsing & AI Features
+
+KaraokePal includes advanced AI-powered parsing capabilities for extracting karaoke event details from images, social media posts, and Facebook events with intelligent DJ name recognition.
+
+#### **Capabilities**
+
+- **Image OCR**: Extract text from event flyers and promotional images
+- **Social Media Parsing**: Parse Facebook/Instagram posts with event images
+- **Facebook Event Parsing**: Extract details from Facebook event pages with cover image analysis
+- **DJ Nickname Intelligence**: Smart matching of DJ names, aliases, and social media handles
+- **AI Analysis**: Gemini AI extracts structured venue, DJ, and event data
+- **Admin Review**: All parsed content requires admin approval before going live
+
+#### **Parser Endpoints**
+
+```http
+# Image parsing
+POST /api/parser/parse-image
+POST /api/parser/parse-and-save-image
+Body: { "imageUrl": "https://example.com/event-flyer.jpg" }
+
+# Social media posts
+POST /api/parser/parse-social-media-post
+POST /api/parser/parse-and-save-social-media-post
+Body: { "url": "https://facebook.com/post/123" }
+
+# Facebook events (NEW!)
+POST /api/parser/parse-facebook-event
+POST /api/parser/parse-and-save-facebook-event
+Body: { "eventUrl": "https://facebook.com/events/123456789" }
+
+# Smart parsing (auto-detects event vs post)
+POST /api/parser/parse-smart-social-media
+Body: { "url": "https://facebook.com/events/or/posts/123" }
+```
+
+#### **DJ Nickname Intelligence (NEW!)**
+
+The AI now understands that these all refer to the same DJ:
+
+- `Max` = `Max Denney` = `@djmax614` = `DJ Max` = `KJ Max`
+- Automatically learns and stores new DJ aliases
+- Matches across social media handles and stage names
+- Provides confidence scoring for matches
+
+#### **Example Usage**
+
+```bash
+# Test Facebook event parsing
+node test-facebook-events.js
+
+# Test image parsing with DJ nickname matching
+node test-image-parsing.js
+
+# Expected from Crescent Lounge example:
+# - Venue: "The Crescent Lounge"
+# - DJ: "DJ Max" (matched from @djmax614)
+# - Time: "8PM-12AM" -> 20:00-00:00
+# - Day: "thursday" (recurring pattern)
+```
+
+#### **Configuration**
+
+```bash
+# Required environment variable
+GEMINI_API_KEY=your-gemini-api-key
+
+# Optional Puppeteer config for production
+PUPPETEER_EXECUTABLE_PATH=/path/to/chrome
+```
+
+See [docs/IMAGE-PARSING-SETUP.md](docs/IMAGE-PARSING-SETUP.md) and [docs/FACEBOOK-EVENT-PARSING.md](docs/FACEBOOK-EVENT-PARSING.md) for detailed documentation.
 
 ### WebSocket Events
 

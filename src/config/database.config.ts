@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DJ } from '../dj/dj.entity';
+import { DJNickname } from '../entities/dj-nickname.entity';
 import { User } from '../entities/user.entity';
 import { Favorite } from '../favorite/favorite.entity';
 import { Feedback } from '../feedback/feedback.entity';
@@ -26,6 +27,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       User,
       Vendor,
       DJ,
+      DJNickname,
       Show,
       Favorite,
       Feedback,

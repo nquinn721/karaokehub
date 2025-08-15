@@ -239,4 +239,97 @@ export class ParserController {
       throw new HttpException('Failed to parse URLs', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  @Post('debug-puppeteer')
+  async debugPuppeteer(@Body() body: { url: string; takeScreenshot?: boolean }) {
+    try {
+      const result = await this.karaokeParserService.debugPuppeteerExtraction(
+        body.url,
+        body.takeScreenshot,
+      );
+      return result;
+    } catch (error) {
+      console.error('Error debugging Puppeteer:', error);
+      throw new HttpException(
+        `Failed to debug Puppeteer: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('parse-facebook-event')
+  async parseFacebookEvent(@Body() body: { url: string }) {
+    try {
+      const result = await this.karaokeParserService.parseFacebookEvent(body.url);
+      return result;
+    } catch (error) {
+      console.error('Error parsing Facebook event:', error);
+      throw new HttpException(
+        `Failed to parse Facebook event: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('parse-and-save-facebook-event')
+  async parseAndSaveFacebookEvent(@Body() body: { url: string }) {
+    try {
+      const result = await this.karaokeParserService.parseAndSaveFacebookEvent(body.url);
+      return result;
+    } catch (error) {
+      console.error('Error parsing and saving Facebook event:', error);
+      throw new HttpException(
+        `Failed to parse and save Facebook event: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('parse-facebook-share')
+  async parseFacebookShare(@Body() body: { url: string }) {
+    try {
+      const result = await this.karaokeParserService.parseFacebookShare(body.url);
+      return result;
+    } catch (error) {
+      console.error('Error parsing Facebook share:', error);
+      throw new HttpException(
+        `Failed to parse Facebook share: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('parse-and-save-facebook-share')
+  async parseAndSaveFacebookShare(@Body() body: { url: string }) {
+    try {
+      const result = await this.karaokeParserService.parseAndSaveFacebookShare(body.url);
+      return result;
+    } catch (error) {
+      console.error('Error parsing and saving Facebook share:', error);
+      throw new HttpException(
+        `Failed to parse and save Facebook share: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('transform-facebook-url')
+  async transformFacebookUrl(@Body() body: { url: string }) {
+    try {
+      const result = await this.karaokeParserService.transformFacebookUrlWithGemini(body.url);
+      return {
+        success: true,
+        originalUrl: body.url,
+        transformedUrl: result.transformedUrl,
+        extractedInfo: result.extractedInfo,
+        suggestions: result.suggestions,
+      };
+    } catch (error) {
+      console.error('Error transforming Facebook URL with Gemini:', error);
+      throw new HttpException(
+        `Failed to transform Facebook URL: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

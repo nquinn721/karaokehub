@@ -33,6 +33,7 @@ import { authStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getUserDisplayName, getUserSecondaryName } from '../../utils/userUtils';
 import { ThemeToggle } from '../ThemeToggle';
 
 export interface HeaderComponentProps {
@@ -337,23 +338,51 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
 
                 {authStore.isAuthenticated ? (
                   <>
-                    <IconButton
-                      size="large"
-                      edge="end"
-                      aria-label="account of current user"
-                      aria-controls="primary-search-account-menu"
-                      aria-haspopup="true"
-                      onClick={handleMenuOpen}
-                      color="inherit"
-                    >
-                      {authStore.user?.avatar ? (
-                        <Avatar src={authStore.user.avatar} sx={{ width: 32, height: 32 }} />
-                      ) : (
-                        <Avatar sx={{ width: 32, height: 32 }}>
-                          <FontAwesomeIcon icon={faUser} />
-                        </Avatar>
-                      )}
-                    </IconButton>
+                    {/* User Avatar and Name Display */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {/* Display Name - Hidden on mobile, clickable to open menu */}
+                      <Typography
+                        variant="body2"
+                        onClick={handleMenuOpen}
+                        sx={{
+                          color: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                          fontWeight: 500,
+                          display: { xs: 'none', sm: 'block' },
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                          padding: '4px 8px',
+                          borderRadius: 1,
+                          transition: 'all 0.2s ease-in-out',
+                          '&:hover': {
+                            backgroundColor:
+                              theme.palette.mode === 'light'
+                                ? 'rgba(255, 255, 255, 0.1)'
+                                : 'rgba(255, 255, 255, 0.05)',
+                            transform: 'translateY(-1px)',
+                          },
+                        }}
+                      >
+                        {authStore.user && getUserDisplayName(authStore.user)}
+                      </Typography>
+
+                      <IconButton
+                        size="large"
+                        edge="end"
+                        aria-label="account of current user"
+                        aria-controls="primary-search-account-menu"
+                        aria-haspopup="true"
+                        onClick={handleMenuOpen}
+                        color="inherit"
+                      >
+                        {authStore.user?.avatar ? (
+                          <Avatar src={authStore.user.avatar} sx={{ width: 32, height: 32 }} />
+                        ) : (
+                          <Avatar sx={{ width: 32, height: 32 }}>
+                            <FontAwesomeIcon icon={faUser} />
+                          </Avatar>
+                        )}
+                      </IconButton>
+                    </Box>
 
                     <Menu
                       anchorEl={anchorEl}
@@ -381,15 +410,15 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                         <MenuItem disabled>
                           <Box>
                             <Typography variant="body2" color="text.primary">
-                              {authStore.user.stageName || authStore.user.name}
+                              {getUserDisplayName(authStore.user)}
                             </Typography>
-                            {authStore.user.stageName && (
+                            {getUserSecondaryName(authStore.user) && (
                               <Typography
                                 variant="caption"
                                 color="text.secondary"
                                 sx={{ fontSize: '0.65rem' }}
                               >
-                                {authStore.user.name}
+                                {getUserSecondaryName(authStore.user)}
                               </Typography>
                             )}
                             <Typography variant="caption" color="text.secondary">
@@ -553,11 +582,11 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                       )}
                       <Box>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {authStore.user.stageName || authStore.user.name}
+                          {getUserDisplayName(authStore.user)}
                         </Typography>
-                        {authStore.user.stageName && (
+                        {getUserSecondaryName(authStore.user) && (
                           <Typography variant="caption" color="text.secondary">
-                            {authStore.user.name}
+                            {getUserSecondaryName(authStore.user)}
                           </Typography>
                         )}
                         <Typography variant="caption" color="text.secondary" display="block">

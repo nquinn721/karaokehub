@@ -501,6 +501,49 @@ const ParserReviewPage: React.FC = observer(() => {
                             size="small"
                             sx={{ mb: 1 }}
                           />
+
+                          {/* DJ Aliases/Nicknames */}
+                          {dj.aliases && dj.aliases.length > 0 && (
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                Known Aliases/Nicknames:
+                              </Typography>
+                              <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {dj.aliases.map((alias: string, aliasIndex: number) => (
+                                  <Chip
+                                    key={aliasIndex}
+                                    label={alias}
+                                    size="small"
+                                    variant="outlined"
+                                    color="secondary"
+                                    sx={{ fontSize: '0.75rem' }}
+                                  />
+                                ))}
+                              </Box>
+                            </Box>
+                          )}
+
+                          {/* Social Media Handles */}
+                          {dj.socialHandles && dj.socialHandles.length > 0 && (
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                Social Media Handles:
+                              </Typography>
+                              <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {dj.socialHandles.map((handle: string, handleIndex: number) => (
+                                  <Chip
+                                    key={handleIndex}
+                                    label={handle}
+                                    size="small"
+                                    color="primary"
+                                    variant="outlined"
+                                    sx={{ fontSize: '0.75rem' }}
+                                  />
+                                ))}
+                              </Box>
+                            </Box>
+                          )}
+
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Typography variant="caption">Confidence:</Typography>
                             <Chip
@@ -600,6 +643,20 @@ const ParserReviewPage: React.FC = observer(() => {
                                 }}
                                 fullWidth
                                 size="small"
+                              />
+                            </Grid>
+                            <Grid item xs={12}>
+                              <TextField
+                                label="Venue Address"
+                                value={show.address || ''}
+                                onChange={(e) => {
+                                  const newShows = [...editedData.shows];
+                                  newShows[index] = { ...newShows[index], address: e.target.value };
+                                  setEditedData({ ...editedData, shows: newShows });
+                                }}
+                                fullWidth
+                                size="small"
+                                placeholder="123 Main Street, City, State ZIP"
                               />
                             </Grid>
                             <Grid item xs={12} sm={6}>

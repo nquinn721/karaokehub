@@ -12,6 +12,8 @@ export interface ParsedDJData {
   name: string;
   confidence: number;
   context?: string;
+  aliases?: string[]; // Array of nicknames/aliases found
+  socialHandles?: string[]; // Array of social media handles
 }
 
 export interface ParsedShowData {

@@ -16,6 +16,7 @@ import {
 import { authStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useState } from 'react';
+import { getUserDisplayName, getUserSecondaryName } from '../utils/userUtils';
 
 const ProfilePage: React.FC = observer(() => {
   const theme = useTheme();
@@ -92,21 +93,17 @@ const ProfilePage: React.FC = observer(() => {
                 >
                   <FontAwesomeIcon icon={faUser} />
                 </Avatar>
-
                 <Typography variant="h6" gutterBottom>
-                  {authStore.user.stageName || authStore.user.name}
+                  {getUserDisplayName(authStore.user)}
                 </Typography>
-
-                {authStore.user.stageName && (
+                {getUserSecondaryName(authStore.user) && (
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Real name: {authStore.user.name}
+                    Real name: {getUserSecondaryName(authStore.user)}
                   </Typography>
-                )}
-
+                )}{' '}
                 <Typography variant="body2" color="text.secondary">
                   {authStore.user.email}
                 </Typography>
-
                 {authStore.user.isAdmin && (
                   <Box sx={{ mt: 2 }}>
                     <Typography

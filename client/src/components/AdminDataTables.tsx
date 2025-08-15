@@ -52,7 +52,7 @@ import type {
   AdminUser,
   AdminVenue,
 } from '@stores/AdminStore';
-import { adminStore } from '@stores/index';
+import { adminStore, uiStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 
@@ -98,12 +98,9 @@ const AdminDataTables: React.FC = observer(() => {
   });
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  // Edit and Delete state
+  // Edit state
   const [editingItem, setEditingItem] = useState<any>(null);
   const [editType, setEditType] = useState<'venue' | 'show' | 'dj' | 'feedback' | null>(null);
-  const [deleteItem, setDeleteItem] = useState<any>(null);
-  const [deleteType, setDeleteType] = useState<'venue' | 'show' | 'dj' | 'feedback' | null>(null);
-  const [deleteRelationships, setDeleteRelationships] = useState<any>(null);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -151,52 +148,31 @@ const AdminDataTables: React.FC = observer(() => {
   };
 
   const handleDelete = async (item: any, type: 'venue' | 'show' | 'dj' | 'feedback') => {
-    setDeleteItem(item);
-    setDeleteType(type);
-
-    // Fetch relationship data (only for venue, show, dj - feedback doesn't have relationships)
-    if (type !== 'feedback') {
-      try {
-        let relationships;
-        switch (type) {
-          case 'venue':
-            relationships = await adminStore.getVenueRelationships(item.id);
-            break;
-          case 'show':
-            relationships = await adminStore.getShowRelationships(item.id);
-            break;
-          case 'dj':
-            relationships = await adminStore.getDjRelationships(item.id);
-            break;
-        }
-        setDeleteRelationships(relationships);
-      } catch (error) {
-        console.error('Failed to fetch relationships:', error);
-      }
-    }
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteItem || !deleteType) return;
-
     try {
-      switch (deleteType) {
+      // Show loading notification
+      uiStore.addNotification(`Deleting ${type}...`, 'info');
+
+      // Perform the deletion
+      switch (type) {
         case 'venue':
-          await adminStore.deleteVenue(deleteItem.id);
+          await adminStore.deleteVenue(item.id);
           break;
         case 'show':
-          await adminStore.deleteShow(deleteItem.id);
+          await adminStore.deleteShow(item.id);
           break;
         case 'dj':
-          await adminStore.deleteDj(deleteItem.id);
+          await adminStore.deleteDj(item.id);
           break;
         case 'feedback':
-          await adminStore.deleteFeedback(deleteItem.id);
+          await adminStore.deleteFeedback(item.id);
           break;
       }
 
-      // Show success message
-      alert(`${deleteType.charAt(0).toUpperCase() + deleteType.slice(1)} deleted successfully!`);
+      // Show success notification
+      uiStore.addNotification(
+        `${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully!`,
+        'success',
+      );
 
       // Refresh the current tab's data
       const tables = ['users', 'venues', 'shows', 'djs', 'favorites', 'songs', 'feedback'];
@@ -206,21 +182,19 @@ const AdminDataTables: React.FC = observer(() => {
       }
     } catch (error) {
       console.error('Delete failed:', error);
-      // Show user-friendly error message
-      let errorMessage = 'Failed to delete ' + deleteType;
+
+      // Show user-friendly error notification
+      let errorMessage = `Failed to delete ${type}`;
       const errorObj = error as any;
       if (errorObj?.message?.includes('Unauthorized')) {
         errorMessage = 'You are not authorized to perform this action. Please log in as an admin.';
       } else if (errorObj?.message?.includes('Internal server error')) {
-        errorMessage = `Cannot delete this ${deleteType} because it has related data. Please remove related shows, DJs, or favorites first.`;
+        errorMessage = `Cannot delete this ${type} because it has related data. Please remove related data first.`;
       } else if (errorObj?.message) {
         errorMessage = errorObj.message;
       }
-      alert(errorMessage);
-    } finally {
-      setDeleteItem(null);
-      setDeleteType(null);
-      setDeleteRelationships(null);
+
+      uiStore.addNotification(errorMessage, 'error');
     }
   };
 
@@ -382,7 +356,6 @@ const AdminDataTables: React.FC = observer(() => {
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
-                <TableCell>Location</TableCell>
                 <TableCell>Shows</TableCell>
                 <TableCell>DJs</TableCell>
                 <TableCell>Created</TableCell>
@@ -392,7 +365,7 @@ const AdminDataTables: React.FC = observer(() => {
             <TableBody>
               {adminStore.isLoadingTable ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={5} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
@@ -400,7 +373,6 @@ const AdminDataTables: React.FC = observer(() => {
                 adminStore.venues?.items.map((venue: AdminVenue) => (
                   <TableRow key={venue.id}>
                     <TableCell>{venue.name}</TableCell>
-                    <TableCell>{venue.location || 'N/A'}</TableCell>
                     <TableCell>
                       <Chip
                         label={venue.showCount || 0}
@@ -456,7 +428,9 @@ const AdminDataTables: React.FC = observer(() => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Venue</TableCell>
+                <TableCell>Vendor</TableCell>
+                <TableCell>Show Name</TableCell>
+                <TableCell>Address</TableCell>
                 <TableCell>Day</TableCell>
                 <TableCell>DJ</TableCell>
                 <TableCell>Status</TableCell>
@@ -467,7 +441,7 @@ const AdminDataTables: React.FC = observer(() => {
             <TableBody>
               {adminStore.isLoadingTable ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={8} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
@@ -475,6 +449,16 @@ const AdminDataTables: React.FC = observer(() => {
                 adminStore.shows?.items.map((show: AdminShow) => (
                   <TableRow key={show.id}>
                     <TableCell>{show.vendor?.name || 'N/A'}</TableCell>
+                    <TableCell>{show.venue || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2" title={show.address || ''}>
+                        {show.address
+                          ? show.address.length > 40
+                            ? `${show.address.substring(0, 37)}...`
+                            : show.address
+                          : 'N/A'}
+                      </Typography>
+                    </TableCell>
                     <TableCell>{show.day || 'N/A'}</TableCell>
                     <TableCell>{show.dj?.name || 'N/A'}</TableCell>
                     <TableCell>
@@ -526,6 +510,7 @@ const AdminDataTables: React.FC = observer(() => {
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
+                <TableCell>Nicknames</TableCell>
                 <TableCell>Created</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
@@ -533,7 +518,7 @@ const AdminDataTables: React.FC = observer(() => {
             <TableBody>
               {adminStore.isLoadingTable ? (
                 <TableRow>
-                  <TableCell colSpan={3} align="center">
+                  <TableCell colSpan={4} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
@@ -541,6 +526,36 @@ const AdminDataTables: React.FC = observer(() => {
                 adminStore.djs?.items.map((dj: AdminDJ) => (
                   <TableRow key={dj.id}>
                     <TableCell>{dj.name}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {dj.nicknames && dj.nicknames.length > 0 ? (
+                          dj.nicknames
+                            .filter((nickname) => nickname.isActive)
+                            .map((nickname) => (
+                              <Chip
+                                key={nickname.id}
+                                label={nickname.nickname}
+                                size="small"
+                                color={
+                                  nickname.type === 'stage_name'
+                                    ? 'primary'
+                                    : nickname.type === 'social_handle'
+                                      ? 'secondary'
+                                      : nickname.type === 'real_name'
+                                        ? 'success'
+                                        : 'default'
+                                }
+                                variant="outlined"
+                                title={`${nickname.type}${nickname.platform ? ` (${nickname.platform})` : ''}`}
+                              />
+                            ))
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            No nicknames
+                          </Typography>
+                        )}
+                      </Box>
+                    </TableCell>
                     <TableCell>{formatDate(dj.createdAt)}</TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 1 }}>
@@ -868,309 +883,6 @@ const AdminDataTables: React.FC = observer(() => {
         )}
       </TabPanel>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={!!deleteItem}
-        onClose={() => setDeleteItem(null)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: { borderRadius: 3 },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            pb: 1,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              bgcolor: 'error.light',
-              color: 'error.contrastText',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <FontAwesomeIcon icon={faTrash} size="lg" />
-          </Box>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-              Confirm Deletion
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              This action cannot be undone
-            </Typography>
-          </Box>
-        </DialogTitle>
-
-        <DialogContent sx={{ pt: 3 }}>
-          <Typography
-            variant="body1"
-            sx={{ mb: 3, fontSize: '1.1rem', fontWeight: 500, color: 'text.primary' }}
-          >
-            Are you sure you want to delete this {deleteType}?
-          </Typography>
-
-          {deleteItem && (
-            <Box
-              sx={{
-                mb: 3,
-                p: 2.5,
-                bgcolor: 'background.paper',
-                borderRadius: 2,
-                border: '2px solid',
-                borderColor: 'primary.main',
-                boxShadow: 1,
-              }}
-            >
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: 700,
-                  mb: 1,
-                  color: 'text.primary',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  fontSize: '1.2rem',
-                }}
-              >
-                {deleteType === 'venue' && (
-                  <>
-                    <Box component="span" sx={{ fontSize: '1.2em' }}>
-                      📍
-                    </Box>
-                    {deleteItem.name || 'Unnamed Venue'}
-                  </>
-                )}
-                {deleteType === 'show' && (
-                  <>
-                    <Box component="span" sx={{ fontSize: '1.2em' }}>
-                      🎤
-                    </Box>
-                    {deleteItem.vendor?.name || 'Unknown Venue'} - {deleteItem.day || 'No Day'}
-                  </>
-                )}
-                {deleteType === 'dj' && (
-                  <>
-                    <Box component="span" sx={{ fontSize: '1.2em' }}>
-                      🎧
-                    </Box>
-                    {deleteItem.name || 'Unnamed DJ'}
-                  </>
-                )}
-              </Typography>
-
-              {deleteType === 'venue' && deleteItem.location && (
-                <Typography variant="body2" color="text.secondary">
-                  Location: {deleteItem.location}
-                </Typography>
-              )}
-
-              {deleteType === 'show' && deleteItem.time && (
-                <Typography variant="body2" color="text.secondary">
-                  Time: {deleteItem.time}
-                </Typography>
-              )}
-            </Box>
-          )}
-
-          {deleteRelationships && (
-            <Box
-              sx={{
-                mt: 2,
-                p: 2.5,
-                bgcolor: 'error.50',
-                borderRadius: 2,
-                border: '2px solid',
-                borderColor: 'error.main',
-                boxShadow: 1,
-              }}
-            >
-              <Typography
-                variant="subtitle1"
-                sx={{
-                  fontWeight: 700,
-                  mb: 2,
-                  color: 'error.dark',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  fontSize: '1.1rem',
-                }}
-              >
-                ⚠️ Related Data Impact
-              </Typography>
-
-              {deleteType === 'venue' && (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                  {deleteRelationships.shows?.length > 0 && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box
-                        sx={{
-                          minWidth: 32,
-                          height: 32,
-                          borderRadius: '50%',
-                          bgcolor: 'warning.light',
-                          color: 'warning.contrastText',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '0.875rem',
-                          fontWeight: 600,
-                        }}
-                      >
-                        {deleteRelationships.shows.length}
-                      </Box>
-                      <Typography variant="body1" sx={{ fontWeight: 500, color: 'text.primary' }}>
-                        Show{deleteRelationships.shows.length !== 1 ? 's' : ''} will be permanently
-                        deleted
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {deleteRelationships.djs?.length > 0 && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box
-                        sx={{
-                          minWidth: 32,
-                          height: 32,
-                          borderRadius: '50%',
-                          bgcolor: 'info.light',
-                          color: 'info.contrastText',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '0.875rem',
-                          fontWeight: 600,
-                        }}
-                      >
-                        {deleteRelationships.djs.length}
-                      </Box>
-                      <Typography variant="body1" sx={{ fontWeight: 500, color: 'text.primary' }}>
-                        DJ{deleteRelationships.djs.length !== 1 ? 's' : ''} will be permanently
-                        deleted
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {!deleteRelationships.shows?.length && !deleteRelationships.djs?.length && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box
-                        sx={{
-                          minWidth: 32,
-                          height: 32,
-                          borderRadius: '50%',
-                          bgcolor: 'success.light',
-                          color: 'success.contrastText',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        ✓
-                      </Box>
-                      <Typography variant="body1" color="success.dark">
-                        No related data will be deleted
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              )}
-
-              {deleteType === 'show' && deleteRelationships.favorites?.length > 0 && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box
-                    sx={{
-                      minWidth: 32,
-                      height: 32,
-                      borderRadius: '50%',
-                      bgcolor: 'warning.light',
-                      color: 'warning.contrastText',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.875rem',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {deleteRelationships.favorites.length}
-                  </Box>
-                  <Typography variant="body1">
-                    User favorite{deleteRelationships.favorites.length !== 1 ? 's' : ''} will be
-                    removed
-                  </Typography>
-                </Box>
-              )}
-
-              {deleteType === 'dj' && deleteRelationships.shows?.length > 0 && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box
-                    sx={{
-                      minWidth: 32,
-                      height: 32,
-                      borderRadius: '50%',
-                      bgcolor: 'warning.light',
-                      color: 'warning.contrastText',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '0.875rem',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {deleteRelationships.shows.length}
-                  </Box>
-                  <Typography variant="body1">
-                    Show{deleteRelationships.shows.length !== 1 ? 's' : ''} will have no DJ assigned
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          )}
-        </DialogContent>
-
-        <DialogActions
-          sx={{
-            p: 3,
-            gap: 2,
-            borderTop: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Button
-            onClick={() => setDeleteItem(null)}
-            variant="outlined"
-            size="large"
-            sx={{ minWidth: 100 }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={confirmDelete}
-            color="error"
-            variant="contained"
-            size="large"
-            sx={{
-              minWidth: 100,
-              fontWeight: 600,
-            }}
-            startIcon={<FontAwesomeIcon icon={faTrash} />}
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Edit Dialog */}
       <Dialog open={!!editingItem} onClose={() => setEditingItem(null)} maxWidth="sm" fullWidth>
         <DialogTitle>
@@ -1299,7 +1011,15 @@ const AdminDataTables: React.FC = observer(() => {
                 }
 
                 // Refresh data
-                const tables = ['users', 'venues', 'shows', 'djs', 'favorites', 'songs', 'feedback'];
+                const tables = [
+                  'users',
+                  'venues',
+                  'shows',
+                  'djs',
+                  'favorites',
+                  'songs',
+                  'feedback',
+                ];
                 const currentTable = tables[tabValue];
                 if (currentTable) {
                   fetchData(

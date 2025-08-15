@@ -38,4 +38,7 @@ export class DJ {
 
   @OneToMany(() => Show, (show) => show.dj)
   shows: Show[];
+
+  @OneToMany('DJNickname', (nickname: any) => nickname.dj)
+  nicknames: any[];
 }

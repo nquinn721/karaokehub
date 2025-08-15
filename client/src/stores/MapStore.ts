@@ -28,6 +28,9 @@ export class MapStore {
   public geocodedShows: GeocodedShow[] = [];
   public isGeocoding = false;
   public maxDistanceMiles = 20; // 20 mile radius filter
+  private _mapCenter: { lat: number; lng: number } | null = null; // Store current map center
+  private _mapZoom: number | null = null; // Store current map zoom
+  private _preventAutoCenter = false; // Flag to prevent auto-centering when closing InfoWindow
 
   // Store references to avoid circular dependencies
   private apiStore: any = null;
@@ -255,7 +258,9 @@ export class MapStore {
 
   // Fit map to show all geocoded shows
   private fitMapToShows(): void {
-    if (!this.mapInstance || this.geocodedShows.length === 0) return;
+    if (!this.mapInstance || this.geocodedShows.length === 0 || this._preventAutoCenter) {
+      return;
+    }
 
     const bounds = new google.maps.LatLngBounds();
 
@@ -302,10 +307,11 @@ export class MapStore {
           this.locationError = null;
         });
 
-        // Pan to user location if map is loaded
-        if (this.mapInstance) {
+        // Only pan to user location on initial load, not on subsequent location updates
+        if (this.mapInstance && !this.hasSetInitialBounds) {
           this.mapInstance.panTo(location);
           this.mapInstance.setZoom(14);
+          this.hasSetInitialBounds = true;
         }
 
         // Re-geocode shows with new user location for distance filtering
@@ -398,6 +404,14 @@ export class MapStore {
     this.showStore?.setSelectedShow(show);
   };
 
+  // Update stored map center and zoom
+  updateMapPosition(center: { lat: number; lng: number }, zoom: number): void {
+    runInAction(() => {
+      this._mapCenter = center;
+      this._mapZoom = zoom;
+    });
+  }
+
   // Close info window
   closeInfoWindow = (): void => {
     if (!this) {
@@ -405,17 +419,26 @@ export class MapStore {
       return;
     }
 
+    // Prevent auto-centering for a short period after closing
+    this._preventAutoCenter = true;
+    setTimeout(() => {
+      this._preventAutoCenter = false;
+    }, 2000); // Prevent auto-centering for 2 seconds
+
     runInAction(() => {
       this.selectedMarkerId = null;
     });
 
-    // Clear selected show
+    // Clear selected show - but don't reset map position
     this.showStore?.setSelectedShow(null);
+    
+    // Preserve current map position by not calling any map centering methods
+    console.log('InfoWindow closed - preserving current map position');
   };
 
   // Reset map view to show all shows
   resetMapView(): void {
-    if (!this.mapInstance) {
+    if (!this.mapInstance || this._preventAutoCenter) {
       return;
     }
 
@@ -461,13 +484,24 @@ export class MapStore {
     return this.apiStore?.configLoaded || false;
   }
 
-  // Get current center for map
+  // Get current center for map (stable - doesn't automatically follow user location)
   get currentCenter(): { lat: number; lng: number } {
+    // Return stored map center if available, otherwise use initial center
+    return this._mapCenter || this.initialCenter;
+  }
+
+  // Get center for map initialization (uses user location if available)
+  get mapInitialCenter(): { lat: number; lng: number } {
     return this.userLocation || this.initialCenter;
   }
 
-  // Get current zoom level
+  // Get current zoom level (stable - doesn't automatically change)
   get currentZoom(): number {
+    return this._mapZoom || (this.userLocation ? 9 : this.initialZoom);
+  }
+
+  // Get zoom for map initialization
+  get mapInitialZoom(): number {
     return this.userLocation ? 9 : this.initialZoom; // 9 = ~20 mile radius when user location available
   }
 

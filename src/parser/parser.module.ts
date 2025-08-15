@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DJ } from '../dj/dj.entity';
+import { DJNickname } from '../entities/dj-nickname.entity';
+import { GeocodingService } from '../geocoding/geocoding.service';
+import { DJNicknameService } from '../services/dj-nickname.service';
+import { FacebookService } from '../services/facebook.service';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
 import { KaraokeParserService } from './karaoke-parser.service';
@@ -10,9 +14,15 @@ import { UrlToParse } from './url-to-parse.entity';
 import { UrlToParseService } from './url-to-parse.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Vendor, DJ, Show, ParsedSchedule, UrlToParse])],
+  imports: [TypeOrmModule.forFeature([Vendor, DJ, Show, ParsedSchedule, UrlToParse, DJNickname])],
   controllers: [ParserController],
-  providers: [KaraokeParserService, UrlToParseService],
-  exports: [KaraokeParserService, UrlToParseService],
+  providers: [
+    KaraokeParserService,
+    UrlToParseService,
+    DJNicknameService,
+    GeocodingService,
+    FacebookService,
+  ],
+  exports: [KaraokeParserService, UrlToParseService, DJNicknameService, FacebookService],
 })
 export class ParserModule {}

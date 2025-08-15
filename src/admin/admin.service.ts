@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
+import { DJNickname } from '../entities/dj-nickname.entity';
 import { User } from '../entities/user.entity';
 import { Favorite } from '../favorite/favorite.entity';
 import { Feedback } from '../feedback/feedback.entity';
@@ -20,6 +21,8 @@ export class AdminService {
     private showRepository: Repository<Show>,
     @InjectRepository(DJ)
     private djRepository: Repository<DJ>,
+    @InjectRepository(DJNickname)
+    private djNicknameRepository: Repository<DJNickname>,
     @InjectRepository(ParsedSchedule)
     private parsedScheduleRepository: Repository<ParsedSchedule>,
     @InjectRepository(Favorite)
@@ -338,10 +341,12 @@ export class AdminService {
   }
 
   async getDjs(page = 1, limit = 10, search?: string) {
-    const query = this.djRepository.createQueryBuilder('dj');
+    const query = this.djRepository
+      .createQueryBuilder('dj')
+      .leftJoinAndSelect('dj.nicknames', 'nicknames');
 
     if (search) {
-      query.where('dj.name LIKE :search', {
+      query.where('dj.name LIKE :search OR nicknames.nickname LIKE :search', {
         search: `%${search}%`,
       });
     }
@@ -466,10 +471,29 @@ export class AdminService {
         throw new Error('Venue not found');
       }
 
-      // Delete the venue (cascade will handle related entities)
+      // First, delete all related favorites for shows belonging to this venue
+      if (venue.shows && venue.shows.length > 0) {
+        for (const show of venue.shows) {
+          // Delete favorites for this show
+          await this.favoriteRepository.delete({ show: { id: show.id } });
+        }
+
+        // Delete all shows for this venue
+        await this.showRepository.delete({ vendorId: id });
+      }
+
+      // Delete all DJs for this venue
+      if (venue.djs && venue.djs.length > 0) {
+        await this.djRepository.delete({ vendorId: id });
+      }
+
+      // Delete any parsed schedules for this venue
+      await this.parsedScheduleRepository.delete({ vendorId: id });
+
+      // Finally, delete the venue itself
       await this.vendorRepository.remove(venue);
 
-      return { message: 'Venue deleted successfully' };
+      return { message: 'Venue and all related data deleted successfully' };
     } catch (error) {
       console.error('Error in deleteVenue:', error);
       throw error;
@@ -488,25 +512,32 @@ export class AdminService {
       throw new Error('Show not found');
     }
 
+    // Delete all favorites for this show first
+    await this.favoriteRepository.delete({ show: { id } });
+
+    // Then delete the show
     await this.showRepository.remove(show);
-    return { message: 'Show deleted successfully' };
+    return { message: 'Show and all related data deleted successfully' };
   }
 
   async deleteDj(id: string) {
     const dj = await this.djRepository.findOne({
       where: { id },
-      relations: ['shows'],
+      relations: ['shows', 'nicknames'],
     });
 
     if (!dj) {
       throw new Error('DJ not found');
     }
 
+    // Delete all DJ nicknames first
+    await this.djNicknameRepository.delete({ djId: id });
+
     // Set DJ references to null in shows before deleting
     await this.showRepository.update({ djId: id }, { djId: null });
 
     await this.djRepository.remove(dj);
-    return { message: 'DJ deleted successfully' };
+    return { message: 'DJ and all related data deleted successfully' };
   }
 
   // Update methods

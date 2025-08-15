@@ -77,6 +77,8 @@ export interface AdminVenue {
 export interface AdminShow {
   id: string;
   day?: string;
+  venue?: string;
+  address?: string;
   isActive: boolean;
   vendor?: AdminVenue;
   dj?: AdminDJ;
@@ -87,6 +89,13 @@ export interface AdminDJ {
   id: string;
   name: string;
   createdAt: Date;
+  nicknames?: {
+    id: string;
+    nickname: string;
+    type: 'stage_name' | 'alias' | 'social_handle' | 'real_name';
+    platform?: string;
+    isActive: boolean;
+  }[];
 }
 
 export interface AdminFavorite {
