@@ -7,7 +7,7 @@ import { StripeService } from './stripe.service';
 import { SubscriptionPlan } from './subscription.entity';
 import { SubscriptionService } from './subscription.service';
 
-@Controller('api/subscription')
+@Controller('subscription')
 export class SubscriptionController {
   constructor(
     private subscriptionService: SubscriptionService,
@@ -42,6 +42,14 @@ export class SubscriptionController {
   async createPortalSession(@CurrentUser() user: User) {
     const session = await this.subscriptionService.createPortalSession(user.id);
     return { url: session.url };
+  }
+
+  @Post('sync')
+  @UseGuards(JwtAuthGuard)
+  async syncSubscription(@CurrentUser() user: User) {
+    // Manually sync subscription status from Stripe
+    const synced = await this.subscriptionService.syncUserSubscription(user.id);
+    return { success: true, subscription: synced };
   }
 
   @Post('webhook')

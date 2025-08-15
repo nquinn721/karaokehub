@@ -7,6 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Favorite } from '../favorite/favorite.entity';
+import { SongFavorite } from '../music/song-favorite.entity';
 import { Subscription } from '../subscription/subscription.entity';
 
 @Entity('users')
@@ -57,4 +58,7 @@ export class User {
 
   @OneToMany(() => Subscription, (subscription) => subscription.user)
   subscriptions: Subscription[];
+
+  @OneToMany(() => SongFavorite, (songFavorite) => songFavorite.user)
+  songFavorites: SongFavorite[];
 }

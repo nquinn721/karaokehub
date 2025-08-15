@@ -38,7 +38,7 @@ export class StripeService {
   ): Promise<Stripe.Checkout.Session> {
     return this.stripe.checkout.sessions.create({
       customer: customerId,
-      payment_method_types: ['card'],
+      payment_method_types: ['card', 'paypal'],
       line_items: [
         {
           price: priceId,
@@ -76,6 +76,13 @@ export class StripeService {
   async reactivateSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
     return this.stripe.subscriptions.update(subscriptionId, {
       cancel_at_period_end: false,
+    });
+  }
+
+  async listSubscriptions(customerId: string): Promise<Stripe.ApiList<Stripe.Subscription>> {
+    return this.stripe.subscriptions.list({
+      customer: customerId,
+      limit: 10,
     });
   }
 

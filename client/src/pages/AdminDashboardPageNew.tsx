@@ -1,5 +1,4 @@
 import AdminBreadcrumb from '@components/AdminBreadcrumb';
-import AdminDataTables from '@components/AdminDataTables';
 import {
   faDatabase,
   faMapMarkerAlt,
@@ -109,15 +108,7 @@ const AdminDashboardPage = observer(() => {
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Breadcrumbs */}
-      <AdminBreadcrumb
-        items={[
-          {
-            label: 'Admin',
-            icon: faUsers,
-            isActive: true,
-          },
-        ]}
-      />
+      <AdminBreadcrumb />
 
       {/* Header */}
       <Box sx={{ mb: 4 }}>

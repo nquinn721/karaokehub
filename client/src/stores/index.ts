@@ -1,4 +1,5 @@
-import { apiStore } from './ApiStore';
+import { adminStore as adminStoreInstance } from './AdminStore';
+import { apiStore as apiStoreInstance } from './ApiStore';
 import { AuthStore } from './AuthStore';
 import { FavoriteStore } from './FavoriteStore';
 import { FeedbackStore, feedbackStore as feedbackStoreInstance } from './FeedbackStore';
@@ -6,6 +7,10 @@ import { MapStore, mapStore as mapStoreInstance } from './MapStore';
 import { MusicStore, musicStore as musicStoreInstance } from './MusicStore';
 import { ParserStore } from './ParserStore';
 import { ShowStore, showStore as showStoreInstance } from './ShowStore';
+import {
+  SongFavoriteStore,
+  songFavoriteStore as songFavoriteStoreInstance,
+} from './SongFavoriteStore';
 import {
   SubscriptionStore,
   subscriptionStore as subscriptionStoreInstance,
@@ -20,6 +25,7 @@ export class RootStore {
   uiStore: UIStore;
   showStore: ShowStore;
   favoriteStore: FavoriteStore;
+  songFavoriteStore: SongFavoriteStore;
   feedbackStore: FeedbackStore;
   vendorStore: VendorStore;
   webSocketStore: WebSocketStore;
@@ -28,13 +34,14 @@ export class RootStore {
   mapStore: MapStore;
   musicStore: MusicStore;
   subscriptionStore: SubscriptionStore;
-  apiStore: typeof apiStore;
+  apiStore: typeof apiStoreInstance;
 
   constructor() {
     this.authStore = new AuthStore();
     this.uiStore = new UIStore();
     this.showStore = showStoreInstance; // Use the singleton instance
     this.favoriteStore = new FavoriteStore();
+    this.songFavoriteStore = songFavoriteStoreInstance; // Use the singleton instance
     this.feedbackStore = feedbackStoreInstance; // Use the singleton instance
     this.vendorStore = new VendorStore();
     this.webSocketStore = new WebSocketStore();
@@ -43,7 +50,7 @@ export class RootStore {
     this.mapStore = mapStoreInstance; // Use the singleton instance
     this.musicStore = musicStoreInstance; // Use the singleton instance
     this.subscriptionStore = subscriptionStoreInstance; // Use the singleton instance
-    this.apiStore = apiStore;
+    this.apiStore = apiStoreInstance;
   }
 }
 
@@ -53,6 +60,7 @@ export const {
   uiStore,
   showStore,
   favoriteStore,
+  songFavoriteStore,
   feedbackStore,
   vendorStore,
   webSocketStore,
@@ -64,9 +72,10 @@ export const {
 } = rootStore;
 
 // Export individual stores
+export { adminStore } from './AdminStore';
 export { localSubscriptionStore } from './LocalSubscriptionStore';
 export { themeStore } from './ThemeStore';
-export { apiStore };
+export const apiStore = api;
 
 // Make stores available globally for debugging
 if (typeof window !== 'undefined') {
@@ -74,5 +83,6 @@ if (typeof window !== 'undefined') {
   (window as any).uiStore = uiStore;
   (window as any).apiStore = apiStore;
   (window as any).parserStore = parserStore;
+  (window as any).adminStore = adminStoreInstance;
   (window as any).rootStore = rootStore;
 }

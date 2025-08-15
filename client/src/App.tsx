@@ -9,6 +9,7 @@ import FeedbackButton from './components/FeedbackButton';
 
 // Pages
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import AdminParserPage from './pages/AdminParserPage';
 import AuthError from './pages/AuthError';
 import AuthSuccess from './pages/AuthSuccess';
 import DashboardPage from './pages/DashboardPage';
@@ -16,7 +17,6 @@ import FeedbackManagementPage from './pages/FeedbackManagementPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import MusicPage from './pages/MusicPage';
-import ParserReviewPage from './pages/ParserReviewPage';
 import ProfilePage from './pages/ProfilePage';
 import RegisterPage from './pages/RegisterPage';
 import SettingsPage from './pages/SettingsPage';
@@ -131,7 +131,7 @@ const App: React.FC = observer(() => {
                 path="/admin/parser"
                 element={
                   <ProtectedRoute>
-                    <ParserReviewPage />
+                    <AdminParserPage />
                   </ProtectedRoute>
                 }
               />

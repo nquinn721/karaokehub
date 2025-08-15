@@ -206,4 +206,32 @@ export class SubscriptionService {
       subscription.plan === SubscriptionPlan.PREMIUM
     );
   }
+
+  async syncUserSubscription(userId: string): Promise<any> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user?.stripeCustomerId) {
+      return null;
+    }
+
+    try {
+      // Get all subscriptions for this customer from Stripe
+      const subscriptions = await this.stripeService.listSubscriptions(user.stripeCustomerId);
+
+      // Find the most recent active subscription
+      const activeSubscription =
+        subscriptions.data.find((sub) => sub.status === 'active' || sub.status === 'trialing') ||
+        subscriptions.data[0];
+
+      if (activeSubscription) {
+        const plan = this.getPlanFromPriceId(activeSubscription.items.data[0].price.id);
+        await this.upsertSubscription(userId, activeSubscription, plan);
+        return await this.getUserSubscription(userId);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error syncing subscription:', error);
+      throw error;
+    }
+  }
 }

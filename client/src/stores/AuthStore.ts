@@ -47,6 +47,14 @@ export class AuthStore {
           console.warn('Failed to fetch profile on startup:', error);
         });
       }
+      
+      // Fetch subscription status for authenticated users
+      // Import is done dynamically to avoid circular dependencies
+      import('./index').then(({ subscriptionStore }) => {
+        subscriptionStore.fetchSubscriptionStatus().catch((error) => {
+          console.warn('Failed to fetch subscription status on startup:', error);
+        });
+      });
     }
   }
 
@@ -89,6 +97,13 @@ export class AuthStore {
 
       // Set token in API store
       apiStore.setToken(response.token);
+
+      // Fetch subscription status after successful login
+      import('./index').then(({ subscriptionStore }) => {
+        subscriptionStore.fetchSubscriptionStatus().catch((error) => {
+          console.warn('Failed to fetch subscription status after login:', error);
+        });
+      });
 
       return { success: true };
     } catch (error: any) {
@@ -148,6 +163,11 @@ export class AuthStore {
 
     // Clear token from API store
     apiStore.clearToken();
+    
+    // Clear subscription status on logout
+    import('./index').then(({ subscriptionStore }) => {
+      subscriptionStore.clearSubscriptionStatus();
+    });
   }
 
   async getProfile() {

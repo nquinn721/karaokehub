@@ -3,6 +3,8 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
 import { Favorite } from '../favorite/favorite.entity';
+import { SongFavorite } from '../music/song-favorite.entity';
+import { Song } from '../music/song.entity';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { UrlToParse } from '../parser/url-to-parse.entity';
 import { Show } from '../show/show.entity';
@@ -19,7 +21,18 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     password: configService.get('DATABASE_PASSWORD', 'password'),
     database: configService.get('DATABASE_NAME', 'karaoke-hub'),
 
-    entities: [User, Vendor, DJ, Show, Favorite, ParsedSchedule, Subscription, UrlToParse],
+    entities: [
+      User,
+      Vendor,
+      DJ,
+      Show,
+      Favorite,
+      ParsedSchedule,
+      Subscription,
+      UrlToParse,
+      Song,
+      SongFavorite,
+    ],
     synchronize: true, // Enable sync if explicitly set or in development
     logging: !isProduction
       ? ['error', 'warn'] // Only log errors and warnings, no queries

@@ -387,6 +387,19 @@ export class ParserStore {
       this.setLoading(false);
     }
   }
+
+  // Simple approve review method for admin interface
+  async approveReview(reviewId: string, comments?: string): Promise<void> {
+    await this.approveAllItems(reviewId);
+    if (comments) {
+      await this.updateReviewComments(reviewId, comments);
+    }
+  }
+
+  // Simple reject review method for admin interface
+  async rejectReview(reviewId: string, reason?: string): Promise<void> {
+    await this.rejectParsedData(reviewId, reason || 'Rejected by admin');
+  }
 }
 
 export const parserStore = new ParserStore();

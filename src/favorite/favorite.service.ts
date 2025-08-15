@@ -20,14 +20,14 @@ export class FavoriteService {
   ) {}
 
   async create(createFavoriteDto: CreateFavoriteDto): Promise<Favorite> {
-    // Check if user has premium access (required for favorites)
-    const hasPremiumAccess = await this.subscriptionService.hasPremiumAccess(
+    // Check if user has ad-free access (required for favorites)
+    const hasAdFreeAccess = await this.subscriptionService.hasAdFreeAccess(
       createFavoriteDto.userId,
     );
 
-    if (!hasPremiumAccess) {
+    if (!hasAdFreeAccess) {
       throw new ForbiddenException(
-        'Premium subscription required to add favorites. Upgrade to access this feature.',
+        'Ad-Free subscription required to add favorites. Upgrade to access this feature.',
       );
     }
 

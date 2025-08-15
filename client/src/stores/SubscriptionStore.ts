@@ -43,6 +43,19 @@ export class SubscriptionStore {
     });
   }
 
+  clearSubscriptionStatus() {
+    runInAction(() => {
+      this.subscriptionStatus = {
+        subscription: null,
+        features: {
+          adFree: false,
+          premium: false,
+        },
+      };
+      this.isLoading = false;
+    });
+  }
+
   async fetchSubscriptionStatus() {
     try {
       this.setLoading(true);

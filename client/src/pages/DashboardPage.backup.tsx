@@ -1,56 +1,57 @@
 import { BannerAd, WideAd } from '@components/AdPlaceholder';
 import { SEO, seoConfigs } from '@components/SEO';
 import {
-  faArrowRight,
-  faCalendar,
-  faChartLine,
-  faClock,
-  faHeart,
-  faMapMarkerAlt,
   faMicrophone,
   faMusic,
-  faPlus,
-  faStar,
   faTrophy,
   faUsers,
+  faHeart,
+  faCalendar,
+  faMapMarkerAlt,
+  faClock,
+  faStar,
+  faChartLine,
+  faGift,
+  faPlus,
+  faArrowRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
+import { 
+  Box, 
+  Container, 
+  Grid, 
+  Typography, 
+  Card, 
+  CardContent, 
+  Chip,
+  Button,
   Alert,
+  Paper,
+  Divider,
+  LinearProgress,
+  IconButton,
+  Stack,
+  Skeleton,
+  CardActionArea,
+  useTheme,
   alpha,
   Avatar,
-  Box,
-  Button,
-  Card,
-  CardActionArea,
-  CardContent,
-  Chip,
-  Container,
-  Divider,
-  Grid,
-  IconButton,
-  LinearProgress,
-  Paper,
-  Skeleton,
-  Stack,
-  Tab,
   Tabs,
-  Typography,
-  useTheme,
+  Tab,
 } from '@mui/material';
-import { authStore, songFavoriteStore, subscriptionStore } from '@stores/index';
+import { authStore, subscriptionStore, songFavoriteStore } from '@stores/index';
+import { favoriteStore } from '../stores';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { favoriteStore } from '../stores';
 
 const DashboardPage: React.FC = observer(() => {
   const [loading, setLoading] = useState(false);
-  const [showStats, setShowStats] = useState({
-    todayCount: 0,
-    weekCount: 0,
-    upcomingCount: 0,
-    songFavoriteCount: 0,
+  const [showStats, setShowStats] = useState({ 
+    todayCount: 0, 
+    weekCount: 0, 
+    upcomingCount: 0, 
+    songFavoriteCount: 0 
   });
   const [activeTab, setActiveTab] = useState(0);
   const navigate = useNavigate();
@@ -68,7 +69,6 @@ const DashboardPage: React.FC = observer(() => {
       await Promise.all([
         favoriteStore.fetchMyFavorites(),
         songFavoriteStore.fetchMySongFavorites(),
-        subscriptionStore.fetchSubscriptionStatus(),
         loadShowStats(),
       ]);
     } catch (error) {
@@ -80,29 +80,24 @@ const DashboardPage: React.FC = observer(() => {
 
   const loadShowStats = async () => {
     try {
+      // Calculate some statistics from favorites
       const favorites = favoriteStore.favorites;
       const today = new Date().getDay();
-      const dayNames = [
-        'sunday',
-        'monday',
-        'tuesday',
-        'wednesday',
-        'thursday',
-        'friday',
-        'saturday',
-      ];
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const todayName = dayNames[today];
-
-      const todayCount = favorites.filter((fav) => fav.day.toLowerCase() === todayName).length;
-
+      
+      const todayCount = favorites.filter(fav => 
+        fav.day.toLowerCase() === todayName
+      ).length;
+      
       const weekCount = favorites.length;
-      const upcomingCount = favorites.filter((fav) => {
+      const upcomingCount = favorites.filter(fav => {
         const favDay = dayNames.indexOf(fav.day.toLowerCase());
         return favDay >= today;
       }).length;
-
+      
       const songFavoriteCount = songFavoriteStore.getSongFavoriteCount();
-
+      
       setShowStats({ todayCount, weekCount, upcomingCount, songFavoriteCount });
     } catch (error) {
       console.error('Error calculating show stats:', error);
@@ -131,25 +126,15 @@ const DashboardPage: React.FC = observer(() => {
     return 'Good evening';
   };
 
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
-  };
-
-  const StatCard = ({
-    icon,
-    title,
-    value,
-    subtitle,
-    color = 'primary',
-  }: {
+  const StatCard = ({ icon, title, value, subtitle, color = 'primary' }: {
     icon: any;
     title: string;
     value: number | string;
     subtitle: string;
     color?: 'primary' | 'secondary' | 'success' | 'warning' | 'error';
   }) => (
-    <Card
-      sx={{
+    <Card 
+      sx={{ 
         height: '100%',
         background: `linear-gradient(135deg, ${alpha(theme.palette[color].main, 0.1)}, ${alpha(theme.palette[color].main, 0.05)})`,
         border: `1px solid ${alpha(theme.palette[color].main, 0.2)}`,
@@ -157,7 +142,7 @@ const DashboardPage: React.FC = observer(() => {
           transform: 'translateY(-2px)',
           boxShadow: theme.shadows[8],
         },
-        transition: 'all 0.3s ease',
+        transition: 'all 0.3s ease'
       }}
     >
       <CardContent>
@@ -225,9 +210,14 @@ const DashboardPage: React.FC = observer(() => {
                   </Typography>
                 </Box>
               </Box>
-
+              
               <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                <Chip label={favorite.day} size="small" color="primary" variant="outlined" />
+                <Chip
+                  label={favorite.day}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                />
                 {favorite.show?.startTime && (
                   <Chip
                     icon={<FontAwesomeIcon icon={faClock} size="xs" />}
@@ -239,21 +229,17 @@ const DashboardPage: React.FC = observer(() => {
                   />
                 )}
               </Stack>
-
+              
               {favorite.show?.address && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <FontAwesomeIcon
-                    icon={faMapMarkerAlt}
-                    size="sm"
-                    color={theme.palette.text.secondary}
-                  />
+                  <FontAwesomeIcon icon={faMapMarkerAlt} size="sm" color={theme.palette.text.secondary} />
                   <Typography variant="body2" color="text.secondary">
                     {favorite.show.address}
                   </Typography>
                 </Box>
               )}
             </Box>
-
+            
             <IconButton size="small" color="primary">
               <FontAwesomeIcon icon={faArrowRight} />
             </IconButton>
@@ -298,7 +284,7 @@ const DashboardPage: React.FC = observer(() => {
                   </Typography>
                 </Box>
               </Box>
-
+              
               <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
                 {songFavorite.song?.album && (
                   <Chip
@@ -309,7 +295,11 @@ const DashboardPage: React.FC = observer(() => {
                   />
                 )}
                 {songFavorite.song?.genre && (
-                  <Chip label={songFavorite.song.genre} size="small" variant="outlined" />
+                  <Chip
+                    label={songFavorite.song.genre}
+                    size="small"
+                    variant="outlined"
+                  />
                 )}
                 {songFavorite.song?.duration && (
                   <Chip
@@ -320,7 +310,7 @@ const DashboardPage: React.FC = observer(() => {
                   />
                 )}
               </Stack>
-
+              
               {(songFavorite.song?.spotifyId || songFavorite.song?.youtubeId) && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   {songFavorite.song?.spotifyId && (
@@ -336,7 +326,7 @@ const DashboardPage: React.FC = observer(() => {
                 </Box>
               )}
             </Box>
-
+            
             <IconButton size="small" color="secondary">
               <FontAwesomeIcon icon={faArrowRight} />
             </IconButton>
@@ -345,6 +335,82 @@ const DashboardPage: React.FC = observer(() => {
       </CardActionArea>
     </Card>
   );
+    <Card
+      sx={{
+        mb: 2,
+        transition: 'all 0.2s ease',
+        '&:hover': {
+          transform: 'translateX(4px)',
+          boxShadow: theme.shadows[4],
+        },
+        border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+      }}
+    >
+      <CardActionArea>
+        <CardContent sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <Box sx={{ flex: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Avatar
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    backgroundColor: theme.palette.primary.main,
+                  }}
+                >
+                  <FontAwesomeIcon icon={faMicrophone} size="sm" />
+                </Avatar>
+                <Box>
+                  <Typography variant="h6" fontWeight={600}>
+                    {favorite.show?.vendor?.name || 'Unknown Venue'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {favorite.show?.venue || 'Karaoke Night'}
+                  </Typography>
+                </Box>
+              </Box>
+              
+              <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                <Chip
+                  label={favorite.day}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                />
+                {favorite.show?.startTime && (
+                  <Chip
+                    icon={<FontAwesomeIcon icon={faClock} size="xs" />}
+                    label={`${formatTime(favorite.show.startTime)}${
+                      favorite.show?.endTime ? ` - ${formatTime(favorite.show.endTime)}` : ''
+                    }`}
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+              </Stack>
+              
+              {favorite.show?.address && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <FontAwesomeIcon icon={faMapMarkerAlt} size="sm" color={theme.palette.text.secondary} />
+                  <Typography variant="body2" color="text.secondary">
+                    {favorite.show.address}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+            
+            <IconButton size="small" color="primary">
+              <FontAwesomeIcon icon={faArrowRight} />
+            </IconButton>
+          </Box>
+        </CardContent>
+      </CardActionArea>
+    </Card>
+  );
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
 
   return (
     <>
@@ -353,11 +419,11 @@ const DashboardPage: React.FC = observer(() => {
         <Box sx={{ py: 4 }}>
           {/* Welcome Header */}
           <Box sx={{ mb: 4 }}>
-            <Typography
-              variant="h3"
-              component="h1"
+            <Typography 
+              variant="h3" 
+              component="h1" 
               fontWeight={700}
-              sx={{
+              sx={{ 
                 background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
                 backgroundClip: 'text',
                 WebkitBackgroundClip: 'text',
@@ -412,32 +478,25 @@ const DashboardPage: React.FC = observer(() => {
               <StatCard
                 icon={faTrophy}
                 title="Subscription"
-                value={subscriptionStore.hasAdFreeAccess ? 'Active' : 'Free'}
-                subtitle={subscriptionStore.hasAdFreeAccess ? 'Ad-Free Plan' : 'Upgrade available'}
-                color={subscriptionStore.hasAdFreeAccess ? 'success' : 'secondary'}
+                value={subscriptionStore.hasAdFreeAccess ? "Active" : "Free"}
+                subtitle={subscriptionStore.hasAdFreeAccess ? "Ad-Free Plan" : "Upgrade available"}
+                color={subscriptionStore.hasAdFreeAccess ? "success" : "secondary"}
               />
             </Grid>
           </Grid>
 
           <Grid container spacing={4}>
-            {/* Main Content - Favorite Shows and Songs */}
+            {/* Main Content - Favorite Shows */}
             <Grid item xs={12} lg={8}>
-              <Card
-                sx={{
+              <Card 
+                sx={{ 
                   mb: 3,
                   background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
                   border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
                 }}
               >
                 <CardContent sx={{ p: 3 }}>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      mb: 3,
-                    }}
-                  >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       <Box
                         sx={{
@@ -453,56 +512,51 @@ const DashboardPage: React.FC = observer(() => {
                       </Box>
                       <Box>
                         <Typography variant="h5" component="h2" fontWeight={600}>
-                          Your Favorites
+                          Your Favorite Shows
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Shows and songs you've saved for easy access
+                          Shows you've saved for easy access
                         </Typography>
                       </Box>
                     </Box>
-
+                    
                     <Button
                       variant="outlined"
                       startIcon={<FontAwesomeIcon icon={faPlus} />}
                       onClick={() => navigate('/map')}
                       sx={{ borderRadius: '8px' }}
                     >
-                      Find More
+                      Find Shows
                     </Button>
                   </Box>
 
                   {!authStore.isAuthenticated ? (
-                    <Alert
-                      severity="info"
-                      sx={{
+                    <Alert 
+                      severity="info" 
+                      sx={{ 
                         borderRadius: '12px',
-                        '& .MuiAlert-message': { width: '100%' },
+                        '& .MuiAlert-message': { width: '100%' }
                       }}
                     >
                       <Typography variant="body1" fontWeight={500}>
-                        Please log in to view your favorites
+                        Please log in to view your favorite shows
                       </Typography>
                       <Typography variant="body2">
-                        Save your favorite karaoke venues and songs!
+                        Save your favorite karaoke venues and never miss a show!
                       </Typography>
                     </Alert>
                   ) : loading ? (
                     <Box sx={{ p: 4 }}>
                       {[...Array(3)].map((_, index) => (
                         <Box key={index} sx={{ mb: 2 }}>
-                          <Skeleton
-                            variant="rectangular"
-                            height={100}
-                            sx={{ borderRadius: '12px', mb: 1 }}
-                          />
+                          <Skeleton variant="rectangular" height={100} sx={{ borderRadius: '12px', mb: 1 }} />
                         </Box>
                       ))}
                     </Box>
-                  ) : favoriteStore.favorites.length === 0 &&
-                    songFavoriteStore.songFavorites.length === 0 ? (
-                    <Paper
-                      sx={{
-                        p: 4,
+                  ) : favoriteStore.favorites.length === 0 && songFavoriteStore.songFavorites.length === 0 ? (
+                    <Paper 
+                      sx={{ 
+                        p: 4, 
                         textAlign: 'center',
                         backgroundColor: alpha(theme.palette.primary.main, 0.02),
                         border: `2px dashed ${alpha(theme.palette.primary.main, 0.2)}`,
@@ -510,11 +564,7 @@ const DashboardPage: React.FC = observer(() => {
                       }}
                     >
                       <Box sx={{ mb: 2 }}>
-                        <FontAwesomeIcon
-                          icon={faMusic}
-                          size="3x"
-                          color={theme.palette.text.secondary}
-                        />
+                        <FontAwesomeIcon icon={faMusic} size="3x" color={theme.palette.text.secondary} />
                       </Box>
                       <Typography variant="h6" gutterBottom fontWeight={600}>
                         No favorites yet!
@@ -543,48 +593,41 @@ const DashboardPage: React.FC = observer(() => {
                     </Paper>
                   ) : (
                     <Box>
-                      <Tabs
-                        value={activeTab}
-                        onChange={handleTabChange}
+                      <Tabs 
+                        value={activeTab} 
+                        onChange={handleTabChange} 
                         sx={{ mb: 3 }}
                         variant="fullWidth"
                       >
-                        <Tab
-                          icon={<FontAwesomeIcon icon={faMicrophone} />}
-                          label={`Shows (${favoriteStore.favorites.length})`}
+                        <Tab 
+                          icon={<FontAwesomeIcon icon={faMicrophone} />} 
+                          label={`Shows (${favoriteStore.favorites.length})`} 
                         />
-                        <Tab
-                          icon={<FontAwesomeIcon icon={faMusic} />}
-                          label={`Songs (${songFavoriteStore.songFavorites.length})`}
+                        <Tab 
+                          icon={<FontAwesomeIcon icon={faMusic} />} 
+                          label={`Songs (${songFavoriteStore.songFavorites.length})`} 
                         />
                       </Tabs>
-
+                      
                       {activeTab === 0 && (
                         <Box>
                           {favoriteStore.favorites.length === 0 ? (
-                            <Typography
-                              variant="body1"
-                              color="text.secondary"
-                              textAlign="center"
-                              py={4}
-                            >
+                            <Typography variant="body1" color="text.secondary" textAlign="center" py={4}>
                               No favorite shows yet. Start by exploring venues near you!
                             </Typography>
                           ) : (
-                            favoriteStore.favorites
-                              .slice(0, 5)
-                              .map((favorite) => (
-                                <FavoriteShowCard key={favorite.id} favorite={favorite} />
-                              ))
+                            favoriteStore.favorites.slice(0, 5).map((favorite) => (
+                              <FavoriteShowCard key={favorite.id} favorite={favorite} />
+                            ))
                           )}
-
+                          
                           {favoriteStore.favorites.length > 5 && (
                             <Button
                               variant="outlined"
                               fullWidth
                               endIcon={<FontAwesomeIcon icon={faArrowRight} />}
-                              sx={{
-                                mt: 2,
+                              sx={{ 
+                                mt: 2, 
                                 borderRadius: '12px',
                                 py: 1.5,
                                 borderStyle: 'dashed',
@@ -595,36 +638,26 @@ const DashboardPage: React.FC = observer(() => {
                           )}
                         </Box>
                       )}
-
+                      
                       {activeTab === 1 && (
                         <Box>
                           {songFavoriteStore.songFavorites.length === 0 ? (
-                            <Typography
-                              variant="body1"
-                              color="text.secondary"
-                              textAlign="center"
-                              py={4}
-                            >
+                            <Typography variant="body1" color="text.secondary" textAlign="center" py={4}>
                               No favorite songs yet. Start building your music library!
                             </Typography>
                           ) : (
-                            songFavoriteStore.songFavorites
-                              .slice(0, 5)
-                              .map((songFavorite) => (
-                                <FavoriteSongCard
-                                  key={songFavorite.id}
-                                  songFavorite={songFavorite}
-                                />
-                              ))
+                            songFavoriteStore.songFavorites.slice(0, 5).map((songFavorite) => (
+                              <FavoriteSongCard key={songFavorite.id} songFavorite={songFavorite} />
+                            ))
                           )}
-
+                          
                           {songFavoriteStore.songFavorites.length > 5 && (
                             <Button
                               variant="outlined"
                               fullWidth
                               endIcon={<FontAwesomeIcon icon={faArrowRight} />}
-                              sx={{
-                                mt: 2,
+                              sx={{ 
+                                mt: 2, 
                                 borderRadius: '12px',
                                 py: 1.5,
                                 borderStyle: 'dashed',
@@ -656,7 +689,7 @@ const DashboardPage: React.FC = observer(() => {
                         fullWidth
                         startIcon={<FontAwesomeIcon icon={faMapMarkerAlt} />}
                         onClick={() => navigate('/map')}
-                        sx={{
+                        sx={{ 
                           borderRadius: '8px',
                           py: 1.5,
                           justifyContent: 'flex-start',
@@ -669,7 +702,7 @@ const DashboardPage: React.FC = observer(() => {
                         fullWidth
                         startIcon={<FontAwesomeIcon icon={faMusic} />}
                         onClick={() => navigate('/music')}
-                        sx={{
+                        sx={{ 
                           borderRadius: '8px',
                           py: 1.5,
                           justifyContent: 'flex-start',
@@ -681,7 +714,7 @@ const DashboardPage: React.FC = observer(() => {
                         variant="outlined"
                         fullWidth
                         startIcon={<FontAwesomeIcon icon={faUsers} />}
-                        sx={{
+                        sx={{ 
                           borderRadius: '8px',
                           py: 1.5,
                           justifyContent: 'flex-start',
@@ -708,28 +741,16 @@ const DashboardPage: React.FC = observer(() => {
                       <Box>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                           <Typography variant="body2">Shows Attended</Typography>
-                          <Typography variant="body2" fontWeight={600}>
-                            0
-                          </Typography>
+                          <Typography variant="body2" fontWeight={600}>0</Typography>
                         </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={0}
-                          sx={{ borderRadius: '4px' }}
-                        />
+                        <LinearProgress variant="determinate" value={0} sx={{ borderRadius: '4px' }} />
                       </Box>
                       <Box>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                           <Typography variant="body2">Songs Performed</Typography>
-                          <Typography variant="body2" fontWeight={600}>
-                            0
-                          </Typography>
+                          <Typography variant="body2" fontWeight={600}>0</Typography>
                         </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={0}
-                          sx={{ borderRadius: '4px' }}
-                        />
+                        <LinearProgress variant="determinate" value={0} sx={{ borderRadius: '4px' }} />
                       </Box>
                       <Divider />
                       <Typography variant="body2" color="text.secondary" textAlign="center">
@@ -740,8 +761,8 @@ const DashboardPage: React.FC = observer(() => {
                 </Card>
 
                 {/* Upcoming Features */}
-                <Card
-                  sx={{
+                <Card 
+                  sx={{ 
                     background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
                     border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
                   }}
@@ -758,7 +779,7 @@ const DashboardPage: React.FC = observer(() => {
                         🎵 Personal song recommendations
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        🏆 Karaoke achievements & badges
+                        🏆 Karaoke achievements & badges  
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         👥 Connect with fellow singers

@@ -325,6 +325,22 @@ VENUE WEBSITE/CONTACT EXTRACTION:
 - Look for "Visit [Venue Name]" or "[Venue Name] Website" type links
 - Check for venue contact info in event descriptions
 
+MULTIPLE DAYS HANDLING - CRITICAL:
+When you find a single entry that mentions multiple days, you MUST create separate show entries for each day.
+
+Examples:
+- "Wednesday, Friday & Sundays 9:30 - 1:30" → Create 3 separate shows (Wednesday, Friday, Sunday)
+- "Tuesdays and Thursdays 8-12" → Create 2 separate shows (Tuesday, Thursday)
+- "Monday through Friday 7pm" → Create 5 separate shows (Monday, Tuesday, Wednesday, Thursday, Friday)
+- "Weekends 9pm-1am" → Create 2 separate shows (Saturday, Sunday)
+
+DIFFERENT TIME HANDLING:
+If different days have different times in the same listing, create separate shows with correct times:
+- "Wednesday, Friday & Sundays 9:30 - 1:30 (till 2 on Fridays)" →
+  * Wednesday: 9:30-1:30
+  * Friday: 9:30-2:00 (note the different end time)
+  * Sunday: 9:30-1:30
+
 FILTERING RULES - EXCLUDE THESE SHOWS:
 - Shows marked as "CLOSED", "CANCELLED", "SUSPENDED", "TEMPORARILY CLOSED"
 - Events listed as "UNAVAILABLE", "NO LONGER AVAILABLE", "DISCONTINUED"
@@ -346,6 +362,7 @@ Look for:
 Be thorough - extract every karaoke-related event you find, even if incomplete.
 IMPORTANT: When you find a venue name, look for any associated website URL or phone number in the surrounding text or links.
 CRITICAL: Do NOT include shows that are marked as closed, cancelled, suspended, or unavailable in any way.
+CRITICAL: When a single text entry mentions multiple days, create separate show objects for EACH DAY mentioned.
 
 Return JSON in this exact format (no additional text or markdown):
 {
@@ -380,6 +397,30 @@ Return JSON in this exact format (no additional text or markdown):
       "confidence": 0.8
     }
   ]
+}
+
+EXAMPLE: If you find "O'Bryan's on Sancus - Wednesday, Friday & Sundays 9:30 - 1:30 (till 2 on Fridays) With KJ John"
+Create THREE separate show entries:
+{
+  "venue": "O'Bryan's on Sancus",
+  "day": "wednesday", 
+  "startTime": "21:30",
+  "endTime": "01:30",
+  "djName": "KJ John"
+},
+{
+  "venue": "O'Bryan's on Sancus",
+  "day": "friday",
+  "startTime": "21:30", 
+  "endTime": "02:00",
+  "djName": "KJ John"
+},
+{
+  "venue": "O'Bryan's on Sancus",
+  "day": "sunday",
+  "startTime": "21:30",
+  "endTime": "01:30", 
+  "djName": "KJ John"
 }
 
 IMPORTANT: 
