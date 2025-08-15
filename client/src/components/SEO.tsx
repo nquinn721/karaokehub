@@ -42,7 +42,7 @@ const defaultSEO: Required<SEOProps> = {
     'KJ',
   ],
   image: '/images/karaoke-hub-logo.png',
-  url: 'https://karaokehub.com',
+  url: 'https://karaoke-hub.com',
   type: 'website',
   siteName: 'KaraokeHub',
   structuredData: {},
@@ -117,16 +117,16 @@ export const seoConfigs = {
       'singing venues',
       'live karaoke',
     ],
-    url: 'https://karaokehub.com',
+    url: 'https://karaoke-hub.com',
     structuredData: {
       '@context': 'https://schema.org',
       '@type': 'WebSite',
       name: 'KaraokeHub',
-      url: 'https://karaokehub.com',
+      url: 'https://karaoke-hub.com',
       description: 'Find karaoke bars, venues, and singing spots near you',
       potentialAction: {
         '@type': 'SearchAction',
-        target: 'https://karaokehub.com/music?q={search_term_string}',
+        target: 'https://karaoke-hub.com/music?q={search_term_string}',
         'query-input': 'required name=search_term_string',
       },
     },
@@ -145,13 +145,13 @@ export const seoConfigs = {
       'karaoke hits',
       'singing songs',
     ],
-    url: 'https://karaokehub.com/music',
+    url: 'https://karaoke-hub.com/music',
     structuredData: {
       '@context': 'https://schema.org',
       '@type': 'MusicLibrary',
       name: 'KaraokeHub Song Library',
       description: 'Comprehensive karaoke song library with thousands of tracks',
-      url: 'https://karaokehub.com/music',
+      url: 'https://karaoke-hub.com/music',
     },
   },
 
@@ -168,7 +168,7 @@ export const seoConfigs = {
       'karaoke events',
       'open mic nights',
     ],
-    url: 'https://karaokehub.com/venues',
+    url: 'https://karaoke-hub.com/venues',
     structuredData: {
       '@context': 'https://schema.org',
       '@type': 'LocalBusiness',
@@ -188,7 +188,7 @@ export const seoConfigs = {
       'karaoke profile',
       'singing history',
     ],
-    url: 'https://karaokehub.com/dashboard',
+    url: 'https://karaoke-hub.com/dashboard',
   },
 };
 
@@ -204,7 +204,7 @@ export const generateLocationSEO = (city: string, state?: string, country = 'USA
     `nightlife ${city.toLowerCase()}`,
     'karaoke near me',
   ],
-  url: `https://karaokehub.com/venues/${city.toLowerCase().replace(/\s+/g, '-')}`,
+  url: `https://karaoke-hub.com/venues/${city.toLowerCase().replace(/\s+/g, '-')}`,
   structuredData: {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',

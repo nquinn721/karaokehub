@@ -9,7 +9,7 @@ interface SitemapUrl {
 }
 
 const generateSitemap = () => {
-  const baseUrl = 'https://karaokehub.com';
+  const baseUrl = 'https://karaoke-hub.com';
   const currentDate = new Date().toISOString().split('T')[0];
 
   const urls: SitemapUrl[] = [

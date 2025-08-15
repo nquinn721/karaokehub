@@ -18,6 +18,8 @@ export interface Show {
   djId: string;
   address: string;
   venue?: string; // The bar/restaurant name
+  venuePhone?: string; // Venue contact phone number
+  venueWebsite?: string; // Venue website URL
   day: DayOfWeek | string;
   startTime: string;
   endTime: string;

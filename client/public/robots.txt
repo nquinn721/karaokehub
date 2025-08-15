@@ -15,7 +15,7 @@ Disallow: /auth
 Disallow: /*?*
 
 # Sitemap location
-Sitemap: https://karaokehub.com/sitemap.xml
+Sitemap: https://karaoke-hub.com/sitemap.xml
 
 # Crawl delay to be respectful
 Crawl-delay: 1

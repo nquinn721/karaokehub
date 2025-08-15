@@ -5,7 +5,7 @@ import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
 import { KaraokeParserService } from './karaoke-parser.service';
 import { ParsedSchedule } from './parsed-schedule.entity';
-import { ParserController } from './parser.controller';
+import { ParserController } from './parser.controller.simple';
 import { UrlToParse } from './url-to-parse.entity';
 import { UrlToParseService } from './url-to-parse.service';
 

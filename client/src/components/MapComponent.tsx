@@ -3,11 +3,13 @@ import { PaywallModal } from '@components/PaywallModal';
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
   faClock,
+  faExternalLinkAlt,
   faHeart,
   faLocationDot,
   faMapMarkerAlt,
   faMicrophone,
   faMusic,
+  faPhone,
   faUser,
   faXmark,
 } from '@fortawesome/free-solid-svg-icons';
@@ -37,7 +39,7 @@ import {
 } from '@stores/index';
 import { APIProvider, InfoWindow, Map, Marker, useMap } from '@vis.gl/react-google-maps';
 import { observer } from 'mobx-react-lite';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 export const MapComponent: React.FC = observer(() => {
   const theme = useTheme();
@@ -53,6 +55,9 @@ export const MapComponent: React.FC = observer(() => {
     day: string;
     action: 'add' | 'remove';
   } | null>(null);
+
+  // Fullscreen state
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
 
   // Google Maps API key from server config
   const API_KEY = apiStore.googleMapsApiKey;
@@ -113,6 +118,18 @@ export const MapComponent: React.FC = observer(() => {
       executePendingAction();
     }
   }, [subscriptionStore.isSubscribed, pendingFavoriteAction]);
+
+  // Fullscreen detection
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsMapFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   // Favorite handling functions
   const handleFavorite = async (showId: string, day: string) => {
@@ -414,6 +431,64 @@ export const MapComponent: React.FC = observer(() => {
                   {formatTime(showStore.selectedShow.endTime)}
                 </Typography>
               </Box>
+              
+              {/* Contact Information */}
+              {showStore.selectedShow.venuePhone && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <FontAwesomeIcon
+                    icon={faPhone}
+                    style={{
+                      fontSize: '12px',
+                      color: theme.palette.success.main,
+                    }}
+                  />
+                  <Typography
+                    component="a"
+                    href={`tel:${showStore.selectedShow.venuePhone}`}
+                    variant="body2"
+                    sx={{
+                      color: theme.palette.text.primary,
+                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                      textDecoration: 'none',
+                      '&:hover': {
+                        color: theme.palette.success.main,
+                      },
+                    }}
+                  >
+                    {showStore.selectedShow.venuePhone}
+                  </Typography>
+                </Box>
+              )}
+              
+              {showStore.selectedShow.venueWebsite && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <FontAwesomeIcon
+                    icon={faExternalLinkAlt}
+                    style={{
+                      fontSize: '12px',
+                      color: theme.palette.info.main,
+                    }}
+                  />
+                  <Typography
+                    component="a"
+                    href={showStore.selectedShow.venueWebsite.startsWith('http') ? showStore.selectedShow.venueWebsite : `https://${showStore.selectedShow.venueWebsite}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="body2"
+                    sx={{
+                      color: theme.palette.info.main,
+                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                      textDecoration: 'none',
+                      '&:hover': {
+                        textDecoration: 'underline',
+                      },
+                    }}
+                  >
+                    Visit Website
+                  </Typography>
+                </Box>
+              )}
+              
               {showStore.selectedShow.description && (
                 <Typography
                   variant="body2"
@@ -760,6 +835,60 @@ export const MapComponent: React.FC = observer(() => {
                                         {show.address}
                                       </Typography>
                                     </Box>
+
+                                    {/* Contact info */}
+                                    {(show.venuePhone || show.venueWebsite) && (
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                                        {show.venuePhone && (
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <FontAwesomeIcon
+                                              icon={faPhone}
+                                              style={{
+                                                fontSize: '10px',
+                                                color: theme.palette.text.secondary,
+                                              }}
+                                            />
+                                            <Typography
+                                              variant="body2"
+                                              color="text.secondary"
+                                              sx={{
+                                                fontSize: { xs: '0.7rem', md: '0.75rem' },
+                                              }}
+                                            >
+                                              {show.venuePhone}
+                                            </Typography>
+                                          </Box>
+                                        )}
+                                        {show.venueWebsite && (
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <FontAwesomeIcon
+                                              icon={faExternalLinkAlt}
+                                              style={{
+                                                fontSize: '10px',
+                                                color: theme.palette.text.secondary,
+                                              }}
+                                            />
+                                            <Typography
+                                              component="a"
+                                              href={show.venueWebsite.startsWith('http') ? show.venueWebsite : `https://${show.venueWebsite}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              variant="body2"
+                                              sx={{
+                                                fontSize: { xs: '0.7rem', md: '0.75rem' },
+                                                color: theme.palette.primary.main,
+                                                textDecoration: 'none',
+                                                '&:hover': {
+                                                  textDecoration: 'underline',
+                                                },
+                                              }}
+                                            >
+                                              Website
+                                            </Typography>
+                                          </Box>
+                                        )}
+                                      </Box>
+                                    )}
                                   </Box>
 
                                   {/* Badges section */}
@@ -860,6 +989,244 @@ export const MapComponent: React.FC = observer(() => {
           </Card>
         </Box>
       </Box>
+
+      {/* Fullscreen Show List Overlay */}
+      {isMapFullscreen && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: { xs: '100%', sm: '400px' },
+            height: '100vh',
+            backgroundColor: theme.palette.background.paper,
+            boxShadow: theme.shadows[10],
+            zIndex: 1000,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            border: `1px solid ${theme.palette.divider}`,
+          }}
+        >
+          {/* Header */}
+          <Box
+            sx={{
+              p: 2,
+              borderBottom: `1px solid ${theme.palette.divider}`,
+              backgroundColor: theme.palette.primary.main,
+              color: theme.palette.primary.contrastText,
+            }}
+          >
+            <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
+              Shows for {showStore.selectedDay}
+            </Typography>
+            {showStore.isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+                <CircularProgress size={20} sx={{ color: 'inherit' }} />
+              </Box>
+            ) : (
+              <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.5 }}>
+                {showStore.showsForSelectedDay.length} show(s) found
+              </Typography>
+            )}
+          </Box>
+
+          {/* Show List */}
+          <Box
+            sx={{
+              flex: 1,
+              overflow: 'auto',
+              '&::-webkit-scrollbar': {
+                width: '6px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: theme.palette.action.hover,
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: theme.palette.primary.main,
+                borderRadius: '4px',
+                '&:hover': {
+                  background: theme.palette.primary.dark,
+                },
+              },
+            }}
+          >
+            {showStore.isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : showStore.showsForSelectedDay.length === 0 ? (
+              <Box sx={{ textAlign: 'center', p: 4 }}>
+                <Typography variant="body2" color="text.secondary">
+                  No shows found for {showStore.selectedDay}
+                </Typography>
+              </Box>
+            ) : (
+              <List sx={{ p: 1 }}>
+                {showStore.showsForSelectedDay.map((show, index) => (
+                  <React.Fragment key={show.id}>
+                    <ListItem sx={{ p: 0, mb: 1 }}>
+                      <ListItemButton
+                        onClick={() => handleShowClick(show)}
+                        selected={showStore.selectedShow?.id === show.id}
+                        sx={{
+                          p: 2,
+                          borderRadius: 2,
+                          border: `1px solid ${theme.palette.divider}`,
+                          backgroundColor: theme.palette.background.paper,
+                          '&:hover': {
+                            backgroundColor: theme.palette.action.hover,
+                            border: `1px solid ${theme.palette.primary.main}`,
+                          },
+                          '&.Mui-selected': {
+                            backgroundColor: theme.palette.primary.main + '15',
+                            border: `2px solid ${theme.palette.primary.main}`,
+                            '&:hover': {
+                              backgroundColor: theme.palette.primary.main + '20',
+                            },
+                          },
+                        }}
+                      >
+                        <Box sx={{ width: '100%' }}>
+                          {/* Venue name and time */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <FontAwesomeIcon
+                              icon={faMicrophone}
+                              style={{
+                                fontSize: '14px',
+                                color: theme.palette.primary.main,
+                              }}
+                            />
+                            <Typography
+                              variant="subtitle2"
+                              fontWeight={600}
+                              sx={{ flex: 1, fontSize: '0.9rem' }}
+                            >
+                              {show.venue || show.vendor?.name || 'Unknown Venue'}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                backgroundColor: theme.palette.primary.main + '15',
+                                border: `1px solid ${theme.palette.primary.main + '30'}`,
+                                borderRadius: 1,
+                                px: 1,
+                                py: 0.25,
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                color: theme.palette.primary.main,
+                              }}
+                            >
+                              {formatTime(show.startTime)} - {formatTime(show.endTime)}
+                            </Typography>
+                          </Box>
+
+                          {/* DJ info */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                            <FontAwesomeIcon
+                              icon={faUser}
+                              style={{
+                                fontSize: '10px',
+                                color: theme.palette.text.secondary,
+                              }}
+                            />
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                              {show.dj?.name || 'Unknown Host'}
+                            </Typography>
+                          </Box>
+
+                          {/* Address */}
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.5 }}>
+                            <FontAwesomeIcon
+                              icon={faMapMarkerAlt}
+                              style={{
+                                fontSize: '10px',
+                                color: theme.palette.text.secondary,
+                                marginTop: '2px',
+                              }}
+                            />
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ fontSize: '0.75rem', lineHeight: 1.3 }}
+                            >
+                              {show.address}
+                            </Typography>
+                          </Box>
+
+                          {/* Contact info */}
+                          {(show.venuePhone || show.venueWebsite) && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3, mt: 0.5 }}>
+                              {show.venuePhone && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <FontAwesomeIcon
+                                    icon={faPhone}
+                                    style={{
+                                      fontSize: '9px',
+                                      color: theme.palette.success.main,
+                                    }}
+                                  />
+                                  <Typography
+                                    component="a"
+                                    href={`tel:${show.venuePhone}`}
+                                    variant="body2"
+                                    sx={{
+                                      fontSize: '0.7rem',
+                                      color: theme.palette.success.main,
+                                      textDecoration: 'none',
+                                      '&:hover': {
+                                        textDecoration: 'underline',
+                                      },
+                                    }}
+                                  >
+                                    {show.venuePhone}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {show.venueWebsite && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <FontAwesomeIcon
+                                    icon={faExternalLinkAlt}
+                                    style={{
+                                      fontSize: '9px',
+                                      color: theme.palette.info.main,
+                                    }}
+                                  />
+                                  <Typography
+                                    component="a"
+                                    href={show.venueWebsite.startsWith('http') ? show.venueWebsite : `https://${show.venueWebsite}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    variant="body2"
+                                    sx={{
+                                      fontSize: '0.7rem',
+                                      color: theme.palette.info.main,
+                                      textDecoration: 'none',
+                                      '&:hover': {
+                                        textDecoration: 'underline',
+                                      },
+                                    }}
+                                  >
+                                    Website
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          )}
+                        </Box>
+                      </ListItemButton>
+                    </ListItem>
+                    {index < showStore.showsForSelectedDay.length - 1 && (
+                      <Divider sx={{ my: 0.5, mx: 1 }} />
+                    )}
+                  </React.Fragment>
+                ))}
+              </List>
+            )}
+          </Box>
+        </Box>
+      )}
 
       {/* Paywall Modal */}
       <PaywallModal open={showPaywall} onClose={handlePaywallClose} feature={paywallFeature} />

@@ -72,6 +72,10 @@ export class KaraokeParserService {
 
       // Extract clean text content using Puppeteer
       const textContent = await this.extractTextContentWithPuppeteer(url);
+      
+      // Log content preview for debugging
+      this.logger.debug(`Content preview (first 500 chars): ${textContent.substring(0, 500)}...`);
+      this.logger.log(`Extracted content length: ${textContent.length} characters`);
 
       // Parse with Gemini AI using the clean text
       const result = await this.parseWithGemini(textContent, url);
@@ -259,6 +263,13 @@ export class KaraokeParserService {
 
       const prompt = `You are parsing text content extracted from a karaoke business website. Extract ALL karaoke shows, events, and schedule information in JSON format.
 
+VENDOR DETECTION PRIORITY:
+- Look for business names in titles, headers, contact information
+- Check for "DJ" services or "Entertainment" companies  
+- Extract from domain names when business names aren't clear (e.g., "stevesdj.com" = "Steve's DJ")
+- Look for "About", "Contact", "Owner" sections
+- Company names in copyright notices or footers
+
 Look for:
 1. Business/venue name and details (including owner/contact information)
 2. ALL karaoke events, shows, nights, or scheduled performances
@@ -274,7 +285,7 @@ Be thorough - extract every karaoke-related event you find, even if incomplete.
 Return JSON in this exact format (no additional text or markdown):
 {
   "vendor": {
-    "name": "Business Name",
+    "name": "Business Name (if unclear, derive from URL like 'stevesdj.com' = 'Steve's DJ')",
     "owner": "Owner/Contact Name or Business Name",
     "website": "${url}",
     "description": "Brief description", 
@@ -314,7 +325,9 @@ IMPORTANT:
 - Use high confidence for clearly stated information
 - If no shows found, use empty arrays
 - Focus on karaoke-specific events
+- ALWAYS provide a vendor name, even if derived from the URL domain
 
+Website URL: ${url}
 Website Text Content:
 ${textContent}`;
 
@@ -369,13 +382,16 @@ ${textContent}`;
       const parsedData = JSON.parse(jsonMatch[0]);
       this.logger.debug(`Parsed JSON data:`, parsedData);
 
+      // Log vendor detection for debugging
+      if (!parsedData.vendor || !parsedData.vendor.name || parsedData.vendor.name === 'Unknown Business') {
+        this.logger.warn(`Vendor not detected from AI, falling back to URL-based generation for ${url}`);
+      } else {
+        this.logger.log(`Vendor detected: ${parsedData.vendor.name} (confidence: ${parsedData.vendor.confidence})`);
+      }
+
       // Ensure required structure with defaults
       const finalData: ParsedKaraokeData = {
-        vendor: parsedData.vendor || {
-          name: 'Unknown Business',
-          website: url,
-          confidence: 0.1,
-        },
+        vendor: parsedData.vendor || this.generateVendorFromUrl(url),
         djs: Array.isArray(parsedData.djs) ? parsedData.djs : [],
         shows: Array.isArray(parsedData.shows) ? parsedData.shows : [],
         rawData: {
@@ -400,6 +416,41 @@ ${textContent}`;
     // Extract a reasonable title from the first part of the content
     const firstLine = content.split('\n')[0] || content.split('.')[0];
     return firstLine.trim().substring(0, 100) || 'Unknown Title';
+  }
+
+  private generateVendorFromUrl(url: string): any {
+    try {
+      const urlObj = new URL(url);
+      const domain = urlObj.hostname.replace('www.', '');
+      
+      // Extract business name from domain
+      let businessName = 'Unknown Business';
+      
+      if (domain.includes('stevesdj.com')) {
+        businessName = "Steve's DJ Services";
+      } else if (domain.includes('dj')) {
+        // Generic DJ domain
+        const domainParts = domain.split('.')[0];
+        businessName = domainParts.charAt(0).toUpperCase() + domainParts.slice(1) + ' DJ Services';
+      } else {
+        // Try to extract from domain name
+        const domainParts = domain.split('.')[0];
+        businessName = domainParts.charAt(0).toUpperCase() + domainParts.slice(1);
+      }
+
+      return {
+        name: businessName,
+        website: url,
+        description: `Karaoke and entertainment services from ${domain}`,
+        confidence: 0.3, // Lower confidence since it's derived from URL
+      };
+    } catch (error) {
+      return {
+        name: 'Unknown Business',
+        website: url,
+        confidence: 0.1,
+      };
+    }
   }
 
   // Save parsed data directly to database for admin review
@@ -633,6 +684,46 @@ ${textContent}`;
       },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async approveAllItems(parsedScheduleId: string): Promise<any> {
+    const parsedSchedule = await this.parsedScheduleRepository.findOne({
+      where: { id: parsedScheduleId },
+    });
+
+    if (!parsedSchedule) {
+      throw new Error('Parsed schedule not found');
+    }
+
+    const aiAnalysis = parsedSchedule.aiAnalysis;
+    if (!aiAnalysis) {
+      throw new Error('No AI analysis data found for this schedule');
+    }
+
+    // Use the existing approveAndSaveParsedData method with all data
+    const result = await this.approveAndSaveParsedData(parsedScheduleId, aiAnalysis);
+
+    this.logger.log(`Approved all items for parsed schedule ${parsedScheduleId}`);
+    return result;
+  }
+
+  async rejectSchedule(parsedScheduleId: string, reason?: string): Promise<void> {
+    const parsedSchedule = await this.parsedScheduleRepository.findOne({
+      where: { id: parsedScheduleId },
+    });
+
+    if (!parsedSchedule) {
+      throw new Error('Parsed schedule not found');
+    }
+
+    parsedSchedule.status = ParseStatus.REJECTED;
+    parsedSchedule.rejectionReason = reason || 'Rejected by admin';
+    parsedSchedule.updatedAt = new Date();
+
+    await this.parsedScheduleRepository.save(parsedSchedule);
+    this.logger.log(
+      `Rejected parsed schedule ${parsedScheduleId}: ${reason || 'No reason provided'}`,
+    );
   }
 
   async cleanupInvalidPendingReviews(): Promise<number> {

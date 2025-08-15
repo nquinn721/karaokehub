@@ -572,6 +572,34 @@ const ParserReviewPage: React.FC = observer(() => {
                                 size="small"
                               />
                             </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <TextField
+                                label="Venue Phone"
+                                value={show.venuePhone || ''}
+                                onChange={(e) => {
+                                  const newShows = [...editedData.shows];
+                                  newShows[index] = { ...newShows[index], venuePhone: e.target.value };
+                                  setEditedData({ ...editedData, shows: newShows });
+                                }}
+                                fullWidth
+                                size="small"
+                                placeholder="(555) 123-4567"
+                              />
+                            </Grid>
+                            <Grid item xs={12}>
+                              <TextField
+                                label="Venue Website"
+                                value={show.venueWebsite || ''}
+                                onChange={(e) => {
+                                  const newShows = [...editedData.shows];
+                                  newShows[index] = { ...newShows[index], venueWebsite: e.target.value };
+                                  setEditedData({ ...editedData, shows: newShows });
+                                }}
+                                fullWidth
+                                size="small"
+                                placeholder="https://venue-website.com"
+                              />
+                            </Grid>
                             <Grid item xs={12}>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Typography variant="caption">Confidence:</Typography>

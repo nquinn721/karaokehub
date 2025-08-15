@@ -237,17 +237,34 @@ export class ParserStore {
     return this.pendingReviews.find((item) => item.id === id);
   }
 
-  // Approve selected items (stub implementation)
+  // Approve selected items
   async approveSelectedItems(
     reviewId: string,
-    selectedItems: any,
+    _selectedItems: any, // Currently not used, approves all data
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // TODO: Implement actual approval logic
-      console.log('Approving selected items:', reviewId, selectedItems);
+      this.setLoading(true);
+      
+      // Get the review data
+      const review = this.getPendingReviewById(reviewId);
+      if (!review) {
+        return { success: false, error: 'Review not found' };
+      }
+
+      // Use the approve-schedule endpoint with the modified data
+      await apiStore.post(`/parser/approve-schedule/${reviewId}`, { 
+        approvedData: review.aiAnalysis 
+      });
+
+      // Refresh pending reviews
+      await this.fetchPendingReviews();
+
       return { success: true };
-    } catch (error) {
-      return { success: false, error: 'Approval failed' };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to approve selected items';
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
     }
   }
 
@@ -256,16 +273,8 @@ export class ParserStore {
     try {
       this.setLoading(true);
 
-      // Get the review data
-      const review = this.getPendingReviewById(reviewId);
-      if (!review) {
-        return { success: false, error: 'Review not found' };
-      }
-
-      // Approve the parsed data with the AI analysis data
-      await apiStore.post(`/parser/approve-parsed-data/${reviewId}`, {
-        data: review.aiAnalysis,
-      });
+      // Use the new approve-all endpoint
+      await apiStore.post(`/parser/approve-all/${reviewId}`);
 
       // Refresh pending reviews
       await this.fetchPendingReviews();
@@ -286,7 +295,7 @@ export class ParserStore {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       this.setLoading(true);
-      await apiStore.post(`/parser/reject-parsed-data/${reviewId}`, { reason });
+      await apiStore.post(`/parser/reject-schedule/${reviewId}`, { reason });
 
       // Refresh pending reviews
       await this.fetchPendingReviews();
