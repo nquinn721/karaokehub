@@ -338,41 +338,46 @@ export const MapComponent: React.FC = observer(() => {
                 </Typography>
 
                 {/* Favorite button next to title */}
-                {authStore.isAuthenticated && showStore.selectedShow && (
-                  <IconButton
-                    size="small"
-                    onClick={() => {
-                      const selectedShow = showStore.selectedShow;
-                      if (!selectedShow) return;
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    const selectedShow = showStore.selectedShow;
+                    if (!selectedShow) return;
 
-                      const isFav = favoriteStore.isFavorite(selectedShow.id);
-                      if (isFav) {
-                        handleUnfavorite(selectedShow.id, showStore.selectedDay);
-                      } else {
-                        handleFavorite(selectedShow.id, showStore.selectedDay);
-                      }
-                    }}
-                    sx={{
-                      color: favoriteStore.isFavorite(showStore.selectedShow.id)
-                        ? theme.palette.error.main
-                        : theme.palette.text.secondary,
-                      '&:hover': {
-                        color: theme.palette.error.main,
-                        backgroundColor: theme.palette.error.main + '10',
-                      },
-                      p: 0.5,
-                    }}
-                  >
-                    <FontAwesomeIcon
-                      icon={
-                        favoriteStore.isFavorite(showStore.selectedShow.id)
-                          ? faHeart
-                          : faHeartRegular
-                      }
-                      style={{ fontSize: '14px' }}
-                    />
-                  </IconButton>
-                )}
+                    if (!authStore.isAuthenticated) {
+                      // TODO: Show login modal or redirect to login
+                      console.log('User needs to login to favorite shows');
+                      return;
+                    }
+
+                    const isFav = favoriteStore.isFavorite(selectedShow.id);
+                    if (isFav) {
+                      handleUnfavorite(selectedShow.id, showStore.selectedDay);
+                    } else {
+                      handleFavorite(selectedShow.id, showStore.selectedDay);
+                    }
+                  }}
+                  sx={{
+                    color: authStore.isAuthenticated && favoriteStore.isFavorite(showStore.selectedShow.id)
+                      ? theme.palette.error.main
+                      : theme.palette.text.secondary,
+                    '&:hover': {
+                      color: theme.palette.error.main,
+                      backgroundColor: theme.palette.error.main + '10',
+                    },
+                    p: 0.5,
+                    opacity: authStore.isAuthenticated ? 1 : 0.6,
+                  }}
+                >
+                  <FontAwesomeIcon
+                    icon={
+                      authStore.isAuthenticated && favoriteStore.isFavorite(showStore.selectedShow.id)
+                        ? faHeart
+                        : faHeartRegular
+                    }
+                    style={{ fontSize: '14px' }}
+                  />
+                </IconButton>
               </Box>
               {showStore.selectedShow.venue && showStore.selectedShow.vendor?.name && (
                 <Typography
@@ -955,38 +960,46 @@ export const MapComponent: React.FC = observer(() => {
                                 </Box>
 
                                 {/* Favorite button */}
-                                {authStore.isAuthenticated && (
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const isFav = favoriteStore.isFavorite(show.id);
-                                      if (isFav) {
-                                        handleUnfavorite(show.id, showStore.selectedDay);
-                                      } else {
-                                        handleFavorite(show.id, showStore.selectedDay);
-                                      }
-                                    }}
-                                    sx={{
-                                      color: favoriteStore.isFavorite(show.id)
-                                        ? theme.palette.error.main
-                                        : theme.palette.text.disabled,
-                                      width: { xs: '36px', md: '40px' },
-                                      height: { xs: '36px', md: '40px' },
-                                      '&:hover': {
-                                        color: theme.palette.error.main,
-                                        backgroundColor: theme.palette.error.main + '10',
-                                      },
-                                    }}
-                                  >
-                                    <FontAwesomeIcon
-                                      icon={
-                                        favoriteStore.isFavorite(show.id) ? faHeart : faHeartRegular
-                                      }
-                                      style={{ fontSize: '16px' }}
-                                    />
-                                  </IconButton>
-                                )}
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    
+                                    if (!authStore.isAuthenticated) {
+                                      // TODO: Show login modal or redirect to login
+                                      console.log('User needs to login to favorite shows');
+                                      return;
+                                    }
+
+                                    const isFav = favoriteStore.isFavorite(show.id);
+                                    if (isFav) {
+                                      handleUnfavorite(show.id, showStore.selectedDay);
+                                    } else {
+                                      handleFavorite(show.id, showStore.selectedDay);
+                                    }
+                                  }}
+                                  sx={{
+                                    color: authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
+                                      ? theme.palette.error.main
+                                      : theme.palette.text.disabled,
+                                    width: { xs: '36px', md: '40px' },
+                                    height: { xs: '36px', md: '40px' },
+                                    opacity: authStore.isAuthenticated ? 1 : 0.6,
+                                    '&:hover': {
+                                      color: theme.palette.error.main,
+                                      backgroundColor: theme.palette.error.main + '10',
+                                    },
+                                  }}
+                                >
+                                  <FontAwesomeIcon
+                                    icon={
+                                      authStore.isAuthenticated && favoriteStore.isFavorite(show.id) 
+                                        ? faHeart 
+                                        : faHeartRegular
+                                    }
+                                    style={{ fontSize: '16px' }}
+                                  />
+                                </IconButton>
                               </Box>
                             </Box>
                           </ListItemButton>
@@ -1136,38 +1149,46 @@ export const MapComponent: React.FC = observer(() => {
                             </Typography>
 
                             {/* Favorite button */}
-                            {authStore.isAuthenticated && (
-                              <IconButton
-                                size="small"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const isFav = favoriteStore.isFavorite(show.id);
-                                  if (isFav) {
-                                    handleUnfavorite(show.id, showStore.selectedDay);
-                                  } else {
-                                    handleFavorite(show.id, showStore.selectedDay);
-                                  }
-                                }}
-                                sx={{
-                                  color: favoriteStore.isFavorite(show.id)
-                                    ? theme.palette.error.main
-                                    : theme.palette.text.disabled,
-                                  width: '32px',
-                                  height: '32px',
-                                  '&:hover': {
-                                    color: theme.palette.error.main,
-                                    backgroundColor: theme.palette.error.main + '10',
-                                  },
-                                }}
-                              >
-                                <FontAwesomeIcon
-                                  icon={
-                                    favoriteStore.isFavorite(show.id) ? faHeart : faHeartRegular
-                                  }
-                                  style={{ fontSize: '14px' }}
-                                />
-                              </IconButton>
-                            )}
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                
+                                if (!authStore.isAuthenticated) {
+                                  // TODO: Show login modal or redirect to login
+                                  console.log('User needs to login to favorite shows');
+                                  return;
+                                }
+
+                                const isFav = favoriteStore.isFavorite(show.id);
+                                if (isFav) {
+                                  handleUnfavorite(show.id, showStore.selectedDay);
+                                } else {
+                                  handleFavorite(show.id, showStore.selectedDay);
+                                }
+                              }}
+                              sx={{
+                                color: authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
+                                  ? theme.palette.error.main
+                                  : theme.palette.text.disabled,
+                                width: '32px',
+                                height: '32px',
+                                opacity: authStore.isAuthenticated ? 1 : 0.6,
+                                '&:hover': {
+                                  color: theme.palette.error.main,
+                                  backgroundColor: theme.palette.error.main + '10',
+                                },
+                              }}
+                            >
+                              <FontAwesomeIcon
+                                icon={
+                                  authStore.isAuthenticated && favoriteStore.isFavorite(show.id) 
+                                    ? faHeart 
+                                    : faHeartRegular
+                                }
+                                style={{ fontSize: '14px' }}
+                              />
+                            </IconButton>
                           </Box>
 
                           {/* DJ info */}
