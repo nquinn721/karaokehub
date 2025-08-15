@@ -3,8 +3,8 @@ import {
   faCheck,
   faCrown,
   faHeart,
+  faPlay,
   faTimes,
-  faUserPlus,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -30,7 +30,7 @@ import React, { useState } from 'react';
 interface PaywallModalProps {
   open: boolean;
   onClose: () => void;
-  feature: 'favorites' | 'friends' | 'ad_removal';
+  feature: 'favorites' | 'ad_removal' | 'music_preview';
   featureDescription?: string;
 }
 
@@ -73,10 +73,10 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
     switch (feature.toLowerCase()) {
       case 'favorites':
         return faHeart;
-      case 'friends':
-        return faUserPlus;
       case 'ad_removal':
         return faAd;
+      case 'music_preview':
+        return faPlay;
       default:
         return faCrown;
     }
@@ -86,10 +86,10 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
     switch (feature) {
       case 'favorites':
         return 'Favorite Songs & Shows';
-      case 'friends':
-        return 'Add Friends';
       case 'ad_removal':
         return 'Remove Advertisements';
+      case 'music_preview':
+        return 'Play Song Clips';
       default:
         return 'Premium Feature';
     }
@@ -99,10 +99,10 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
     switch (feature) {
       case 'favorites':
         return 'Save your favorite songs and shows to easily find them later. Premium subscription required.';
-      case 'friends':
-        return 'Connect with other karaoke enthusiasts and share your favorite songs. Premium subscription required.';
       case 'ad_removal':
         return 'Enjoy a clean, ad-free experience while browsing karaoke content.';
+      case 'music_preview':
+        return 'Listen to 30-second previews of songs before you sing them. Premium subscription required.';
       default:
         return 'This feature requires a premium subscription to access.';
     }

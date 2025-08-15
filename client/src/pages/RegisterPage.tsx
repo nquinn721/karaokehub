@@ -5,10 +5,12 @@ import { Box, Button, Container, Divider, Link, Paper, TextField, Typography } f
 import { authStore, uiStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const RegisterPage: React.FC = observer(() => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectPath = searchParams.get('redirect') || '/dashboard';
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -75,7 +77,7 @@ const RegisterPage: React.FC = observer(() => {
 
     if (result.success) {
       uiStore.addNotification('Welcome to KaraokeHub!', 'success');
-      navigate('/dashboard');
+      navigate(redirectPath);
     } else {
       uiStore.addNotification(result.error || 'Registration failed', 'error');
     }
@@ -186,7 +188,7 @@ const RegisterPage: React.FC = observer(() => {
               <Link
                 component="button"
                 variant="body2"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate(`/login?redirect=${encodeURIComponent(redirectPath)}`)}
                 sx={{ textDecoration: 'none' }}
               >
                 Already have an account? Sign In

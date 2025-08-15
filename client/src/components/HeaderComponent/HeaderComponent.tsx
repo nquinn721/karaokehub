@@ -102,14 +102,14 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               theme.palette.mode === 'light'
                 ? theme.palette.primary.contrastText // White text on solid primary
                 : theme.palette.text.primary, // Current dark mode text
-            height: { xs: '70px', md: '80px' }, // Responsive header height
+            height: { xs: '60px', md: '80px' }, // Reduced mobile header height so logo extends below
             zIndex: theme.zIndex.appBar,
           }}
         >
           <Toolbar
             sx={{
               height: '100%',
-              minHeight: { xs: '70px !important', md: '80px !important' },
+              minHeight: { xs: '60px !important', md: '80px !important' }, // Reduced mobile toolbar height
             }}
           >
             {showMenuButton && (
@@ -134,14 +134,15 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   alt="KaraokeHub Logo"
                   sx={{
                     // Responsive logo sizing - made mobile logo bigger
-                    width: { xs: '90px', sm: '100px', md: '120px', lg: '170px' },
-                    height: { xs: '90px', sm: '100px', md: '120px', lg: '170px' },
+                    width: { xs: '100px', sm: '100px', md: '120px', lg: '170px' },
+                    height: { xs: '100px', sm: '100px', md: '120px', lg: '170px' },
                     transform: {
-                      xs: 'translateY(0px)',
+                      xs: 'translateY(0px)', // No vertical translation
                       sm: 'translateY(5px)',
                       md: 'translateY(15px)',
                       lg: 'translateY(35px)',
                     },
+                    marginTop: { xs: '40px', sm: 0, md: 0, lg: 0 }, // Add margin-top for mobile
                     transition: 'all 0.3s ease-in-out',
                   }}
                 />

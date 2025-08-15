@@ -1,4 +1,5 @@
 import { DayOfWeek, DayPicker } from '@components/DayPicker';
+import { LocalSubscriptionModal } from '@components/LocalSubscriptionModal';
 import { PaywallModal } from '@components/PaywallModal';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
@@ -53,9 +54,10 @@ export const MapComponent: React.FC = observer(() => {
 
   // Paywall state
   const [showPaywall, setShowPaywall] = useState(false);
-  const [paywallFeature, setPaywallFeature] = useState<'favorites' | 'friends' | 'ad_removal'>(
-    'favorites',
-  );
+  const [showLocalSubscription, setShowLocalSubscription] = useState(false);
+  const [paywallFeature, setPaywallFeature] = useState<
+    'favorites' | 'ad_removal' | 'music_preview'
+  >('favorites');
   const [pendingFavoriteAction, setPendingFavoriteAction] = useState<{
     showId: string;
     day: string;
@@ -143,8 +145,9 @@ export const MapComponent: React.FC = observer(() => {
   // Favorite handling functions
   const handleFavorite = async (showId: string, day: string) => {
     if (!authStore.isAuthenticated) {
-      // Show login modal for unauthenticated users
-      setLoginModalOpen(true);
+      // Show local subscription modal for unauthenticated users
+      setPaywallFeature('favorites');
+      setShowLocalSubscription(true);
       return;
     }
 
@@ -165,8 +168,9 @@ export const MapComponent: React.FC = observer(() => {
 
   const handleUnfavorite = async (showId: string, day: string) => {
     if (!authStore.isAuthenticated) {
-      // Show login modal for unauthenticated users
-      setLoginModalOpen(true);
+      // Show local subscription modal for unauthenticated users
+      setPaywallFeature('favorites');
+      setShowLocalSubscription(true);
       return;
     }
 
@@ -355,7 +359,8 @@ export const MapComponent: React.FC = observer(() => {
                     const selectedShow = showStore.selectedShow;
                     if (!selectedShow) return;
 
-                    const isFav = authStore.isAuthenticated && favoriteStore.isFavorite(selectedShow.id);
+                    const isFav =
+                      authStore.isAuthenticated && favoriteStore.isFavorite(selectedShow.id);
                     if (isFav) {
                       handleUnfavorite(selectedShow.id, showStore.selectedDay);
                     } else {
@@ -363,9 +368,11 @@ export const MapComponent: React.FC = observer(() => {
                     }
                   }}
                   sx={{
-                    color: authStore.isAuthenticated && favoriteStore.isFavorite(showStore.selectedShow.id)
-                      ? theme.palette.error.main
-                      : theme.palette.text.secondary,
+                    color:
+                      authStore.isAuthenticated &&
+                      favoriteStore.isFavorite(showStore.selectedShow.id)
+                        ? theme.palette.error.main
+                        : theme.palette.text.secondary,
                     '&:hover': {
                       color: theme.palette.error.main,
                       backgroundColor: theme.palette.error.main + '10',
@@ -376,7 +383,8 @@ export const MapComponent: React.FC = observer(() => {
                 >
                   <FontAwesomeIcon
                     icon={
-                      authStore.isAuthenticated && favoriteStore.isFavorite(showStore.selectedShow.id)
+                      authStore.isAuthenticated &&
+                      favoriteStore.isFavorite(showStore.selectedShow.id)
                         ? faHeart
                         : faHeartRegular
                     }
@@ -969,8 +977,10 @@ export const MapComponent: React.FC = observer(() => {
                                   size="small"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    
-                                    const isFav = authStore.isAuthenticated && favoriteStore.isFavorite(show.id);
+
+                                    const isFav =
+                                      authStore.isAuthenticated &&
+                                      favoriteStore.isFavorite(show.id);
                                     if (isFav) {
                                       handleUnfavorite(show.id, showStore.selectedDay);
                                     } else {
@@ -978,9 +988,10 @@ export const MapComponent: React.FC = observer(() => {
                                     }
                                   }}
                                   sx={{
-                                    color: authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
-                                      ? theme.palette.error.main
-                                      : theme.palette.text.disabled,
+                                    color:
+                                      authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
+                                        ? theme.palette.error.main
+                                        : theme.palette.text.disabled,
                                     width: { xs: '36px', md: '40px' },
                                     height: { xs: '36px', md: '40px' },
                                     opacity: authStore.isAuthenticated ? 1 : 0.6,
@@ -992,8 +1003,8 @@ export const MapComponent: React.FC = observer(() => {
                                 >
                                   <FontAwesomeIcon
                                     icon={
-                                      authStore.isAuthenticated && favoriteStore.isFavorite(show.id) 
-                                        ? faHeart 
+                                      authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
+                                        ? faHeart
                                         : faHeartRegular
                                     }
                                     style={{ fontSize: '16px' }}
@@ -1152,8 +1163,9 @@ export const MapComponent: React.FC = observer(() => {
                               size="small"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                
-                                const isFav = authStore.isAuthenticated && favoriteStore.isFavorite(show.id);
+
+                                const isFav =
+                                  authStore.isAuthenticated && favoriteStore.isFavorite(show.id);
                                 if (isFav) {
                                   handleUnfavorite(show.id, showStore.selectedDay);
                                 } else {
@@ -1161,9 +1173,10 @@ export const MapComponent: React.FC = observer(() => {
                                 }
                               }}
                               sx={{
-                                color: authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
-                                  ? theme.palette.error.main
-                                  : theme.palette.text.disabled,
+                                color:
+                                  authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
+                                    ? theme.palette.error.main
+                                    : theme.palette.text.disabled,
                                 width: '32px',
                                 height: '32px',
                                 opacity: authStore.isAuthenticated ? 1 : 0.6,
@@ -1175,8 +1188,8 @@ export const MapComponent: React.FC = observer(() => {
                             >
                               <FontAwesomeIcon
                                 icon={
-                                  authStore.isAuthenticated && favoriteStore.isFavorite(show.id) 
-                                    ? faHeart 
+                                  authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
+                                    ? faHeart
                                     : faHeartRegular
                                 }
                                 style={{ fontSize: '14px' }}
@@ -1305,9 +1318,16 @@ export const MapComponent: React.FC = observer(() => {
       {/* Paywall Modal */}
       <PaywallModal open={showPaywall} onClose={handlePaywallClose} feature={paywallFeature} />
 
+      {/* Local Subscription Modal (for non-authenticated users) */}
+      <LocalSubscriptionModal
+        open={showLocalSubscription}
+        onClose={() => setShowLocalSubscription(false)}
+        feature={paywallFeature}
+      />
+
       {/* Login Required Modal */}
-      <Dialog 
-        open={loginModalOpen} 
+      <Dialog
+        open={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
         maxWidth="sm"
         fullWidth
@@ -1338,16 +1358,16 @@ export const MapComponent: React.FC = observer(() => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3, gap: 2 }}>
-          <Button 
-            onClick={() => setLoginModalOpen(false)}
-            variant="outlined"
-          >
+          <Button onClick={() => setLoginModalOpen(false)} variant="outlined">
             Cancel
           </Button>
           <Button
             onClick={() => {
               setLoginModalOpen(false);
-              window.open(`${process.env.VITE_API_URL || 'http://localhost:3001'}/auth/google`, '_self');
+              window.open(
+                `${apiStore.environmentInfo.baseURL.replace('/api', '')}/auth/google`,
+                '_self',
+              );
             }}
             variant="contained"
             startIcon={<FontAwesomeIcon icon={faGoogle} />}

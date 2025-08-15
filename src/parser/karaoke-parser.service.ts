@@ -167,8 +167,8 @@ export class KaraokeParserService {
       // Wait a bit more for any dynamic content to load
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Extract clean text content
-      const textContent = await page.evaluate(() => {
+      // Extract clean text content and links
+      const extractedData = await page.evaluate(() => {
         // Remove script and style elements
         const scripts = document.querySelectorAll('script, style, noscript');
         scripts.forEach((el) => el.remove());
@@ -200,22 +200,69 @@ export class KaraokeParserService {
           }
         }
 
-        // Join with spaces and clean up
-        return textNodes
+        // Extract links with their text
+        const links = Array.from(document.querySelectorAll('a[href]'))
+          .map((a) => {
+            const href = a.getAttribute('href');
+            const text = a.textContent?.trim();
+
+            // Convert relative URLs to absolute URLs
+            let fullUrl = href;
+            if (
+              href &&
+              !href.startsWith('http') &&
+              !href.startsWith('mailto:') &&
+              !href.startsWith('tel:')
+            ) {
+              try {
+                fullUrl = new URL(href, window.location.href).href;
+              } catch (e) {
+                fullUrl = href; // Keep original if URL parsing fails
+              }
+            }
+
+            return {
+              text: text || '',
+              href: fullUrl || '',
+              original: href || '',
+            };
+          })
+          .filter((link) => link.text && link.href && link.href.length > 0)
+          .slice(0, 50); // Limit to first 50 links to avoid overwhelming the AI
+
+        // Join text with spaces and clean up
+        const textContent = textNodes
           .join(' ')
           .replace(/\s+/g, ' ') // Replace multiple spaces with single space
           .trim();
+
+        return {
+          textContent,
+          links,
+        };
       });
 
+      const { textContent, links } = extractedData;
+
       this.logger.log(
-        `Successfully extracted ${textContent.length} characters of text from ${url}`,
+        `Successfully extracted ${textContent.length} characters of text and ${links.length} links from ${url}`,
       );
 
       if (!textContent || textContent.length < 50) {
         throw new Error('No meaningful text content found on the page');
       }
 
-      return textContent;
+      // Format links for AI
+      const linkInfo = links.map((link) => `"${link.text}" -> ${link.href}`).join('\n');
+
+      // Combine text content with link information
+      const fullContent = `TEXT CONTENT:
+${textContent}
+
+LINKS FOUND:
+${linkInfo}`;
+
+      return fullContent;
     } catch (error) {
       this.logger.error(`Error extracting text content from ${url}:`, error);
       throw error;
@@ -270,6 +317,21 @@ VENDOR DETECTION PRIORITY:
 - Look for "About", "Contact", "Owner" sections
 - Company names in copyright notices or footers
 
+VENUE WEBSITE/CONTACT EXTRACTION:
+- Look for venue websites in links that mention the venue name
+- Find phone numbers near venue names or in contact sections
+- Extract venue-specific contact information from the text
+- Match links to venue names when possible
+- Look for "Visit [Venue Name]" or "[Venue Name] Website" type links
+- Check for venue contact info in event descriptions
+
+FILTERING RULES - EXCLUDE THESE SHOWS:
+- Shows marked as "CLOSED", "CANCELLED", "SUSPENDED", "TEMPORARILY CLOSED"
+- Events listed as "UNAVAILABLE", "NO LONGER AVAILABLE", "DISCONTINUED"
+- Shows with "PERMANENTLY CLOSED" or "OUT OF BUSINESS"
+- Any events explicitly marked as "INACTIVE" or "NOT RUNNING"
+- Shows that say "CALL TO CONFIRM" or "MAY BE CANCELLED"
+
 Look for:
 1. Business/venue name and details (including owner/contact information)
 2. ALL karaoke events, shows, nights, or scheduled performances
@@ -278,9 +340,12 @@ Look for:
 5. Special events or one-time shows
 6. Full addresses when available
 7. Start and end times separately when possible
-8. Venue contact information (phone numbers and websites)
+8. **VENUE CONTACT INFORMATION** - phone numbers and websites for each venue
+9. Links that correspond to venue names or locations
 
 Be thorough - extract every karaoke-related event you find, even if incomplete.
+IMPORTANT: When you find a venue name, look for any associated website URL or phone number in the surrounding text or links.
+CRITICAL: Do NOT include shows that are marked as closed, cancelled, suspended, or unavailable in any way.
 
 Return JSON in this exact format (no additional text or markdown):
 {
@@ -302,8 +367,8 @@ Return JSON in this exact format (no additional text or markdown):
     {
       "venue": "Venue/Location Name",
       "address": "Full address if available",
-      "venuePhone": "Venue phone number if available",
-      "venueWebsite": "Venue website URL if available",
+      "venuePhone": "Venue phone number if found (format: (xxx) xxx-xxxx)",
+      "venueWebsite": "Venue website URL if found (include http:// or https://)",
       "date": "YYYY-MM-DD or day-of-week",
       "time": "HH:MM or time description",
       "startTime": "HH:MM start time if available",
@@ -328,7 +393,7 @@ IMPORTANT:
 - ALWAYS provide a vendor name, even if derived from the URL domain
 
 Website URL: ${url}
-Website Text Content:
+Website Content:
 ${textContent}`;
 
       // Retry logic for quota exceeded errors
@@ -529,7 +594,27 @@ ${textContent}`;
         where: { name: data.vendor.name },
       });
 
-      if (!vendor) {
+      if (vendor) {
+        // Vendor exists - merge missing data
+        let hasUpdates = false;
+
+        if (!vendor.description && data.vendor.description) {
+          vendor.description = data.vendor.description;
+          hasUpdates = true;
+        }
+
+        if (!vendor.website && data.vendor.website) {
+          vendor.website = data.vendor.website;
+          hasUpdates = true;
+        }
+
+        // Save updates if any
+        if (hasUpdates) {
+          vendor = await this.vendorRepository.save(vendor);
+          this.logger.log(`Updated vendor ${vendor.name} with missing data`);
+        }
+      } else {
+        // Create new vendor
         vendor = this.vendorRepository.create({
           name: data.vendor.name,
           owner: data.vendor.owner || data.vendor.name, // Use vendor name as owner if not specified
@@ -548,7 +633,19 @@ ${textContent}`;
           where: { name: djData.name, vendorId: vendor.id },
         });
 
-        if (!dj) {
+        if (dj) {
+          // DJ exists - merge missing data
+          let hasUpdates = false;
+
+          // Check if DJ entity has other fields to update (like phone, email, etc.)
+          // Currently DJ entity only has basic fields, but we can expand this
+
+          // If no updates needed, just use existing DJ
+          // In the future, we might add more fields to DJ entity that could be updated here
+
+          this.logger.log(`Using existing DJ: ${dj.name} for vendor: ${vendor.name}`);
+        } else {
+          // Create new DJ
           dj = this.djRepository.create({
             name: djData.name,
             vendorId: vendor.id,
@@ -566,6 +663,14 @@ ${textContent}`;
       const showsUpdated = [];
 
       for (const showData of data.shows) {
+        // Filter out closed or unavailable shows
+        if (this.isShowClosed(showData)) {
+          this.logger.log(
+            `Filtering out closed show: ${showData.venue} - ${showData.description || 'no description'}`,
+          );
+          continue;
+        }
+
         // Parse the date and time
         let parsedDate: Date;
         try {
@@ -911,6 +1016,40 @@ ${textContent}`;
   async cleanupAllPendingReviews(): Promise<number> {
     const result = await this.parsedScheduleRepository.delete({ status: ParseStatus.PENDING });
     return result.affected || 0;
+  }
+
+  /**
+   * Check if a show should be filtered out due to being closed, cancelled, or unavailable
+   */
+  private isShowClosed(show: any): boolean {
+    if (!show) return false;
+
+    const textToCheck = [
+      show.venue?.toLowerCase() || '',
+      show.description?.toLowerCase() || '',
+      show.notes?.toLowerCase() || '',
+      show.status?.toLowerCase() || '',
+    ].join(' ');
+
+    const closureKeywords = [
+      'closed',
+      'cancelled',
+      'canceled',
+      'suspended',
+      'temporarily closed',
+      'permanently closed',
+      'unavailable',
+      'no longer available',
+      'discontinued',
+      'out of business',
+      'inactive',
+      'not running',
+      'call to confirm',
+      'may be cancelled',
+      'may be canceled',
+    ];
+
+    return closureKeywords.some((keyword) => textToCheck.includes(keyword));
   }
 
   async getAllParsedSchedulesForDebug(): Promise<ParsedSchedule[]> {

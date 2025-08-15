@@ -26,7 +26,7 @@ RUN npm ci
 COPY . .
 COPY --from=client-builder /app/client/dist ./client/dist
 
-# Ensure public directory exists and copy client assets
+ # Ensure public directory exists and copy client assets
 RUN mkdir -p ./public/images/shows
 # Copy additional public assets from client public directory first (images, etc.)
 COPY --from=client-builder /app/client/public/ ./public/

@@ -5,10 +5,12 @@ import { Box, Button, Container, Divider, Link, Paper, TextField, Typography } f
 import { authStore, uiStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const LoginPage: React.FC = observer(() => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectPath = searchParams.get('redirect') || '/dashboard';
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -64,7 +66,7 @@ const LoginPage: React.FC = observer(() => {
 
     if (result.success) {
       uiStore.addNotification('Welcome back!', 'success');
-      navigate('/dashboard');
+      navigate(redirectPath);
     } else {
       uiStore.addNotification(result.error || 'Login failed', 'error');
     }
@@ -149,7 +151,7 @@ const LoginPage: React.FC = observer(() => {
               <Link
                 component="button"
                 variant="body2"
-                onClick={() => navigate('/register')}
+                onClick={() => navigate(`/register?redirect=${encodeURIComponent(redirectPath)}`)}
                 sx={{ textDecoration: 'none' }}
               >
                 Don't have an account? Sign Up

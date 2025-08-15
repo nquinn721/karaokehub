@@ -1,5 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { apiStore } from './ApiStore';
+import { localSubscriptionStore } from './LocalSubscriptionStore';
 
 export interface SubscriptionStatus {
   subscription: {
@@ -127,15 +128,25 @@ export class SubscriptionStore {
 
   // Getters for easy access to subscription features
   get hasAdFreeAccess(): boolean {
-    return this.subscriptionStatus?.features?.adFree || false;
+    // Check account subscription first, then local subscription
+    return this.subscriptionStatus?.features?.adFree || localSubscriptionStore.hasAdFree;
   }
 
   get hasPremiumAccess(): boolean {
-    return this.subscriptionStatus?.features?.premium || false;
+    // Check account subscription first, then local subscription
+    return this.subscriptionStatus?.features?.premium || localSubscriptionStore.hasPremium;
   }
 
   get currentPlan(): 'free' | 'ad_free' | 'premium' {
-    return this.subscriptionStatus?.subscription?.plan || 'free';
+    if (this.subscriptionStatus?.subscription?.plan) {
+      return this.subscriptionStatus.subscription.plan;
+    }
+
+    // Check local subscription
+    if (localSubscriptionStore.hasPremium) return 'premium';
+    if (localSubscriptionStore.hasAdFree) return 'ad_free';
+
+    return 'free';
   }
 
   get isSubscribed(): boolean {
@@ -143,10 +154,10 @@ export class SubscriptionStore {
   }
 
   // Helper method to check if paywall should be shown for a feature
-  shouldShowPaywall(feature: 'favorites' | 'friends' | 'ad_removal'): boolean {
+  shouldShowPaywall(feature: 'favorites' | 'ad_removal' | 'music_preview'): boolean {
     switch (feature) {
       case 'favorites':
-      case 'friends':
+      case 'music_preview':
         return !this.hasPremiumAccess;
       case 'ad_removal':
         return !this.hasAdFreeAccess;

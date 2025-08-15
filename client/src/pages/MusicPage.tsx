@@ -42,7 +42,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { musicStore, subscriptionStore, authStore } from '@stores/index';
+import { authStore, musicStore, subscriptionStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import {
@@ -67,9 +67,9 @@ export const MusicPage: React.FC = observer(() => {
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
-  const [paywallFeature, setPaywallFeature] = useState<'favorites' | 'friends' | 'ad_removal'>(
-    'favorites',
-  );
+  const [paywallFeature, setPaywallFeature] = useState<
+    'favorites' | 'friends' | 'ad_removal' | 'music_preview'
+  >('favorites');
   const [loginModalOpen, setLoginModalOpen] = useState(false);
 
   // Determine current view based on route
@@ -550,9 +550,14 @@ export const MusicPage: React.FC = observer(() => {
           <Box>
             {/* Information about music features */}
             <Box sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 2 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              >
                 <FontAwesomeIcon icon={faPlay} style={{ fontSize: '14px' }} />
-                Click the play button to listen to a 30-second preview of any song. Account required for music features.
+                Click the play button to listen to a 30-second preview of any song. Premium
+                subscription required for music previews.
               </Typography>
             </Box>
 
@@ -617,15 +622,15 @@ export const MusicPage: React.FC = observer(() => {
                           >
                             <FontAwesomeIcon
                               icon={faMusic}
-                              style={{ 
-                                fontSize: '24px', 
-                                color: theme.palette.grey[600] 
+                              style={{
+                                fontSize: '24px',
+                                color: theme.palette.grey[600],
                               }}
                             />
                           </Box>
                         )}
                       </ListItemIcon>
-                      
+
                       {/* Custom layout instead of ListItemText to avoid div-in-p nesting */}
                       <Box sx={{ py: 1, px: 0, flex: 1 }}>
                         {/* Primary content */}
@@ -674,58 +679,77 @@ export const MusicPage: React.FC = observer(() => {
 
                       {/* Action buttons - Play button (left) and Favorite button (right) */}
                       <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {/* Play button - gated for authenticated users */}
+                        {/* Play button - gated for premium subscribers with account */}
                         {authStore.isAuthenticated ? (
+                          subscriptionStore.shouldShowPaywall('music_preview') ? (
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPaywallFeature('music_preview');
+                                setPaywallOpen(true);
+                              }}
+                              sx={{
+                                bgcolor: theme.palette.warning.main,
+                                color: 'white',
+                                '&:hover': {
+                                  bgcolor: theme.palette.warning.dark,
+                                },
+                              }}
+                              title="Upgrade to Premium to play previews"
+                            >
+                              <FontAwesomeIcon icon={faPlay} size="sm" />
+                            </IconButton>
+                          ) : (
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePreviewPlay(song);
+                              }}
+                              disabled={!song.previewUrl}
+                              sx={{
+                                bgcolor: song.previewUrl
+                                  ? theme.palette.primary.main
+                                  : theme.palette.grey[400],
+                                color: 'white',
+                                '&:hover': {
+                                  bgcolor: song.previewUrl
+                                    ? theme.palette.primary.dark
+                                    : theme.palette.grey[500],
+                                },
+                                '&:disabled': {
+                                  bgcolor: theme.palette.grey[300],
+                                  color: theme.palette.grey[500],
+                                },
+                              }}
+                            >
+                              <FontAwesomeIcon
+                                icon={currentlyPlaying === song.id ? faPause : faPlay}
+                                size="sm"
+                              />
+                            </IconButton>
+                          )
+                        ) : (
                           <IconButton
                             size="small"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handlePreviewPlay(song);
+                              setLoginModalOpen(true);
                             }}
-                            disabled={!song.previewUrl}
                             sx={{
-                              bgcolor: song.previewUrl
-                                ? theme.palette.primary.main
-                                : theme.palette.grey[400],
+                              bgcolor: theme.palette.grey[400],
                               color: 'white',
                               '&:hover': {
-                                bgcolor: song.previewUrl
-                                  ? theme.palette.primary.dark
-                                  : theme.palette.grey[500],
-                              },
-                              '&:disabled': {
-                                bgcolor: theme.palette.grey[300],
-                                color: theme.palette.grey[500],
+                                bgcolor: theme.palette.grey[500],
                               },
                             }}
+                            title="Sign in to play previews"
                           >
-                            <FontAwesomeIcon
-                              icon={currentlyPlaying === song.id ? faPause : faPlay}
-                              size="sm"
-                            />
+                            <FontAwesomeIcon icon={faPlay} size="sm" />
                           </IconButton>
-        ) : (
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              setLoginModalOpen(true);
-            }}
-            sx={{
-              bgcolor: theme.palette.grey[400],
-              color: 'white',
-              '&:hover': {
-                bgcolor: theme.palette.grey[500],
-              },
-            }}
-            title="Sign in to play previews"
-          >
-            <FontAwesomeIcon
-              icon={faPlay}
-              size="sm"
-            />
-          </IconButton>
-        )}                        {/* Favorite button */}
+                        )}{' '}
+                        {/* Favorite button */}
                         <IconButton
                           size="small"
                           onClick={(e) => {
@@ -825,8 +849,8 @@ export const MusicPage: React.FC = observer(() => {
         />
 
         {/* Login Required Modal */}
-        <Dialog 
-          open={loginModalOpen} 
+        <Dialog
+          open={loginModalOpen}
           onClose={() => setLoginModalOpen(false)}
           maxWidth="sm"
           fullWidth
@@ -839,46 +863,24 @@ export const MusicPage: React.FC = observer(() => {
           </DialogTitle>
           <DialogContent>
             <Typography variant="body1" sx={{ mb: 2 }}>
-              You must have an account to use the music preview feature.
+              You must have an account to use music previews.
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Create an account or sign in to:
+              Sign in or create an account to access this feature.
             </Typography>
-            <Box component="ul" sx={{ mt: 1, pl: 2 }}>
-              <Typography component="li" variant="body2" color="text.secondary">
-                Listen to 30-second song previews
-              </Typography>
-              <Typography component="li" variant="body2" color="text.secondary">
-                Save your favorite songs
-              </Typography>
-              <Typography component="li" variant="body2" color="text.secondary">
-                Get personalized recommendations
-              </Typography>
-            </Box>
           </DialogContent>
           <DialogActions sx={{ p: 3, gap: 2 }}>
-            <Button 
-              onClick={() => setLoginModalOpen(false)}
-              variant="outlined"
-            >
+            <Button onClick={() => setLoginModalOpen(false)} variant="outlined">
               Cancel
             </Button>
             <Button
-              component={RouterLink}
-              to="/auth/login"
               variant="contained"
-              onClick={() => setLoginModalOpen(false)}
+              onClick={() => {
+                setLoginModalOpen(false);
+                navigate('/auth/login?redirect=/music');
+              }}
             >
               Sign In
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/auth/register"
-              variant="contained"
-              color="secondary"
-              onClick={() => setLoginModalOpen(false)}
-            >
-              Create Account
             </Button>
           </DialogActions>
         </Dialog>

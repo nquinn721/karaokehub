@@ -64,6 +64,7 @@ export const {
 } = rootStore;
 
 // Export individual stores
+export { localSubscriptionStore } from './LocalSubscriptionStore';
 export { themeStore } from './ThemeStore';
 export { apiStore };
 
