@@ -19,26 +19,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any) {
     try {
-      console.log('JWT Strategy validation started:', {
-        payload,
-        environment: this.configService.get('NODE_ENV'),
-        jwtSecret: this.configService.get<string>('JWT_SECRET') ? 'SET' : 'NOT_SET',
-      });
-
       const user = await this.authService.validateUser(payload);
-
-      console.log('JWT Strategy validation successful:', {
-        userId: user?.id,
-        userEmail: user?.email,
-      });
-
       return user;
     } catch (error) {
-      console.error('JWT Strategy validation failed:', {
-        error: error.message,
-        payload,
-        environment: this.configService.get('NODE_ENV'),
-      });
+      console.error('JWT Strategy validation failed:', error.message);
 
       // In development, we can be more lenient with invalid tokens
       if (this.configService.get('NODE_ENV') === 'development') {

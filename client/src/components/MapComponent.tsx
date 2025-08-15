@@ -7,6 +7,7 @@ import {
   faClock,
   faExternalLinkAlt,
   faHeart,
+  faLocationArrow,
   faLocationDot,
   faMapMarkerAlt,
   faMicrophone,
@@ -119,6 +120,11 @@ export const MapComponent: React.FC = observer(() => {
     };
 
     initializeStores();
+
+    // Cleanup when component unmounts
+    return () => {
+      mapStore.cleanup();
+    };
   }, []);
 
   // Watch for subscription changes and execute pending actions
@@ -282,10 +288,10 @@ export const MapComponent: React.FC = observer(() => {
         )}
 
         {/* Show Markers with Microphone Icons */}
-        {showStore.showsWithCoordinates.map((show: any) => (
+        {mapStore.geocodedShows.map((show: any) => (
           <Marker
             key={show.id}
-            position={{ lat: show.lat!, lng: show.lng! }}
+            position={{ lat: show.lat, lng: show.lng }}
             onClick={() => handleMarkerClick(show)}
             title={show.venue || show.vendor?.name || 'Karaoke Show'}
             icon={createMicrophoneIcon(mapStore.selectedMarkerId === show.id)}
@@ -293,256 +299,270 @@ export const MapComponent: React.FC = observer(() => {
         ))}
 
         {/* Info Window for Selected Show */}
-        {mapStore.selectedMarkerId && showStore.selectedShow && (
-          <InfoWindow
-            position={{
-              lat: showStore.selectedShow.lat!,
-              lng: showStore.selectedShow.lng!,
-            }}
-            pixelOffset={[0, -40]} // Offset to avoid covering marker
-            onCloseClick={() => {
-              mapStore.closeInfoWindow();
-            }}
-          >
-            <Box
-              sx={{
-                maxWidth: { xs: '280px', sm: '320px' },
-                minWidth: { xs: '250px', sm: '280px' },
-                p: { xs: 1.5, sm: 2 },
-                backgroundColor: theme.palette.background.paper,
-                borderRadius: 2,
-                boxShadow: theme.shadows[8],
-                position: 'relative',
-                maxHeight: { xs: '320px', sm: 'auto' },
-                overflow: 'auto',
-                border: `1px solid ${theme.palette.divider}`,
-                // Custom scrollbar styling
-                '&::-webkit-scrollbar': {
-                  width: '4px',
-                },
-                '&::-webkit-scrollbar-track': {
-                  background: theme.palette.action.hover,
-                },
-                '&::-webkit-scrollbar-thumb': {
-                  background: theme.palette.primary.main,
-                  borderRadius: '2px',
-                },
-              }}
-            >
-              {/* Close button in top right corner */}
-              <IconButton
-                size="small"
-                onClick={() => mapStore.closeInfoWindow()}
-                sx={{
-                  position: 'absolute',
-                  top: 8,
-                  right: 8,
-                  color: theme.palette.text.secondary,
-                  backgroundColor: theme.palette.background.default,
-                  border: `1px solid ${theme.palette.divider}`,
-                  width: 28,
-                  height: 28,
-                  '&:hover': {
-                    color: theme.palette.text.primary,
-                    backgroundColor: theme.palette.action.hover,
-                    transform: 'scale(1.1)',
-                  },
-                  transition: 'all 0.2s ease',
-                  zIndex: 1,
+        {mapStore.selectedMarkerId &&
+          showStore.selectedShow &&
+          (() => {
+            const geocodedShow = mapStore.geocodedShows.find(
+              (s) => s.id === mapStore.selectedMarkerId,
+            );
+            if (!geocodedShow) return null;
+
+            return (
+              <InfoWindow
+                position={{
+                  lat: geocodedShow.lat,
+                  lng: geocodedShow.lng,
+                }}
+                pixelOffset={[0, -40]} // Offset to avoid covering marker
+                onCloseClick={() => {
+                  mapStore.closeInfoWindow();
                 }}
               >
-                <FontAwesomeIcon icon={faXmark} style={{ fontSize: '12px' }} />
-              </IconButton>
-
-              {/* Title and heart in same row */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, pr: 3 }}>
-                <Typography
-                  variant="h6"
+                <Box
                   sx={{
-                    color: theme.palette.text.primary,
-                    fontWeight: 600,
-                    fontSize: { xs: '1rem', sm: '1.25rem' },
-                    lineHeight: 1.2,
-                    flex: 1,
-                  }}
-                >
-                  {showStore.selectedShow.venue || showStore.selectedShow.vendor?.name}
-                </Typography>
-
-                {/* Favorite button next to title */}
-                <IconButton
-                  size="small"
-                  onClick={() => {
-                    const selectedShow = showStore.selectedShow;
-                    if (!selectedShow) return;
-
-                    const isFav =
-                      authStore.isAuthenticated && favoriteStore.isFavorite(selectedShow.id);
-                    if (isFav) {
-                      handleUnfavorite(selectedShow.id, showStore.selectedDay);
-                    } else {
-                      handleFavorite(selectedShow.id, showStore.selectedDay);
-                    }
-                  }}
-                  sx={{
-                    color:
-                      authStore.isAuthenticated &&
-                      favoriteStore.isFavorite(showStore.selectedShow.id)
-                        ? theme.palette.error.main
-                        : theme.palette.text.secondary,
-                    '&:hover': {
-                      color: theme.palette.error.main,
-                      backgroundColor: theme.palette.error.main + '10',
+                    maxWidth: { xs: '280px', sm: '320px' },
+                    minWidth: { xs: '250px', sm: '280px' },
+                    p: { xs: 1.5, sm: 2 },
+                    backgroundColor: theme.palette.background.paper,
+                    borderRadius: 2,
+                    boxShadow: theme.shadows[8],
+                    position: 'relative',
+                    maxHeight: { xs: '320px', sm: 'auto' },
+                    overflow: 'auto',
+                    border: `1px solid ${theme.palette.divider}`,
+                    // Custom scrollbar styling
+                    '&::-webkit-scrollbar': {
+                      width: '4px',
                     },
-                    p: 0.5,
-                    opacity: authStore.isAuthenticated ? 1 : 0.6,
+                    '&::-webkit-scrollbar-track': {
+                      background: theme.palette.action.hover,
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      background: theme.palette.primary.main,
+                      borderRadius: '2px',
+                    },
                   }}
                 >
-                  <FontAwesomeIcon
-                    icon={
-                      authStore.isAuthenticated &&
-                      favoriteStore.isFavorite(showStore.selectedShow.id)
-                        ? faHeart
-                        : faHeartRegular
-                    }
-                    style={{ fontSize: '14px' }}
-                  />
-                </IconButton>
-              </Box>
-              {showStore.selectedShow.venue && showStore.selectedShow.vendor?.name && (
-                <Typography
-                  variant="body2"
-                  gutterBottom
-                  sx={{
-                    color: theme.palette.text.secondary,
-                    fontStyle: 'italic',
-                    mb: 1,
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                  }}
-                >
-                  by {showStore.selectedShow.vendor.name}
-                </Typography>
-              )}
-              <Typography
-                variant="body2"
-                gutterBottom
-                sx={{
-                  color: theme.palette.text.secondary,
-                  mb: 1.5,
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                  lineHeight: 1.3,
-                }}
-              >
-                {showStore.selectedShow.address}
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <FontAwesomeIcon
-                  icon={faMicrophone}
-                  style={{
-                    fontSize: '12px',
-                    color: theme.palette.primary.main,
-                  }}
-                />
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: theme.palette.text.primary,
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                  }}
-                >
-                  Host: {showStore.selectedShow.dj?.name}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <FontAwesomeIcon
-                  icon={faLocationDot}
-                  style={{
-                    fontSize: '12px',
-                    color: theme.palette.secondary.main,
-                  }}
-                />
-                <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
-                  {formatTime(showStore.selectedShow.startTime)} -{' '}
-                  {formatTime(showStore.selectedShow.endTime)}
-                </Typography>
-              </Box>
-
-              {/* Contact Information */}
-              {showStore.selectedShow.venuePhone && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <FontAwesomeIcon
-                    icon={faPhone}
-                    style={{
-                      fontSize: '12px',
-                      color: theme.palette.success.main,
-                    }}
-                  />
-                  <Typography
-                    component="a"
-                    href={`tel:${showStore.selectedShow.venuePhone}`}
-                    variant="body2"
+                  {/* Close button in top right corner */}
+                  <IconButton
+                    size="small"
+                    onClick={() => mapStore.closeInfoWindow()}
                     sx={{
-                      color: theme.palette.text.primary,
-                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                      textDecoration: 'none',
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      color: theme.palette.text.secondary,
+                      backgroundColor: theme.palette.background.default,
+                      border: `1px solid ${theme.palette.divider}`,
+                      width: 28,
+                      height: 28,
                       '&:hover': {
-                        color: theme.palette.success.main,
+                        color: theme.palette.text.primary,
+                        backgroundColor: theme.palette.action.hover,
+                        transform: 'scale(1.1)',
                       },
+                      transition: 'all 0.2s ease',
+                      zIndex: 1,
                     }}
                   >
-                    {showStore.selectedShow.venuePhone}
-                  </Typography>
-                </Box>
-              )}
+                    <FontAwesomeIcon icon={faXmark} style={{ fontSize: '12px' }} />
+                  </IconButton>
 
-              {showStore.selectedShow.venueWebsite && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <FontAwesomeIcon
-                    icon={faExternalLinkAlt}
-                    style={{
-                      fontSize: '12px',
-                      color: theme.palette.info.main,
-                    }}
-                  />
+                  {/* Title and heart in same row */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, pr: 3 }}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        color: theme.palette.text.primary,
+                        fontWeight: 600,
+                        fontSize: { xs: '1rem', sm: '1.25rem' },
+                        lineHeight: 1.2,
+                        flex: 1,
+                      }}
+                    >
+                      {showStore.selectedShow?.venue || showStore.selectedShow?.vendor?.name}
+                    </Typography>
+
+                    {/* Favorite button next to title */}
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        const selectedShow = showStore.selectedShow;
+                        if (!selectedShow) return;
+
+                        const isFav =
+                          authStore.isAuthenticated && favoriteStore.isFavorite(selectedShow.id);
+                        if (isFav) {
+                          handleUnfavorite(selectedShow.id, showStore.selectedDay);
+                        } else {
+                          handleFavorite(selectedShow.id, showStore.selectedDay);
+                        }
+                      }}
+                      sx={{
+                        color:
+                          authStore.isAuthenticated &&
+                          showStore.selectedShow &&
+                          favoriteStore.isFavorite(showStore.selectedShow.id)
+                            ? theme.palette.error.main
+                            : theme.palette.text.secondary,
+                        '&:hover': {
+                          color: theme.palette.error.main,
+                          backgroundColor: theme.palette.error.main + '10',
+                        },
+                        p: 0.5,
+                        opacity: authStore.isAuthenticated ? 1 : 0.6,
+                      }}
+                    >
+                      <FontAwesomeIcon
+                        icon={
+                          authStore.isAuthenticated &&
+                          showStore.selectedShow &&
+                          favoriteStore.isFavorite(showStore.selectedShow.id)
+                            ? faHeart
+                            : faHeartRegular
+                        }
+                        style={{ fontSize: '14px' }}
+                      />
+                    </IconButton>
+                  </Box>
+                  {showStore.selectedShow?.venue && showStore.selectedShow?.vendor?.name && (
+                    <Typography
+                      variant="body2"
+                      gutterBottom
+                      sx={{
+                        color: theme.palette.text.secondary,
+                        fontStyle: 'italic',
+                        mb: 1,
+                        fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                      }}
+                    >
+                      by {showStore.selectedShow.vendor.name}
+                    </Typography>
+                  )}
                   <Typography
-                    component="a"
-                    href={
-                      showStore.selectedShow.venueWebsite.startsWith('http')
-                        ? showStore.selectedShow.venueWebsite
-                        : `https://${showStore.selectedShow.venueWebsite}`
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
                     variant="body2"
+                    gutterBottom
                     sx={{
-                      color: theme.palette.info.main,
+                      color: theme.palette.text.secondary,
+                      mb: 1.5,
                       fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                      textDecoration: 'none',
-                      '&:hover': {
-                        textDecoration: 'underline',
-                      },
+                      lineHeight: 1.3,
                     }}
                   >
-                    Visit Website
+                    {showStore.selectedShow?.address}
                   </Typography>
-                </Box>
-              )}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <FontAwesomeIcon
+                      icon={faMicrophone}
+                      style={{
+                        fontSize: '12px',
+                        color: theme.palette.primary.main,
+                      }}
+                    />
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: theme.palette.text.primary,
+                        fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                      }}
+                    >
+                      Host: {showStore.selectedShow?.dj?.name}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <FontAwesomeIcon
+                      icon={faLocationDot}
+                      style={{
+                        fontSize: '12px',
+                        color: theme.palette.secondary.main,
+                      }}
+                    />
+                    <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
+                      {showStore.selectedShow?.startTime &&
+                        formatTime(showStore.selectedShow.startTime)}{' '}
+                      -{' '}
+                      {showStore.selectedShow?.endTime &&
+                        formatTime(showStore.selectedShow.endTime)}
+                    </Typography>
+                  </Box>
 
-              {showStore.selectedShow.description && (
-                <Typography
-                  variant="body2"
-                  sx={{
-                    mt: 1,
-                    color: theme.palette.text.secondary,
-                    fontStyle: 'italic',
-                  }}
-                >
-                  {showStore.selectedShow.description}
-                </Typography>
-              )}
-            </Box>
-          </InfoWindow>
-        )}
+                  {/* Contact Information */}
+                  {showStore.selectedShow?.venuePhone && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <FontAwesomeIcon
+                        icon={faPhone}
+                        style={{
+                          fontSize: '12px',
+                          color: theme.palette.success.main,
+                        }}
+                      />
+                      <Typography
+                        component="a"
+                        href={`tel:${showStore.selectedShow.venuePhone}`}
+                        variant="body2"
+                        sx={{
+                          color: theme.palette.text.primary,
+                          fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                          textDecoration: 'none',
+                          '&:hover': {
+                            color: theme.palette.success.main,
+                          },
+                        }}
+                      >
+                        {showStore.selectedShow.venuePhone}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {showStore.selectedShow?.venueWebsite && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <FontAwesomeIcon
+                        icon={faExternalLinkAlt}
+                        style={{
+                          fontSize: '12px',
+                          color: theme.palette.info.main,
+                        }}
+                      />
+                      <Typography
+                        component="a"
+                        href={
+                          showStore.selectedShow.venueWebsite.startsWith('http')
+                            ? showStore.selectedShow.venueWebsite
+                            : `https://${showStore.selectedShow.venueWebsite}`
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="body2"
+                        sx={{
+                          color: theme.palette.info.main,
+                          fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                          textDecoration: 'none',
+                          '&:hover': {
+                            textDecoration: 'underline',
+                          },
+                        }}
+                      >
+                        Visit Website
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {showStore.selectedShow?.description && (
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        mt: 1,
+                        color: theme.palette.text.secondary,
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      {showStore.selectedShow.description}
+                    </Typography>
+                  )}
+                </Box>
+              </InfoWindow>
+            );
+          })()}
       </>
     );
   });
@@ -594,32 +614,75 @@ export const MapComponent: React.FC = observer(() => {
             height: { xs: '300px', sm: '400px', md: '100%' }, // Responsive height
             borderRadius: 2,
             overflow: 'hidden',
+            position: 'relative', // For positioning the location button
           }}
         >
           {API_KEY ? (
-            <APIProvider apiKey={API_KEY} region="US" language="en" version="weekly">
-              <Map
-                style={{ width: '100%', height: '100%' }}
-                defaultCenter={mapStore.currentCenter}
-                defaultZoom={mapStore.currentZoom}
-                gestureHandling={'greedy'}
-                disableDefaultUI={false}
-                clickableIcons={true}
-                streetViewControl={false}
-                fullscreenControl={true}
-                zoomControl={true}
-                mapTypeControl={false}
-                scaleControl={false}
-                rotateControl={false}
+            <>
+              <APIProvider apiKey={API_KEY} region="US" language="en" version="weekly">
+                <Map
+                  style={{ width: '100%', height: '100%' }}
+                  defaultCenter={mapStore.currentCenter}
+                  defaultZoom={mapStore.currentZoom}
+                  gestureHandling={'greedy'}
+                  disableDefaultUI={false}
+                  clickableIcons={true}
+                  streetViewControl={false}
+                  fullscreenControl={true}
+                  zoomControl={true}
+                  mapTypeControl={false}
+                  scaleControl={false}
+                  rotateControl={false}
+                >
+                  <MapContent
+                    theme={theme}
+                    handleMarkerClick={handleMarkerClick}
+                    formatTime={formatTime}
+                    onMapLoad={mapStore.setMapInstance}
+                  />
+                </Map>
+              </APIProvider>
+
+              {/* Current Location Button */}
+              <IconButton
+                onClick={() => mapStore.goToCurrentLocation()}
+                sx={{
+                  position: 'absolute',
+                  top: 16,
+                  right: 16,
+                  backgroundColor: 'white',
+                  boxShadow: 2,
+                  '&:hover': {
+                    backgroundColor: 'grey.100',
+                  },
+                  zIndex: 1000,
+                }}
+                title={
+                  mapStore.hasLocationPermission()
+                    ? 'Go to current location'
+                    : 'Request location permission and go to current location'
+                }
               >
-                <MapContent
-                  theme={theme}
-                  handleMarkerClick={handleMarkerClick}
-                  formatTime={formatTime}
-                  onMapLoad={mapStore.setMapInstance}
-                />
-              </Map>
-            </APIProvider>
+                <FontAwesomeIcon icon={faLocationArrow} />
+              </IconButton>
+
+              {/* Location Error Alert */}
+              {mapStore.locationError && (
+                <Alert
+                  severity="warning"
+                  onClose={() => mapStore.clearLocationError()}
+                  sx={{
+                    position: 'absolute',
+                    top: 70,
+                    right: 16,
+                    maxWidth: 300,
+                    zIndex: 1000,
+                  }}
+                >
+                  {mapStore.locationError}
+                </Alert>
+              )}
+            </>
           ) : showConfigLoading ? (
             <Box
               sx={{

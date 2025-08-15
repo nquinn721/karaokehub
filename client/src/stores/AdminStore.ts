@@ -69,6 +69,8 @@ export interface AdminVenue {
   id: string;
   name: string;
   location?: string;
+  showCount?: number;
+  djCount?: number;
   createdAt: Date;
 }
 
@@ -84,7 +86,6 @@ export interface AdminShow {
 export interface AdminDJ {
   id: string;
   name: string;
-  bio?: string;
   createdAt: Date;
 }
 
@@ -102,6 +103,25 @@ export interface AdminSong {
   aiAnalysis?: any;
   status: string;
   createdAt: Date;
+}
+
+export interface AdminFeedback {
+  id: string;
+  type: 'bug' | 'feature' | 'improvement' | 'compliment' | 'complaint' | 'general';
+  rating: number;
+  subject?: string;
+  message: string;
+  email?: string;
+  name?: string;
+  userId?: string;
+  user?: AdminUser;
+  userAgent?: string;
+  url?: string;
+  status: 'pending' | 'reviewed' | 'resolved';
+  response?: string;
+  responseDate?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface ParserStatus {
@@ -136,6 +156,7 @@ export class AdminStore {
   djs: PaginatedResponse<AdminDJ> | null = null;
   favorites: PaginatedResponse<AdminFavorite> | null = null;
   songs: PaginatedResponse<AdminSong> | null = null;
+  feedback: PaginatedResponse<AdminFeedback> | null = null;
   parserStatus: ParserStatus | null = null;
 
   isLoadingTable = false;
@@ -487,6 +508,41 @@ export class AdminStore {
     }
   }
 
+  async fetchFeedback(page = 1, limit = 10, search?: string): Promise<void> {
+    try {
+      this.setTableLoading(true);
+      this.setTableError(null);
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+
+      if (search) {
+        params.append('search', search);
+      }
+
+      const response = await apiStore.get(`/admin/feedback?${params.toString()}`);
+
+      runInAction(() => {
+        this.feedback = {
+          ...response,
+          items: response.items.map((feedback: any) => ({
+            ...feedback,
+            createdAt: new Date(feedback.createdAt),
+            updatedAt: new Date(feedback.updatedAt),
+            responseDate: feedback.responseDate ? new Date(feedback.responseDate) : undefined,
+          })),
+        };
+      });
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to fetch feedback';
+      this.setTableError(errorMessage);
+    } finally {
+      this.setTableLoading(false);
+    }
+  }
+
   async fetchParserStatus(): Promise<void> {
     try {
       this.setTableLoading(true);
@@ -508,6 +564,97 @@ export class AdminStore {
       this.setTableError(errorMessage);
     } finally {
       this.setTableLoading(false);
+    }
+  }
+
+  // Delete methods
+  async deleteVenue(id: string): Promise<void> {
+    try {
+      await apiStore.delete(`/admin/venues/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to delete venue');
+    }
+  }
+
+  async deleteShow(id: string): Promise<void> {
+    try {
+      await apiStore.delete(`/admin/shows/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to delete show');
+    }
+  }
+
+  async deleteDj(id: string): Promise<void> {
+    try {
+      await apiStore.delete(`/admin/djs/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to delete DJ');
+    }
+  }
+
+  // Update methods
+  async updateVenue(id: string, data: any): Promise<void> {
+    try {
+      await apiStore.put(`/admin/venues/${id}`, data);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to update venue');
+    }
+  }
+
+  async updateShow(id: string, data: any): Promise<void> {
+    try {
+      await apiStore.put(`/admin/shows/${id}`, data);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to update show');
+    }
+  }
+
+  async updateDj(id: string, data: any): Promise<void> {
+    try {
+      await apiStore.put(`/admin/djs/${id}`, data);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to update DJ');
+    }
+  }
+
+  async updateFeedback(id: string, data: any): Promise<void> {
+    try {
+      await apiStore.put(`/admin/feedback/${id}`, data);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to update feedback');
+    }
+  }
+
+  async deleteFeedback(id: string): Promise<void> {
+    try {
+      await apiStore.delete(`/admin/feedback/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to delete feedback');
+    }
+  }
+
+  // Relationship methods
+  async getVenueRelationships(id: string): Promise<any> {
+    try {
+      return await apiStore.get(`/admin/venues/${id}/relationships`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch venue relationships');
+    }
+  }
+
+  async getShowRelationships(id: string): Promise<any> {
+    try {
+      return await apiStore.get(`/admin/shows/${id}/relationships`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch show relationships');
+    }
+  }
+
+  async getDjRelationships(id: string): Promise<any> {
+    try {
+      return await apiStore.get(`/admin/djs/${id}/relationships`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch DJ relationships');
     }
   }
 }

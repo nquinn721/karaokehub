@@ -44,7 +44,7 @@ export class SongFavoriteStore {
       this.setLoading(true);
       this.setError(null);
 
-      const response = await apiStore.get('/api/song-favorites');
+      const response = await apiStore.get('/song-favorites');
 
       runInAction(() => {
         this.songFavorites = response.data || [];
@@ -65,7 +65,7 @@ export class SongFavoriteStore {
     try {
       this.setError(null);
 
-      const response = await apiStore.post(`/api/song-favorites/${songId}`, {});
+      const response = await apiStore.post(`/song-favorites/${songId}`, {});
 
       if (response.success) {
         runInAction(() => {
@@ -86,7 +86,7 @@ export class SongFavoriteStore {
     try {
       this.setError(null);
 
-      const response = await apiStore.delete(`/api/song-favorites/${songId}`);
+      const response = await apiStore.delete(`/song-favorites/${songId}`);
 
       if (response.success) {
         runInAction(() => {
@@ -105,7 +105,7 @@ export class SongFavoriteStore {
 
   async checkIfSongFavorite(songId: string): Promise<boolean> {
     try {
-      const response = await apiStore.get(`/api/song-favorites/check/${songId}`);
+      const response = await apiStore.get(`/song-favorites/check/${songId}`);
       return response.data?.isFavorite || false;
     } catch (error) {
       console.error('Error checking song favorite status:', error);

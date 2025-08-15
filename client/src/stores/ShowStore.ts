@@ -1,5 +1,4 @@
 import { makeAutoObservable, runInAction } from 'mobx';
-import { geocodingService } from '../utils/geocoding';
 import { apiStore } from './ApiStore';
 
 export enum DayOfWeek {
@@ -37,9 +36,6 @@ export interface Show {
     id: string;
     userId: string;
   }>;
-  // Additional fields for map functionality
-  lat?: number;
-  lng?: number;
 }
 
 export interface CreateShowData {
@@ -104,42 +100,9 @@ export class ShowStore {
       const response = await apiStore.get(endpoint);
       console.log('API response received:', response?.length || 0, 'shows');
 
-      // Set up geocoding service with API key
-      if (apiStore.googleMapsApiKey) {
-        geocodingService.setApiKey(apiStore.googleMapsApiKey);
-      }
-
-      // Geocode addresses for shows that don't have coordinates
-      const showsWithCoordinates = await Promise.all(
-        (response || []).map(async (show: Show) => {
-          // If show already has coordinates, use them
-          if (show.lat && show.lng) {
-            return show;
-          }
-
-          // Otherwise, geocode the address
-          if (show.address) {
-            try {
-              const geocodeResult = await geocodingService.geocodeAddress(show.address);
-              return {
-                ...show,
-                lat: geocodeResult.lat,
-                lng: geocodeResult.lng,
-              };
-            } catch (error) {
-              console.warn(`Failed to geocode address "${show.address}":`, error);
-              // Return show without coordinates if geocoding fails
-              return show;
-            }
-          }
-
-          // Return show without coordinates if no address
-          return show;
-        }),
-      );
-
+      // No geocoding needed since lat/lng are no longer stored
       runInAction(() => {
-        this.shows = showsWithCoordinates;
+        this.shows = response || [];
         this.isLoading = false;
       });
 
@@ -307,41 +270,23 @@ export class ShowStore {
   }
 
   get showsWithCoordinates() {
-    return this.showsForSelectedDay.filter((show) => show.lat && show.lng);
+    // Return geocoded shows from MapStore instead
+    return [];
   }
 
-  // Method to geocode a single show address
+  // Geocoding methods removed since lat/lng are no longer stored
   async geocodeShow(show: Show): Promise<Show> {
-    if (!show.address || (show.lat && show.lng)) {
-      return show; // Return as-is if no address or already has coordinates
-    }
-
-    // Set up geocoding service with API key
-    if (apiStore.googleMapsApiKey) {
-      geocodingService.setApiKey(apiStore.googleMapsApiKey);
-    }
-
-    try {
-      const geocodeResult = await geocodingService.geocodeAddress(show.address);
-      return {
-        ...show,
-        lat: geocodeResult.lat,
-        lng: geocodeResult.lng,
-      };
-    } catch (error) {
-      console.warn(`Failed to geocode show address "${show.address}":`, error);
-      return show;
-    }
+    return show; // No geocoding needed
   }
 
   // Method to clear geocoding cache if needed
   clearGeocodingCache(): void {
-    geocodingService.clearCache();
+    // No-op since geocoding is no longer used
   }
 
   // Method to get geocoding cache statistics
   getGeocodingCacheStats(): { totalEntries: number; cacheSize: string } {
-    return geocodingService.getCacheStats();
+    return { totalEntries: 0, cacheSize: '0 B' };
   }
 }
 

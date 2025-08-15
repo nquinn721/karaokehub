@@ -47,7 +47,7 @@ export class AuthStore {
           console.warn('Failed to fetch profile on startup:', error);
         });
       }
-      
+
       // Fetch subscription status for authenticated users
       // Import is done dynamically to avoid circular dependencies
       import('./index').then(({ subscriptionStore }) => {
@@ -163,7 +163,7 @@ export class AuthStore {
 
     // Clear token from API store
     apiStore.clearToken();
-    
+
     // Clear subscription status on logout
     import('./index').then(({ subscriptionStore }) => {
       subscriptionStore.clearSubscriptionStatus();

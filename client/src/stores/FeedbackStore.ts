@@ -35,7 +35,7 @@ export class FeedbackStore {
     this.error = null;
 
     try {
-      const response = await apiStore.post('/api/feedback', feedback);
+      const response = await apiStore.post('/feedback', feedback);
 
       if (response.data) {
         // Add to local store if we get the created feedback back
@@ -54,7 +54,7 @@ export class FeedbackStore {
     this.error = null;
 
     try {
-      const response = await apiStore.get(`/api/feedback/user/${userId}`);
+      const response = await apiStore.get(`/feedback/user/${userId}`);
       this.feedbacks = response.data;
     } catch (error: any) {
       this.error = error.response?.data?.message || 'Failed to load feedbacks';
@@ -69,7 +69,7 @@ export class FeedbackStore {
     this.error = null;
 
     try {
-      const response = await apiStore.get('/api/feedback');
+      const response = await apiStore.get('/feedback');
       this.feedbacks = response.data;
     } catch (error: any) {
       this.error = error.response?.data?.message || 'Failed to load feedbacks';
@@ -85,7 +85,7 @@ export class FeedbackStore {
     response?: string,
   ): Promise<void> {
     try {
-      await apiStore.patch(`/api/feedback/${feedbackId}`, { status, response });
+      await apiStore.patch(`/feedback/${feedbackId}`, { status, response });
 
       // Update local store
       const feedback = this.feedbacks.find((f) => f.id === feedbackId);

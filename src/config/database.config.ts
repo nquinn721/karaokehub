@@ -3,6 +3,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
 import { Favorite } from '../favorite/favorite.entity';
+import { Feedback } from '../feedback/feedback.entity';
 import { SongFavorite } from '../music/song-favorite.entity';
 import { Song } from '../music/song.entity';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
@@ -27,6 +28,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       DJ,
       Show,
       Favorite,
+      Feedback,
       ParsedSchedule,
       Subscription,
       UrlToParse,

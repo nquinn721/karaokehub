@@ -14,7 +14,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateSongDto, SongService, UpdateSongDto } from './song.service';
 
-@Controller('api/songs')
+@Controller('songs')
 export class SongController {
   constructor(private readonly songService: SongService) {}
 

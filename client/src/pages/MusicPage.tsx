@@ -193,6 +193,7 @@ export const MusicPage: React.FC = observer(() => {
 
   const handleKeyPress = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter') {
+      musicStore.setShowSuggestions(false); // Close autocomplete
       handleSearch();
     } else if (event.key === 'Escape') {
       musicStore.setShowSuggestions(false);

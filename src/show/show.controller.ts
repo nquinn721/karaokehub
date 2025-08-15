@@ -20,6 +20,24 @@ export class ShowController {
     return this.showService.findAll();
   }
 
+  @Get('nearby')
+  findNearby(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('radius') radius?: string,
+    @Query('day') day?: DayOfWeek,
+  ) {
+    const userLat = parseFloat(lat);
+    const userLng = parseFloat(lng);
+    const radiusMiles = radius ? parseFloat(radius) : 20;
+
+    if (isNaN(userLat) || isNaN(userLng)) {
+      throw new Error('Invalid latitude or longitude');
+    }
+
+    return this.showService.findNearby(userLat, userLng, radiusMiles, day);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.showService.findOne(id);

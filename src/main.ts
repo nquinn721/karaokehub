@@ -9,7 +9,9 @@ import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['log', 'error', 'warn'],
+  });
   const configService = app.get(ConfigService);
 
   // Configure global prefix BEFORE static assets
@@ -43,22 +45,6 @@ async function bootstrap() {
   // Cookie parser
   app.use(cookieParser());
 
-  // Request logging middleware
-  app.use((req, res, next) => {
-    console.log('🔵 [REQUEST] Incoming request', {
-      method: req.method,
-      url: req.url,
-      origin: req.get('origin'),
-      referer: req.get('referer'),
-      userAgent: req.get('user-agent'),
-      authorization: req.get('authorization') ? 'Present' : 'Missing',
-      authPrefix: req.get('authorization')?.substring(0, 20) + '...',
-      contentType: req.get('content-type'),
-      timestamp: new Date().toISOString(),
-    });
-    next();
-  });
-
   // CORS
   const allowedOrigins = configService.get<string>('ALLOWED_ORIGINS')?.split(',') || [
     'http://localhost:5173', // Frontend Vite dev server
@@ -69,27 +55,16 @@ async function bootstrap() {
     'http://localhost:8080', // Cloud Run port
   ];
 
-  console.log('CORS Configuration:', {
-    allowedOrigins,
-    environment: configService.get('NODE_ENV'),
-    allowedOriginsEnv: configService.get<string>('ALLOWED_ORIGINS'),
-  });
-
   app.enableCors({
     origin: (origin, callback) => {
-      console.log('CORS Request from origin:', origin);
-
       // Allow requests with no origin (like mobile apps, curl, etc.)
       if (!origin) {
-        console.log('Allowing request with no origin');
         return callback(null, true);
       }
 
       if (allowedOrigins.includes(origin)) {
-        console.log('Origin allowed:', origin);
         callback(null, true);
       } else {
-        console.log('Origin rejected:', origin, 'Allowed origins:', allowedOrigins);
         callback(new Error('Not allowed by CORS'), false);
       }
     },

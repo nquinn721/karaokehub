@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Put, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { AdminService } from './admin.service';
@@ -81,5 +81,77 @@ export class AdminController {
   @Get('parser/status')
   async getParserStatus() {
     return await this.adminService.getParserStatus();
+  }
+
+  // Delete Endpoints
+  @Delete('venues/:id')
+  async deleteVenue(@Param('id') id: string) {
+    try {
+      return await this.adminService.deleteVenue(id);
+    } catch (error) {
+      console.error('Controller error in deleteVenue:', error);
+      throw error;
+    }
+  }
+
+  @Delete('shows/:id')
+  async deleteShow(@Param('id') id: string) {
+    return await this.adminService.deleteShow(id);
+  }
+
+  @Delete('djs/:id')
+  async deleteDj(@Param('id') id: string) {
+    return await this.adminService.deleteDj(id);
+  }
+
+  // Update Endpoints
+  @Put('venues/:id')
+  async updateVenue(@Param('id') id: string, @Body() updateData: any) {
+    return await this.adminService.updateVenue(id, updateData);
+  }
+
+  @Put('shows/:id')
+  async updateShow(@Param('id') id: string, @Body() updateData: any) {
+    return await this.adminService.updateShow(id, updateData);
+  }
+
+  @Put('djs/:id')
+  async updateDj(@Param('id') id: string, @Body() updateData: any) {
+    return await this.adminService.updateDj(id, updateData);
+  }
+
+  @Get('feedback')
+  async getFeedback(
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('search') search?: string,
+  ) {
+    return await this.adminService.getFeedback(+page, +limit, search);
+  }
+
+  @Put('feedback/:id')
+  async updateFeedback(@Param('id') id: string, @Body() updateData: any) {
+    return await this.adminService.updateFeedback(id, updateData);
+  }
+
+  @Delete('feedback/:id')
+  async deleteFeedback(@Param('id') id: string) {
+    return await this.adminService.deleteFeedback(id);
+  }
+
+  // Get relationships that will be affected by deletion
+  @Get('venues/:id/relationships')
+  async getVenueRelationships(@Param('id') id: string) {
+    return await this.adminService.getVenueRelationships(id);
+  }
+
+  @Get('shows/:id/relationships')
+  async getShowRelationships(@Param('id') id: string) {
+    return await this.adminService.getShowRelationships(id);
+  }
+
+  @Get('djs/:id/relationships')
+  async getDjRelationships(@Param('id') id: string) {
+    return await this.adminService.getDjRelationships(id);
   }
 }

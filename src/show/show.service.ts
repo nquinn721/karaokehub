@@ -12,8 +12,6 @@ export interface CreateShowDto {
   startTime: string;
   endTime: string;
   description?: string;
-  lat?: number;
-  lng?: number;
 }
 
 export interface UpdateShowDto {
@@ -24,9 +22,13 @@ export interface UpdateShowDto {
   startTime?: string;
   endTime?: string;
   description?: string;
-  lat?: number;
-  lng?: number;
   isActive?: boolean;
+}
+
+export interface GeocodedShow extends Show {
+  lat: number;
+  lng: number;
+  distance: number;
 }
 
 @Injectable()
@@ -40,33 +42,7 @@ export class ShowService {
   ) {}
 
   async create(createShowDto: CreateShowDto): Promise<Show> {
-    // If coordinates aren't provided but address is, try to geocode
-    let lat = createShowDto.lat;
-    let lng = createShowDto.lng;
-
-    if (!lat || !lng) {
-      if (createShowDto.address) {
-        try {
-          const geocodeResult = await this.geocodingService.geocodeAddress(createShowDto.address);
-          if (geocodeResult) {
-            lat = geocodeResult.lat;
-            lng = geocodeResult.lng;
-            this.logger.log(
-              `Geocoded address "${createShowDto.address}" to coordinates: ${lat}, ${lng}`,
-            );
-          }
-        } catch (error) {
-          this.logger.warn(`Failed to geocode address "${createShowDto.address}":`, error);
-        }
-      }
-    }
-
-    const show = this.showRepository.create({
-      ...createShowDto,
-      lat,
-      lng,
-    });
-
+    const show = this.showRepository.create(createShowDto);
     return await this.showRepository.save(show);
   }
 
@@ -105,26 +81,46 @@ export class ShowService {
     });
   }
 
-  async update(id: string, updateShowDto: UpdateShowDto): Promise<Show> {
-    // If address is being updated but coordinates aren't provided, try to geocode
-    let updateData = { ...updateShowDto };
+  async findNearby(
+    userLat: number,
+    userLng: number,
+    radiusMiles: number = 20,
+    day?: DayOfWeek,
+  ): Promise<GeocodedShow[]> {
+    try {
+      // Get all shows (optionally filtered by day)
+      let shows: Show[];
 
-    if (updateShowDto.address && (!updateShowDto.lat || !updateShowDto.lng)) {
-      try {
-        const geocodeResult = await this.geocodingService.geocodeAddress(updateShowDto.address);
-        if (geocodeResult) {
-          updateData.lat = geocodeResult.lat;
-          updateData.lng = geocodeResult.lng;
-          this.logger.log(
-            `Geocoded updated address "${updateShowDto.address}" to coordinates: ${updateData.lat}, ${updateData.lng}`,
-          );
-        }
-      } catch (error) {
-        this.logger.warn(`Failed to geocode updated address "${updateShowDto.address}":`, error);
+      if (day) {
+        shows = await this.findByDay(day);
+      } else {
+        shows = await this.findAll();
       }
-    }
 
-    await this.showRepository.update(id, updateData);
+      // Filter shows by distance and add geocoding data
+      const nearbyShows = await this.geocodingService.filterByDistance(
+        shows,
+        userLat,
+        userLng,
+        radiusMiles,
+      );
+
+      // Sort by distance (closest first)
+      nearbyShows.sort((a, b) => a.distance - b.distance);
+
+      this.logger.log(
+        `Found ${nearbyShows.length} shows within ${radiusMiles} miles of (${userLat}, ${userLng})`,
+      );
+
+      return nearbyShows;
+    } catch (error) {
+      this.logger.error('Error finding nearby shows:', error);
+      throw error;
+    }
+  }
+
+  async update(id: string, updateShowDto: UpdateShowDto): Promise<Show> {
+    await this.showRepository.update(id, updateShowDto);
     return await this.findOne(id);
   }
 
@@ -132,58 +128,9 @@ export class ShowService {
     await this.showRepository.update(id, { isActive: false });
   }
 
-  // Batch geocode shows that don't have coordinates
+  // Note: Geocoding functionality removed as lat/lng are no longer stored
   async geocodeExistingShows(): Promise<{ processed: number; geocoded: number; errors: number }> {
-    const showsWithoutCoords = await this.showRepository.find({
-      where: { isActive: true },
-      select: ['id', 'address', 'lat', 'lng'],
-    });
-
-    const needGeocoding = showsWithoutCoords.filter(
-      (show) => show.address && (!show.lat || !show.lng),
-    );
-
-    if (needGeocoding.length === 0) {
-      this.logger.log('No shows require geocoding');
-      return { processed: 0, geocoded: 0, errors: 0 };
-    }
-
-    this.logger.log(`Geocoding ${needGeocoding.length} shows...`);
-
-    let geocoded = 0;
-    let errors = 0;
-
-    // Process shows individually to handle errors gracefully
-    for (const show of needGeocoding) {
-      try {
-        const geocodeResult = await this.geocodingService.geocodeAddress(show.address);
-        if (geocodeResult) {
-          await this.showRepository.update(show.id, {
-            lat: geocodeResult.lat,
-            lng: geocodeResult.lng,
-          });
-          geocoded++;
-          this.logger.log(
-            `Geocoded show ${show.id}: ${show.address} -> ${geocodeResult.lat}, ${geocodeResult.lng}`,
-          );
-        } else {
-          errors++;
-          this.logger.warn(`Failed to geocode show ${show.id}: ${show.address}`);
-        }
-      } catch (error) {
-        errors++;
-        this.logger.error(`Error geocoding show ${show.id}:`, error);
-      }
-    }
-
-    this.logger.log(
-      `Geocoding complete: ${geocoded} success, ${errors} errors out of ${needGeocoding.length} shows`,
-    );
-
-    return {
-      processed: needGeocoding.length,
-      geocoded,
-      errors,
-    };
+    this.logger.log('Geocoding functionality has been removed');
+    return { processed: 0, geocoded: 0, errors: 0 };
   }
 }

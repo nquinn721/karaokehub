@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
 import { Favorite } from '../favorite/favorite.entity';
+import { Feedback } from '../feedback/feedback.entity';
 import { ParsedSchedule, ParseStatus } from '../parser/parsed-schedule.entity';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
@@ -23,6 +24,8 @@ export class AdminService {
     private parsedScheduleRepository: Repository<ParsedSchedule>,
     @InjectRepository(Favorite)
     private favoriteRepository: Repository<Favorite>,
+    @InjectRepository(Feedback)
+    private feedbackRepository: Repository<Feedback>,
   ) {}
 
   async getStatistics() {
@@ -51,9 +54,18 @@ export class AdminService {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const [newUsersLast30Days, newVendorsLast30Days, newShowsLast30Days] = await Promise.all([
-      this.userRepository.count({ where: { createdAt: { $gte: thirtyDaysAgo } as any } }),
-      this.vendorRepository.count({ where: { createdAt: { $gte: thirtyDaysAgo } as any } }),
-      this.showRepository.count({ where: { createdAt: { $gte: thirtyDaysAgo } as any } }),
+      this.userRepository
+        .createQueryBuilder('user')
+        .where('user.createdAt >= :thirtyDaysAgo', { thirtyDaysAgo })
+        .getCount(),
+      this.vendorRepository
+        .createQueryBuilder('vendor')
+        .where('vendor.createdAt >= :thirtyDaysAgo', { thirtyDaysAgo })
+        .getCount(),
+      this.showRepository
+        .createQueryBuilder('show')
+        .where('show.createdAt >= :thirtyDaysAgo', { thirtyDaysAgo })
+        .getCount(),
     ]);
 
     return {
@@ -253,26 +265,48 @@ export class AdminService {
   }
 
   async getVenues(page = 1, limit = 10, search?: string) {
-    const query = this.vendorRepository.createQueryBuilder('vendor');
+    const query = this.vendorRepository
+      .createQueryBuilder('vendor')
+      .leftJoin('vendor.shows', 'shows')
+      .leftJoin('vendor.djs', 'djs')
+      .addSelect('COUNT(DISTINCT shows.id)', 'showCount')
+      .addSelect('COUNT(DISTINCT djs.id)', 'djCount')
+      .groupBy('vendor.id');
 
     if (search) {
-      query.where('vendor.name LIKE :search OR vendor.location LIKE :search', {
+      query.where('vendor.name LIKE :search OR vendor.owner LIKE :search', {
         search: `%${search}%`,
       });
     }
 
-    const [items, total] = await query
+    const result = await query
       .orderBy('vendor.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit)
-      .getManyAndCount();
+      .getRawAndEntities();
+
+    // Combine entity data with counts
+    const itemsWithCounts = result.entities.map((venue, index) => ({
+      ...venue,
+      showCount: parseInt(result.raw[index].showCount) || 0,
+      djCount: parseInt(result.raw[index].djCount) || 0,
+    }));
+
+    // Get total count separately for pagination
+    const totalQuery = this.vendorRepository.createQueryBuilder('vendor');
+    if (search) {
+      totalQuery.where('vendor.name LIKE :search OR vendor.owner LIKE :search', {
+        search: `%${search}%`,
+      });
+    }
+    const totalCount = await totalQuery.getCount();
 
     return {
-      items,
-      total,
+      items: itemsWithCounts,
+      total: totalCount,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(totalCount / limit),
     };
   }
 
@@ -307,7 +341,7 @@ export class AdminService {
     const query = this.djRepository.createQueryBuilder('dj');
 
     if (search) {
-      query.where('dj.name LIKE :search OR dj.bio LIKE :search', {
+      query.where('dj.name LIKE :search', {
         search: `%${search}%`,
       });
     }
@@ -418,5 +452,189 @@ export class AdminService {
         timeAgo: this.getTimeAgo(item.createdAt),
       })),
     };
+  }
+
+  // Delete methods
+  async deleteVenue(id: string) {
+    try {
+      const venue = await this.vendorRepository.findOne({
+        where: { id },
+        relations: ['shows', 'djs'],
+      });
+
+      if (!venue) {
+        throw new Error('Venue not found');
+      }
+
+      // Delete the venue (cascade will handle related entities)
+      await this.vendorRepository.remove(venue);
+
+      return { message: 'Venue deleted successfully' };
+    } catch (error) {
+      console.error('Error in deleteVenue:', error);
+      throw error;
+    }
+  }
+
+  // Test comment for recompilation
+
+  async deleteShow(id: string) {
+    const show = await this.showRepository.findOne({
+      where: { id },
+      relations: ['favorites'],
+    });
+
+    if (!show) {
+      throw new Error('Show not found');
+    }
+
+    await this.showRepository.remove(show);
+    return { message: 'Show deleted successfully' };
+  }
+
+  async deleteDj(id: string) {
+    const dj = await this.djRepository.findOne({
+      where: { id },
+      relations: ['shows'],
+    });
+
+    if (!dj) {
+      throw new Error('DJ not found');
+    }
+
+    // Set DJ references to null in shows before deleting
+    await this.showRepository.update({ djId: id }, { djId: null });
+
+    await this.djRepository.remove(dj);
+    return { message: 'DJ deleted successfully' };
+  }
+
+  // Update methods
+  async updateVenue(id: string, updateData: any) {
+    const venue = await this.vendorRepository.findOne({ where: { id } });
+
+    if (!venue) {
+      throw new Error('Venue not found');
+    }
+
+    await this.vendorRepository.update(id, {
+      name: updateData.name,
+      owner: updateData.location || venue.owner, // Use location as owner if provided
+    });
+
+    return { message: 'Venue updated successfully' };
+  }
+
+  async updateShow(id: string, updateData: any) {
+    const show = await this.showRepository.findOne({ where: { id } });
+
+    if (!show) {
+      throw new Error('Show not found');
+    }
+
+    await this.showRepository.update(id, {
+      day: updateData.day,
+      time: updateData.time,
+      description: updateData.description,
+    });
+
+    return { message: 'Show updated successfully' };
+  }
+
+  async updateDj(id: string, updateData: any) {
+    const dj = await this.djRepository.findOne({ where: { id } });
+
+    if (!dj) {
+      throw new Error('DJ not found');
+    }
+
+    await this.djRepository.update(id, {
+      name: updateData.name,
+    });
+
+    return { message: 'DJ updated successfully' };
+  }
+
+  // Relationship methods
+  async getVenueRelationships(id: string) {
+    const venue = await this.vendorRepository.findOne({
+      where: { id },
+      relations: ['shows', 'djs'],
+    });
+
+    if (!venue) {
+      throw new Error('Venue not found');
+    }
+
+    return {
+      shows: venue.shows,
+      djs: venue.djs,
+    };
+  }
+
+  async getShowRelationships(id: string) {
+    const favorites = await this.favoriteRepository.find({
+      where: { show: { id } },
+      relations: ['user'],
+    });
+
+    return {
+      favorites,
+    };
+  }
+
+  async getDjRelationships(id: string) {
+    const shows = await this.showRepository.find({
+      where: { djId: id },
+      relations: ['vendor'],
+    });
+
+    return {
+      shows,
+    };
+  }
+
+  async getFeedback(page: number = 1, limit: number = 10, search?: string) {
+    const queryBuilder = this.feedbackRepository
+      .createQueryBuilder('feedback')
+      .leftJoinAndSelect('feedback.user', 'user');
+
+    if (search) {
+      queryBuilder.where(
+        '(feedback.subject LIKE :search OR feedback.message LIKE :search OR feedback.email LIKE :search OR feedback.name LIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    queryBuilder
+      .orderBy('feedback.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [items, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async updateFeedback(id: string, updateData: any) {
+    await this.feedbackRepository.update(id, updateData);
+    return await this.feedbackRepository.findOne({
+      where: { id },
+      relations: ['user'],
+    });
+  }
+
+  async deleteFeedback(id: string) {
+    const result = await this.feedbackRepository.delete(id);
+    if (result.affected === 0) {
+      throw new Error('Feedback not found');
+    }
+    return { message: 'Feedback deleted successfully' };
   }
 }

@@ -13,15 +13,12 @@ export class ParserController {
   @Post('parse-website')
   async parseWebsite(@Body() body: { url: string }) {
     try {
-      console.log('Parsing URL:', body.url);
-
       // First, try to add URL to the urls_to_parse table
       let urlToParse;
       try {
         urlToParse = await this.urlToParseService.create(body.url);
-        console.log('URL added to urls_to_parse table:', urlToParse.id);
       } catch (error) {
-        console.log('URL may already exist in urls_to_parse table, continuing with parsing');
+        // URL may already exist in urls_to_parse table, continuing with parsing
       }
 
       // Then parse the website
@@ -40,15 +37,12 @@ export class ParserController {
   @Post('parse-and-save-website')
   async parseAndSaveWebsite(@Body() body: { url: string }) {
     try {
-      console.log('Parsing and saving URL:', body.url);
-
       // First, try to add URL to the urls_to_parse table
       let urlToParse;
       try {
         urlToParse = await this.urlToParseService.create(body.url);
-        console.log('URL added to urls_to_parse table:', urlToParse.id);
       } catch (error) {
-        console.log('URL may already exist in urls_to_parse table, continuing with parsing');
+        // URL may already exist in urls_to_parse table, continuing with parsing
       }
 
       // Then parse and save the website
@@ -83,8 +77,6 @@ export class ParserController {
     },
   ) {
     try {
-      console.log('Submitting manual show:', body);
-
       // Create manual show submission in a format similar to parsed data
       const manualShowData = {
         vendor: {
@@ -233,7 +225,6 @@ export class ParserController {
         try {
           const result = await this.karaokeParserService.parseAndSaveWebsite(url.url);
           processed++;
-          console.log(`Successfully parsed ${url.url}`);
         } catch (error) {
           console.error(`Failed to parse ${url.url}:`, error);
         }

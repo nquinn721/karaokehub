@@ -1,7 +1,6 @@
 import AdminBreadcrumb from '@components/AdminBreadcrumb';
 import AdminDataTables from '@components/AdminDataTables';
 import {
-  faDatabase,
   faMapMarkerAlt,
   faMusic,
   faPlus,
@@ -18,7 +17,6 @@ import {
   CircularProgress,
   Container,
   Grid,
-  Paper,
   Typography,
   useTheme,
 } from '@mui/material';
@@ -74,7 +72,6 @@ const StatCard = ({
 };
 
 const AdminDashboardPage = observer(() => {
-  const theme = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -184,65 +181,8 @@ const AdminDashboardPage = observer(() => {
         </Grid>
       )}
 
-      {/* Management Tools */}
-      <Paper
-        elevation={0}
-        sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 2 }}
-      >
-        <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-          Management Tools
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="outlined"
-              fullWidth
-              size="large"
-              startIcon={<FontAwesomeIcon icon={faUsers} />}
-              onClick={() => navigate('/admin/users')}
-              sx={{ py: 2 }}
-            >
-              Manage Users
-            </Button>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="outlined"
-              fullWidth
-              size="large"
-              startIcon={<FontAwesomeIcon icon={faMapMarkerAlt} />}
-              onClick={() => navigate('/admin/venues')}
-              sx={{ py: 2 }}
-            >
-              Manage Venues
-            </Button>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="outlined"
-              fullWidth
-              size="large"
-              startIcon={<FontAwesomeIcon icon={faMusic} />}
-              onClick={() => navigate('/admin/shows')}
-              sx={{ py: 2 }}
-            >
-              Manage Shows
-            </Button>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Button
-              variant="contained"
-              fullWidth
-              size="large"
-              startIcon={<FontAwesomeIcon icon={faDatabase} />}
-              onClick={() => navigate('/admin/parser')}
-              sx={{ py: 2 }}
-            >
-              Content Parser
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
+      {/* Data Management */}
+      <AdminDataTables />
     </Container>
   );
 });

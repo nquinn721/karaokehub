@@ -485,10 +485,56 @@ const AdminParserPage: React.FC = observer(() => {
                         <AccordionDetails>
                           <List>
                             {selectedReview.aiAnalysis.shows.map((show: any, index: number) => (
-                              <ListItem key={index}>
+                              <ListItem key={index} sx={{ borderBottom: '1px solid #eee', py: 2 }}>
                                 <ListItemText
-                                  primary={`${show.date} - ${show.time}`}
-                                  secondary={`DJ: ${show.djName || 'Unknown'} | Confidence: ${Math.round(show.confidence * 100)}%`}
+                                  primary={
+                                    <Box>
+                                      <Typography variant="subtitle1" fontWeight="bold">
+                                        {show.venue}
+                                      </Typography>
+                                      <Typography variant="body2" color="text.secondary">
+                                        {show.address}
+                                      </Typography>
+                                    </Box>
+                                  }
+                                  secondary={
+                                    <Box sx={{ mt: 1 }}>
+                                      <Typography variant="body2">
+                                        <strong>Day:</strong> {show.day || show.date}
+                                      </Typography>
+                                      <Typography variant="body2">
+                                        <strong>Time:</strong> {show.time} ({show.startTime} -{' '}
+                                        {show.endTime})
+                                      </Typography>
+                                      <Typography variant="body2">
+                                        <strong>DJ:</strong> {show.djName || 'Unknown'}
+                                      </Typography>
+                                      {show.venuePhone && (
+                                        <Typography variant="body2">
+                                          <strong>Phone:</strong> {show.venuePhone}
+                                        </Typography>
+                                      )}
+                                      {show.venueWebsite && (
+                                        <Typography variant="body2">
+                                          <strong>Website:</strong> {show.venueWebsite}
+                                        </Typography>
+                                      )}
+                                      {show.description && (
+                                        <Typography variant="body2">
+                                          <strong>Description:</strong> {show.description}
+                                        </Typography>
+                                      )}
+                                      {show.notes && (
+                                        <Typography variant="body2">
+                                          <strong>Notes:</strong> {show.notes}
+                                        </Typography>
+                                      )}
+                                      <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                        <strong>Confidence:</strong>{' '}
+                                        {Math.round(show.confidence * 100)}%
+                                      </Typography>
+                                    </Box>
+                                  }
                                 />
                               </ListItem>
                             ))}

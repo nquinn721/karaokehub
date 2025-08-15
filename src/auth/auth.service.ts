@@ -136,72 +136,27 @@ export class AuthService {
 
   async validateUser(payload: any): Promise<User> {
     try {
-      console.log('🔵 [JWT_VALIDATION] Starting user validation from JWT payload', {
-        payload,
-        userId: payload?.sub,
-        userEmail: payload?.email,
-        timestamp: new Date().toISOString(),
-      });
-
       const user = await this.userService.findOne(payload.sub);
 
       if (!user) {
-        console.error('🔴 [JWT_VALIDATION] User not found in database', {
-          requestedUserId: payload.sub,
-          payload,
-          timestamp: new Date().toISOString(),
-        });
         throw new Error('User not found');
       }
 
-      console.log('🟢 [JWT_VALIDATION] User validation successful', {
-        foundUserId: user?.id,
-        foundUserEmail: user?.email,
-        requestedUserId: payload?.sub,
-        timestamp: new Date().toISOString(),
-      });
-
       return user;
     } catch (error) {
-      console.error('🔴 [JWT_VALIDATION] User validation failed', {
-        error: error.message,
-        stack: error.stack,
-        payload,
-        timestamp: new Date().toISOString(),
-      });
+      console.error('JWT validation failed:', error.message);
       throw error;
     }
   }
 
   generateToken(user: User): string {
-    console.log('🔵 [JWT_GENERATION] Starting token generation', {
-      userId: user?.id,
-      userEmail: user?.email,
-      timestamp: new Date().toISOString(),
-    });
-
     const payload = { sub: user.id, email: user.email };
-    console.log('🔵 [JWT_GENERATION] JWT payload created', {
-      payload,
-      timestamp: new Date().toISOString(),
-    });
 
     try {
       const token = this.jwtService.sign(payload);
-      console.log('🟢 [JWT_GENERATION] JWT token generated successfully', {
-        tokenLength: token?.length,
-        tokenPrefix: token?.substring(0, 20) + '...',
-        payload,
-        timestamp: new Date().toISOString(),
-      });
       return token;
     } catch (error) {
-      console.error('🔴 [JWT_GENERATION] JWT token generation failed', {
-        error: error.message,
-        stack: error.stack,
-        payload,
-        timestamp: new Date().toISOString(),
-      });
+      console.error('JWT token generation failed:', error.message);
       throw error;
     }
   }

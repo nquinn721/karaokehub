@@ -4,7 +4,7 @@ import { CreateFeedbackDto, UpdateFeedbackDto } from './feedback.dto';
 import { Feedback } from './feedback.entity';
 import { FeedbackService } from './feedback.service';
 
-@Controller('api/feedback')
+@Controller('feedback')
 export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 

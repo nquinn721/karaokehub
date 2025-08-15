@@ -712,25 +712,58 @@ ${textContent}`;
           continue;
         }
 
-        // Parse the date and time
-        let parsedDate: Date;
-        try {
-          parsedDate = new Date(showData.date);
-          if (isNaN(parsedDate.getTime())) {
-            // If date parsing fails, try to create a date from the string
-            parsedDate = new Date();
-            this.logger.warn(`Could not parse date: ${showData.date}, using current date`);
+        // Handle date parsing for recurring shows vs specific dates
+        let parsedDate: Date | null = null;
+        let dayOfWeek: string | null = null;
+
+        // Check if this is a day of the week (recurring show) or a specific date
+        const validDays = [
+          'monday',
+          'tuesday',
+          'wednesday',
+          'thursday',
+          'friday',
+          'saturday',
+          'sunday',
+        ];
+        if (
+          validDays.includes(showData.date?.toLowerCase()) ||
+          validDays.includes(showData.day?.toLowerCase())
+        ) {
+          // This is a recurring weekly show
+          dayOfWeek = (showData.day || showData.date).toLowerCase();
+          parsedDate = null; // No specific date for recurring shows
+          this.logger.log(`Processing recurring show: ${showData.venue} on ${dayOfWeek}s`);
+        } else {
+          // Try to parse as a specific date
+          try {
+            parsedDate = new Date(showData.date);
+            if (isNaN(parsedDate.getTime())) {
+              // If date parsing fails, treat as recurring show
+              parsedDate = null;
+              dayOfWeek = showData.day?.toLowerCase() || null;
+              this.logger.warn(
+                `Could not parse date: ${showData.date}, treating as recurring show`,
+              );
+            }
+          } catch (error) {
+            parsedDate = null;
+            dayOfWeek = showData.day?.toLowerCase() || null;
+            this.logger.warn(`Error parsing date: ${showData.date}, treating as recurring show`);
           }
-        } catch (error) {
-          parsedDate = new Date();
-          this.logger.warn(`Error parsing date: ${showData.date}, using current date`);
         }
 
         // Find the appropriate DJ
         const dj = showData.djName ? djMap.get(showData.djName) : null;
 
-        // Enhanced duplicate detection - check multiple criteria for better matching
-        const existingShow = await this.findExistingShow(showData, vendor.id, parsedDate);
+        // Exact duplicate detection - strict matching on all criteria
+        const existingShow = await this.findExistingShowExact(
+          showData,
+          vendor.id,
+          dj?.id || null,
+          dayOfWeek,
+          parsedDate,
+        );
 
         if (existingShow) {
           // Update existing show with new data (only if new data is not null/empty)
@@ -822,6 +855,162 @@ ${textContent}`;
     }
 
     return null;
+  }
+
+  private async findExistingShowExact(
+    showData: any,
+    vendorId: string,
+    djId: string | null,
+    dayOfWeek: string | null,
+    parsedDate: Date,
+  ): Promise<any> {
+    // Exact match: venue + day + time + DJ + vendor + address
+    // For recurring shows, match by day of week; for specific shows, match by date
+
+    // First, get all shows that match vendor, DJ, and day/date
+    const baseCondition: any = {
+      vendorId: vendorId,
+      djId: djId,
+    };
+
+    // For recurring shows (day of week provided), match by day
+    if (dayOfWeek) {
+      baseCondition.day = dayOfWeek;
+    } else {
+      // For specific date shows, match by date
+      baseCondition.date = parsedDate;
+    }
+
+    // Get all potential matches
+    const potentialMatches = await this.showRepository.find({
+      where: baseCondition,
+    });
+
+    // Now check each match for venue, address, and time equivalence
+    for (const existingShow of potentialMatches) {
+      const venueMatches = this.isSimilarVenue(existingShow.venue, showData.venue);
+      const addressMatches =
+        !showData.address ||
+        !existingShow.address ||
+        this.isSimilarAddress(existingShow.address, showData.address);
+      const timeMatches = this.areTimesEquivalent(existingShow.time, showData.time);
+
+      if (venueMatches && addressMatches && timeMatches) {
+        this.logger.log(
+          `Found exact duplicate: ${showData.venue} (${showData.address || 'no address'}) on ${dayOfWeek || parsedDate.toDateString()} at ${showData.time} (normalized match with existing time: ${existingShow.time}) with DJ ${djId} for vendor ${vendorId}`,
+        );
+        return existingShow;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Normalize time strings for comparison
+   * Handles formats like "9:30 PM - 2:00 AM", "fri 9-1", "9pm-1am", etc.
+   */
+  private normalizeTimeForComparison(
+    timeStr: string,
+  ): { startTime: string; endTime: string } | null {
+    if (!timeStr) return null;
+
+    try {
+      // Remove day prefixes like "fri", "friday", etc.
+      let cleanTime = timeStr.toLowerCase().replace(/^(mon|tue|wed|thu|fri|sat|sun)\w*\s*/i, '');
+
+      // Handle various time formats
+      const timePatterns = [
+        // "9:30 PM - 2:00 AM"
+        /(\d{1,2}):(\d{2})\s*(am|pm)\s*-\s*(\d{1,2}):(\d{2})\s*(am|pm)/i,
+        // "9:30PM-2:00AM" (no spaces)
+        /(\d{1,2}):(\d{2})(am|pm)\s*-\s*(\d{1,2}):(\d{2})(am|pm)/i,
+        // "9pm-2am"
+        /(\d{1,2})(am|pm)\s*-\s*(\d{1,2})(am|pm)/i,
+        // "9-2" (assume PM to AM)
+        /(\d{1,2})\s*-\s*(\d{1,2})$/,
+        // "9:30-2:00"
+        /(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/,
+      ];
+
+      for (const pattern of timePatterns) {
+        const match = cleanTime.match(pattern);
+        if (match) {
+          let startHour,
+            startMin = '00',
+            startPeriod;
+          let endHour,
+            endMin = '00',
+            endPeriod;
+
+          if (pattern.source.includes('am|pm')) {
+            // Patterns with AM/PM
+            if (match.length >= 7) {
+              // Full format with minutes
+              [, startHour, startMin, startPeriod, endHour, endMin, endPeriod] = match;
+            } else {
+              // Simplified format without minutes
+              [, startHour, startPeriod, endHour, endPeriod] = match;
+            }
+          } else {
+            // Patterns without AM/PM - assume PM to AM for typical karaoke hours
+            if (match.length >= 5) {
+              // With minutes
+              [, startHour, startMin, endHour, endMin] = match;
+            } else {
+              // Without minutes
+              [, startHour, endHour] = match;
+            }
+            startPeriod = 'pm';
+            endPeriod = 'am';
+          }
+
+          // Normalize to 24-hour format
+          const startTime24 = this.convertTo24Hour(startHour, startMin, startPeriod);
+          const endTime24 = this.convertTo24Hour(endHour, endMin, endPeriod);
+
+          return {
+            startTime: startTime24,
+            endTime: endTime24,
+          };
+        }
+      }
+
+      this.logger.warn(`Could not parse time format: ${timeStr}`);
+      return null;
+    } catch (error) {
+      this.logger.error(`Error normalizing time "${timeStr}":`, error);
+      return null;
+    }
+  }
+
+  private convertTo24Hour(hour: string, minute: string = '00', period?: string): string {
+    let h = parseInt(hour);
+    const m = parseInt(minute);
+
+    if (period) {
+      if (period.toLowerCase() === 'pm' && h !== 12) h += 12;
+      if (period.toLowerCase() === 'am' && h === 12) h = 0;
+    }
+
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * Compare two time strings for equivalence
+   */
+  private areTimesEquivalent(time1: string, time2: string): boolean {
+    const normalized1 = this.normalizeTimeForComparison(time1);
+    const normalized2 = this.normalizeTimeForComparison(time2);
+
+    if (!normalized1 || !normalized2) {
+      // Fallback to exact string comparison if parsing fails
+      return time1.trim().toLowerCase() === time2.trim().toLowerCase();
+    }
+
+    return (
+      normalized1.startTime === normalized2.startTime && normalized1.endTime === normalized2.endTime
+    );
   }
 
   private isSimilarAddress(addr1: string, addr2: string): boolean {
@@ -922,6 +1111,8 @@ ${textContent}`;
   ): Promise<any> {
     // Parse day of week from the day field
     let dayOfWeek = null;
+    let isRecurringShow = false;
+
     if (showData.day) {
       const dayLower = showData.day.toLowerCase();
       const validDays = [
@@ -935,7 +1126,15 @@ ${textContent}`;
       ];
       if (validDays.includes(dayLower)) {
         dayOfWeek = dayLower;
+        isRecurringShow = true;
       }
+    }
+
+    // For recurring shows, set date to null or a representative date
+    // For specific date shows, use the parsed date
+    let showDate = null;
+    if (!isRecurringShow && parsedDate && !isNaN(parsedDate.getTime())) {
+      showDate = parsedDate;
     }
 
     // Parse start and end times
@@ -963,11 +1162,11 @@ ${textContent}`;
       address: showData.address || null,
       venuePhone: showData.venuePhone || null,
       venueWebsite: showData.venueWebsite || null,
-      date: parsedDate,
+      date: showDate, // null for recurring shows, actual date for specific shows
       time: showData.time,
       startTime: startTime,
       endTime: endTime,
-      day: dayOfWeek,
+      day: dayOfWeek, // day of week for recurring shows
       description: showData.description || `Show at ${showData.venue}`,
       notes: showData.notes || null,
       vendorId: vendorId,
@@ -975,7 +1174,15 @@ ${textContent}`;
       isActive: true,
     });
 
-    return await this.showRepository.save(show);
+    const savedShow = await this.showRepository.save(show);
+
+    this.logger.log(
+      `Created new ${isRecurringShow ? 'recurring' : 'specific'} show: ${savedShow.venue} ${
+        isRecurringShow ? `every ${dayOfWeek}` : `on ${showDate?.toDateString()}`
+      } at ${savedShow.time}`,
+    );
+
+    return savedShow;
   }
 
   async rejectParsedData(parsedScheduleId: string, reason?: string): Promise<void> {
@@ -1135,5 +1342,39 @@ ${textContent}`;
       this.logger.error('Error saving manual submission for review:', error);
       throw error;
     }
+  }
+
+  /**
+   * Test method to verify time normalization works correctly
+   */
+  testTimeNormalization(): void {
+    const testCases = [
+      '9:30 PM - 2:00 AM',
+      'fri 9-1',
+      '9pm-1am',
+      '9:30PM-2:00AM',
+      '9-1',
+      '9:30-2:00',
+      'friday 9:30 PM - 2:00 AM',
+    ];
+
+    this.logger.log('Testing time normalization:');
+    testCases.forEach((testCase) => {
+      const normalized = this.normalizeTimeForComparison(testCase);
+      this.logger.log(`"${testCase}" -> ${JSON.stringify(normalized)}`);
+    });
+
+    // Test equivalence
+    const equivalentPairs = [
+      ['9:30 PM - 2:00 AM', 'fri 9:30pm-2:00am'],
+      ['9-1', '9pm-1am'],
+      ['friday 9:30 PM - 2:00 AM', '9:30PM-2:00AM'],
+    ];
+
+    this.logger.log('Testing time equivalence:');
+    equivalentPairs.forEach(([time1, time2]) => {
+      const areEqual = this.areTimesEquivalent(time1, time2);
+      this.logger.log(`"${time1}" === "${time2}": ${areEqual}`);
+    });
   }
 }

@@ -13,7 +13,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SongFavoriteService } from './song-favorite.service';
 import { SongService } from './song.service';
 
-@Controller('api/song-favorites')
+@Controller('song-favorites')
 @UseGuards(JwtAuthGuard)
 export class SongFavoriteController {
   constructor(

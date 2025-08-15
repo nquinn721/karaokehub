@@ -1,7 +1,6 @@
 import { faPaperPlane, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  Alert,
   Box,
   Button,
   Dialog,
@@ -19,7 +18,7 @@ import {
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React, { useState } from 'react';
-import { authStore, feedbackStore } from '../stores';
+import { authStore, feedbackStore, uiStore } from '../stores';
 
 interface FeedbackModalProps {
   open: boolean;
@@ -36,7 +35,6 @@ const FeedbackModal: React.FC<FeedbackModalProps> = observer(({ open, onClose })
     name: authStore.user?.name || '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({
@@ -57,12 +55,15 @@ const FeedbackModal: React.FC<FeedbackModalProps> = observer(({ open, onClose })
         url: window.location.href,
       });
 
-      setSubmitSuccess(true);
-      setTimeout(() => {
-        handleClose();
-      }, 2000);
+      // Show success notification instead of modal message
+      uiStore.addNotification('Thank you for your feedback! We appreciate your input.', 'success');
+
+      // Close modal immediately
+      handleClose();
     } catch (error) {
       console.error('Failed to submit feedback:', error);
+      // Show error notification
+      uiStore.addNotification('Failed to submit feedback. Please try again.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -77,7 +78,6 @@ const FeedbackModal: React.FC<FeedbackModalProps> = observer(({ open, onClose })
       email: authStore.user?.email || '',
       name: authStore.user?.name || '',
     });
-    setSubmitSuccess(false);
     onClose();
   };
 
@@ -121,129 +121,123 @@ const FeedbackModal: React.FC<FeedbackModalProps> = observer(({ open, onClose })
       </DialogTitle>
 
       <DialogContent sx={{ py: 3 }}>
-        {submitSuccess ? (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            Thank you for your feedback! We appreciate your input.
-          </Alert>
-        ) : (
-          <Box>
-            <Typography variant="body1" sx={{ mb: 3, opacity: 0.9 }}>
-              Help us improve KaraokeHub! Your feedback is valuable to us.
-            </Typography>
+        <Box>
+          <Typography variant="body1" sx={{ mb: 3, opacity: 0.9 }}>
+            Help us improve KaraokeHub! Your feedback is valuable to us.
+          </Typography>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: 'white' }}>Feedback Type</InputLabel>
-                <Select
-                  value={formData.type}
-                  onChange={(e) => handleInputChange('type', e.target.value)}
-                  sx={{
-                    color: 'white',
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.3)' },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'rgba(255,255,255,0.5)',
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'white' },
-                  }}
-                >
-                  {feedbackTypes.map((type) => (
-                    <MenuItem key={type.value} value={type.value}>
-                      {type.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
+            <FormControl fullWidth>
+              <InputLabel sx={{ color: 'white' }}>Feedback Type</InputLabel>
+              <Select
+                value={formData.type}
+                onChange={(e) => handleInputChange('type', e.target.value)}
+                sx={{
+                  color: 'white',
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.3)' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'rgba(255,255,255,0.5)',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'white' },
+                }}
+              >
+                {feedbackTypes.map((type) => (
+                  <MenuItem key={type.value} value={type.value}>
+                    {type.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-              <Box>
-                <Typography variant="body2" sx={{ mb: 1, opacity: 0.9 }}>
-                  Overall Rating
-                </Typography>
-                <Rating
-                  value={formData.rating}
-                  onChange={(_, value) => handleInputChange('rating', value || 1)}
-                  size="large"
-                  sx={{
-                    color: '#ffd700',
-                    '& .MuiRating-iconEmpty': { color: 'rgba(255,255,255,0.3)' },
-                  }}
-                />
-              </Box>
+            <Box>
+              <Typography variant="body2" sx={{ mb: 1, opacity: 0.9 }}>
+                Overall Rating
+              </Typography>
+              <Rating
+                value={formData.rating}
+                onChange={(_, value) => handleInputChange('rating', value || 1)}
+                size="large"
+                sx={{
+                  color: '#ffd700',
+                  '& .MuiRating-iconEmpty': { color: 'rgba(255,255,255,0.3)' },
+                }}
+              />
             </Box>
-
-            <TextField
-              fullWidth
-              label="Subject (Optional)"
-              value={formData.subject}
-              onChange={(e) => handleInputChange('subject', e.target.value)}
-              sx={{
-                mb: 3,
-                '& label': { color: 'rgba(255,255,255,0.7)' },
-                '& input': { color: 'white' },
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
-                  '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
-                  '&.Mui-focused fieldset': { borderColor: 'white' },
-                },
-              }}
-            />
-
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              label="Your Feedback *"
-              value={formData.message}
-              onChange={(e) => handleInputChange('message', e.target.value)}
-              required
-              sx={{
-                mb: 3,
-                '& label': { color: 'rgba(255,255,255,0.7)' },
-                '& textarea': { color: 'white' },
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
-                  '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
-                  '&.Mui-focused fieldset': { borderColor: 'white' },
-                },
-              }}
-            />
-
-            {!authStore.user && (
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField
-                  fullWidth
-                  label="Your Name"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  sx={{
-                    '& label': { color: 'rgba(255,255,255,0.7)' },
-                    '& input': { color: 'white' },
-                    '& .MuiOutlinedInput-root': {
-                      '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
-                      '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: 'white' },
-                    },
-                  }}
-                />
-                <TextField
-                  fullWidth
-                  type="email"
-                  label="Your Email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  sx={{
-                    '& label': { color: 'rgba(255,255,255,0.7)' },
-                    '& input': { color: 'white' },
-                    '& .MuiOutlinedInput-root': {
-                      '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
-                      '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
-                      '&.Mui-focused fieldset': { borderColor: 'white' },
-                    },
-                  }}
-                />
-              </Box>
-            )}
           </Box>
-        )}
+
+          <TextField
+            fullWidth
+            label="Subject (Optional)"
+            value={formData.subject}
+            onChange={(e) => handleInputChange('subject', e.target.value)}
+            sx={{
+              mb: 3,
+              '& label': { color: 'rgba(255,255,255,0.7)' },
+              '& input': { color: 'white' },
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
+                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
+                '&.Mui-focused fieldset': { borderColor: 'white' },
+              },
+            }}
+          />
+
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            label="Your Feedback *"
+            value={formData.message}
+            onChange={(e) => handleInputChange('message', e.target.value)}
+            required
+            sx={{
+              mb: 3,
+              '& label': { color: 'rgba(255,255,255,0.7)' },
+              '& textarea': { color: 'white' },
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
+                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
+                '&.Mui-focused fieldset': { borderColor: 'white' },
+              },
+            }}
+          />
+
+          {!authStore.user && (
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <TextField
+                fullWidth
+                label="Your Name"
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                sx={{
+                  '& label': { color: 'rgba(255,255,255,0.7)' },
+                  '& input': { color: 'white' },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
+                    '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
+                    '&.Mui-focused fieldset': { borderColor: 'white' },
+                  },
+                }}
+              />
+              <TextField
+                fullWidth
+                type="email"
+                label="Your Email"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                sx={{
+                  '& label': { color: 'rgba(255,255,255,0.7)' },
+                  '& input': { color: 'white' },
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
+                    '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
+                    '&.Mui-focused fieldset': { borderColor: 'white' },
+                  },
+                }}
+              />
+            </Box>
+          )}
+        </Box>
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 3 }}>
@@ -258,7 +252,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = observer(({ open, onClose })
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={!formData.message.trim() || isSubmitting || submitSuccess}
+          disabled={!formData.message.trim() || isSubmitting}
           variant="contained"
           startIcon={<FontAwesomeIcon icon={faPaperPlane} />}
           sx={{

@@ -108,7 +108,7 @@ const AdminDashboardPage = observer(() => {
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Breadcrumbs */}
-      <AdminBreadcrumb />
+      <AdminBreadcrumb items={[{ label: 'Dashboard', path: '/admin', icon: 'dashboard' }]} />
 
       {/* Header */}
       <Box sx={{ mb: 4 }}>

@@ -6,6 +6,7 @@ import { observer } from 'mobx-react-lite';
 import React from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import FeedbackButton from './components/FeedbackButton';
+import GlobalNotifications from './components/GlobalNotifications';
 
 // Pages
 import AdminDashboardPage from './pages/AdminDashboardPage';
@@ -151,6 +152,9 @@ const App: React.FC = observer(() => {
 
           {/* Global Feedback Button */}
           <FeedbackButton />
+
+          {/* Global Notifications */}
+          <GlobalNotifications />
         </Box>
       </Router>
     </ThemeProvider>

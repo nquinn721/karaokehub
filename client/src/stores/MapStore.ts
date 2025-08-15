@@ -1,8 +1,19 @@
 import { autorun, makeAutoObservable, runInAction } from 'mobx';
+import { geocodingService } from '../utils/geocoding';
 
 export interface UserLocation {
   lat: number;
   lng: number;
+}
+
+export interface GeocodedShow {
+  id: string;
+  lat: number;
+  lng: number;
+  venue: string;
+  address: string;
+  distance?: number;
+  [key: string]: any; // For other show properties
 }
 
 export class MapStore {
@@ -10,14 +21,20 @@ export class MapStore {
   public selectedMarkerId: string | null = null;
   public mapInstance: google.maps.Map | null = null;
   public initialCenter = { lat: 40.7128, lng: -74.006 }; // Default to NYC
-  public initialZoom = 8; // Much more zoomed out to show whole city/region
+  public initialZoom = 8;
   public isInitialized = false;
   public locationError: string | null = null;
-  public hasSetInitialBounds = false; // Flag to prevent infinite autorun loops
+  public hasSetInitialBounds = false;
+  public geocodedShows: GeocodedShow[] = [];
+  public isGeocoding = false;
+  public maxDistanceMiles = 20; // 20 mile radius filter
 
   // Store references to avoid circular dependencies
   private apiStore: any = null;
   private showStore: any = null;
+  private geocodeTimeout: number | null = null;
+  private geocodeCache: Map<string, { lat: number; lng: number; timestamp: number }> = new Map();
+  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
     makeAutoObservable(this);
@@ -39,19 +56,29 @@ export class MapStore {
       // Ensure API config is loaded
       await this.apiStore.initializeConfig();
 
-      // Set up autorun after stores are available
+      // Set up autorun to geocode shows when they change
+      // Use a flag to prevent infinite loops and debounce to prevent excessive calls
+      let isProcessing = false;
       autorun(() => {
-        // Only run this when we have shows and a map instance, but prevent infinite loops
         if (
-          this.showStore?.showsWithCoordinates.length > 0 &&
-          this.mapInstance &&
-          !this.userLocation &&
-          !this.hasSetInitialBounds
+          !isProcessing &&
+          this.showStore?.shows.length > 0 &&
+          this.apiStore?.googleMapsApiKey &&
+          !this.isGeocoding
         ) {
-          this.resetMapView();
-          runInAction(() => {
-            this.hasSetInitialBounds = true;
-          });
+          isProcessing = true;
+
+          // Clear any existing timeout
+          if (this.geocodeTimeout) {
+            clearTimeout(this.geocodeTimeout);
+          }
+
+          // Debounce the geocoding call
+          this.geocodeTimeout = window.setTimeout(() => {
+            this.geocodeShowsInRange().finally(() => {
+              isProcessing = false;
+            });
+          }, 500); // 500ms debounce
         }
       });
 
@@ -64,6 +91,194 @@ export class MapStore {
     } catch (error) {
       console.error('Failed to initialize map store:', error);
     }
+  }
+
+  // Geocode shows and filter by distance from user location
+  async geocodeShowsInRange(): Promise<void> {
+    if (this.isGeocoding || !this.showStore?.shows) return;
+
+    runInAction(() => {
+      this.isGeocoding = true;
+    });
+
+    try {
+      if (this.userLocation) {
+        // Use server-side filtering for nearby shows
+        const response = await fetch(
+          `/shows/nearby?lat=${this.userLocation.lat}&lng=${this.userLocation.lng}&radius=${this.maxDistanceMiles}`,
+        );
+
+        if (response.ok) {
+          const nearbyShows = await response.json();
+
+          runInAction(() => {
+            this.geocodedShows = nearbyShows.map((show: any) => ({
+              ...show,
+              id: show.id || show.showId,
+              venue: show.venue || show.name || 'Unknown Venue',
+            }));
+            this.isGeocoding = false;
+          });
+
+          // Update map bounds to show all geocoded shows
+          if (this.mapInstance && this.geocodedShows.length > 0) {
+            this.fitMapToShows();
+          }
+
+          return;
+        }
+      }
+
+      // Fallback to client-side geocoding if server endpoint fails or no user location
+      await this.geocodeShowsClientSide();
+    } catch (error) {
+      console.error('Error getting nearby shows from server:', error);
+      // Fallback to client-side geocoding
+      await this.geocodeShowsClientSide();
+    }
+  }
+
+  // Client-side geocoding fallback
+  private async geocodeShowsClientSide(): Promise<void> {
+    try {
+      // Set up geocoding service with API key
+      if (this.apiStore?.googleMapsApiKey) {
+        geocodingService.setApiKey(this.apiStore.googleMapsApiKey);
+      }
+
+      const geocodedShows: GeocodedShow[] = [];
+      let apiCallCount = 0;
+      const MAX_API_CALLS_PER_BATCH = 10;
+
+      // Geocode each show with an address
+      for (const show of this.showStore.shows) {
+        if (!show.address) continue;
+
+        try {
+          let geocodeResult = null;
+
+          // Check cache first
+          const cached = this.geocodeCache.get(show.address);
+          if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+            geocodeResult = { lat: cached.lat, lng: cached.lng };
+          } else if (apiCallCount < MAX_API_CALLS_PER_BATCH) {
+            // Only make API call if under the limit
+            geocodeResult = await geocodingService.geocodeAddress(show.address);
+            apiCallCount++;
+
+            if (geocodeResult) {
+              // Cache the result
+              this.geocodeCache.set(show.address, {
+                lat: geocodeResult.lat,
+                lng: geocodeResult.lng,
+                timestamp: Date.now(),
+              });
+            }
+
+            // Add small delay between API calls
+            if (apiCallCount < MAX_API_CALLS_PER_BATCH) {
+              await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+          } else {
+            // Skip if we've hit the API call limit
+            console.log(`Skipping geocoding for "${show.address}" - API limit reached`);
+            continue;
+          }
+
+          if (geocodeResult) {
+            const geocodedShow: GeocodedShow = {
+              ...show,
+              lat: geocodeResult.lat,
+              lng: geocodeResult.lng,
+            };
+
+            // Calculate distance from user location if available
+            if (this.userLocation) {
+              geocodedShow.distance = this.calculateDistance(
+                this.userLocation.lat,
+                this.userLocation.lng,
+                geocodeResult.lat,
+                geocodeResult.lng,
+              );
+
+              // Only include shows within the specified radius
+              if (geocodedShow.distance <= this.maxDistanceMiles) {
+                geocodedShows.push(geocodedShow);
+              }
+            } else {
+              // If no user location, include all geocoded shows
+              geocodedShows.push(geocodedShow);
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to geocode address "${show.address}":`, error);
+        }
+      }
+
+      runInAction(() => {
+        this.geocodedShows = geocodedShows;
+        this.isGeocoding = false;
+      });
+
+      // Update map bounds to show all geocoded shows
+      if (this.mapInstance && geocodedShows.length > 0) {
+        this.fitMapToShows();
+      }
+    } catch (error) {
+      console.error('Error geocoding shows client-side:', error);
+      runInAction(() => {
+        this.isGeocoding = false;
+      });
+    }
+  }
+
+  // Calculate distance between two coordinates in miles
+  private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 3959; // Earth's radius in miles
+    const dLat = this.toRadians(lat2 - lat1);
+    const dLng = this.toRadians(lng2 - lng1);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(lat1)) *
+        Math.cos(this.toRadians(lat2)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
+
+  // Fit map to show all geocoded shows
+  private fitMapToShows(): void {
+    if (!this.mapInstance || this.geocodedShows.length === 0) return;
+
+    const bounds = new google.maps.LatLngBounds();
+
+    // Add all show coordinates to bounds
+    this.geocodedShows.forEach((show) => {
+      bounds.extend({ lat: show.lat, lng: show.lng });
+    });
+
+    // Add user location to bounds if available
+    if (this.userLocation) {
+      bounds.extend(this.userLocation);
+    }
+
+    // Fit map to bounds
+    this.mapInstance.fitBounds(bounds);
+
+    // Set maximum zoom level to maintain city-wide view
+    const listener = google.maps.event.addListener(this.mapInstance, 'bounds_changed', () => {
+      if (this.mapInstance && this.mapInstance.getZoom()! > 12) {
+        this.mapInstance.setZoom(12);
+      }
+      google.maps.event.removeListener(listener);
+    });
   }
 
   // Get user's current location
@@ -92,6 +307,9 @@ export class MapStore {
           this.mapInstance.panTo(location);
           this.mapInstance.setZoom(14);
         }
+
+        // Re-geocode shows with new user location for distance filtering
+        this.geocodeShowsInRange();
       },
       (error) => {
         let errorMessage = 'Error getting user location';
@@ -138,6 +356,33 @@ export class MapStore {
     }
   };
 
+  // Public method to request location and go to current location
+  goToCurrentLocation = async (): Promise<void> => {
+    if (this.userLocation && this.mapInstance) {
+      // If we already have user location, just pan to it
+      this.mapInstance.panTo(this.userLocation);
+      this.mapInstance.setZoom(14);
+      // Refresh shows for current location
+      await this.geocodeShowsInRange();
+      return;
+    }
+
+    // Request location permission and get current location
+    this.getUserLocation();
+  };
+
+  // Check if we have location permission
+  hasLocationPermission = (): boolean => {
+    return this.userLocation !== null && this.locationError === null;
+  };
+
+  // Clear location error
+  clearLocationError = (): void => {
+    runInAction(() => {
+      this.locationError = null;
+    });
+  };
+
   // Handle marker click
   handleMarkerClick = (show: any): void => {
     if (!this) {
@@ -170,55 +415,40 @@ export class MapStore {
 
   // Reset map view to show all shows
   resetMapView(): void {
-    if (!this.mapInstance || !this.showStore?.showsWithCoordinates.length) {
+    if (!this.mapInstance) {
       return;
     }
 
-    const bounds = new google.maps.LatLngBounds();
-
-    // Add all show coordinates to bounds
-    this.showStore.showsWithCoordinates.forEach((show: any) => {
-      if (show.lat && show.lng) {
-        bounds.extend({
-          lat: show.lat,
-          lng: show.lng,
-        });
-      }
-    });
-
-    // Add user location to bounds if available
-    if (this.userLocation) {
-      bounds.extend(this.userLocation);
+    // Use the new geocoded shows system
+    if (this.geocodedShows.length > 0) {
+      this.fitMapToShows();
+    } else if (this.userLocation) {
+      this.mapInstance.setCenter(this.userLocation);
+      this.mapInstance.setZoom(12);
     }
-
-    // Fit map to bounds
-    this.mapInstance.fitBounds(bounds);
-
-    // Set maximum zoom level to maintain city-wide view
-    const listener = google.maps.event.addListener(this.mapInstance, 'bounds_changed', () => {
-      if (this.mapInstance && this.mapInstance.getZoom()! > 12) {
-        this.mapInstance.setZoom(12); // Prevent zooming in too close
-      }
-      google.maps.event.removeListener(listener);
-    });
   }
 
   // Pan to specific show
   panToShow(show: any): void {
-    if (!this.mapInstance || !show.lat || !show.lng) {
+    if (!this.mapInstance) return;
+
+    // Find the geocoded show
+    const geocodedShow = this.geocodedShows.find((s) => s.id === show.id);
+    if (!geocodedShow) {
+      console.warn('Show not found in geocoded shows');
       return;
     }
 
     const location = {
-      lat: show.lat,
-      lng: show.lng,
+      lat: geocodedShow.lat,
+      lng: geocodedShow.lng,
     };
 
     this.mapInstance.panTo(location);
     this.mapInstance.setZoom(16);
 
     // Select the show marker
-    this.handleMarkerClick(show);
+    this.handleMarkerClick(geocodedShow);
   }
 
   // Get Google Maps API key
@@ -248,6 +478,15 @@ export class MapStore {
 
   // Cleanup method for when component unmounts
   cleanup(): void {
+    // Clear any pending timeouts
+    if (this.geocodeTimeout) {
+      clearTimeout(this.geocodeTimeout);
+      this.geocodeTimeout = null;
+    }
+
+    // Clear geocoding cache
+    this.geocodeCache.clear();
+
     runInAction(() => {
       this.mapInstance = null;
       this.selectedMarkerId = null;
