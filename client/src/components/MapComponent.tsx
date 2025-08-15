@@ -1134,6 +1134,40 @@ export const MapComponent: React.FC = observer(() => {
                             >
                               {formatTime(show.startTime)} - {formatTime(show.endTime)}
                             </Typography>
+
+                            {/* Favorite button */}
+                            {authStore.isAuthenticated && (
+                              <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const isFav = favoriteStore.isFavorite(show.id);
+                                  if (isFav) {
+                                    handleUnfavorite(show.id, showStore.selectedDay);
+                                  } else {
+                                    handleFavorite(show.id, showStore.selectedDay);
+                                  }
+                                }}
+                                sx={{
+                                  color: favoriteStore.isFavorite(show.id)
+                                    ? theme.palette.error.main
+                                    : theme.palette.text.disabled,
+                                  width: '32px',
+                                  height: '32px',
+                                  '&:hover': {
+                                    color: theme.palette.error.main,
+                                    backgroundColor: theme.palette.error.main + '10',
+                                  },
+                                }}
+                              >
+                                <FontAwesomeIcon
+                                  icon={
+                                    favoriteStore.isFavorite(show.id) ? faHeart : faHeartRegular
+                                  }
+                                  style={{ fontSize: '14px' }}
+                                />
+                              </IconButton>
+                            )}
                           </Box>
 
                           {/* DJ info */}
