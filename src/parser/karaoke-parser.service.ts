@@ -32,6 +32,8 @@ export interface ParsedKaraokeData {
     djName?: string;
     description?: string;
     notes?: string;
+    venuePhone?: string;
+    venueWebsite?: string;
     confidence: number;
   }>;
   rawData?: {
@@ -265,6 +267,7 @@ Look for:
 5. Special events or one-time shows
 6. Full addresses when available
 7. Start and end times separately when possible
+8. Venue contact information (phone numbers and websites)
 
 Be thorough - extract every karaoke-related event you find, even if incomplete.
 
@@ -288,6 +291,8 @@ Return JSON in this exact format (no additional text or markdown):
     {
       "venue": "Venue/Location Name",
       "address": "Full address if available",
+      "venuePhone": "Venue phone number if available",
+      "venueWebsite": "Venue website URL if available",
       "date": "YYYY-MM-DD or day-of-week",
       "time": "HH:MM or time description",
       "startTime": "HH:MM start time if available",
@@ -568,6 +573,8 @@ ${textContent}`;
           const show = this.showRepository.create({
             venue: showData.venue,
             address: showData.address || null,
+            venuePhone: showData.venuePhone || null,
+            venueWebsite: showData.venueWebsite || null,
             date: parsedDate,
             time: showData.time,
             startTime: startTime,

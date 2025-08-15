@@ -45,7 +45,7 @@ import { WebSocketModule } from './websocket/websocket.module';
 
     // Serve static files (React app)
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'client', 'dist'),
+      rootPath: join(__dirname, '..', 'public'),
       exclude: ['/api*', '/socket.io*'],
     }),
 

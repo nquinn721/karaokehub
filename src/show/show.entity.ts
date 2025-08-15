@@ -67,6 +67,12 @@ export class Show {
   @Column({ nullable: true })
   imageUrl: string;
 
+  @Column({ nullable: true })
+  venuePhone: string;
+
+  @Column({ nullable: true })
+  venueWebsite: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 8, nullable: true })
   lat: number;
 

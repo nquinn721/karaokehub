@@ -586,7 +586,7 @@ export const MapComponent: React.FC = observer(() => {
                     </Typography>
                   </Box>
                 ) : (
-                  <List sx={{ p: 0, m: '5px' }}>
+                  <List sx={{ p: 0, m: '5px', pr: '10px' }}>
                     {showStore.showsForSelectedDay.map((show, index) => (
                       <React.Fragment key={show.id}>
                         <ListItem
