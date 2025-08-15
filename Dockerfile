@@ -26,12 +26,12 @@ RUN npm ci
 COPY . .
 COPY --from=client-builder /app/client/dist ./client/dist
 
-# Ensure public directory exists and copy client public assets if they exist
+# Ensure public directory exists and copy client assets
 RUN mkdir -p ./public/images/shows
-# Copy client build output (index.html, assets, etc.) to public directory
-COPY --from=client-builder /app/client/dist/ ./public/
-# Copy additional public assets from client public directory if they exist
+# Copy additional public assets from client public directory first (images, etc.)
 COPY --from=client-builder /app/client/public/ ./public/
+# Copy client build output (index.html, assets, etc.) to public directory - this should come last to override
+COPY --from=client-builder /app/client/dist/ ./public/
 
 RUN npm run build
 

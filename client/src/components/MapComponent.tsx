@@ -1,5 +1,6 @@
 import { DayOfWeek, DayPicker } from '@components/DayPicker';
 import { PaywallModal } from '@components/PaywallModal';
+import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
   faClock,
@@ -17,10 +18,15 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Alert,
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   IconButton,
   List,
@@ -55,6 +61,9 @@ export const MapComponent: React.FC = observer(() => {
     day: string;
     action: 'add' | 'remove';
   } | null>(null);
+
+  // Login modal state
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
 
   // Fullscreen state
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
@@ -134,8 +143,8 @@ export const MapComponent: React.FC = observer(() => {
   // Favorite handling functions
   const handleFavorite = async (showId: string, day: string) => {
     if (!authStore.isAuthenticated) {
-      // Handle unauthenticated user
-      console.log('User not authenticated - redirect to login');
+      // Show login modal for unauthenticated users
+      setLoginModalOpen(true);
       return;
     }
 
@@ -156,6 +165,8 @@ export const MapComponent: React.FC = observer(() => {
 
   const handleUnfavorite = async (showId: string, day: string) => {
     if (!authStore.isAuthenticated) {
+      // Show login modal for unauthenticated users
+      setLoginModalOpen(true);
       return;
     }
 
@@ -344,13 +355,7 @@ export const MapComponent: React.FC = observer(() => {
                     const selectedShow = showStore.selectedShow;
                     if (!selectedShow) return;
 
-                    if (!authStore.isAuthenticated) {
-                      // TODO: Show login modal or redirect to login
-                      console.log('User needs to login to favorite shows');
-                      return;
-                    }
-
-                    const isFav = favoriteStore.isFavorite(selectedShow.id);
+                    const isFav = authStore.isAuthenticated && favoriteStore.isFavorite(selectedShow.id);
                     if (isFav) {
                       handleUnfavorite(selectedShow.id, showStore.selectedDay);
                     } else {
@@ -965,13 +970,7 @@ export const MapComponent: React.FC = observer(() => {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     
-                                    if (!authStore.isAuthenticated) {
-                                      // TODO: Show login modal or redirect to login
-                                      console.log('User needs to login to favorite shows');
-                                      return;
-                                    }
-
-                                    const isFav = favoriteStore.isFavorite(show.id);
+                                    const isFav = authStore.isAuthenticated && favoriteStore.isFavorite(show.id);
                                     if (isFav) {
                                       handleUnfavorite(show.id, showStore.selectedDay);
                                     } else {
@@ -1154,13 +1153,7 @@ export const MapComponent: React.FC = observer(() => {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 
-                                if (!authStore.isAuthenticated) {
-                                  // TODO: Show login modal or redirect to login
-                                  console.log('User needs to login to favorite shows');
-                                  return;
-                                }
-
-                                const isFav = favoriteStore.isFavorite(show.id);
+                                const isFav = authStore.isAuthenticated && favoriteStore.isFavorite(show.id);
                                 if (isFav) {
                                   handleUnfavorite(show.id, showStore.selectedDay);
                                 } else {
@@ -1311,6 +1304,58 @@ export const MapComponent: React.FC = observer(() => {
 
       {/* Paywall Modal */}
       <PaywallModal open={showPaywall} onClose={handlePaywallClose} feature={paywallFeature} />
+
+      {/* Login Required Modal */}
+      <Dialog 
+        open={loginModalOpen} 
+        onClose={() => setLoginModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <FontAwesomeIcon icon={faHeart} />
+            Account Required
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            You must have an account to save shows to your favorites.
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Create an account or sign in to:
+          </Typography>
+          <Box component="ul" sx={{ mt: 1, pl: 2 }}>
+            <Typography component="li" variant="body2" color="text.secondary">
+              Save your favorite karaoke shows
+            </Typography>
+            <Typography component="li" variant="body2" color="text.secondary">
+              Get notifications about your favorite venues
+            </Typography>
+            <Typography component="li" variant="body2" color="text.secondary">
+              Access premium features
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button 
+            onClick={() => setLoginModalOpen(false)}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              setLoginModalOpen(false);
+              window.open(`${process.env.VITE_API_URL || 'http://localhost:3001'}/auth/google`, '_self');
+            }}
+            variant="contained"
+            startIcon={<FontAwesomeIcon icon={faGoogle} />}
+          >
+            Continue with Google
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 });
