@@ -68,7 +68,7 @@ export const MusicPage: React.FC = observer(() => {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState<
-    'favorites' | 'friends' | 'ad_removal' | 'music_preview'
+    'favorites' | 'ad_removal' | 'music_preview'
   >('favorites');
   const [loginModalOpen, setLoginModalOpen] = useState(false);
 
