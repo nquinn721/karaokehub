@@ -66,7 +66,11 @@ export const AdPlaceholder: React.FC<AdPlaceholderProps> = ({ size, className })
         >
           <FontAwesomeIcon
             icon={faAd}
-            style={{ fontSize: size === 'banner' ? '20px' : '28px', color: theme.palette.primary.main, opacity: 0.8 }}
+            style={{
+              fontSize: size === 'banner' ? '20px' : '28px',
+              color: theme.palette.primary.main,
+              opacity: 0.8,
+            }}
           />
           <Typography
             variant={size === 'banner' ? 'caption' : 'body2'}

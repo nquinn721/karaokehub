@@ -46,7 +46,7 @@ export class SubscriptionStore {
   async fetchSubscriptionStatus() {
     try {
       this.setLoading(true);
-      const response = await apiStore.get('/subscription/status');
+      const response = await apiStore.get(apiStore.endpoints.subscription.status);
 
       runInAction(() => {
         // Ensure we have a valid structure with proper defaults
@@ -77,7 +77,7 @@ export class SubscriptionStore {
   async createCheckoutSession(plan: 'ad_free' | 'premium') {
     try {
       this.setLoading(true);
-      const response = await apiStore.post('/subscription/create-checkout-session', {
+      const response = await apiStore.post(apiStore.endpoints.subscription.createCheckoutSession, {
         plan,
       });
 
@@ -104,7 +104,7 @@ export class SubscriptionStore {
   async createPortalSession() {
     try {
       this.setLoading(true);
-      const response = await apiStore.post('/subscription/create-portal-session');
+      const response = await apiStore.post(apiStore.endpoints.subscription.createPortalSession);
 
       runInAction(() => {
         this.isLoading = false;

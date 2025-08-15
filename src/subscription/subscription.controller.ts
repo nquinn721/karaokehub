@@ -88,7 +88,7 @@ export class SubscriptionController {
           features: [
             'All ad-free features',
             'Favorite songs',
-            'Add friends',
+            'Play Music Snippets',
             'Priority support',
             'Advanced features',
           ],

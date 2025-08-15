@@ -62,7 +62,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
       features: [
         'All Ad-Free features',
         'Favorite songs & shows',
-        'Add friends',
+        'Play Music Snippets',
         'Priority support',
         'Advanced features',
       ],
@@ -111,7 +111,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   const handleSubscribe = async (planId: string) => {
     setLoading(true);
     try {
-      const response = await apiStore.post('/api/subscription/create-checkout-session', {
+      const response = await apiStore.post(apiStore.endpoints.subscription.createCheckoutSession, {
         plan: planId,
       });
 

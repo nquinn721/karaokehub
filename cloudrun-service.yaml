@@ -32,13 +32,13 @@ spec:
             - name: FRONTEND_URL
               value: 'https://karaoke-hub.com'
             - name: BACKEND_URL
-              value: 'https://karaoke-hub.com'
+              value: 'https://karaokehub-pvq7mkyeaq-uc.a.run.app'
             - name: ALLOWED_ORIGINS
               value: 'https://karaoke-hub.com'
             - name: DATABASE_SOCKET_PATH
               value: '/cloudsql/heroic-footing-460117-k8:us-central1:accountant'
             - name: DEPLOYMENT_TIME
-              value: '2025-01-14-03-00'
+              value: '2025-08-15-15-35'
             - name: DATABASE_NAME
               value: 'karaoke-hub'
             - name: DATABASE_SYNCHRONIZE

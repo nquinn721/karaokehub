@@ -516,9 +516,11 @@ export class MusicStore {
         // For pagination, use different queries or search terms
         const startIdx = this.currentPage * 2;
         const queriesToUse = category.queries.slice(startIdx, startIdx + 2);
-        
+
         for (const query of queriesToUse) {
-          const response = await apiStore.get(`/music/search?q=${encodeURIComponent(query)}&limit=15`);
+          const response = await apiStore.get(
+            `/music/search?q=${encodeURIComponent(query)}&limit=15`,
+          );
           if (response && Array.isArray(response)) {
             allResults.push(...response);
           }
@@ -526,7 +528,9 @@ export class MusicStore {
       } else {
         // Initial load - search with all queries but get more results per query
         for (const query of category.queries) {
-          const response = await apiStore.get(`/music/search?q=${encodeURIComponent(query)}&limit=12`);
+          const response = await apiStore.get(
+            `/music/search?q=${encodeURIComponent(query)}&limit=12`,
+          );
           if (response && Array.isArray(response)) {
             allResults.push(...response);
           }

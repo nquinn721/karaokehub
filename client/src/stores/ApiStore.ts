@@ -40,7 +40,7 @@ class ApiStore {
     if (this.isDevelopment) {
       return 'http://localhost:8000/api';
     } else {
-      // Production URL - adjust this to your actual domain
+      // Production URL - use the custom domain which forwards to Cloud Run
       return `${window.location.origin}/api`;
     }
   }
@@ -59,8 +59,11 @@ class ApiStore {
     makeAutoObservable(this);
     // Initialize axios immediately with fallback
     this.initializeAxios();
-    // Don't fetch config immediately - wait until it's needed
-    // this.fetchClientConfig();
+    // Start fetching config immediately for faster map loading
+    this.initializeConfig().catch((error) => {
+      console.warn('Failed to load initial config:', error);
+      // Don't throw here - app should still work
+    });
   }
 
   // Method to ensure axios is initialized
@@ -441,18 +444,48 @@ class ApiStore {
   async fetchClientConfig(): Promise<void> {
     if (this.configLoaded) return; // Don't fetch again if already loaded
 
-    try {
-      const config = await this.get<{ googleMapsApiKey: string; environment: string }>(
-        this.endpoints.config.client,
-      );
-
+    // Check if config was preloaded in the HTML
+    const preloadedConfig = (window as any).__KARAOKE_HUB_CONFIG__;
+    if (preloadedConfig && preloadedConfig.googleMapsApiKey) {
       runInAction(() => {
-        this.clientConfig = config;
+        this.clientConfig = preloadedConfig;
         this.configLoaded = true;
       });
-    } catch (error) {
-      console.error('Failed to fetch client config:', error);
-      // Don't throw here - app should still work without config
+      console.log('Using preloaded config for faster map loading');
+      return;
+    }
+
+    const maxRetries = 3;
+    let retryCount = 0;
+
+    while (retryCount < maxRetries) {
+      try {
+        // Use a timeout to ensure fast failure
+        const config = await Promise.race([
+          this.get<{ googleMapsApiKey: string; environment: string }>(this.endpoints.config.client),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Config request timeout')), 5000),
+          ),
+        ]);
+
+        runInAction(() => {
+          this.clientConfig = config;
+          this.configLoaded = true;
+        });
+        return; // Success, exit retry loop
+      } catch (error) {
+        retryCount++;
+        console.warn(`Failed to fetch client config (attempt ${retryCount}/${maxRetries}):`, error);
+
+        if (retryCount >= maxRetries) {
+          console.error('All config fetch attempts failed:', error);
+          // Don't throw here - app should still work without config
+          return;
+        }
+
+        // Wait before retry (exponential backoff)
+        await new Promise((resolve) => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+      }
     }
   }
 
@@ -514,6 +547,15 @@ class ApiStore {
       byUser: (userId: string) => `/favorites/user/${userId}`,
       byShow: (showId: string) => `/favorites/show/${showId}`,
       removeByShow: (showId: string) => `/favorites/show/${showId}`,
+    },
+
+    // Subscription endpoints
+    subscription: {
+      status: '/subscription/status',
+      createCheckoutSession: '/subscription/create-checkout-session',
+      createPortalSession: '/subscription/create-portal-session',
+      webhook: '/subscription/webhook',
+      pricing: '/subscription/pricing',
     },
   };
 

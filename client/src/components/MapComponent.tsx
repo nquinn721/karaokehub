@@ -73,6 +73,23 @@ export const MapComponent: React.FC = observer(() => {
   // Google Maps API key from server config
   const API_KEY = apiStore.googleMapsApiKey;
 
+  // Add a state to track if we should show the config loading
+  const [showConfigLoading, setShowConfigLoading] = useState(true);
+
+  // Hide config loading after a short delay to prevent flash
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowConfigLoading(false);
+    }, 2000); // Give config 2 seconds to load, then show map anyway
+
+    if (apiStore.configLoaded) {
+      clearTimeout(timer);
+      setShowConfigLoading(false);
+    }
+
+    return () => clearTimeout(timer);
+  }, [apiStore.configLoaded]);
+
   // Initialize stores when component mounts - this will only run once per component lifecycle
   React.useMemo(() => {
     const initializeStores = async () => {
@@ -194,7 +211,7 @@ export const MapComponent: React.FC = observer(() => {
     setPendingFavoriteAction(null);
   };
 
-  if (!apiStore.configLoaded) {
+  if (showConfigLoading && !apiStore.configLoaded && !API_KEY) {
     return (
       <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <CircularProgress />
@@ -203,12 +220,12 @@ export const MapComponent: React.FC = observer(() => {
     );
   }
 
-  if (!API_KEY) {
+  if (!API_KEY && !showConfigLoading) {
     console.error('Google Maps API key not found in server configuration');
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error">
-          Google Maps API key is not configured. Please contact the administrator.
+        <Alert severity="warning">
+          Maps functionality may be limited. Please refresh the page if the map doesn't load.
         </Alert>
       </Box>
     );
@@ -580,7 +597,7 @@ export const MapComponent: React.FC = observer(() => {
           }}
         >
           {API_KEY ? (
-            <APIProvider apiKey={API_KEY}>
+            <APIProvider apiKey={API_KEY} region="US" language="en" version="weekly">
               <Map
                 style={{ width: '100%', height: '100%' }}
                 defaultCenter={mapStore.currentCenter}
@@ -603,6 +620,24 @@ export const MapComponent: React.FC = observer(() => {
                 />
               </Map>
             </APIProvider>
+          ) : showConfigLoading ? (
+            <Box
+              sx={{
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: 'grey.50',
+                borderRadius: 2,
+              }}
+            >
+              <Box sx={{ textAlign: 'center' }}>
+                <CircularProgress size={32} sx={{ mb: 2 }} />
+                <Typography variant="body2" color="text.secondary">
+                  Loading map...
+                </Typography>
+              </Box>
+            </Box>
           ) : (
             <Box
               sx={{
@@ -614,7 +649,9 @@ export const MapComponent: React.FC = observer(() => {
                 borderRadius: 2,
               }}
             >
-              <Alert severity="warning">Google Maps API key is not configured</Alert>
+              <Alert severity="info">
+                Map temporarily unavailable. Please refresh the page if it doesn't load shortly.
+              </Alert>
             </Box>
           )}
         </Box>
@@ -756,58 +793,48 @@ export const MapComponent: React.FC = observer(() => {
 
                                 {/* Main content */}
                                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                                  {/* Venue name and time */}
-                                  <Box
-                                    sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}
+                                  {/* Venue name */}
+                                  <Typography
+                                    variant="subtitle1"
+                                    fontWeight={600}
+                                    sx={{
+                                      fontSize: { xs: '0.95rem', md: '1.1rem' },
+                                      lineHeight: 1.2,
+                                      mb: 0.5,
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                    }}
                                   >
-                                    <Typography
-                                      variant="subtitle1"
-                                      fontWeight={600}
-                                      sx={{
-                                        fontSize: { xs: '0.95rem', md: '1.1rem' },
-                                        lineHeight: 1.2,
-                                        flex: 1,
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                      }}
-                                    >
-                                      {show.venue || show.vendor?.name || 'Unknown Venue'}
-                                    </Typography>
+                                    {show.venue || show.vendor?.name || 'Unknown Venue'}
+                                  </Typography>
 
-                                    {/* Time badge */}
-                                    <Box
+                                  {/* Time badge */}
+                                  <Box
+                                    sx={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 0.5,
+                                      mb: 0.5,
+                                    }}
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={faClock}
+                                      style={{
+                                        fontSize: '10px',
+                                        color: theme.palette.primary.main,
+                                      }}
+                                    />
+                                    <Typography
+                                      variant="caption"
                                       sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 0.5,
-                                        backgroundColor: theme.palette.primary.main + '15',
-                                        border: `1px solid ${theme.palette.primary.main + '30'}`,
-                                        borderRadius: 1,
-                                        px: { xs: 0.75, md: 1 },
-                                        py: 0.25,
-                                        minWidth: 'fit-content',
+                                        fontWeight: 600,
+                                        fontSize: { xs: '0.7rem', md: '0.75rem' },
+                                        color: theme.palette.primary.main,
                                       }}
                                     >
-                                      <FontAwesomeIcon
-                                        icon={faClock}
-                                        style={{
-                                          fontSize: '10px',
-                                          color: theme.palette.primary.main,
-                                        }}
-                                      />
-                                      <Typography
-                                        variant="caption"
-                                        sx={{
-                                          fontWeight: 600,
-                                          fontSize: { xs: '0.7rem', md: '0.75rem' },
-                                          color: theme.palette.primary.main,
-                                          whiteSpace: 'nowrap',
-                                        }}
-                                      >
-                                        {formatTime(show.startTime)} - {formatTime(show.endTime)}
-                                      </Typography>
-                                    </Box>
+                                      {formatTime(show.startTime)} - {formatTime(show.endTime)}
+                                    </Typography>
                                   </Box>
 
                                   {/* Compact info rows */}
@@ -1126,8 +1153,8 @@ export const MapComponent: React.FC = observer(() => {
                         }}
                       >
                         <Box sx={{ width: '100%' }}>
-                          {/* Venue name and time */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          {/* Venue name and favorite button */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                             <FontAwesomeIcon
                               icon={faMicrophone}
                               style={{
@@ -1141,21 +1168,6 @@ export const MapComponent: React.FC = observer(() => {
                               sx={{ flex: 1, fontSize: '0.9rem' }}
                             >
                               {show.venue || show.vendor?.name || 'Unknown Venue'}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                backgroundColor: theme.palette.primary.main + '15',
-                                border: `1px solid ${theme.palette.primary.main + '30'}`,
-                                borderRadius: 1,
-                                px: 1,
-                                py: 0.25,
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                                color: theme.palette.primary.main,
-                              }}
-                            >
-                              {formatTime(show.startTime)} - {formatTime(show.endTime)}
                             </Typography>
 
                             {/* Favorite button */}
@@ -1195,6 +1207,27 @@ export const MapComponent: React.FC = observer(() => {
                                 style={{ fontSize: '14px' }}
                               />
                             </IconButton>
+                          </Box>
+
+                          {/* Time */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                            <FontAwesomeIcon
+                              icon={faClock}
+                              style={{
+                                fontSize: '10px',
+                                color: theme.palette.primary.main,
+                              }}
+                            />
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                color: theme.palette.primary.main,
+                              }}
+                            >
+                              {formatTime(show.startTime)} - {formatTime(show.endTime)}
+                            </Typography>
                           </Box>
 
                           {/* DJ info */}

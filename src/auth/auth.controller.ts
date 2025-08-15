@@ -61,48 +61,56 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req, @Res() res: Response) {
     try {
-      console.log('Google OAuth callback triggered', {
-        user: req.user ? 'User object present' : 'No user object',
-        userId: req.user?.id,
-        userEmail: req.user?.email,
-        environment: process.env.NODE_ENV,
-        frontendUrl: process.env.FRONTEND_URL,
-      });
+      if (!req.user) {
+        throw new Error('No user object in request after OAuth validation');
+      }
 
       const user = req.user;
       const token = this.authService.generateToken(user);
 
-      // Try different frontend URLs
-      const possibleUrls = [
-        process.env.FRONTEND_URL,
-        'http://localhost:5176',
-        'http://localhost:5175',
-        'http://localhost:5174',
-        'http://localhost:5173',
-      ];
+      // Determine frontend URL based on environment - with dynamic detection like canvas-game
+      const isProduction = process.env.NODE_ENV === 'production';
+      let frontendUrl = process.env.FRONTEND_URL;
 
-      const frontendUrl = possibleUrls.find((url) => url) || 'http://localhost:5173';
+      if (!frontendUrl) {
+        if (isProduction) {
+          // Dynamic URL detection from request headers
+          const protocol = req.get('x-forwarded-proto') || 'https';
+          const host = req.get('host');
+          frontendUrl = `${protocol}://${host}`;
+        } else {
+          frontendUrl = 'http://localhost:5173';
+        }
+      }
 
-      console.log('Redirecting to frontend with token', {
-        frontendUrl,
-        redirectUrl: `${frontendUrl}/auth/success?token=${token}`,
-      });
+      const redirectUrl = `${frontendUrl}/auth/success?token=${token}`;
 
       // Redirect to frontend with token
-      res.redirect(`${frontendUrl}/auth/success?token=${token}`);
+      res.redirect(redirectUrl);
     } catch (error) {
-      console.error('Google OAuth callback error:', error);
+      console.error('🔴 Google OAuth callback error:', {
+        error: error.message,
+        userEmail: req.user?.email,
+      });
 
-      const possibleUrls = [
-        process.env.FRONTEND_URL,
-        'http://localhost:5176',
-        'http://localhost:5175',
-        'http://localhost:5174',
-        'http://localhost:5173',
-      ];
+      // Determine frontend URL for error redirect - with dynamic detection
+      const isProduction = process.env.NODE_ENV === 'production';
+      let frontendUrl = process.env.FRONTEND_URL;
 
-      const frontendUrl = possibleUrls.find((url) => url) || 'http://localhost:5173';
-      res.redirect(`${frontendUrl}/auth/error`);
+      if (!frontendUrl) {
+        if (isProduction) {
+          // Dynamic URL detection from request headers
+          const protocol = req.get('x-forwarded-proto') || 'https';
+          const host = req.get('host');
+          frontendUrl = `${protocol}://${host}`;
+        } else {
+          frontendUrl = 'http://localhost:5173';
+        }
+      }
+
+      const errorUrl = `${frontendUrl}/auth/error`;
+      console.log('🔴 [OAUTH_CALLBACK] Redirecting to error page:', errorUrl);
+      res.redirect(errorUrl);
     }
   }
 
@@ -149,6 +157,11 @@ export class AuthController {
   @Get('profile')
   @UseGuards(AuthGuard('jwt'))
   async getProfile(@Req() req) {
+    if (!req.user) {
+      console.error('🔴 Profile endpoint: No user object after JWT validation');
+      throw new Error('User not authenticated');
+    }
+
     return {
       success: true,
       user: req.user,

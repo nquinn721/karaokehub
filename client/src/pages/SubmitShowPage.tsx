@@ -249,18 +249,29 @@ const SubmitShowPage: React.FC = observer(() => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: { xs: 2, sm: 4 }, mb: 4, px: { xs: 1, sm: 3 } }}>
       {/* Header Section */}
-      <Box sx={{ textAlign: 'center', mb: 4 }}>
-        <MusicNote sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
-        <Typography variant="h3" component="h1" gutterBottom fontWeight={600}>
+      <Box sx={{ textAlign: 'center', mb: { xs: 3, sm: 4 } }}>
+        <MusicNote sx={{ fontSize: { xs: 48, sm: 64 }, color: 'primary.main', mb: 2 }} />
+        <Typography
+          variant="h3"
+          component="h1"
+          gutterBottom
+          fontWeight={600}
+          sx={{ fontSize: { xs: '1.8rem', sm: '3rem' } }}
+        >
           Submit Karaoke Shows
         </Typography>
-        <Typography variant="h6" color="text.secondary" paragraph>
+        <Typography
+          variant="h6"
+          color="text.secondary"
+          paragraph
+          sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
+        >
           Help us expand our karaoke database by submitting venue URLs for parsing or manually
           adding show information.
         </Typography>
-        <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+        <Box sx={{ maxWidth: 600, mx: 'auto', px: { xs: 2, sm: 0 } }}>
           <Typography variant="body2" color="text.secondary">
             Whether you have a website URL to parse or want to add show details manually, your
             contributions help fellow karaoke enthusiasts discover new venues and events.
@@ -271,7 +282,7 @@ const SubmitShowPage: React.FC = observer(() => {
       <Paper
         elevation={0}
         sx={{
-          p: 4,
+          p: { xs: 2, sm: 4 },
           borderRadius: 3,
           background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.primary.main}02 100%)`,
           border: `1px solid ${theme.palette.divider}`,
@@ -299,40 +310,64 @@ const SubmitShowPage: React.FC = observer(() => {
           </Alert>
         )}
 
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 4 }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: { xs: 2, sm: 4 } }}>
           <Tabs
             value={tabValue}
             onChange={handleTabChange}
             variant="fullWidth"
             sx={{
               '& .MuiTab-root': {
-                py: 2,
-                minHeight: 72,
+                py: { xs: 2.5, sm: 2 },
+                minHeight: { xs: 64, sm: 72 },
                 fontWeight: 500,
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                textTransform: 'none',
               },
             }}
           >
             <Tab
-              icon={<Link sx={{ fontSize: 28, mb: 1 }} />}
+              icon={<Link sx={{ fontSize: { xs: 24, sm: 28 }, mb: 1 }} />}
               label={
                 <Box>
-                  <Typography variant="subtitle1" fontWeight={600}>
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight={600}
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     Parse Website URL
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      display: { xs: 'none', sm: 'block' },
+                    }}
+                  >
                     Automatically extract show data
                   </Typography>
                 </Box>
               }
             />
             <Tab
-              icon={<Event sx={{ fontSize: 28, mb: 1 }} />}
+              icon={<Event sx={{ fontSize: { xs: 24, sm: 28 }, mb: 1 }} />}
               label={
                 <Box>
-                  <Typography variant="subtitle1" fontWeight={600}>
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight={600}
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     Add Show Manually
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      display: { xs: 'none', sm: 'block' },
+                    }}
+                  >
                     Enter show details by hand
                   </Typography>
                 </Box>
@@ -345,19 +380,41 @@ const SubmitShowPage: React.FC = observer(() => {
           <Card
             elevation={0}
             sx={{
-              p: 3,
+              p: { xs: 2, sm: 3 },
               mb: 3,
               border: `1px solid ${theme.palette.divider}`,
               borderRadius: 2,
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-              <Link sx={{ fontSize: 32, color: 'primary.main', mr: 2 }} />
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                flexDirection: { xs: 'column', sm: 'row' },
+                mb: 3,
+                gap: { xs: 2, sm: 0 },
+              }}
+            >
+              <Link
+                sx={{
+                  fontSize: { xs: 24, sm: 32 },
+                  color: 'primary.main',
+                  mr: { xs: 0, sm: 2 },
+                }}
+              />
               <Box>
-                <Typography variant="h6" gutterBottom>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+                >
                   Submit Website URL for Parsing
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}
+                >
                   Enter a venue website URL and our AI will automatically extract karaoke show
                   information, including venues, schedules, and DJ details.
                 </Typography>
@@ -374,6 +431,9 @@ const SubmitShowPage: React.FC = observer(() => {
               disabled={loading}
               variant="outlined"
               helperText="Enter the full URL of a webpage containing karaoke show information"
+              InputProps={{
+                sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+              }}
             />
 
             <Button
@@ -382,12 +442,15 @@ const SubmitShowPage: React.FC = observer(() => {
               onClick={handleUrlSubmit}
               disabled={loading || !url.trim()}
               startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Link />}
+              fullWidth
               sx={{
                 px: 4,
-                py: 1.5,
+                py: { xs: 2, sm: 1.5 },
                 borderRadius: 2,
                 textTransform: 'none',
                 fontWeight: 600,
+                fontSize: { xs: '1rem', sm: '1.1rem' },
+                minHeight: { xs: 48, sm: 'auto' },
               }}
             >
               {loading ? 'Parsing Website...' : 'Parse URL'}
@@ -406,25 +469,47 @@ const SubmitShowPage: React.FC = observer(() => {
               <Box
                 sx={{
                   background: `linear-gradient(135deg, ${theme.palette.success.main}10, ${theme.palette.success.main}05)`,
-                  p: 3,
+                  p: { xs: 2, sm: 3 },
                   borderBottom: `1px solid ${theme.palette.divider}`,
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <CheckCircle sx={{ color: 'success.main', mr: 2, fontSize: 32 }} />
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: { xs: 2, sm: 0 },
+                    mb: 2,
+                  }}
+                >
+                  <CheckCircle
+                    sx={{
+                      color: 'success.main',
+                      mr: { xs: 0, sm: 2 },
+                      fontSize: { xs: 28, sm: 32 },
+                    }}
+                  />
                   <Box>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography
+                      variant="h6"
+                      gutterBottom
+                      sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+                    >
                       ✨ Parsing Successful!
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}
+                    >
                       Please review the extracted information below before saving to our database.
                     </Typography>
                   </Box>
                 </Box>
               </Box>
 
-              <CardContent sx={{ p: 3 }}>
-                <Grid container spacing={3}>
+              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                <Grid container spacing={{ xs: 2, sm: 3 }}>
                   <Grid item xs={12} md={6}>
                     <Box sx={{ mb: 3 }}>
                       <Typography variant="subtitle1" gutterBottom fontWeight={600} color="primary">
@@ -547,14 +632,36 @@ const SubmitShowPage: React.FC = observer(() => {
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-              <Event sx={{ fontSize: 32, color: 'primary.main', mr: 2 }} />
+          <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                flexDirection: { xs: 'column', sm: 'row' },
+                mb: 3,
+                gap: { xs: 2, sm: 0 },
+              }}
+            >
+              <Event
+                sx={{
+                  fontSize: { xs: 24, sm: 32 },
+                  color: 'primary.main',
+                  mr: { xs: 0, sm: 2 },
+                }}
+              />
               <Box>
-                <Typography variant="h6" gutterBottom>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+                >
                   Add Karaoke Show Manually
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}
+                >
                   Enter show details by hand when you have specific information about karaoke venues
                   and schedules.
                 </Typography>
@@ -562,20 +669,30 @@ const SubmitShowPage: React.FC = observer(() => {
             </Box>
           </Box>
 
-          <Grid container spacing={4}>
+          <Grid container spacing={{ xs: 2, sm: 4 }}>
             <Grid item xs={12}>
               <Card
                 elevation={0}
                 sx={{
-                  p: 3,
+                  p: { xs: 2, sm: 3 },
                   border: `1px solid ${theme.palette.divider}`,
                   borderRadius: 2,
                 }}
               >
-                <Typography variant="h6" gutterBottom fontWeight={600}>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  fontWeight={600}
+                  sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+                >
                   Step 1: Vendor Selection
                 </Typography>
-                <Typography variant="body2" color="text.secondary" paragraph>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  paragraph
+                  sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}
+                >
                   {authStore.isAuthenticated
                     ? 'Choose an existing vendor from our database or create a new one for this karaoke show.'
                     : 'Create a new vendor for this karaoke show. (Login to select from existing vendors)'}
@@ -594,6 +711,10 @@ const SubmitShowPage: React.FC = observer(() => {
                           label="Select Existing Vendor"
                           variant="outlined"
                           helperText="Choose from existing vendors in our database"
+                          InputProps={{
+                            ...params.InputProps,
+                            sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                          }}
                         />
                       )}
                       sx={{ mb: 3 }}
@@ -603,10 +724,14 @@ const SubmitShowPage: React.FC = observer(() => {
                       size="large"
                       startIcon={<Add />}
                       onClick={() => setIsCreatingVendor(true)}
+                      fullWidth
                       sx={{
                         textTransform: 'none',
                         fontWeight: 600,
                         borderRadius: 2,
+                        py: { xs: 1.5, sm: 1 },
+                        fontSize: { xs: '0.95rem', sm: '1rem' },
+                        minHeight: { xs: 48, sm: 'auto' },
                       }}
                     >
                       Create New Vendor
@@ -616,19 +741,29 @@ const SubmitShowPage: React.FC = observer(() => {
                   <Card
                     variant="outlined"
                     sx={{
-                      p: 3,
+                      p: { xs: 2, sm: 3 },
                       background: `linear-gradient(135deg, ${theme.palette.primary.main}05, ${theme.palette.secondary.main}05)`,
                     }}
                   >
-                    <Typography variant="h6" gutterBottom fontWeight={600}>
+                    <Typography
+                      variant="h6"
+                      gutterBottom
+                      fontWeight={600}
+                      sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+                    >
                       Create New Vendor
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" paragraph>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      paragraph
+                      sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}
+                    >
                       Add a new karaoke vendor to our database. This could be a DJ company,
                       entertainment service, or venue that hosts karaoke events.
                     </Typography>
 
-                    <Grid container spacing={2}>
+                    <Grid container spacing={{ xs: 2, sm: 3 }}>
                       <Grid item xs={12} sm={6}>
                         <TextField
                           fullWidth
@@ -639,6 +774,9 @@ const SubmitShowPage: React.FC = observer(() => {
                             setNewVendorData({ ...newVendorData, name: e.target.value })
                           }
                           required
+                          InputProps={{
+                            sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                          }}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6}>
@@ -651,6 +789,9 @@ const SubmitShowPage: React.FC = observer(() => {
                             setNewVendorData({ ...newVendorData, owner: e.target.value })
                           }
                           required
+                          InputProps={{
+                            sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                          }}
                         />
                       </Grid>
                       <Grid item xs={12} sm={4}>
@@ -662,6 +803,9 @@ const SubmitShowPage: React.FC = observer(() => {
                           onChange={(e) =>
                             setNewVendorData({ ...newVendorData, website: e.target.value })
                           }
+                          InputProps={{
+                            sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                          }}
                         />
                       </Grid>
                       <Grid item xs={12} sm={4}>
@@ -673,6 +817,9 @@ const SubmitShowPage: React.FC = observer(() => {
                           onChange={(e) =>
                             setNewVendorData({ ...newVendorData, instagram: e.target.value })
                           }
+                          InputProps={{
+                            sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                          }}
                         />
                       </Grid>
                       <Grid item xs={12} sm={4}>
@@ -684,11 +831,21 @@ const SubmitShowPage: React.FC = observer(() => {
                           onChange={(e) =>
                             setNewVendorData({ ...newVendorData, facebook: e.target.value })
                           }
+                          InputProps={{
+                            sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                          }}
                         />
                       </Grid>
                     </Grid>
 
-                    <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                    <Box
+                      sx={{
+                        mt: 3,
+                        display: 'flex',
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        gap: 2,
+                      }}
+                    >
                       <Button
                         variant="contained"
                         onClick={handleCreateVendor}
@@ -700,6 +857,9 @@ const SubmitShowPage: React.FC = observer(() => {
                           textTransform: 'none',
                           fontWeight: 600,
                           borderRadius: 2,
+                          py: { xs: 1.5, sm: 1 },
+                          fontSize: { xs: '0.95rem', sm: '1rem' },
+                          minHeight: { xs: 48, sm: 'auto' },
                         }}
                       >
                         {loading ? 'Creating...' : 'Create Vendor'}
@@ -711,6 +871,9 @@ const SubmitShowPage: React.FC = observer(() => {
                           textTransform: 'none',
                           fontWeight: 600,
                           borderRadius: 2,
+                          py: { xs: 1.5, sm: 1 },
+                          fontSize: { xs: '0.95rem', sm: '1rem' },
+                          minHeight: { xs: 48, sm: 'auto' },
                         }}
                       >
                         Cancel
@@ -726,21 +889,31 @@ const SubmitShowPage: React.FC = observer(() => {
                 <Card
                   elevation={0}
                   sx={{
-                    p: 3,
+                    p: { xs: 2, sm: 3 },
                     border: `1px solid ${theme.palette.success.main}40`,
                     borderRadius: 2,
                     background: `linear-gradient(135deg, ${theme.palette.success.main}05, transparent)`,
                   }}
                 >
-                  <Typography variant="h6" gutterBottom fontWeight={600}>
+                  <Typography
+                    variant="h6"
+                    gutterBottom
+                    fontWeight={600}
+                    sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+                  >
                     Step 2: Show Information
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    paragraph
+                    sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}
+                  >
                     Vendor selected: <strong>{selectedVendor.name}</strong>. Now add the karaoke
                     show details.
                   </Typography>
 
-                  <Grid container spacing={3}>
+                  <Grid container spacing={{ xs: 2, sm: 3 }}>
                     <Grid item xs={12} sm={6}>
                       <TextField
                         fullWidth
@@ -749,6 +922,9 @@ const SubmitShowPage: React.FC = observer(() => {
                         value={showData.venue}
                         onChange={(e) => setShowData({ ...showData, venue: e.target.value })}
                         required
+                        InputProps={{
+                          sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
@@ -758,13 +934,16 @@ const SubmitShowPage: React.FC = observer(() => {
                         placeholder="e.g., 123 Main St, City, State"
                         value={showData.address}
                         onChange={(e) => setShowData({ ...showData, address: e.target.value })}
+                        InputProps={{
+                          sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                        }}
                       />
                     </Grid>
-                    <Grid item xs={4} sm={4}>
+                    <Grid item xs={12} sm={4}>
                       <FormControl fullWidth>
                         <InputLabel
                           sx={{
-                            fontSize: { xs: '0.75rem', sm: '1rem' },
+                            fontSize: { xs: '0.9rem', sm: '1rem' },
                             '&.MuiInputLabel-shrunk': {
                               fontSize: { xs: '0.75rem', sm: '0.75rem' },
                             },
@@ -848,6 +1027,9 @@ const SubmitShowPage: React.FC = observer(() => {
                         onChange={(e) => setShowData({ ...showData, startTime: e.target.value })}
                         InputLabelProps={{ shrink: true }}
                         required
+                        InputProps={{
+                          sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12} sm={4}>
@@ -858,6 +1040,9 @@ const SubmitShowPage: React.FC = observer(() => {
                         value={showData.endTime}
                         onChange={(e) => setShowData({ ...showData, endTime: e.target.value })}
                         InputLabelProps={{ shrink: true }}
+                        InputProps={{
+                          sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
@@ -867,6 +1052,9 @@ const SubmitShowPage: React.FC = observer(() => {
                         placeholder="e.g., DJ Mike"
                         value={showData.djName}
                         onChange={(e) => setShowData({ ...showData, djName: e.target.value })}
+                        InputProps={{
+                          sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
@@ -876,6 +1064,9 @@ const SubmitShowPage: React.FC = observer(() => {
                         placeholder="e.g., (555) 123-4567"
                         value={showData.venuePhone}
                         onChange={(e) => setShowData({ ...showData, venuePhone: e.target.value })}
+                        InputProps={{
+                          sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12}>
@@ -885,22 +1076,29 @@ const SubmitShowPage: React.FC = observer(() => {
                         placeholder="https://venue-website.com"
                         value={showData.venueWebsite}
                         onChange={(e) => setShowData({ ...showData, venueWebsite: e.target.value })}
+                        InputProps={{
+                          sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
                         multiline
-                        rows={3}
+                        minRows={2}
+                        maxRows={4}
                         label="Additional Description"
                         placeholder="Any additional details about the show, special events, song restrictions, etc."
                         value={showData.description}
                         onChange={(e) => setShowData({ ...showData, description: e.target.value })}
+                        InputProps={{
+                          sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                        }}
                       />
                     </Grid>
                   </Grid>
 
-                  <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+                  <Box sx={{ mt: 4 }}>
                     <Button
                       variant="contained"
                       size="large"
@@ -909,12 +1107,15 @@ const SubmitShowPage: React.FC = observer(() => {
                       startIcon={
                         loading ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />
                       }
+                      fullWidth
                       sx={{
                         px: 4,
-                        py: 1.5,
+                        py: { xs: 2, sm: 1.5 },
                         textTransform: 'none',
                         fontWeight: 600,
                         borderRadius: 2,
+                        fontSize: { xs: '1rem', sm: '1.1rem' },
+                        minHeight: { xs: 52, sm: 'auto' },
                       }}
                     >
                       {loading ? 'Submitting Show...' : 'Submit Karaoke Show'}

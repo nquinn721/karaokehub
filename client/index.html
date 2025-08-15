@@ -23,6 +23,13 @@
     <!-- Viewport -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- Performance Optimizations for Google Maps -->
+    <link rel="dns-prefetch" href="//maps.googleapis.com" />
+    <link rel="dns-prefetch" href="//maps.gstatic.com" />
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    <link rel="preconnect" href="https://maps.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://maps.gstatic.com" crossorigin />
+
     <!-- Cache Control - Force fresh content -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
@@ -43,7 +50,7 @@
     <!-- Google AdSense -->
     <script
       async
-      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3285443449717264&v=20250815164500&nocache=1"
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1840816870742891"
       crossorigin="anonymous"
     ></script>
 
@@ -153,6 +160,35 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- Early Config Preload Script - Start loading config as soon as possible -->
+    <script>
+      // Pre-fetch the config to speed up map loading
+      (function () {
+        const configUrl = window.location.origin + '/config/client';
+        // Use fetch with a timeout to preload the config
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+
+        fetch(configUrl, {
+          signal: controller.signal,
+          cache: 'no-cache', // Always get fresh config
+        })
+          .then((response) => response.json())
+          .then((config) => {
+            // Store config in window for immediate access
+            window.__KARAOKE_HUB_CONFIG__ = config;
+            clearTimeout(timeoutId);
+          })
+          .catch((error) => {
+            if (error.name !== 'AbortError') {
+              console.warn('Early config fetch failed:', error);
+            }
+            clearTimeout(timeoutId);
+          });
+      })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

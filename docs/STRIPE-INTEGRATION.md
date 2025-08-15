@@ -53,7 +53,7 @@ Use the script to update secrets:
 - **Features**:
   - All ad-free features
   - Favorite songs & shows
-  - Add friends
+  - Play Music Snippets
   - Priority support
   - Advanced features
 
