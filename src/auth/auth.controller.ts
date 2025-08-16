@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from 'express';
+import { UrlService } from '../config/url.service';
 import { UserService } from '../user/user.service';
 import { AuthService } from './auth.service';
 import { CreateUserDto, LoginDto } from './dto/auth.dto';
@@ -20,6 +21,7 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     private userService: UserService,
+    private urlService: UrlService,
   ) {}
 
   @Post('register')
@@ -101,30 +103,8 @@ export class AuthController {
       const token = this.authService.generateToken(user);
       console.log('🟢 [GOOGLE_OAUTH_CALLBACK] Token generated successfully');
 
-      // Determine frontend URL based on environment - with dynamic detection like canvas-game
-      const isProduction = process.env.NODE_ENV === 'production';
-      let frontendUrl = process.env.FRONTEND_URL;
-
-      console.log('🔍 [GOOGLE_OAUTH_CALLBACK] Environment check:', {
-        isProduction,
-        FRONTEND_URL: process.env.FRONTEND_URL,
-        NODE_ENV: process.env.NODE_ENV,
-      });
-
-      if (!frontendUrl) {
-        if (isProduction) {
-          // Dynamic URL detection from request headers
-          const protocol = req.get('x-forwarded-proto') || 'https';
-          const host = req.get('host');
-          frontendUrl = `${protocol}://${host}`;
-          console.log('🔍 [GOOGLE_OAUTH_CALLBACK] Dynamic frontend URL generated:', frontendUrl);
-        } else {
-          frontendUrl = 'http://localhost:5173';
-          console.log('🔍 [GOOGLE_OAUTH_CALLBACK] Using default local frontend URL:', frontendUrl);
-        }
-      }
-
-      const redirectUrl = `${frontendUrl}/auth/success?token=${token}`;
+      // Use UrlService for consistent URL management
+      const redirectUrl = this.urlService.buildFrontendUrl(`/auth/success?token=${token}`);
       console.log('🟢 [GOOGLE_OAUTH_CALLBACK] Redirecting to success:', redirectUrl);
 
       // Redirect to frontend with token
@@ -138,22 +118,8 @@ export class AuthController {
         url: req.url,
       });
 
-      // Determine frontend URL for error redirect - with dynamic detection
-      const isProduction = process.env.NODE_ENV === 'production';
-      let frontendUrl = process.env.FRONTEND_URL;
-
-      if (!frontendUrl) {
-        if (isProduction) {
-          // Dynamic URL detection from request headers
-          const protocol = req.get('x-forwarded-proto') || 'https';
-          const host = req.get('host');
-          frontendUrl = `${protocol}://${host}`;
-        } else {
-          frontendUrl = 'http://localhost:5173';
-        }
-      }
-
-      const errorUrl = `${frontendUrl}/auth/error`;
+      // Use UrlService for error redirect
+      const errorUrl = this.urlService.getAuthRedirectUrls().error;
       console.log('🔴 [OAUTH_CALLBACK] Redirecting to error page:', errorUrl);
       res.redirect(errorUrl);
     }
@@ -172,30 +138,12 @@ export class AuthController {
       const user = req.user;
       const token = this.authService.generateToken(user);
 
-      // Try different frontend URLs
-      const possibleUrls = [
-        process.env.FRONTEND_URL,
-        'http://localhost:5176',
-        'http://localhost:5175',
-        'http://localhost:5174',
-        'http://localhost:5173',
-      ];
-
-      const frontendUrl = possibleUrls.find((url) => url) || 'http://localhost:5173';
-
-      // Redirect to frontend with token
-      res.redirect(`${frontendUrl}/auth/success?token=${token}`);
+      // Use UrlService for consistent URL management
+      const successUrl = this.urlService.buildFrontendUrl(`/auth/success?token=${token}`);
+      res.redirect(successUrl);
     } catch (error) {
-      const possibleUrls = [
-        process.env.FRONTEND_URL,
-        'http://localhost:5176',
-        'http://localhost:5175',
-        'http://localhost:5174',
-        'http://localhost:5173',
-      ];
-
-      const frontendUrl = possibleUrls.find((url) => url) || 'http://localhost:5173';
-      res.redirect(`${frontendUrl}/auth/error`);
+      const errorUrl = this.urlService.getAuthRedirectUrls().error;
+      res.redirect(errorUrl);
     }
   }
 
@@ -216,24 +164,8 @@ export class AuthController {
       const user = req.user;
       const token = this.authService.generateToken(user);
 
-      // Determine frontend URL based on environment
-      const isProduction = process.env.NODE_ENV === 'production';
-      let frontendUrl = process.env.FRONTEND_URL;
-
-      if (!frontendUrl) {
-        if (isProduction) {
-          // Dynamic URL detection from request headers
-          const protocol = req.get('x-forwarded-proto') || 'https';
-          const host = req.get('host');
-          frontendUrl = `${protocol}://${host}`;
-        } else {
-          frontendUrl = 'http://localhost:5173';
-        }
-      }
-
-      const redirectUrl = `${frontendUrl}/auth/success?token=${token}`;
-
-      // Redirect to frontend with token
+      // Use UrlService for consistent URL management
+      const redirectUrl = this.urlService.buildFrontendUrl(`/auth/success?token=${token}`);
       res.redirect(redirectUrl);
     } catch (error) {
       console.error('🔴 Facebook OAuth callback error:', {
@@ -241,22 +173,8 @@ export class AuthController {
         userEmail: req.user?.email,
       });
 
-      // Determine frontend URL for error redirect
-      const isProduction = process.env.NODE_ENV === 'production';
-      let frontendUrl = process.env.FRONTEND_URL;
-
-      if (!frontendUrl) {
-        if (isProduction) {
-          // Dynamic URL detection from request headers
-          const protocol = req.get('x-forwarded-proto') || 'https';
-          const host = req.get('host');
-          frontendUrl = `${protocol}://${host}`;
-        } else {
-          frontendUrl = 'http://localhost:5173';
-        }
-      }
-
-      const errorUrl = `${frontendUrl}/auth/error`;
+      // Use UrlService for error redirect
+      const errorUrl = this.urlService.getAuthRedirectUrls().error;
       console.log('🔴 [FACEBOOK_OAUTH_CALLBACK] Redirecting to error page:', errorUrl);
       res.redirect(errorUrl);
     }

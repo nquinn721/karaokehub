@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
+import { UrlService } from '../../config/url.service';
 import { AuthService } from '../auth.service';
 
 @Injectable()
@@ -9,22 +10,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(
     private configService: ConfigService,
     private authService: AuthService,
+    private urlService: UrlService,
   ) {
-    // For OAuth callback, we need the backend URL, not frontend URL
-    const isProduction = configService.get<string>('NODE_ENV') === 'production';
-
-    // Use the backend URL for OAuth callback - with hardcoded fallback like canvas-game
-    let backendUrl;
-    if (isProduction) {
-      // Try multiple environment variables, then use hardcoded fallback
-      backendUrl =
-        configService.get<string>('BACKEND_URL') ||
-        configService.get<string>('SERVICE_URL') ||
-        'https://karaokehub-203453576607.us-central1.run.app'; // Use the Cloud Run URL that actually works
-    } else {
-      backendUrl = 'http://localhost:8000';
-    }
-
     const clientID = configService.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET');
 
@@ -39,7 +26,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     super({
       clientID,
       clientSecret,
-      callbackURL: `${backendUrl}/api/auth/google/callback`,
+      callbackURL: urlService.getOAuthUrls().googleCallback,
       scope: ['email', 'profile'],
     });
   }

@@ -9,6 +9,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { UrlService } from '../config/url.service';
 
 interface KaraokeRoom {
   id: string;
@@ -24,13 +25,7 @@ interface KaraokeRoom {
 
 @WebSocketGateway({
   cors: {
-    origin: [
-      'http://localhost:5173', // Frontend Vite dev server
-      'http://localhost:5174', // Alternative Vite port
-      'http://localhost:5175', // Alternative Vite port
-      'http://localhost:8000', // Backend dev server
-      'http://localhost:8080', // Cloud Run port
-    ],
+    origin: true, // Will be dynamically set
     credentials: true,
   },
 })
@@ -41,6 +36,12 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
   private logger: Logger = new Logger('KaraokeWebSocketGateway');
   private rooms: Map<string, KaraokeRoom> = new Map();
   private userSockets: Map<string, string> = new Map(); // userId -> socketId
+
+  constructor(private urlService: UrlService) {
+    // Update CORS origins dynamically
+    const allowedOrigins = this.urlService.getWebSocketOrigins();
+    this.logger.log(`WebSocket CORS origins: ${allowedOrigins.join(', ')}`);
+  }
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);

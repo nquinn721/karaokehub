@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { UrlService } from '../config/url.service';
 import { User } from '../entities/user.entity';
 import { StripeService } from './stripe.service';
 import { Subscription, SubscriptionPlan, SubscriptionStatus } from './subscription.entity';
@@ -13,6 +14,7 @@ export class SubscriptionService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private stripeService: StripeService,
+    private urlService: UrlService,
   ) {}
 
   async getUserSubscription(userId: string): Promise<Subscription | null> {
@@ -37,14 +39,13 @@ export class SubscriptionService {
     }
 
     const priceId = this.stripeService.getPriceId(plan);
-    const successUrl = `${process.env.FRONTEND_URL}/subscription/success?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = `${process.env.FRONTEND_URL}/subscription/cancel`;
+    const subscriptionUrls = this.urlService.getSubscriptionUrls();
 
     const session = await this.stripeService.createCheckoutSession(
       stripeCustomerId,
       priceId,
-      successUrl,
-      cancelUrl,
+      subscriptionUrls.success,
+      subscriptionUrls.cancel,
     );
 
     return session;
@@ -56,7 +57,7 @@ export class SubscriptionService {
       throw new NotFoundException('User not found or no subscription');
     }
 
-    const returnUrl = `${process.env.FRONTEND_URL}/account`;
+    const returnUrl = this.urlService.getSubscriptionUrls().manage;
     const session = await this.stripeService.createPortalSession(user.stripeCustomerId, returnUrl);
 
     return session;

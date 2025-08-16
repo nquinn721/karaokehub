@@ -7,12 +7,14 @@ import * as cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { join } from 'path';
 import { AppModule } from './app.module';
+import { UrlService } from './config/url.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['log', 'error', 'warn'],
   });
   const configService = app.get(ConfigService);
+  const urlService = app.get(UrlService);
 
   // Configure global prefix BEFORE static assets
   app.setGlobalPrefix('api');
@@ -46,14 +48,7 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // CORS
-  const allowedOrigins = configService.get<string>('ALLOWED_ORIGINS')?.split(',') || [
-    'http://localhost:5173', // Frontend Vite dev server
-    'http://localhost:5174', // Alternative Vite port
-    'http://localhost:5175', // Alternative Vite port
-    'http://localhost:5176', // Alternative Vite port
-    'http://localhost:8000', // Backend dev server
-    'http://localhost:8080', // Cloud Run port
-  ];
+  const allowedOrigins = urlService.getAllowedOrigins();
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -87,7 +82,7 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
 
   console.log(`🚀 KaraokeHub Server is running on http://localhost:${port}`);
-  console.log(`📱 KaraokeHub Frontend should be accessible at http://localhost:5173`);
+  console.log(`📱 KaraokeHub Frontend: ${urlService.getFrontendUrl()}`);
   console.log(`🌐 WebSocket connection: ws://localhost:${port}`);
 }
 

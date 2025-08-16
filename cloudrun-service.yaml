@@ -32,7 +32,7 @@ spec:
             - name: FRONTEND_URL
               value: 'https://karaoke-hub.com'
             - name: BACKEND_URL
-              value: 'https://karaokehub-203453576607.us-central1.run.app'
+              value: 'https://karaoke-hub.com'
             - name: ALLOWED_ORIGINS
               value: 'https://karaoke-hub.com'
             - name: DATABASE_SOCKET_PATH
@@ -112,8 +112,6 @@ spec:
               value: '/usr/bin/google-chrome-stable'
             - name: SERVICE_URL
               value: 'https://karaokehub-203453576607.us-central1.run.app'
-            - name: PORT
-              value: '8080'
             # Ollama configuration (disabled in Cloud Run by default)
             # Uncomment and set these if you deploy a separate Ollama service:
             # - name: ENABLE_OLLAMA
