@@ -58,7 +58,7 @@ export class MusicStore {
     {
       id: 'karaoke-classics',
       title: 'Karaoke Classics',
-      image: '/images/music/karaoke-classics.svg',
+      image: '/images/music/karaoke-classics.png',
       queries: [
         "Don't Stop Believin'",
         'Sweet Caroline',
@@ -70,7 +70,7 @@ export class MusicStore {
     {
       id: 'best-of-80s',
       title: 'Best of 80s',
-      image: '/images/music/best-of-80s.svg',
+      image: '/images/music/best-of-80s.png',
       queries: [
         'Take On Me',
         "Don't You (Forget About Me)",
@@ -82,7 +82,7 @@ export class MusicStore {
     {
       id: 'best-of-90s',
       title: 'Best of 90s',
-      image: '/images/music/best-of-90s.svg',
+      image: '/images/music/best-of-90s.png',
       queries: [
         'I Will Always Love You',
         'Wonderwall',
@@ -94,7 +94,7 @@ export class MusicStore {
     {
       id: 'rock-hits',
       title: 'Rock Hits',
-      image: '/images/music/rock-hits.svg',
+      image: '/images/music/rock-hits.png',
       queries: [
         "Don't Stop Me Now",
         'We Will Rock You',
@@ -106,13 +106,13 @@ export class MusicStore {
     {
       id: 'pop-hits',
       title: 'Pop Hits',
-      image: '/images/music/pop-hits.svg',
+      image: '/images/music/pop-hits.png',
       queries: ['Shape of You', 'Uptown Funk', "Can't Stop the Feeling", 'Shake It Off', 'Happy'],
     },
     {
       id: 'country-favorites',
       title: 'Country Favorites',
-      image: '/images/music/country-favorites.svg',
+      image: '/images/music/country-favorites.png',
       queries: [
         'Friends in Low Places',
         'Sweet Home Alabama',

@@ -431,7 +431,7 @@ export class MapStore {
 
     // Clear selected show - but don't reset map position
     this.showStore?.setSelectedShow(null);
-    
+
     // Preserve current map position by not calling any map centering methods
     console.log('InfoWindow closed - preserving current map position');
   };

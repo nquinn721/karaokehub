@@ -120,4 +120,11 @@ export class AppController {
     const indexPath = join(__dirname, '..', 'public', 'index.html');
     res.sendFile(indexPath);
   }
+
+  // Facebook App Compliance - Data Deletion Instructions
+  @Get('data-deletion-instructions')
+  serveDataDeletionInstructions(@Res() res: Response) {
+    const filePath = join(__dirname, '..', 'public', 'data-deletion-instructions.html');
+    res.sendFile(filePath);
+  }
 }

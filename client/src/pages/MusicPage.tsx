@@ -517,7 +517,12 @@ export const MusicPage: React.FC = observer(() => {
                     >
                       <CardMedia
                         component="img"
-                        sx={{ height: 200 }}
+                        sx={{
+                          height: 200,
+                          objectFit: 'contain',
+                          objectPosition: 'center',
+                          backgroundColor: 'rgba(0,0,0,0.05)',
+                        }}
                         image={category.image}
                         alt={category.title}
                       />

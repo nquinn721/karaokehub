@@ -105,48 +105,37 @@ export class KaraokeParserService {
             // Continue with Puppeteer fallback below
           }
         } else if (this.facebookService.isFacebookProfileUrl(url)) {
-          // Step 2: Check if it's a Facebook profile URL - use enhanced data extraction
-          this.logger.log('Detected Facebook profile URL, using enhanced data extraction (Graph API + web scraping)');
+          // Step 2: Check if it's a Facebook profile URL - use Graph API + Gemini parsing
+          this.logger.log(
+            'Detected Facebook profile URL, using Graph API extraction + Gemini parsing',
+          );
           try {
-            const enhancedData = await this.facebookService.getEnhancedProfileEvents(url);
-            
-            if (enhancedData && (enhancedData.shows?.length > 0 || enhancedData.weeklySchedule?.length > 0)) {
-              // Apply address lookup for all shows
-              const allShows = enhancedData.shows || [];
-              for (const show of allShows) {
-                if (!show.address && show.place?.name) {
-                  show.address = await this.lookupVenueAddress(show.place.name);
-                }
+            // Extract comprehensive Facebook profile data using our enhanced service
+            const facebookProfileData = await this.facebookService.extractProfileKaraokeData(url);
+
+            this.logger.log(
+              'Facebook profile data extracted successfully, sending to Gemini for intelligent parsing',
+            );
+
+            // Send the extracted Facebook data to Gemini for intelligent parsing
+            const result = await this.parseWithGeminiFromFacebookData(facebookProfileData, url);
+
+            // Apply address lookup for venues that don't have addresses
+            for (const show of result.shows) {
+              if (!show.address && show.venue) {
+                show.address = await this.lookupVenueAddress(show.venue);
               }
-
-              // Create result with enhanced data
-              const result = {
-                shows: allShows.map(show => ({
-                  venue: show.place?.name || show.name || 'Unknown Venue',
-                  address: show.address || '',
-                  date: show.start_time ? new Date(show.start_time).toLocaleDateString() : '',
-                  time: show.start_time ? this.extractTimeFromDateTime(show.start_time) : '',
-                  description: show.description || 'Karaoke Show',
-                  dj: enhancedData.profileInfo?.name || this.extractDjFromDescription(show.description || ''),
-                  confidence: 95 // High confidence for Facebook data
-                })),
-                dj: enhancedData.profileInfo?.name || 'Unknown DJ',
-                confidence: 95,
-                source: url,
-                enhancedData: enhancedData // Include all the extra data we extracted
-              };
-
-              this.logger.log(
-                `Enhanced Facebook profile parse completed successfully for ${url} (${result.shows.length} shows, ${enhancedData.weeklySchedule?.length || 0} weekly schedule items)`
-              );
-              return result;
-            } else {
-              this.logger.log('No events found in enhanced Facebook profile data, trying Gemini transformation');
             }
+
+            this.logger.log(
+              `Facebook profile + Gemini parse completed successfully for ${url} (${result.shows.length} shows found)`,
+            );
+            return result;
           } catch (profileError) {
             this.logger.warn(
-              `Enhanced Facebook profile extraction failed, trying Gemini transformation: ${profileError.message}`,
+              `Facebook profile extraction failed, falling back to standard Puppeteer: ${profileError.message}`,
             );
+            // Continue with Puppeteer fallback below
           }
 
           // Step 3: For Facebook profile URLs without events, use Gemini to transform URL
@@ -728,6 +717,178 @@ ${textContent}`;
     } catch (error) {
       this.logger.error('Error parsing with Gemini:', error);
       throw new Error(`AI parsing failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Parse Facebook profile data using Gemini AI
+   * Takes structured Facebook data and sends it to Gemini for intelligent karaoke show extraction
+   */
+  private async parseWithGeminiFromFacebookData(
+    facebookData: any,
+    url: string,
+  ): Promise<ParsedKaraokeData> {
+    try {
+      this.logger.log('Starting Gemini AI parsing with Facebook profile data');
+
+      // Use gemini-1.5-pro for better quality parsing
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+
+      // Create a focused prompt that handles both schedule and posts
+      const prompt = `Extract karaoke shows from this Facebook profile data.
+
+IMPORTANT: Process BOTH the "schedule" array AND "recentPosts" array for complete show information.
+
+Requirements:
+1. For each item in "schedule" array - create a show entry
+2. For items in "recentPosts" - extract any additional shows mentioned  
+3. Convert day names to lowercase (wednesday → wednesday, etc.)
+4. Convert times to 24-hour format (8pm → 20:00, 2am → 02:00)
+5. Use high confidence (0.9) for schedule data, medium (0.7) for posts
+
+Return JSON only (no markdown):
+{
+  "vendor": {
+    "name": "${facebookData.profileInfo?.name || 'Facebook Profile'}",
+    "owner": "${facebookData.profileInfo?.name || 'Profile Owner'}",
+    "website": "${url}",
+    "description": "${facebookData.profileInfo?.bio || 'Facebook profile'}",
+    "confidence": 0.95
+  },
+  "djs": [
+    {
+      "name": "${facebookData.profileInfo?.name || 'DJ'}",
+      "confidence": 0.9,
+      "context": "Facebook Profile",
+      "aliases": ["${facebookData.profileInfo?.instagram || 'instagram'}"]
+    }
+  ],
+  "shows": [
+    {
+      "venue": "venue name",
+      "address": "city if available", 
+      "date": "day-of-week",
+      "time": "original time format",
+      "startTime": "HH:MM",
+      "endTime": "HH:MM", 
+      "day": "lowercase day name",
+      "djName": "${facebookData.profileInfo?.name || 'DJ'}",
+      "confidence": 0.9
+    }
+  ]
+}
+
+Facebook Data:
+${JSON.stringify(facebookData, null, 2)}`;
+
+      // Retry logic for quota exceeded errors
+      let result;
+      let attempts = 0;
+      const maxAttempts = 3;
+
+      while (attempts < maxAttempts) {
+        try {
+          result = await model.generateContent(prompt);
+          break; // Success, exit retry loop
+        } catch (error) {
+          attempts++;
+
+          // Check if it's a quota exceeded error
+          if (
+            error.message?.includes('429') ||
+            error.message?.includes('quota') ||
+            error.message?.includes('Too Many Requests')
+          ) {
+            this.logger.warn(
+              `Quota exceeded for Facebook data parsing, attempt ${attempts}/${maxAttempts}. Waiting before retry...`,
+            );
+
+            if (attempts < maxAttempts) {
+              // Exponential backoff: 2^attempts seconds
+              const waitTime = Math.pow(2, attempts) * 1000;
+              await new Promise((resolve) => setTimeout(resolve, waitTime));
+              continue;
+            }
+          }
+
+          // If not a quota error or max attempts reached, throw
+          throw error;
+        }
+      }
+
+      const response = await result.response;
+      const text = response.text();
+
+      this.logger.log('Gemini response received for Facebook data, extracting JSON');
+      this.logger.debug(`Raw Gemini response for Facebook data: ${text.substring(0, 500)}...`);
+
+      // Extract JSON from response
+      const cleanedResponse = this.cleanGeminiResponse(text);
+      let parsedData: ParsedKaraokeData;
+
+      try {
+        parsedData = JSON.parse(cleanedResponse);
+      } catch (parseError) {
+        this.logger.error('Failed to parse Gemini JSON response for Facebook data:', parseError);
+        this.logger.error('Raw response:', cleanedResponse);
+        throw new Error('Invalid JSON response from Gemini for Facebook data');
+      }
+
+      // Log parsing results
+      if (parsedData.vendor) {
+        this.logger.log(
+          `Facebook vendor detected: ${parsedData.vendor.name} (confidence: ${parsedData.vendor.confidence})`,
+        );
+      }
+
+      // Ensure required structure with defaults for Facebook data
+      const finalData: ParsedKaraokeData = {
+        vendor: parsedData.vendor || {
+          name: facebookData.profileInfo?.name || 'Unknown DJ',
+          website: url,
+          description: facebookData.profileInfo?.bio || 'Facebook DJ Profile',
+          confidence: 0.8,
+        },
+        djs: Array.isArray(parsedData.djs)
+          ? this.filterDuplicateDjs(parsedData.djs, parsedData)
+          : facebookData.profileInfo?.name
+            ? [
+                {
+                  name: facebookData.profileInfo.name,
+                  confidence: 0.9,
+                  context: 'Facebook Profile',
+                  aliases: facebookData.profileInfo.instagram
+                    ? [facebookData.profileInfo.instagram]
+                    : [],
+                },
+              ]
+            : [],
+        shows: Array.isArray(parsedData.shows) ? parsedData.shows : [],
+        rawData: {
+          url: url,
+          title: `Facebook Profile: ${facebookData.profileInfo?.name || 'Unknown'}`,
+          content: JSON.stringify(facebookData, null, 2),
+          parsedAt: new Date(),
+        },
+      };
+
+      this.logger.log(
+        `Facebook data parsing completed: ${finalData.shows.length} shows, ${finalData.djs.length} DJs found`,
+      );
+
+      // Debug logging for Facebook shows
+      if (finalData.shows) {
+        finalData.shows.forEach((show, index) => {
+          this.logger.debug(
+            `Facebook Show ${index + 1}: ${show.venue} on ${show.day} at ${show.time} - Address: ${show.address || 'No address'}`,
+          );
+        });
+      }
+
+      return finalData;
+    } catch (error) {
+      this.logger.error('Error parsing Facebook data with Gemini:', error);
+      throw new Error(`Facebook AI parsing failed: ${error.message}`);
     }
   }
 
@@ -3048,5 +3209,44 @@ Return your analysis as JSON in this format:
       this.logger.warn(`Error extracting Facebook share info: ${error.message}`);
       return { originalUrl: url };
     }
+  }
+
+  /**
+   * Extract time from datetime string
+   */
+  private extractTimeFromDateTime(datetime: string): string {
+    try {
+      const date = new Date(datetime);
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch (error) {
+      return '';
+    }
+  }
+
+  /**
+   * Extract DJ information from description text
+   */
+  private extractDjFromDescription(description: string): string {
+    if (!description) return '';
+
+    // Common patterns for DJ mentions
+    const djPatterns = [
+      /(?:dj|DJ)\s+([A-Za-z\s]+?)(?:\s|$|,|\.|!)/,
+      /(?:with|featuring)\s+(?:dj|DJ)\s+([A-Za-z\s]+?)(?:\s|$|,|\.|!)/,
+      /(?:host|hosted by)\s+([A-Za-z\s]+?)(?:\s|$|,|\.|!)/,
+    ];
+
+    for (const pattern of djPatterns) {
+      const match = description.match(pattern);
+      if (match) {
+        return match[1].trim();
+      }
+    }
+
+    return '';
   }
 }
