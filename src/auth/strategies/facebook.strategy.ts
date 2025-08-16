@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy } from 'passport-facebook';
+import { UrlService } from '../../config/url.service';
 import { AuthService } from '../auth.service';
 
 @Injectable()
@@ -9,25 +10,10 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
   constructor(
     private configService: ConfigService,
     private authService: AuthService,
+    private urlService: UrlService,
   ) {
-    // For OAuth callback, we need the backend URL, not frontend URL
-    const isProduction = configService.get<string>('NODE_ENV') === 'production';
-
-    // Use the backend URL for OAuth callback
-    let backendUrl;
-    if (isProduction) {
-      // Try multiple environment variables, then use hardcoded fallback
-      backendUrl =
-        configService.get<string>('BACKEND_URL') ||
-        configService.get<string>('SERVICE_URL') ||
-        'https://karaoke-hub.com'; // Updated to match your custom domain
-    } else {
-      backendUrl = 'http://localhost:8000';
-    }
-
-    const clientID = configService.get<string>('FACEBOOK_APP_ID') || '646464114624794';
-    const clientSecret =
-      configService.get<string>('FACEBOOK_APP_SECRET') || '3ce6645105081d6f3a5442a30bd6b1ae';
+    const clientID = configService.get<string>('FACEBOOK_APP_ID');
+    const clientSecret = configService.get<string>('FACEBOOK_APP_SECRET');
 
     // Only log configuration issues
     if (!clientID || !clientSecret) {
@@ -40,7 +26,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     super({
       clientID,
       clientSecret,
-      callbackURL: `${backendUrl}/api/auth/facebook/callback`,
+      callbackURL: urlService.getOAuthUrls().facebookCallback,
       scope: ['public_profile'], // Only request public_profile, email requires app review
       profileFields: ['id', 'displayName', 'photos'], // Remove email from profileFields
     });

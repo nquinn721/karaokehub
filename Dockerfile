@@ -40,22 +40,11 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
-# Install dependencies needed for Puppeteer
-RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    freetype-dev \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont \
-    && rm -rf /var/cache/apk/*
+# Install dumb-init for proper signal handling and Chromium for Puppeteer
+RUN apk add --no-cache dumb-init chromium
 
-# Tell Puppeteer to use the installed Chromium
+# Set Puppeteer to use installed Chromium
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
