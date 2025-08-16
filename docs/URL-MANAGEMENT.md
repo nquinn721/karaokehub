@@ -7,11 +7,13 @@ This document outlines the centralized URL management system and domain configur
 ## 🎯 Domain Setup
 
 ### Production Domain: `https://karaoke-hub.com`
+
 - **Frontend**: Served from the same domain as the backend
 - **Backend API**: Available at `https://karaoke-hub.com/api/*`
 - **Direct Cloud Run URL**: `https://karaokehub-203453576607.us-central1.run.app` (used for OAuth callbacks)
 
 ### Development URLs
+
 - **Frontend**: `http://localhost:5173` (Vite dev server)
 - **Backend**: `http://localhost:8000`
 
@@ -23,22 +25,23 @@ A centralized service that manages all URLs used throughout the application:
 
 ```typescript
 // Get environment-specific URLs
-urlService.getFrontendUrl()  // https://karaoke-hub.com (prod) or http://localhost:5173 (dev)
-urlService.getBackendUrl()   // https://karaoke-hub.com (prod) or http://localhost:8000 (dev)
-urlService.getServiceUrl()   // https://karaokehub-203453576607.us-central1.run.app (for OAuth)
+urlService.getFrontendUrl(); // https://karaoke-hub.com (prod) or http://localhost:5173 (dev)
+urlService.getBackendUrl(); // https://karaoke-hub.com (prod) or http://localhost:8000 (dev)
+urlService.getServiceUrl(); // https://karaokehub-203453576607.us-central1.run.app (for OAuth)
 
 // Build specific URLs
-urlService.buildFrontendUrl('/dashboard')  // https://karaoke-hub.com/dashboard
-urlService.buildBackendUrl('/api/users')   // https://karaoke-hub.com/api/users
+urlService.buildFrontendUrl('/dashboard'); // https://karaoke-hub.com/dashboard
+urlService.buildBackendUrl('/api/users'); // https://karaoke-hub.com/api/users
 
 // Get pre-configured URL sets
-urlService.getOAuthUrls()           // OAuth callback URLs
-urlService.getSubscriptionUrls()    // Stripe subscription URLs
-urlService.getAuthRedirectUrls()    // Auth success/error URLs
-urlService.getAllowedOrigins()      // CORS origins
+urlService.getOAuthUrls(); // OAuth callback URLs
+urlService.getSubscriptionUrls(); // Stripe subscription URLs
+urlService.getAuthRedirectUrls(); // Auth success/error URLs
+urlService.getAllowedOrigins(); // CORS origins
 ```
 
 ### Benefits
+
 - ✅ **Single source of truth** for all URLs
 - ✅ **Environment-aware** (automatically switches between dev/prod)
 - ✅ **Type-safe** URL generation
@@ -48,19 +51,21 @@ urlService.getAllowedOrigins()      // CORS origins
 ## 🔧 Environment Variables
 
 ### Production Configuration
+
 ```yaml
 # cloudrun-service.yaml
 - name: FRONTEND_URL
   value: 'https://karaoke-hub.com'
 - name: BACKEND_URL
-  value: 'https://karaoke-hub.com'  # Same domain, API served from /api
+  value: 'https://karaoke-hub.com' # Same domain, API served from /api
 - name: SERVICE_URL
-  value: 'https://karaokehub-203453576607.us-central1.run.app'  # Direct Cloud Run URL
+  value: 'https://karaokehub-203453576607.us-central1.run.app' # Direct Cloud Run URL
 - name: ALLOWED_ORIGINS
   value: 'https://karaoke-hub.com'
 ```
 
 ### Development Configuration
+
 ```bash
 # .env
 FRONTEND_URL=http://localhost:5173
@@ -72,27 +77,33 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:517
 ## 📝 Updated Components
 
 ### 1. Authentication (`src/auth/`)
+
 - **GoogleStrategy**: Uses `urlService.getOAuthUrls().googleCallback`
 - **AuthController**: All OAuth redirects use `urlService.buildFrontendUrl()`
 - **Simplified logic**: No more manual URL building or environment detection
 
 ### 2. Subscription Service (`src/subscription/`)
+
 - **Checkout URLs**: Uses `urlService.getSubscriptionUrls()`
 - **Portal URLs**: Uses centralized URL management
 
 ### 3. Main Application (`src/main.ts`)
+
 - **CORS**: Uses `urlService.getAllowedOrigins()`
 - **Logging**: Shows correct frontend URL for each environment
 
 ### 4. WebSocket Gateway (`src/websocket/`)
+
 - **CORS origins**: Uses `urlService.getWebSocketOrigins()`
 
 ### 5. App Controller (`src/app.controller.ts`)
+
 - **Debug endpoints**: Use `urlService.getUrlConfig()` for comprehensive URL info
 
 ## 🚀 Usage Examples
 
 ### In a Service
+
 ```typescript
 @Injectable()
 export class MyService {
@@ -106,6 +117,7 @@ export class MyService {
 ```
 
 ### In a Controller
+
 ```typescript
 @Controller()
 export class MyController {
@@ -122,6 +134,7 @@ export class MyController {
 ## 🔍 Debug Information
 
 ### Check URL Configuration
+
 ```bash
 curl https://karaoke-hub.com/api/env-info
 curl https://karaoke-hub.com/api/oauth-debug
@@ -132,6 +145,7 @@ These endpoints now provide comprehensive URL configuration information using th
 ## 🛠️ Migration Notes
 
 ### Before (Scattered URLs)
+
 ```typescript
 // ❌ URLs hardcoded everywhere
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -139,12 +153,13 @@ const successUrl = `${frontendUrl}/auth/success?token=${token}`;
 
 // ❌ Manual environment detection
 const isProduction = process.env.NODE_ENV === 'production';
-const backendUrl = isProduction 
+const backendUrl = isProduction
   ? process.env.BACKEND_URL || 'https://karaokehub-203453576607.us-central1.run.app'
   : 'http://localhost:8000';
 ```
 
 ### After (Centralized Management)
+
 ```typescript
 // ✅ Clean, centralized URL management
 const successUrl = this.urlService.buildFrontendUrl(`/auth/success?token=${token}`);
