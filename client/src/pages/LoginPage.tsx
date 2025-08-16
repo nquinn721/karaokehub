@@ -1,5 +1,5 @@
 import { LoadingButton } from '@components/LoadingButton';
-import { faGoogle } from '@fortawesome/free-brands-svg-icons';
+import { faFacebook } from '@fortawesome/free-brands-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Box, Button, Container, Divider, Link, Paper, TextField, Typography } from '@mui/material';
 import { authStore, uiStore } from '@stores/index';
@@ -140,11 +140,49 @@ const LoginPage: React.FC = observer(() => {
             <Button
               fullWidth
               variant="outlined"
-              startIcon={<FontAwesomeIcon icon={faGoogle} />}
               onClick={() => authStore.loginWithGoogle()}
-              sx={{ py: 1.5, mb: 2 }}
+              sx={{
+                py: 1.5,
+                mb: 2,
+                height: 50,
+                backgroundImage: 'url(/images/loginwgoogle.png)',
+                backgroundSize: '70%', // Make the image much smaller to match Facebook button size
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                backgroundColor: '#ffffff',
+                border: '1px solid #dadce0',
+                borderRadius: 1,
+                '&:hover': {
+                  backgroundColor: '#f8f9fa',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  border: '1px solid #dadce0',
+                },
+                '&:active': {
+                  backgroundColor: '#f1f3f4',
+                },
+              }}
+              aria-label="Continue with Google"
             >
-              Continue with Google
+              {/* No text - image contains the text */}
+            </Button>
+
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<FontAwesomeIcon icon={faFacebook} />}
+              onClick={() => authStore.loginWithFacebook()}
+              sx={{
+                py: 1.5,
+                mb: 2,
+                bgcolor: '#1877f2',
+                color: 'white',
+                '&:hover': {
+                  bgcolor: '#166fe5',
+                  color: 'white',
+                },
+              }}
+            >
+              Continue with Facebook
             </Button>
 
             <Box sx={{ textAlign: 'center' }}>

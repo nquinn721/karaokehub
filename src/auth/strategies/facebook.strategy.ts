@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, VerifyCallback } from 'passport-google-oauth20';
+import { Profile, Strategy } from 'passport-facebook';
 import { AuthService } from '../auth.service';
 
 @Injectable()
-export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
+export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
   constructor(
     private configService: ConfigService,
     private authService: AuthService,
@@ -13,7 +13,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     // For OAuth callback, we need the backend URL, not frontend URL
     const isProduction = configService.get<string>('NODE_ENV') === 'production';
 
-    // Use the backend URL for OAuth callback - with hardcoded fallback like canvas-game
+    // Use the backend URL for OAuth callback
     let backendUrl;
     if (isProduction) {
       // Try multiple environment variables, then use hardcoded fallback
@@ -25,12 +25,13 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       backendUrl = 'http://localhost:8000';
     }
 
-    const clientID = configService.get<string>('GOOGLE_CLIENT_ID');
-    const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET');
+    const clientID = configService.get<string>('FACEBOOK_APP_ID') || '646464114624794';
+    const clientSecret =
+      configService.get<string>('FACEBOOK_APP_SECRET') || '3ce6645105081d6f3a5442a30bd6b1ae';
 
     // Only log configuration issues
     if (!clientID || !clientSecret) {
-      console.error('Google OAuth Strategy Error: Missing credentials', {
+      console.error('Facebook OAuth Strategy Error: Missing credentials', {
         clientID: clientID ? 'SET' : 'NOT_SET',
         clientSecret: clientSecret ? 'SET' : 'NOT_SET',
       });
@@ -39,22 +40,23 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     super({
       clientID,
       clientSecret,
-      callbackURL: `${backendUrl}/api/auth/google/callback`,
-      scope: ['email', 'profile'],
+      callbackURL: `${backendUrl}/api/auth/facebook/callback`,
+      scope: ['public_profile'], // Only request public_profile, email requires app review
+      profileFields: ['id', 'displayName', 'photos'], // Remove email from profileFields
     });
   }
 
   async validate(
     accessToken: string,
     refreshToken: string,
-    profile: any,
-    done: VerifyCallback,
+    profile: Profile,
+    done: (error: any, user?: any) => void,
   ): Promise<any> {
     try {
-      const user = await this.authService.validateOAuthUser(profile, 'google');
+      const user = await this.authService.validateOAuthUser(profile, 'facebook');
       done(null, user);
     } catch (error) {
-      console.error('🔴 Google OAuth validation error:', {
+      console.error('🔴 Facebook OAuth validation error:', {
         error: error.message,
         profileId: profile?.id,
         profileEmail: profile?.emails?.[0]?.value,

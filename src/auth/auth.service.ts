@@ -102,13 +102,18 @@ export class AuthService {
     const { id, emails, displayName, photos } = profile;
     const email = emails?.[0]?.value;
 
-    if (!email) {
+    // For Facebook, email might not be available without app review
+    if (!email && provider !== 'facebook') {
       console.error('🔴 OAuth validation error: No email provided', { provider, profileId: id });
       throw new Error('No email provided by OAuth provider');
     }
 
-    // Check if user exists by email first
-    let user = await this.userService.findByEmail(email);
+    let user = null;
+
+    if (email) {
+      // Check if user exists by email first
+      user = await this.userService.findByEmail(email);
+    }
 
     if (!user) {
       // Check if user exists by provider ID
@@ -117,13 +122,22 @@ export class AuthService {
 
     if (!user) {
       // Create new user
-      user = await this.userService.create({
-        email,
-        name: displayName || email,
+      const userData: any = {
+        name: displayName || `${provider}_user_${id}`,
         avatar: photos?.[0]?.value,
         provider,
         providerId: id,
-      });
+      };
+
+      // Only add email if we have one
+      if (email) {
+        userData.email = email;
+      } else {
+        // For Facebook users without email, create a placeholder email
+        userData.email = `${provider}_${id}@placeholder.karaoke`;
+      }
+
+      user = await this.userService.create(userData);
     } else {
       // Update existing user's avatar if provider has one and it's different
       const providerAvatar = photos?.[0]?.value;

@@ -130,6 +130,16 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
     return feature === 'ad_removal' ? 'ad_free' : 'premium';
   };
 
+  // Filter plans based on feature - only show premium for premium features
+  const getAvailablePlans = () => {
+    if (feature === 'favorites' || feature === 'music_preview') {
+      // These are premium-only features, only show premium plan
+      return plans.filter((plan) => plan.id === 'premium');
+    }
+    // For ad_removal, show both plans
+    return plans;
+  };
+
   return (
     <Dialog
       open={open}
@@ -189,7 +199,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             flexDirection: { xs: 'column', md: 'row' },
           }}
         >
-          {plans.map((plan) => {
+          {getAvailablePlans().map((plan) => {
             const isRecommended = plan.id === getRecommendedPlan();
             return (
               <Card

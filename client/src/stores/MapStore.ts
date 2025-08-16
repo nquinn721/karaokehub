@@ -21,7 +21,7 @@ export class MapStore {
   public selectedMarkerId: string | null = null;
   public mapInstance: google.maps.Map | null = null;
   public initialCenter = { lat: 40.7128, lng: -74.006 }; // Default to NYC
-  public initialZoom = 8;
+  public initialZoom = 5;
   public isInitialized = false;
   public locationError: string | null = null;
   public hasSetInitialBounds = false;
@@ -373,13 +373,110 @@ export class MapStore {
       return;
     }
 
+    // Check if geolocation is supported
+    if (!navigator.geolocation) {
+      runInAction(() => {
+        this.locationError = 'Geolocation is not supported by this browser';
+      });
+      return;
+    }
+
+    // Clear any previous errors
+    runInAction(() => {
+      this.locationError = null;
+    });
+
+    // Check current permission state
+    if ('permissions' in navigator) {
+      try {
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+
+        if (permission.state === 'denied') {
+          runInAction(() => {
+            this.locationError =
+              'Location access denied. Please enable location permission in your browser settings.';
+          });
+          return;
+        }
+      } catch (error) {
+        console.warn('Could not check geolocation permission:', error);
+      }
+    }
+
     // Request location permission and get current location
-    this.getUserLocation();
+    this.requestUserLocation();
   };
 
-  // Check if we have location permission
+  // Public method to explicitly request user location with better permission handling
+  requestUserLocation = (): void => {
+    if (!navigator.geolocation) {
+      runInAction(() => {
+        this.locationError = 'Geolocation is not supported by this browser';
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        runInAction(() => {
+          this.userLocation = location;
+          this.locationError = null;
+        });
+
+        // Pan to user location when explicitly requested
+        if (this.mapInstance) {
+          this.mapInstance.panTo(location);
+          this.mapInstance.setZoom(14);
+        }
+
+        // Re-geocode shows with new user location for distance filtering
+        this.geocodeShowsInRange();
+      },
+      (error) => {
+        let errorMessage = 'Error getting user location';
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage =
+              "Location access denied. Please click the location icon in your browser's address bar and allow location access, then try again.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage =
+              "Location information is unavailable. Please check your device's location settings.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'Location request timed out. Please try again.';
+            break;
+        }
+
+        runInAction(() => {
+          this.locationError = errorMessage;
+        });
+        console.warn('Error getting user location:', error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000, // Increased timeout for permission prompt
+        maximumAge: 60000, // 1 minute cache
+      },
+    );
+  };
+
+  // Check if we have location permission and location data
   hasLocationPermission = (): boolean => {
     return this.userLocation !== null && this.locationError === null;
+  };
+
+  // Check if location permission was explicitly denied
+  isLocationDenied = (): boolean => {
+    return (
+      this.locationError !== null &&
+      (this.locationError.includes('denied') || this.locationError.includes('PERMISSION_DENIED'))
+    );
   };
 
   // Clear location error
@@ -502,7 +599,7 @@ export class MapStore {
 
   // Get zoom for map initialization
   get mapInitialZoom(): number {
-    return this.userLocation ? 9 : this.initialZoom; // 9 = ~20 mile radius when user location available
+    return this.userLocation ? 1 : this.initialZoom; // 5 = ~10 mile radius when user location available
   }
 
   // Check if a specific marker is selected

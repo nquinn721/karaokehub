@@ -1294,7 +1294,35 @@ export const MapComponent: React.FC = observer(() => {
                 >
                   <FontAwesomeIcon icon={faLocationArrow} size="sm" />
                 </IconButton>
-              </Box>{' '}
+              </Box>
+
+              {/* Location Error Alert */}
+              {mapStore.locationError && (
+                <Alert
+                  severity={mapStore.isLocationDenied() ? 'warning' : 'info'}
+                  sx={{
+                    mb: 2,
+                    fontSize: '0.875rem',
+                    '& .MuiAlert-message': {
+                      width: '100%',
+                    },
+                  }}
+                  action={
+                    mapStore.isLocationDenied() ? (
+                      <Button
+                        color="inherit"
+                        size="small"
+                        onClick={() => mapStore.clearLocationError()}
+                      >
+                        Dismiss
+                      </Button>
+                    ) : null
+                  }
+                >
+                  {mapStore.locationError}
+                </Alert>
+              )}
+
               <Box
                 ref={showListRef}
                 sx={{

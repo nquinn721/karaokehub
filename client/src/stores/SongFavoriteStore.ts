@@ -61,11 +61,11 @@ export class SongFavoriteStore {
     }
   }
 
-  async addSongFavorite(songId: string) {
+  async addSongFavorite(songId: string, songData?: any) {
     try {
       this.setError(null);
 
-      const response = await apiStore.post(`/song-favorites/${songId}`, {});
+      const response = await apiStore.post(`/song-favorites/${songId}`, songData || {});
 
       if (response.success) {
         runInAction(() => {

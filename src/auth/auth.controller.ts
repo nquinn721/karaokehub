@@ -154,6 +154,69 @@ export class AuthController {
     }
   }
 
+  @Get('facebook')
+  @UseGuards(AuthGuard('facebook'))
+  async facebookAuth(@Req() req) {
+    // Initiates Facebook OAuth flow
+  }
+
+  @Get('facebook/callback')
+  @UseGuards(AuthGuard('facebook'))
+  async facebookAuthCallback(@Req() req, @Res() res: Response) {
+    try {
+      if (!req.user) {
+        throw new Error('No user object in request after Facebook OAuth validation');
+      }
+
+      const user = req.user;
+      const token = this.authService.generateToken(user);
+
+      // Determine frontend URL based on environment
+      const isProduction = process.env.NODE_ENV === 'production';
+      let frontendUrl = process.env.FRONTEND_URL;
+
+      if (!frontendUrl) {
+        if (isProduction) {
+          // Dynamic URL detection from request headers
+          const protocol = req.get('x-forwarded-proto') || 'https';
+          const host = req.get('host');
+          frontendUrl = `${protocol}://${host}`;
+        } else {
+          frontendUrl = 'http://localhost:5173';
+        }
+      }
+
+      const redirectUrl = `${frontendUrl}/auth/success?token=${token}`;
+
+      // Redirect to frontend with token
+      res.redirect(redirectUrl);
+    } catch (error) {
+      console.error('🔴 Facebook OAuth callback error:', {
+        error: error.message,
+        userEmail: req.user?.email,
+      });
+
+      // Determine frontend URL for error redirect
+      const isProduction = process.env.NODE_ENV === 'production';
+      let frontendUrl = process.env.FRONTEND_URL;
+
+      if (!frontendUrl) {
+        if (isProduction) {
+          // Dynamic URL detection from request headers
+          const protocol = req.get('x-forwarded-proto') || 'https';
+          const host = req.get('host');
+          frontendUrl = `${protocol}://${host}`;
+        } else {
+          frontendUrl = 'http://localhost:5173';
+        }
+      }
+
+      const errorUrl = `${frontendUrl}/auth/error`;
+      console.log('🔴 [FACEBOOK_OAUTH_CALLBACK] Redirecting to error page:', errorUrl);
+      res.redirect(errorUrl);
+    }
+  }
+
   @Get('profile')
   @UseGuards(AuthGuard('jwt'))
   async getProfile(@Req() req) {

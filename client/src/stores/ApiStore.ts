@@ -510,6 +510,7 @@ class ApiStore {
       profile: '/auth/profile',
       google: '/auth/google',
       github: '/auth/github',
+      facebook: '/auth/facebook',
     },
 
     // User endpoints

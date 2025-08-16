@@ -1,6 +1,4 @@
 import { LoadingButton } from '@components/LoadingButton';
-import { faGoogle } from '@fortawesome/free-brands-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Box, Button, Container, Divider, Link, Paper, TextField, Typography } from '@mui/material';
 import { authStore, uiStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
@@ -177,11 +175,44 @@ const RegisterPage: React.FC = observer(() => {
             <Button
               fullWidth
               variant="outlined"
-              startIcon={<FontAwesomeIcon icon={faGoogle} />}
+              startIcon={
+                <Box
+                  component="img"
+                  src="/images/loginwgoogle.png"
+                  alt="Google"
+                  sx={{ width: 20, height: 20 }}
+                />
+              }
               onClick={() => authStore.loginWithGoogle()}
               sx={{ py: 1.5, mb: 2 }}
             >
               Continue with Google
+            </Button>
+
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={
+                <Box
+                  component="img"
+                  src="/images/loginwfb.png"
+                  alt="Facebook"
+                  sx={{ width: 20, height: 20 }}
+                />
+              }
+              onClick={() => authStore.loginWithFacebook()}
+              sx={{
+                py: 1.5,
+                mb: 2,
+                bgcolor: '#1877f2',
+                color: 'white',
+                '&:hover': {
+                  bgcolor: '#166fe5',
+                  color: 'white',
+                },
+              }}
+            >
+              Continue with Facebook
             </Button>
 
             <Box sx={{ textAlign: 'center' }}>

@@ -5,6 +5,7 @@ import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
   faChevronRight,
   faCompactDisc,
+  faHeart as faHeartSolid,
   faHome,
   faMusic,
   faPause,
@@ -42,7 +43,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { authStore, musicStore, subscriptionStore } from '@stores/index';
+import { authStore, musicStore, songFavoriteStore, subscriptionStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import {
@@ -105,6 +106,13 @@ export const MusicPage: React.FC = observer(() => {
       setAudioElement(null);
     }
   }, [location.pathname, location.search]); // React to route changes
+
+  // Load user's song favorites when authenticated
+  useEffect(() => {
+    if (authStore.isAuthenticated) {
+      songFavoriteStore.fetchMySongFavorites();
+    }
+  }, [authStore.isAuthenticated]);
 
   useEffect(() => {
     // Clear any previous results when component mounts
@@ -244,9 +252,43 @@ export const MusicPage: React.FC = observer(() => {
       return;
     }
 
-    // For now, just show that the feature would work
-    // TODO: Implement music favorites in a separate store/system
-    console.log('Would favorite song:', song.title);
+    try {
+      const isFavorited = isSongFavorited(song.id);
+
+      if (isFavorited) {
+        await songFavoriteStore.removeSongFavorite(song.id);
+      } else {
+        // Log the original song object first to see what we have
+        console.log('Original song object:', song);
+        console.log('Song title type:', typeof song.title, 'value:', song.title);
+        console.log('Song artist type:', typeof song.artist, 'value:', song.artist);
+
+        // Pass song data to create the song in the database if it doesn't exist
+        const songData = {
+          title: song.title,
+          artist: song.artist,
+          album: song.album,
+          genre: song.tags?.[0],
+          duration: song.duration,
+        };
+        console.log('Sending song data to backend:', songData);
+        await songFavoriteStore.addSongFavorite(song.id, songData);
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
+  };
+
+  const isSongFavorited = (songId: string): boolean => {
+    return songFavoriteStore.songFavorites.some((fav) => {
+      // Check if the favorite matches by songId (internal ID)
+      if (fav.songId === songId) return true;
+
+      // Check if the favorite's song has a spotifyId that matches
+      if (fav.song?.spotifyId === songId) return true;
+
+      return false;
+    });
   };
 
   const formatDuration = (duration?: number): string => {
@@ -770,7 +812,7 @@ export const MusicPage: React.FC = observer(() => {
                           }}
                         >
                           <FontAwesomeIcon
-                            icon={faHeartRegular}
+                            icon={isSongFavorited(song.id) ? faHeartSolid : faHeartRegular}
                             size="sm"
                             style={{
                               fontSize: '18px',

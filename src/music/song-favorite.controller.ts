@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
@@ -23,9 +24,9 @@ export class SongFavoriteController {
 
   @Post(':songId')
   @HttpCode(HttpStatus.CREATED)
-  async addFavorite(@Request() req, @Param('songId') songId: string) {
+  async addFavorite(@Request() req, @Param('songId') songId: string, @Body() songData?: any) {
     const userId = req.user.id;
-    const favorite = await this.songFavoriteService.addFavorite(userId, songId);
+    const favorite = await this.songFavoriteService.addFavoriteWithData(userId, songId, songData);
     return {
       success: true,
       message: 'Song added to favorites',
@@ -47,7 +48,7 @@ export class SongFavoriteController {
   @Get()
   async getUserFavorites(@Request() req) {
     const userId = req.user.id;
-    const favorites = await this.songFavoriteService.getUserFavoriteSongs(userId);
+    const favorites = await this.songFavoriteService.getUserFavorites(userId);
     return {
       success: true,
       data: favorites,

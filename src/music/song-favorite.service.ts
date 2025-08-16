@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { SongFavorite } from './song-favorite.entity';
 import { Song } from './song.entity';
+import { SongService } from './song.service';
 
 @Injectable()
 export class SongFavoriteService {
@@ -14,6 +15,7 @@ export class SongFavoriteService {
     private readonly songRepository: Repository<Song>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly songService: SongService,
   ) {}
 
   async addFavorite(userId: string, songId: string): Promise<SongFavorite> {
@@ -49,10 +51,95 @@ export class SongFavoriteService {
     return await this.songFavoriteRepository.save(favorite);
   }
 
+  async addFavoriteWithData(userId: string, songId: string, songData?: any): Promise<SongFavorite> {
+    // Check if user exists
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    let song: Song;
+
+    // First try to find song by internal ID
+    song = await this.songRepository.findOne({ where: { id: songId } });
+
+    // If not found, try to find by Spotify ID
+    if (!song && songData) {
+      song = await this.songRepository.findOne({ where: { spotifyId: songId } });
+    }
+
+    // If still not found, create the song using the provided data
+    if (!song && songData) {
+      try {
+        console.log('Creating new song with data:', songData);
+        console.log('Using songId as spotifyId:', songId);
+
+        // Validate required fields
+        if (!songData.title || !songData.artist) {
+          console.error('Missing required song data:', {
+            title: songData.title,
+            artist: songData.artist,
+          });
+          throw new Error('Missing required song title or artist');
+        }
+
+        song = await this.songService.create({
+          title: songData.title.trim(),
+          artist: songData.artist.trim(),
+          album: songData.album?.trim() || null,
+          genre: songData.genre?.trim() || null,
+          duration: songData.duration || null,
+          spotifyId: songId, // Use the songId as Spotify ID
+        });
+
+        console.log('Created song:', song);
+      } catch (error) {
+        console.error('Error creating song:', error);
+        throw new NotFoundException(
+          `Could not create or find song with ID ${songId}: ${error.message}`,
+        );
+      }
+    }
+
+    if (!song) {
+      throw new NotFoundException(`Song with ID ${songId} not found`);
+    }
+
+    // Check if favorite already exists
+    const existingFavorite = await this.songFavoriteRepository.findOne({
+      where: { userId, songId: song.id },
+    });
+
+    if (existingFavorite) {
+      throw new ConflictException('Song is already in favorites');
+    }
+
+    // Create new favorite
+    const favorite = this.songFavoriteRepository.create({
+      userId,
+      songId: song.id,
+      user,
+      song,
+    });
+
+    return await this.songFavoriteRepository.save(favorite);
+  }
+
   async removeFavorite(userId: string, songId: string): Promise<void> {
-    const favorite = await this.songFavoriteRepository.findOne({
+    // First try to find by internal song ID
+    let favorite = await this.songFavoriteRepository.findOne({
       where: { userId, songId },
     });
+
+    // If not found, try to find by song's Spotify ID
+    if (!favorite) {
+      const song = await this.songRepository.findOne({ where: { spotifyId: songId } });
+      if (song) {
+        favorite = await this.songFavoriteRepository.findOne({
+          where: { userId, songId: song.id },
+        });
+      }
+    }
 
     if (!favorite) {
       throw new NotFoundException('Favorite not found');

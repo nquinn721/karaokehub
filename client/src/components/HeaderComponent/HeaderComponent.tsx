@@ -226,35 +226,37 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                 Home
               </Button>
 
-              {/* Music Search */}
-              <Button
-                variant="text"
-                size="medium"
-                onClick={() => navigate('/music')}
-                startIcon={<FontAwesomeIcon icon={faMusic} />}
-                sx={{
-                  color: theme.palette.mode === 'light' ? 'white' : 'inherit',
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  fontSize: '1rem',
-                  px: 2,
-                  py: 1,
-                  borderRadius: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    backgroundColor:
-                      theme.palette.mode === 'light'
-                        ? 'rgba(255, 255, 255, 0.1)'
-                        : 'rgba(255, 255, 255, 0.05)',
-                    transform: 'translateY(-1px)',
-                  },
-                }}
-              >
-                Music
-              </Button>
+              {/* Music Search - Only show when authenticated */}
+              {authStore.isAuthenticated && (
+                <Button
+                  variant="text"
+                  size="medium"
+                  onClick={() => navigate('/music')}
+                  startIcon={<FontAwesomeIcon icon={faMusic} />}
+                  sx={{
+                    color: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                    fontWeight: 500,
+                    textTransform: 'none',
+                    fontSize: '1rem',
+                    px: 2,
+                    py: 1,
+                    borderRadius: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease-in-out',
+                    '&:hover': {
+                      backgroundColor:
+                        theme.palette.mode === 'light'
+                          ? 'rgba(255, 255, 255, 0.1)'
+                          : 'rgba(255, 255, 255, 0.05)',
+                      transform: 'translateY(-1px)',
+                    },
+                  }}
+                >
+                  Music
+                </Button>
+              )}
 
               {/* Submit Show */}
               <Button
@@ -545,15 +547,17 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               </ListItemButton>
             </ListItem>
 
-            {/* Music */}
-            <ListItem disablePadding>
-              <ListItemButton onClick={() => handleMobileNavigation('/music')}>
-                <ListItemIcon>
-                  <FontAwesomeIcon icon={faMusic} />
-                </ListItemIcon>
-                <ListItemText primary="Music" />
-              </ListItemButton>
-            </ListItem>
+            {/* Music - Only show when authenticated */}
+            {authStore.isAuthenticated && (
+              <ListItem disablePadding>
+                <ListItemButton onClick={() => handleMobileNavigation('/music')}>
+                  <ListItemIcon>
+                    <FontAwesomeIcon icon={faMusic} />
+                  </ListItemIcon>
+                  <ListItemText primary="Music" />
+                </ListItemButton>
+              </ListItem>
+            )}
 
             {authStore.isAuthenticated ? (
               <>

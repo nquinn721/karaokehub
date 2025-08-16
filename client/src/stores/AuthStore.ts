@@ -219,6 +219,14 @@ export class AuthStore {
     window.location.href = googleUrl;
   }
 
+  loginWithFacebook() {
+    const facebookUrl = `${apiStore.environmentInfo.baseURL}${apiStore.endpoints.auth.facebook}`;
+    console.log('Redirecting to Facebook OAuth URL:', facebookUrl);
+    console.log('Base URL:', apiStore.environmentInfo.baseURL);
+    console.log('Facebook endpoint:', apiStore.endpoints.auth.facebook);
+    window.location.href = facebookUrl;
+  }
+
   loginWithGithub() {
     window.location.href = `${apiStore.environmentInfo.baseURL}${apiStore.endpoints.auth.github}`;
   }
