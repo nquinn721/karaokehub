@@ -105,16 +105,53 @@ export class KaraokeParserService {
             // Continue with Puppeteer fallback below
           }
         } else if (this.facebookService.isFacebookProfileUrl(url)) {
-          // Step 2: Check if it's a Facebook profile URL - use Graph API + Gemini parsing
+          // Step 2: Check if it's a Facebook profile URL - try Graph API first, then fall back to Puppeteer
           this.logger.log(
-            'Detected Facebook profile URL, using Graph API extraction + Gemini parsing',
+            'Detected Facebook profile URL, trying Graph API first',
           );
+          
           try {
-            // Extract comprehensive Facebook profile data using our enhanced service
-            const facebookProfileData = await this.facebookService.extractProfileKaraokeData(url);
+            let facebookProfileData;
+            let useGraphAPI = true;
+            
+            try {
+              // Try Graph API approach first
+              this.logger.log('Attempting Graph API profile extraction...');
+              
+              // Try to get profile events via Graph API
+              const graphApiEvents = await this.facebookService.getProfileEvents(url);
+              
+              if (graphApiEvents && graphApiEvents.length > 0) {
+                this.logger.log(`Found ${graphApiEvents.length} events via Graph API`);
+                // Convert Graph API events to karaoke data format
+                const graphApiData = {
+                  profileInfo: { name: '', followers: '', location: '', instagram: '', bio: '' },
+                  schedule: [],
+                  recentPosts: [],
+                  venues: [],
+                  additionalShows: graphApiEvents.map(event => ({
+                    venue: event.place?.name || 'Unknown Venue',
+                    time: event.start_time || '',
+                    day: new Date(event.start_time).toLocaleDateString('en-US', { weekday: 'long' }),
+                    confidence: 0.9
+                  }))
+                };
+                facebookProfileData = graphApiData;
+              } else {
+                throw new Error('No events found via Graph API');
+              }
+              
+            } catch (graphApiError) {
+              this.logger.log(`Graph API failed, falling back to Puppeteer: ${graphApiError.message}`);
+              useGraphAPI = false;
+              
+              // Fall back to Puppeteer approach
+              this.logger.log('Using Puppeteer for profile extraction...');
+              facebookProfileData = await this.facebookService.extractProfileKaraokeData(url);
+            }
 
             this.logger.log(
-              'Facebook profile data extracted successfully, sending to Gemini for intelligent parsing',
+              `Facebook profile data extracted successfully using ${useGraphAPI ? 'Graph API' : 'Puppeteer'}, sending to Gemini for intelligent parsing`,
             );
 
             // Send the extracted Facebook data to Gemini for intelligent parsing

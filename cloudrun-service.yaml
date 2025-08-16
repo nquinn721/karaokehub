@@ -58,6 +58,8 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_JWT_SECRET
                   key: latest
+            - name: JWT_EXPIRES_IN
+              value: '365d'
             - name: GOOGLE_CLIENT_ID
               valueFrom:
                 secretKeyRef:
@@ -73,6 +75,10 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_GEMINI_API_KEY
                   key: latest
+            - name: FACEBOOK_APP_ID
+              value: '646464114624794'
+            - name: FACEBOOK_APP_SECRET
+              value: '3ce6645105081d6f3a5442a30bd6b1ae'
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -102,6 +108,12 @@ spec:
               value: 'price_ad_free_monthly'
             - name: STRIPE_PREMIUM_PRICE_ID
               value: 'price_premium_monthly'
+            - name: PUPPETEER_EXECUTABLE_PATH
+              value: '/usr/bin/google-chrome-stable'
+            - name: SERVICE_URL
+              value: 'https://karaokehub-203453576607.us-central1.run.app'
+            - name: PORT
+              value: '8080'
             # Ollama configuration (disabled in Cloud Run by default)
             # Uncomment and set these if you deploy a separate Ollama service:
             # - name: ENABLE_OLLAMA

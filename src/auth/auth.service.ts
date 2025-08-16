@@ -120,7 +120,10 @@ export class AuthService {
 
     // For Facebook, email might not be available without app review
     if (!email && provider !== 'facebook') {
-      console.error('🔴 [AUTH_SERVICE] OAuth validation error: No email provided', { provider, profileId: id });
+      console.error('🔴 [AUTH_SERVICE] OAuth validation error: No email provided', {
+        provider,
+        profileId: id,
+      });
       throw new Error('No email provided by OAuth provider');
     }
 
@@ -130,14 +133,20 @@ export class AuthService {
       console.log('🔍 [AUTH_SERVICE] Looking up user by email:', email);
       // Check if user exists by email first
       user = await this.userService.findByEmail(email);
-      console.log('🔍 [AUTH_SERVICE] User found by email:', user ? { id: user.id, email: user.email } : 'Not found');
+      console.log(
+        '🔍 [AUTH_SERVICE] User found by email:',
+        user ? { id: user.id, email: user.email } : 'Not found',
+      );
     }
 
     if (!user) {
       console.log('🔍 [AUTH_SERVICE] Looking up user by provider ID:', { provider, id });
       // Check if user exists by provider ID
       user = await this.userService.findByProvider(provider, id);
-      console.log('🔍 [AUTH_SERVICE] User found by provider ID:', user ? { id: user.id, email: user.email } : 'Not found');
+      console.log(
+        '🔍 [AUTH_SERVICE] User found by provider ID:',
+        user ? { id: user.id, email: user.email } : 'Not found',
+      );
     }
 
     if (!user) {
@@ -161,7 +170,10 @@ export class AuthService {
       console.log('🔍 [AUTH_SERVICE] Creating user with data:', userData);
       try {
         user = await this.userService.create(userData);
-        console.log('🟢 [AUTH_SERVICE] User created successfully:', { id: user.id, email: user.email });
+        console.log('🟢 [AUTH_SERVICE] User created successfully:', {
+          id: user.id,
+          email: user.email,
+        });
       } catch (error) {
         console.error('🔴 [AUTH_SERVICE] Error creating user:', {
           error: error.message,
@@ -175,7 +187,10 @@ export class AuthService {
       // Update existing user's avatar if provider has one and it's different
       const providerAvatar = photos?.[0]?.value;
       if (providerAvatar && providerAvatar !== user.avatar) {
-        console.log('🔍 [AUTH_SERVICE] Updating user avatar:', { oldAvatar: user.avatar, newAvatar: providerAvatar });
+        console.log('🔍 [AUTH_SERVICE] Updating user avatar:', {
+          oldAvatar: user.avatar,
+          newAvatar: providerAvatar,
+        });
         user = await this.userService.update(user.id, { avatar: providerAvatar });
       }
     }
