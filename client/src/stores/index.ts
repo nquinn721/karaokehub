@@ -1,3 +1,4 @@
+import { autorun } from 'mobx';
 import { adminStore as adminStoreInstance } from './AdminStore';
 import { apiStore as apiStoreInstance } from './ApiStore';
 import { AuthStore } from './AuthStore';
@@ -51,6 +52,19 @@ export class RootStore {
     this.musicStore = musicStoreInstance; // Use the singleton instance
     this.subscriptionStore = subscriptionStoreInstance; // Use the singleton instance
     this.apiStore = apiStoreInstance;
+
+    // Setup autorun to fetch subscription status when auth state changes
+    autorun(() => {
+      if (this.authStore.isAuthenticated && this.authStore.token) {
+        // Fetch subscription status whenever user becomes authenticated
+        this.subscriptionStore.fetchSubscriptionStatus().catch((error) => {
+          console.warn('Failed to fetch subscription status:', error);
+        });
+      } else {
+        // Clear subscription status when user logs out
+        this.subscriptionStore.clearSubscriptionStatus();
+      }
+    });
   }
 }
 

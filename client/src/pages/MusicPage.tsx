@@ -1,4 +1,4 @@
-import { BannerAd, WideAd } from '@components/AdPlaceholder';
+import { BannerAdWithUpgrade, WideAdWithUpgrade } from '@components/AdWithUpgrade';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
@@ -511,36 +511,7 @@ export const MusicPage: React.FC = observer(() => {
             </Typography>
 
             {/* Ad placement - only show if not ad-free */}
-            {!subscriptionStore.hasAdFreeAccess && <BannerAd />}
-
-            {/* Ad removal prompt - show occasionally */}
-            {!subscriptionStore.hasAdFreeAccess && Math.random() > 0.7 && (
-              <Box
-                sx={{
-                  textAlign: 'center',
-                  mb: 3,
-                  p: 2,
-                  bgcolor: 'grey.50',
-                  borderRadius: 2,
-                  border: '1px solid',
-                  borderColor: 'grey.200',
-                }}
-              >
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  Enjoying KaraokeHub?
-                </Typography>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => {
-                    setPaywallFeature('ad_removal');
-                    setPaywallOpen(true);
-                  }}
-                >
-                  Remove Ads for $0.99/mo
-                </Button>
-              </Box>
-            )}
+            {!subscriptionStore.hasAdFreeAccess && <BannerAdWithUpgrade />}
 
             <Grid container spacing={3}>
               {musicStore.featuredCategories.map((category, index) => (
@@ -584,7 +555,7 @@ export const MusicPage: React.FC = observer(() => {
                     (index + 1) % 3 === 0 &&
                     index !== musicStore.featuredCategories.length - 1 && (
                       <Grid item xs={12}>
-                        <WideAd />
+                        <WideAdWithUpgrade showUpgradePrompt={index === 2} />
                       </Grid>
                     )}
                 </React.Fragment>
@@ -829,7 +800,7 @@ export const MusicPage: React.FC = observer(() => {
                     index !== musicStore.songs.length - 1 && (
                       <ListItem sx={{ px: 0, py: 1 }}>
                         <Box sx={{ width: '100%' }}>
-                          <WideAd />
+                          <WideAdWithUpgrade showUpgradePrompt={index === 9} />
                         </Box>
                       </ListItem>
                     )}

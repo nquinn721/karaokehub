@@ -76,7 +76,33 @@ export class ShowStore {
       this.selectedDay = day;
       this.selectedShow = null; // Clear selection when changing days
     });
+
+    // Refresh map markers for the new day
+    this.refreshMapForDayChange();
+
     // Don't automatically fetch - let the caller decide when to fetch
+  }
+
+  // Helper method to refresh map when day changes
+  private async refreshMapForDayChange() {
+    try {
+      // Dynamic import to avoid circular dependency
+      const { mapStore } = await import('./MapStore');
+      if (mapStore && mapStore.isInitialized && mapStore.searchCenter) {
+        // Fetch shows based on current search center and new selected day
+        console.log('Day changed, refetching shows for search center:', mapStore.searchCenter);
+
+        await this.fetchShows(this.selectedDay, {
+          lat: mapStore.searchCenter.lat,
+          lng: mapStore.searchCenter.lng,
+          radius: mapStore.getDynamicRadius(),
+        });
+
+        console.log('Shows refreshed for day change');
+      }
+    } catch (error) {
+      console.warn('Could not refresh shows for day change:', error);
+    }
   }
 
   setSelectedShow(show: Show | null) {
@@ -89,18 +115,30 @@ export class ShowStore {
     this.isLoading = loading;
   }
 
-  async fetchShows(day?: string | DayOfWeek) {
+  async fetchShows(
+    day?: string | DayOfWeek,
+    mapCenter?: { lat: number; lng: number; radius?: number },
+  ) {
     try {
-      console.log('ShowStore fetchShows called with day:', day);
+      console.log('ShowStore fetchShows called with day:', day, 'mapCenter:', mapCenter);
       this.setLoading(true);
 
-      const endpoint = day ? apiStore.endpoints.shows.byDay(day) : apiStore.endpoints.shows.base;
-      console.log('Fetching shows from endpoint:', endpoint);
+      let endpoint: string;
+
+      if (mapCenter) {
+        // Use location-based query with map center
+        const radius = mapCenter.radius || 35;
+        endpoint = apiStore.endpoints.shows.nearby(mapCenter.lat, mapCenter.lng, radius, day);
+        console.log('Fetching shows from nearby endpoint:', endpoint);
+      } else {
+        // Fallback to day-based or all shows
+        endpoint = day ? apiStore.endpoints.shows.byDay(day) : apiStore.endpoints.shows.base;
+        console.log('Fetching shows from standard endpoint:', endpoint);
+      }
 
       const response = await apiStore.get(endpoint);
       console.log('API response received:', response?.length || 0, 'shows');
 
-      // No geocoding needed since lat/lng are no longer stored
       runInAction(() => {
         this.shows = response || [];
         this.isLoading = false;

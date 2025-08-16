@@ -1,4 +1,4 @@
-import { BannerAd, WideAd } from '@components/AdPlaceholder';
+import { BannerAdWithUpgrade, WideAdWithUpgrade } from '@components/AdWithUpgrade';
 import { CustomCard } from '@components/CustomCard';
 import { MapComponent } from '@components/MapComponent';
 import { SEO, seoConfigs } from '@components/SEO';
@@ -109,7 +109,7 @@ const HomePage: React.FC = observer(() => {
         {/* Ad placement after map - only show if not ad-free */}
         {!subscriptionStore.hasAdFreeAccess && (
           <Box sx={{ mb: 6 }}>
-            <BannerAd />
+            <BannerAdWithUpgrade />
           </Box>
         )}
 
@@ -287,10 +287,13 @@ const HomePage: React.FC = observer(() => {
         </Grid>
 
         {/* Ad placement after feature cards - only show if not ad-free */}
-        {!subscriptionStore.hasAdFreeAccess && (
-          <Box sx={{ mt: 6, mb: 4 }}>
-            <WideAd />
+        {!subscriptionStore.hasAdFreeAccess ? (
+          <Box sx={{ mt: 6, mb: 8 }}>
+            <WideAdWithUpgrade />
           </Box>
+        ) : (
+          // Add spacing for premium users who don't see ads
+          <Box sx={{ mb: 8 }} />
         )}
       </Container>
     </Box>

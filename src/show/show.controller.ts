@@ -22,20 +22,20 @@ export class ShowController {
 
   @Get('nearby')
   findNearby(
-    @Query('lat') lat: string,
-    @Query('lng') lng: string,
+    @Query('centerLat') centerLat: string,
+    @Query('centerLng') centerLng: string,
     @Query('radius') radius?: string,
     @Query('day') day?: DayOfWeek,
   ) {
-    const userLat = parseFloat(lat);
-    const userLng = parseFloat(lng);
-    const radiusMiles = radius ? parseFloat(radius) : 20;
+    const mapCenterLat = parseFloat(centerLat);
+    const mapCenterLng = parseFloat(centerLng);
+    const radiusMiles = radius ? parseFloat(radius) : 35; // Default to 35 miles
 
-    if (isNaN(userLat) || isNaN(userLng)) {
-      throw new Error('Invalid latitude or longitude');
+    if (isNaN(mapCenterLat) || isNaN(mapCenterLng)) {
+      throw new Error('Invalid map center latitude or longitude');
     }
 
-    return this.showService.findNearby(userLat, userLng, radiusMiles, day);
+    return this.showService.findNearby(mapCenterLat, mapCenterLng, radiusMiles, day);
   }
 
   @Get(':id')

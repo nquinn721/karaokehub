@@ -662,8 +662,8 @@ export const MapComponent: React.FC = observer(() => {
               mapStore.mapInstance.setCenter(location);
               mapStore.mapInstance.setZoom(16);
 
-              // Update selected marker
-              mapStore.selectedMarkerId = show.id;
+              // Update selected marker using the proper method
+              mapStore.handleMarkerClick(show);
             }
           }
 
@@ -825,15 +825,42 @@ export const MapComponent: React.FC = observer(() => {
         )}
 
         {/* Show Markers with Microphone Icons */}
-        {mapStore.geocodedShows.map((show: any) => (
-          <Marker
-            key={show.id}
-            position={{ lat: show.lat, lng: show.lng }}
-            onClick={() => handleMarkerClick(show)}
-            title={show.venue || show.vendor?.name || 'Karaoke Show'}
-            icon={createMicrophoneIcon(mapStore.selectedMarkerId === show.id)}
-          />
-        ))}
+        {mapStore.geocodedShows.map((show: any) => {
+          // Check for overlapping markers and add small offset
+          const overlappingShows = mapStore.geocodedShows.filter(
+            (otherShow: any) =>
+              otherShow.id !== show.id &&
+              Math.abs(otherShow.lat - show.lat) < 0.0001 &&
+              Math.abs(otherShow.lng - show.lng) < 0.0001,
+          );
+
+          const offsetMultiplier = overlappingShows.filter((s) => s.id < show.id).length;
+          const offset = offsetMultiplier * 0.0002; // Small offset for overlapping markers
+
+          const position = {
+            lat: show.lat + offset,
+            lng: show.lng + offset,
+          };
+
+          console.log('Rendering marker for show:', {
+            id: show.id,
+            venue: show.venue,
+            lat: show.lat,
+            lng: show.lng,
+            offsetPosition: position,
+            overlappingCount: overlappingShows.length,
+          });
+
+          return (
+            <Marker
+              key={show.id}
+              position={position}
+              onClick={() => handleMarkerClick(show)}
+              title={show.venue || show.vendor?.name || 'Karaoke Show'}
+              icon={createMicrophoneIcon(mapStore.selectedMarkerId === show.id)}
+            />
+          );
+        })}
 
         {/* Info Window for Selected Show */}
         {mapStore.selectedMarkerId &&
@@ -846,6 +873,7 @@ export const MapComponent: React.FC = observer(() => {
 
             return (
               <InfoWindow
+                key={geocodedShow.id} // Add key to prevent re-creation
                 position={{
                   lat: geocodedShow.lat,
                   lng: geocodedShow.lng,
@@ -1173,7 +1201,8 @@ export const MapComponent: React.FC = observer(() => {
                   rotateControl={false}
                   onBoundsChanged={(e) => {
                     if (e.detail.center && e.detail.zoom) {
-                      mapStore.updateMapPosition(e.detail.center, e.detail.zoom);
+                      // Debounce map position updates to prevent render loops
+                      mapStore.debouncedUpdateMapPosition(e.detail.center, e.detail.zoom);
                     }
                   }}
                 >

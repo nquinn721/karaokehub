@@ -32,7 +32,7 @@ import {
 import { authStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { getUserDisplayName, getUserSecondaryName } from '../../utils/userUtils';
 import { ThemeToggle } from '../ThemeToggle';
 
@@ -45,8 +45,17 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
   ({ title = 'KaraokeHub', showMenuButton = true }) => {
     const theme = useTheme();
     const navigate = useNavigate();
+    const location = useLocation();
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+
+    // Helper function to check if a path is active
+    const isActivePath = (path: string) => {
+      if (path === '/') {
+        return location.pathname === '/';
+      }
+      return location.pathname.startsWith(path);
+    };
 
     const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
       setAnchorEl(event.currentTarget);
@@ -198,13 +207,22 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
             >
               {/* Home */}
               <Button
-                variant="text"
+                variant={isActivePath('/') ? 'contained' : 'text'}
                 size="medium"
                 onClick={() => navigate('/')}
                 startIcon={<FontAwesomeIcon icon={faHome} />}
                 sx={{
-                  color: theme.palette.mode === 'light' ? 'white' : 'inherit',
-                  fontWeight: 500,
+                  color: isActivePath('/')
+                    ? theme.palette.primary.contrastText
+                    : theme.palette.mode === 'light'
+                      ? 'white'
+                      : 'inherit',
+                  backgroundColor: isActivePath('/')
+                    ? theme.palette.mode === 'light'
+                      ? 'rgba(255, 255, 255, 0.2)'
+                      : theme.palette.primary.main
+                    : 'transparent',
+                  fontWeight: isActivePath('/') ? 600 : 500,
                   textTransform: 'none',
                   fontSize: '1rem',
                   px: 2,
@@ -214,9 +232,16 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   alignItems: 'center',
                   justifyContent: 'center',
                   transition: 'all 0.2s ease-in-out',
+                  border:
+                    isActivePath('/') && theme.palette.mode === 'light'
+                      ? '1px solid rgba(255, 255, 255, 0.3)'
+                      : 'none',
                   '&:hover': {
-                    backgroundColor:
-                      theme.palette.mode === 'light'
+                    backgroundColor: isActivePath('/')
+                      ? theme.palette.mode === 'light'
+                        ? 'rgba(255, 255, 255, 0.25)'
+                        : theme.palette.primary.dark
+                      : theme.palette.mode === 'light'
                         ? 'rgba(255, 255, 255, 0.1)'
                         : 'rgba(255, 255, 255, 0.05)',
                     transform: 'translateY(-1px)',
@@ -229,13 +254,22 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               {/* Music Search - Only show when authenticated */}
               {authStore.isAuthenticated && (
                 <Button
-                  variant="text"
+                  variant={isActivePath('/music') ? 'contained' : 'text'}
                   size="medium"
                   onClick={() => navigate('/music')}
                   startIcon={<FontAwesomeIcon icon={faMusic} />}
                   sx={{
-                    color: theme.palette.mode === 'light' ? 'white' : 'inherit',
-                    fontWeight: 500,
+                    color: isActivePath('/music')
+                      ? theme.palette.primary.contrastText
+                      : theme.palette.mode === 'light'
+                        ? 'white'
+                        : 'inherit',
+                    backgroundColor: isActivePath('/music')
+                      ? theme.palette.mode === 'light'
+                        ? 'rgba(255, 255, 255, 0.2)'
+                        : theme.palette.primary.main
+                      : 'transparent',
+                    fontWeight: isActivePath('/music') ? 600 : 500,
                     textTransform: 'none',
                     fontSize: '1rem',
                     px: 2,
@@ -245,9 +279,16 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                     alignItems: 'center',
                     justifyContent: 'center',
                     transition: 'all 0.2s ease-in-out',
+                    border:
+                      isActivePath('/music') && theme.palette.mode === 'light'
+                        ? '1px solid rgba(255, 255, 255, 0.3)'
+                        : 'none',
                     '&:hover': {
-                      backgroundColor:
-                        theme.palette.mode === 'light'
+                      backgroundColor: isActivePath('/music')
+                        ? theme.palette.mode === 'light'
+                          ? 'rgba(255, 255, 255, 0.25)'
+                          : theme.palette.primary.dark
+                        : theme.palette.mode === 'light'
                           ? 'rgba(255, 255, 255, 0.1)'
                           : 'rgba(255, 255, 255, 0.05)',
                       transform: 'translateY(-1px)',
@@ -260,13 +301,22 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
 
               {/* Submit Show */}
               <Button
-                variant="text"
+                variant={isActivePath('/submit') ? 'contained' : 'text'}
                 size="medium"
                 onClick={() => navigate('/submit')}
                 startIcon={<FontAwesomeIcon icon={faPlus} />}
                 sx={{
-                  color: theme.palette.mode === 'light' ? 'white' : 'inherit',
-                  fontWeight: 500,
+                  color: isActivePath('/submit')
+                    ? theme.palette.primary.contrastText
+                    : theme.palette.mode === 'light'
+                      ? 'white'
+                      : 'inherit',
+                  backgroundColor: isActivePath('/submit')
+                    ? theme.palette.mode === 'light'
+                      ? 'rgba(255, 255, 255, 0.2)'
+                      : theme.palette.primary.main
+                    : 'transparent',
+                  fontWeight: isActivePath('/submit') ? 600 : 500,
                   textTransform: 'none',
                   fontSize: '1rem',
                   px: 2,
@@ -276,9 +326,16 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   alignItems: 'center',
                   justifyContent: 'center',
                   transition: 'all 0.2s ease-in-out',
+                  border:
+                    isActivePath('/submit') && theme.palette.mode === 'light'
+                      ? '1px solid rgba(255, 255, 255, 0.3)'
+                      : 'none',
                   '&:hover': {
-                    backgroundColor:
-                      theme.palette.mode === 'light'
+                    backgroundColor: isActivePath('/submit')
+                      ? theme.palette.mode === 'light'
+                        ? 'rgba(255, 255, 255, 0.25)'
+                        : theme.palette.primary.dark
+                      : theme.palette.mode === 'light'
                         ? 'rgba(255, 255, 255, 0.1)'
                         : 'rgba(255, 255, 255, 0.05)',
                     transform: 'translateY(-1px)',
@@ -291,12 +348,21 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               {/* Dashboard (if authenticated) */}
               {authStore.isAuthenticated && (
                 <Button
-                  variant="text"
+                  variant={isActivePath('/dashboard') ? 'contained' : 'text'}
                   size="medium"
                   onClick={() => navigate('/dashboard')}
                   sx={{
-                    color: theme.palette.mode === 'light' ? 'white' : 'inherit',
-                    fontWeight: 500,
+                    color: isActivePath('/dashboard')
+                      ? theme.palette.primary.contrastText
+                      : theme.palette.mode === 'light'
+                        ? 'white'
+                        : 'inherit',
+                    backgroundColor: isActivePath('/dashboard')
+                      ? theme.palette.mode === 'light'
+                        ? 'rgba(255, 255, 255, 0.2)'
+                        : theme.palette.primary.main
+                      : 'transparent',
+                    fontWeight: isActivePath('/dashboard') ? 600 : 500,
                     textTransform: 'none',
                     fontSize: '1rem',
                     px: 2,
@@ -306,9 +372,16 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                     alignItems: 'center',
                     justifyContent: 'center',
                     transition: 'all 0.2s ease-in-out',
+                    border:
+                      isActivePath('/dashboard') && theme.palette.mode === 'light'
+                        ? '1px solid rgba(255, 255, 255, 0.3)'
+                        : 'none',
                     '&:hover': {
-                      backgroundColor:
-                        theme.palette.mode === 'light'
+                      backgroundColor: isActivePath('/dashboard')
+                        ? theme.palette.mode === 'light'
+                          ? 'rgba(255, 255, 255, 0.25)'
+                          : theme.palette.primary.dark
+                        : theme.palette.mode === 'light'
                           ? 'rgba(255, 255, 255, 0.1)'
                           : 'rgba(255, 255, 255, 0.05)',
                       transform: 'translateY(-1px)',
@@ -539,22 +612,56 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
 
             {/* Home */}
             <ListItem disablePadding>
-              <ListItemButton onClick={() => handleMobileNavigation('/')}>
-                <ListItemIcon>
+              <ListItemButton
+                onClick={() => handleMobileNavigation('/')}
+                sx={{
+                  backgroundColor: isActivePath('/') ? theme.palette.primary.main : 'transparent',
+                  color: isActivePath('/') ? theme.palette.primary.contrastText : 'inherit',
+                  '&:hover': {
+                    backgroundColor: isActivePath('/')
+                      ? theme.palette.primary.dark
+                      : theme.palette.action.hover,
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ color: 'inherit' }}>
                   <FontAwesomeIcon icon={faHome} />
                 </ListItemIcon>
-                <ListItemText primary="Home" />
+                <ListItemText
+                  primary="Home"
+                  primaryTypographyProps={{
+                    fontWeight: isActivePath('/') ? 600 : 400,
+                  }}
+                />
               </ListItemButton>
             </ListItem>
 
             {/* Music - Only show when authenticated */}
             {authStore.isAuthenticated && (
               <ListItem disablePadding>
-                <ListItemButton onClick={() => handleMobileNavigation('/music')}>
-                  <ListItemIcon>
+                <ListItemButton
+                  onClick={() => handleMobileNavigation('/music')}
+                  sx={{
+                    backgroundColor: isActivePath('/music')
+                      ? theme.palette.primary.main
+                      : 'transparent',
+                    color: isActivePath('/music') ? theme.palette.primary.contrastText : 'inherit',
+                    '&:hover': {
+                      backgroundColor: isActivePath('/music')
+                        ? theme.palette.primary.dark
+                        : theme.palette.action.hover,
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ color: 'inherit' }}>
                     <FontAwesomeIcon icon={faMusic} />
                   </ListItemIcon>
-                  <ListItemText primary="Music" />
+                  <ListItemText
+                    primary="Music"
+                    primaryTypographyProps={{
+                      fontWeight: isActivePath('/music') ? 600 : 400,
+                    }}
+                  />
                 </ListItemButton>
               </ListItem>
             )}
@@ -563,11 +670,31 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               <>
                 {/* Dashboard */}
                 <ListItem disablePadding>
-                  <ListItemButton onClick={() => handleMobileNavigation('/dashboard')}>
-                    <ListItemIcon>
+                  <ListItemButton
+                    onClick={() => handleMobileNavigation('/dashboard')}
+                    sx={{
+                      backgroundColor: isActivePath('/dashboard')
+                        ? theme.palette.primary.main
+                        : 'transparent',
+                      color: isActivePath('/dashboard')
+                        ? theme.palette.primary.contrastText
+                        : 'inherit',
+                      '&:hover': {
+                        backgroundColor: isActivePath('/dashboard')
+                          ? theme.palette.primary.dark
+                          : theme.palette.action.hover,
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ color: 'inherit' }}>
                       <FontAwesomeIcon icon={faUser} />
                     </ListItemIcon>
-                    <ListItemText primary="Dashboard" />
+                    <ListItemText
+                      primary="Dashboard"
+                      primaryTypographyProps={{
+                        fontWeight: isActivePath('/dashboard') ? 600 : 400,
+                      }}
+                    />
                   </ListItemButton>
                 </ListItem>
 
@@ -603,32 +730,92 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
 
                 {/* Profile */}
                 <ListItem disablePadding>
-                  <ListItemButton onClick={() => handleMobileNavigation('/profile')}>
-                    <ListItemIcon>
+                  <ListItemButton
+                    onClick={() => handleMobileNavigation('/profile')}
+                    sx={{
+                      backgroundColor: isActivePath('/profile')
+                        ? theme.palette.primary.main
+                        : 'transparent',
+                      color: isActivePath('/profile')
+                        ? theme.palette.primary.contrastText
+                        : 'inherit',
+                      '&:hover': {
+                        backgroundColor: isActivePath('/profile')
+                          ? theme.palette.primary.dark
+                          : theme.palette.action.hover,
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ color: 'inherit' }}>
                       <FontAwesomeIcon icon={faUser} />
                     </ListItemIcon>
-                    <ListItemText primary="Profile" />
+                    <ListItemText
+                      primary="Profile"
+                      primaryTypographyProps={{
+                        fontWeight: isActivePath('/profile') ? 600 : 400,
+                      }}
+                    />
                   </ListItemButton>
                 </ListItem>
 
                 {/* Settings */}
                 <ListItem disablePadding>
-                  <ListItemButton onClick={() => handleMobileNavigation('/settings')}>
-                    <ListItemIcon>
+                  <ListItemButton
+                    onClick={() => handleMobileNavigation('/settings')}
+                    sx={{
+                      backgroundColor: isActivePath('/settings')
+                        ? theme.palette.primary.main
+                        : 'transparent',
+                      color: isActivePath('/settings')
+                        ? theme.palette.primary.contrastText
+                        : 'inherit',
+                      '&:hover': {
+                        backgroundColor: isActivePath('/settings')
+                          ? theme.palette.primary.dark
+                          : theme.palette.action.hover,
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ color: 'inherit' }}>
                       <FontAwesomeIcon icon={faCog} />
                     </ListItemIcon>
-                    <ListItemText primary="Settings" />
+                    <ListItemText
+                      primary="Settings"
+                      primaryTypographyProps={{
+                        fontWeight: isActivePath('/settings') ? 600 : 400,
+                      }}
+                    />
                   </ListItemButton>
                 </ListItem>
 
                 {/* Admin Dashboard */}
                 {authStore.isAdmin && (
                   <ListItem disablePadding>
-                    <ListItemButton onClick={() => handleMobileNavigation('/admin')}>
-                      <ListItemIcon>
+                    <ListItemButton
+                      onClick={() => handleMobileNavigation('/admin')}
+                      sx={{
+                        backgroundColor: isActivePath('/admin')
+                          ? theme.palette.primary.main
+                          : 'transparent',
+                        color: isActivePath('/admin')
+                          ? theme.palette.primary.contrastText
+                          : 'inherit',
+                        '&:hover': {
+                          backgroundColor: isActivePath('/admin')
+                            ? theme.palette.primary.dark
+                            : theme.palette.action.hover,
+                        },
+                      }}
+                    >
+                      <ListItemIcon sx={{ color: 'inherit' }}>
                         <FontAwesomeIcon icon={faUserShield} />
                       </ListItemIcon>
-                      <ListItemText primary="Admin Dashboard" />
+                      <ListItemText
+                        primary="Admin Dashboard"
+                        primaryTypographyProps={{
+                          fontWeight: isActivePath('/admin') ? 600 : 400,
+                        }}
+                      />
                     </ListItemButton>
                   </ListItem>
                 )}

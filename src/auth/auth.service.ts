@@ -99,28 +99,49 @@ export class AuthService {
   }
 
   async validateOAuthUser(profile: any, provider: string): Promise<User> {
+    console.log('🟢 [AUTH_SERVICE] Starting OAuth user validation');
+    console.log('🔍 [AUTH_SERVICE] Input parameters:', {
+      provider,
+      profileId: profile?.id,
+      profileDisplayName: profile?.displayName,
+      profileEmails: profile?.emails,
+      profilePhotos: profile?.photos,
+    });
+
     const { id, emails, displayName, photos } = profile;
     const email = emails?.[0]?.value;
 
+    console.log('🔍 [AUTH_SERVICE] Extracted data:', {
+      id,
+      email,
+      displayName,
+      avatar: photos?.[0]?.value,
+    });
+
     // For Facebook, email might not be available without app review
     if (!email && provider !== 'facebook') {
-      console.error('🔴 OAuth validation error: No email provided', { provider, profileId: id });
+      console.error('🔴 [AUTH_SERVICE] OAuth validation error: No email provided', { provider, profileId: id });
       throw new Error('No email provided by OAuth provider');
     }
 
     let user = null;
 
     if (email) {
+      console.log('🔍 [AUTH_SERVICE] Looking up user by email:', email);
       // Check if user exists by email first
       user = await this.userService.findByEmail(email);
+      console.log('🔍 [AUTH_SERVICE] User found by email:', user ? { id: user.id, email: user.email } : 'Not found');
     }
 
     if (!user) {
+      console.log('🔍 [AUTH_SERVICE] Looking up user by provider ID:', { provider, id });
       // Check if user exists by provider ID
       user = await this.userService.findByProvider(provider, id);
+      console.log('🔍 [AUTH_SERVICE] User found by provider ID:', user ? { id: user.id, email: user.email } : 'Not found');
     }
 
     if (!user) {
+      console.log('🟢 [AUTH_SERVICE] Creating new user');
       // Create new user
       const userData: any = {
         name: displayName || `${provider}_user_${id}`,
@@ -137,14 +158,34 @@ export class AuthService {
         userData.email = `${provider}_${id}@placeholder.karaoke`;
       }
 
-      user = await this.userService.create(userData);
+      console.log('🔍 [AUTH_SERVICE] Creating user with data:', userData);
+      try {
+        user = await this.userService.create(userData);
+        console.log('🟢 [AUTH_SERVICE] User created successfully:', { id: user.id, email: user.email });
+      } catch (error) {
+        console.error('🔴 [AUTH_SERVICE] Error creating user:', {
+          error: error.message,
+          stack: error.stack,
+          userData,
+        });
+        throw error;
+      }
     } else {
+      console.log('🟢 [AUTH_SERVICE] User exists, checking for avatar update');
       // Update existing user's avatar if provider has one and it's different
       const providerAvatar = photos?.[0]?.value;
       if (providerAvatar && providerAvatar !== user.avatar) {
+        console.log('🔍 [AUTH_SERVICE] Updating user avatar:', { oldAvatar: user.avatar, newAvatar: providerAvatar });
         user = await this.userService.update(user.id, { avatar: providerAvatar });
       }
     }
+
+    console.log('🟢 [AUTH_SERVICE] OAuth user validation completed successfully:', {
+      userId: user.id,
+      userEmail: user.email,
+      userName: user.name,
+      userProvider: user.provider,
+    });
 
     return user;
   }

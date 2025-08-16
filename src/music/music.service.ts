@@ -516,6 +516,109 @@ export class MusicService {
     }
   }
 
+  // Get category music with server-side deduplication
+  async getCategoryMusic(
+    queries: string[],
+    limit = 10,
+    targetCount = 50,
+  ): Promise<MusicSearchResult[]> {
+    if (!queries?.length) {
+      return [];
+    }
+
+    const allSongs: MusicSearchResult[] = [];
+    const seenSongs = new Set<string>();
+
+    // Normalize song for deduplication
+    const normalizeSong = (song: MusicSearchResult): string => {
+      const title =
+        song.title
+          ?.toLowerCase()
+          // Remove version indicators, parentheses, brackets, and special content
+          ?.replace(/\s*\(.*?\)/g, '') // Remove anything in parentheses
+          ?.replace(/\s*\[.*?\]/g, '') // Remove anything in brackets
+          ?.replace(
+            /\s*-\s*(re-?recorded?|remaster|acoustic|live|instrumental|karaoke|version).*$/gi,
+            '',
+          ) // Remove version suffixes
+          ?.replace(
+            /\s*(re-?recorded?|remaster|acoustic|live|instrumental|karaoke|version)\s*$/gi,
+            '',
+          ) // Remove version words at end
+          ?.replace(/[^\w\s]/g, ' ') // Replace special chars with spaces
+          ?.replace(/\s+/g, ' ') // Normalize whitespace
+          ?.trim() || '';
+      const artist =
+        song.artist
+          ?.toLowerCase()
+          ?.replace(/[^\w\s]/g, ' ')
+          ?.replace(/\s+/g, ' ')
+          ?.trim() || '';
+      return `${title}|${artist}`;
+    };
+
+    // Process queries in batches to avoid overwhelming the APIs
+    for (const query of queries) {
+      if (allSongs.length >= targetCount) {
+        break;
+      }
+
+      try {
+        // Generate expanded variants for this query
+        const variants = this.generateQueryVariants(query);
+
+        // Try each variant until we get results
+        for (const variant of variants) {
+          if (allSongs.length >= targetCount) {
+            break;
+          }
+
+          try {
+            const results = await this.searchSongs(variant, limit);
+
+            // Deduplicate and add new songs
+            for (const song of results) {
+              if (allSongs.length >= targetCount) {
+                break;
+              }
+
+              const normalized = normalizeSong(song);
+              if (!seenSongs.has(normalized)) {
+                seenSongs.add(normalized);
+                allSongs.push(song);
+              }
+            }
+
+            // If we got good results from this variant, move to next query
+            if (results.length > 0) {
+              break;
+            }
+          } catch (error) {
+            console.warn(`Variant search failed for "${variant}":`, error.message);
+            // Continue to next variant
+          }
+        }
+      } catch (error) {
+        console.warn(`Query search failed for "${query}":`, error.message);
+        // Continue to next query
+      }
+
+      // Small delay between queries to be respectful to APIs
+      if (allSongs.length < targetCount) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+
+    // Sort by relevance (songs with album art and preview URLs first)
+    allSongs.sort((a, b) => {
+      const scoreA = (a.albumArt ? 2 : 0) + (a.previewUrl ? 1 : 0);
+      const scoreB = (b.albumArt ? 2 : 0) + (b.previewUrl ? 1 : 0);
+      return scoreB - scoreA;
+    });
+
+    return allSongs.slice(0, targetCount);
+  }
+
   // Get rate limiting statistics
   getRateLimitStats(): Record<string, any> {
     return {

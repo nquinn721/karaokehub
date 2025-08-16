@@ -82,34 +82,54 @@ export class ShowService {
   }
 
   async findNearby(
-    userLat: number,
-    userLng: number,
-    radiusMiles: number = 20,
+    centerLat: number,
+    centerLng: number,
+    radiusMiles: number = 35,
     day?: DayOfWeek,
   ): Promise<GeocodedShow[]> {
     try {
-      // Get all shows (optionally filtered by day)
-      let shows: Show[];
+      // Build the base query with distance calculation using Haversine formula
+      let query = this.showRepository
+        .createQueryBuilder('show')
+        .leftJoinAndSelect('show.vendor', 'vendor')
+        .leftJoinAndSelect('show.dj', 'dj')
+        .leftJoinAndSelect('show.favorites', 'favorites')
+        .addSelect(
+          `(3959 * acos(cos(radians(:centerLat)) * cos(radians(show.lat)) * 
+           cos(radians(show.lng) - radians(:centerLng)) + 
+           sin(radians(:centerLat)) * sin(radians(show.lat))))`,
+          'distance',
+        )
+        .where('show.isActive = :isActive', { isActive: true })
+        .andWhere('show.lat IS NOT NULL')
+        .andWhere('show.lng IS NOT NULL')
+        .having(
+          `(3959 * acos(cos(radians(:centerLat)) * cos(radians(show.lat)) * 
+           cos(radians(show.lng) - radians(:centerLng)) + 
+           sin(radians(:centerLat)) * sin(radians(show.lat)))) <= :radiusMiles`,
+        )
+        .setParameters({
+          centerLat,
+          centerLng,
+          radiusMiles,
+        })
+        .orderBy('distance', 'ASC');
 
+      // Add day filter if specified
       if (day) {
-        shows = await this.findByDay(day);
-      } else {
-        shows = await this.findAll();
+        query = query.andWhere('show.day = :day', { day });
       }
 
-      // Filter shows by distance and add geocoding data
-      const nearbyShows = await this.geocodingService.filterByDistance(
-        shows,
-        userLat,
-        userLng,
-        radiusMiles,
-      );
+      const results = await query.getRawAndEntities();
 
-      // Sort by distance (closest first)
-      nearbyShows.sort((a, b) => a.distance - b.distance);
+      // Map results to include distance
+      const nearbyShows: GeocodedShow[] = results.entities.map((entity, index) => ({
+        ...entity,
+        distance: parseFloat(results.raw[index].distance) || 0,
+      }));
 
       this.logger.log(
-        `Found ${nearbyShows.length} shows within ${radiusMiles} miles of (${userLat}, ${userLng})`,
+        `Found ${nearbyShows.length} shows within ${radiusMiles} miles of (${centerLat}, ${centerLng})${day ? ` for ${day}` : ''}`,
       );
 
       return nearbyShows;
@@ -128,9 +148,65 @@ export class ShowService {
     await this.showRepository.update(id, { isActive: false });
   }
 
-  // Note: Geocoding functionality removed as lat/lng are no longer stored
+  // Geocode all existing shows that don't have coordinates
   async geocodeExistingShows(): Promise<{ processed: number; geocoded: number; errors: number }> {
-    this.logger.log('Geocoding functionality has been removed');
-    return { processed: 0, geocoded: 0, errors: 0 };
+    this.logger.log('Starting geocoding of existing shows...');
+
+    const stats = { processed: 0, geocoded: 0, errors: 0 };
+
+    try {
+      // Find shows without coordinates
+      const showsToGeocode = await this.showRepository.find({
+        where: [
+          { lat: null, isActive: true },
+          { lng: null, isActive: true },
+        ],
+      });
+
+      this.logger.log(`Found ${showsToGeocode.length} shows that need geocoding`);
+
+      for (const show of showsToGeocode) {
+        stats.processed++;
+
+        if (!show.address) {
+          this.logger.warn(`Show ${show.id} has no address, skipping`);
+          stats.errors++;
+          continue;
+        }
+
+        try {
+          const geocodeResult = await this.geocodingService.geocodeAddress(show.address);
+
+          if (geocodeResult) {
+            await this.showRepository.update(show.id, {
+              lat: geocodeResult.lat,
+              lng: geocodeResult.lng,
+            });
+
+            stats.geocoded++;
+            this.logger.log(
+              `Geocoded show ${show.id}: ${show.address} -> (${geocodeResult.lat}, ${geocodeResult.lng})`,
+            );
+          } else {
+            this.logger.warn(`Failed to geocode address: ${show.address}`);
+            stats.errors++;
+          }
+
+          // Add small delay to avoid rate limiting
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        } catch (error) {
+          this.logger.error(`Error geocoding show ${show.id}:`, error);
+          stats.errors++;
+        }
+      }
+
+      this.logger.log(
+        `Geocoding complete: ${stats.geocoded} geocoded, ${stats.errors} errors out of ${stats.processed} processed`,
+      );
+      return stats;
+    } catch (error) {
+      this.logger.error('Error during bulk geocoding:', error);
+      throw error;
+    }
   }
 }

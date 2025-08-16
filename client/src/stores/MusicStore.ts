@@ -404,13 +404,18 @@ export class MusicStore {
   // Deduplicate songs by title, keeping the most popular version (highest score)
   private deduplicateSongs(songs: MusicSearchResult[]): MusicSearchResult[] {
     const songMap = new Map<string, MusicSearchResult>();
+    const duplicatesFound: string[] = [];
 
     songs.forEach((song) => {
-      // Create a normalized key from the song title (lowercase, remove special chars)
+      // Create a normalized key from the song title (more aggressive normalization)
       const normalizedTitle = song.title
         .toLowerCase()
         .replace(/[^\w\s]/g, '') // Remove special characters
         .replace(/\s+/g, ' ') // Normalize whitespace
+        .replace(/\b(acoustic|live|re-recorded|remastered|remix|version|feat|ft|featuring)\b/g, '') // Remove version indicators
+        .replace(/\(.*?\)/g, '') // Remove content in parentheses
+        .replace(/\[.*?\]/g, '') // Remove content in brackets
+        .replace(/\s+/g, ' ') // Clean up whitespace again
         .trim();
 
       const existingSong = songMap.get(normalizedTitle);
@@ -418,25 +423,54 @@ export class MusicStore {
       if (!existingSong) {
         songMap.set(normalizedTitle, song);
       } else {
+        duplicatesFound.push(
+          `Duplicate found: "${song.title}" vs "${existingSong.title}" (normalized: "${normalizedTitle}")`,
+        );
+
         // Keep the song with higher score (more popular)
-        // If scores are equal, prefer the one with album art or preview
+        // Priority order: score > original version > preview > album art
         const currentScore = song.score || 0;
         const existingScore = existingSong.score || 0;
 
+        // Check if current song is original version (no version indicators)
+        const currentIsOriginal =
+          !/(acoustic|live|re-recorded|remastered|remix|\(.*?\)|\[.*?\])/i.test(song.title);
+        const existingIsOriginal =
+          !/(acoustic|live|re-recorded|remastered|remix|\(.*?\)|\[.*?\])/i.test(existingSong.title);
+
         const shouldReplace =
           currentScore > existingScore ||
+          (currentScore === existingScore && currentIsOriginal && !existingIsOriginal) ||
           (currentScore === existingScore &&
+            currentIsOriginal === existingIsOriginal &&
             ((song.albumArt && !existingSong.albumArt) ||
               (song.previewUrl && !existingSong.previewUrl) ||
               (song.year && !existingSong.year)));
 
         if (shouldReplace) {
+          console.log(
+            `Replacing "${existingSong.title}" with "${song.title}" (score: ${existingScore} -> ${currentScore}, original: ${existingIsOriginal} -> ${currentIsOriginal})`,
+          );
           songMap.set(normalizedTitle, song);
+        } else {
+          console.log(
+            `Keeping "${existingSong.title}" over "${song.title}" (score: ${existingScore} vs ${currentScore}, original: ${existingIsOriginal} vs ${currentIsOriginal})`,
+          );
         }
       }
     });
 
-    return Array.from(songMap.values());
+    if (duplicatesFound.length > 0) {
+      console.log(
+        `🎵 Deduplication removed ${duplicatesFound.length} duplicate songs:`,
+        duplicatesFound,
+      );
+    }
+
+    const result = Array.from(songMap.values());
+    console.log(`🎵 Deduplication: ${songs.length} input songs -> ${result.length} unique songs`);
+
+    return result;
   }
 
   async searchCombined(query?: string, loadMore = false) {
@@ -509,67 +543,59 @@ export class MusicStore {
         this.resetPagination();
       }
 
-      // For category loading, we'll search for multiple queries from the category
-      const allResults: MusicSearchResult[] = [];
-
       if (loadMore) {
         // For pagination, use different queries or search terms
         const startIdx = this.currentPage * 2;
         const queriesToUse = category.queries.slice(startIdx, startIdx + 2);
 
-        for (const query of queriesToUse) {
+        if (queriesToUse.length > 0) {
+          const queryString = queriesToUse.join(',');
           const response = await apiStore.get(
-            `/music/search?q=${encodeURIComponent(query)}&limit=15`,
+            `/music/category?queries=${encodeURIComponent(queryString)}`,
           );
-          if (response && Array.isArray(response)) {
-            allResults.push(...response);
-          }
+
+          runInAction(() => {
+            if (response && Array.isArray(response)) {
+              const combinedSongs = [...this.songs, ...response];
+              // Simple deduplication by id for pagination
+              const uniqueSongs = combinedSongs.filter(
+                (song, index, arr) => arr.findIndex((s) => s.id === song.id) === index,
+              );
+              this.songs = uniqueSongs;
+            }
+            this.isLoadingMore = false;
+          });
+        } else {
+          runInAction(() => {
+            this.isLoadingMore = false;
+            this.hasMoreSongs = false;
+          });
         }
       } else {
-        // Initial load - search with all queries but get more results per query
-        for (const query of category.queries) {
-          const response = await apiStore.get(
-            `/music/search?q=${encodeURIComponent(query)}&limit=12`,
-          );
+        // Initial load - use server-side deduplication and expansion
+        const queryString = category.queries.join(',');
+        const response = await apiStore.get(
+          `/music/category?queries=${encodeURIComponent(queryString)}`,
+        );
+
+        runInAction(() => {
           if (response && Array.isArray(response)) {
-            allResults.push(...response);
+            this.songs = response;
+            console.log(
+              `🎵 Server-side processed: ${response.length} unique songs for category "${categoryId}"`,
+            );
+          } else {
+            this.songs = [];
           }
-        }
+          this.isLoading = false;
+        });
       }
-
+    } catch (error) {
+      console.error('Error loading category music:', error);
       runInAction(() => {
-        let processedResults = this.deduplicateSongs(allResults);
-
-        if (loadMore) {
-          const combinedSongs = [...this.songs, ...processedResults];
-          this.songs = this.deduplicateSongs(combinedSongs);
-          this.isLoadingMore = false;
-        } else {
-          this.songs = processedResults;
-          this.isLoading = false;
-        }
-
-        // Update pagination state - more generous pagination
-        this.hasMoreSongs = this.currentPage < Math.ceil(category.queries.length / 2) - 1;
-        if (loadMore) {
-          this.currentPage++;
-        } else {
-          this.currentPage = 1;
-        }
+        this.isLoading = false;
+        this.isLoadingMore = false;
       });
-      return { success: true };
-    } catch (error: any) {
-      runInAction(() => {
-        if (loadMore) {
-          this.isLoadingMore = false;
-        } else {
-          this.isLoading = false;
-        }
-      });
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Failed to load category music',
-      };
     }
   }
 

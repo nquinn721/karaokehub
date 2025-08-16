@@ -60,17 +60,56 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req, @Res() res: Response) {
+    console.log('🟢 [GOOGLE_OAUTH_CALLBACK] Starting OAuth callback processing');
+    console.log('🔍 [GOOGLE_OAUTH_CALLBACK] Request details:', {
+      url: req.url,
+      query: req.query,
+      headers: {
+        host: req.get('host'),
+        'x-forwarded-proto': req.get('x-forwarded-proto'),
+        'user-agent': req.get('user-agent'),
+        referer: req.get('referer'),
+      },
+      userExists: !!req.user,
+      userDetails: req.user
+        ? {
+            id: req.user.id,
+            email: req.user.email,
+            name: req.user.name,
+            provider: req.user.provider,
+            providerId: req.user.providerId,
+          }
+        : null,
+    });
+
     try {
       if (!req.user) {
+        console.error(
+          '🔴 [GOOGLE_OAUTH_CALLBACK] No user object in request after OAuth validation',
+        );
         throw new Error('No user object in request after OAuth validation');
       }
 
       const user = req.user;
+      console.log('🟢 [GOOGLE_OAUTH_CALLBACK] User object found:', {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        provider: user.provider,
+      });
+
       const token = this.authService.generateToken(user);
+      console.log('🟢 [GOOGLE_OAUTH_CALLBACK] Token generated successfully');
 
       // Determine frontend URL based on environment - with dynamic detection like canvas-game
       const isProduction = process.env.NODE_ENV === 'production';
       let frontendUrl = process.env.FRONTEND_URL;
+
+      console.log('🔍 [GOOGLE_OAUTH_CALLBACK] Environment check:', {
+        isProduction,
+        FRONTEND_URL: process.env.FRONTEND_URL,
+        NODE_ENV: process.env.NODE_ENV,
+      });
 
       if (!frontendUrl) {
         if (isProduction) {
@@ -78,19 +117,25 @@ export class AuthController {
           const protocol = req.get('x-forwarded-proto') || 'https';
           const host = req.get('host');
           frontendUrl = `${protocol}://${host}`;
+          console.log('🔍 [GOOGLE_OAUTH_CALLBACK] Dynamic frontend URL generated:', frontendUrl);
         } else {
           frontendUrl = 'http://localhost:5173';
+          console.log('🔍 [GOOGLE_OAUTH_CALLBACK] Using default local frontend URL:', frontendUrl);
         }
       }
 
       const redirectUrl = `${frontendUrl}/auth/success?token=${token}`;
+      console.log('🟢 [GOOGLE_OAUTH_CALLBACK] Redirecting to success:', redirectUrl);
 
       // Redirect to frontend with token
       res.redirect(redirectUrl);
     } catch (error) {
-      console.error('🔴 Google OAuth callback error:', {
+      console.error('🔴 [GOOGLE_OAUTH_CALLBACK] Error occurred:', {
         error: error.message,
+        stack: error.stack,
         userEmail: req.user?.email,
+        query: req.query,
+        url: req.url,
       });
 
       // Determine frontend URL for error redirect - with dynamic detection

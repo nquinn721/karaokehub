@@ -539,6 +539,8 @@ class ApiStore {
       byVendor: (vendorId: string) => `/shows/vendor/${vendorId}`,
       byDJ: (djId: string) => `/shows/dj/${djId}`,
       byDay: (day: string) => `/shows?day=${day}`,
+      nearby: (centerLat: number, centerLng: number, radius: number = 35, day?: string) =>
+        `/shows/nearby?centerLat=${centerLat}&centerLng=${centerLng}&radius=${radius}${day ? `&day=${day}` : ''}`,
     },
 
     // Favorite endpoints
