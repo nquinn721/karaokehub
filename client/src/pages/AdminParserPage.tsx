@@ -62,7 +62,7 @@ const AdminParserPage: React.FC = observer(() => {
   const [selectedUrl, setSelectedUrl] = useState('');
   const [customUrl, setCustomUrl] = useState('');
   const [showCustomUrl, setShowCustomUrl] = useState(false);
-  const [parseMethod, setParseMethod] = useState<'html' | 'screenshot'>('html');
+  const [parseMethod, setParseMethod] = useState<'html' | 'screenshot'>('screenshot');
   const [isParsingUrl, setIsParsingUrl] = useState(false);
   const [parseResult, setParseResult] = useState<any>(null);
   const [selectedReview, setSelectedReview] = useState<any>(null);
@@ -333,17 +333,17 @@ const AdminParserPage: React.FC = observer(() => {
                   value={parseMethod}
                   onChange={(e) => setParseMethod(e.target.value as 'html' | 'screenshot')}
                 >
-                  <FormControlLabel value="html" control={<Radio />} label="HTML Parsing" />
                   <FormControlLabel
                     value="screenshot"
                     control={<Radio />}
-                    label="Screenshot Parsing"
+                    label="Screenshot Parsing (Recommended)"
                   />
+                  <FormControlLabel value="html" control={<Radio />} label="HTML Parsing" />
                 </RadioGroup>
                 <Typography variant="caption" color="text.secondary">
-                  {parseMethod === 'html'
-                    ? 'Parse the HTML content with data attributes (current method)'
-                    : 'Take a full-page screenshot and parse visually (better for complex layouts)'}
+                  {parseMethod === 'screenshot'
+                    ? 'Take a full-page screenshot and parse visually (recommended - finds all shows)'
+                    : 'Parse the HTML content with data attributes (may miss complex layouts)'}
                 </Typography>
               </FormControl>
 
