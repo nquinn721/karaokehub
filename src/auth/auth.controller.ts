@@ -52,21 +52,21 @@ export class AuthController {
       throw new HttpException(error.message || 'Login failed', HttpStatus.UNAUTHORIZED);
     }
   }
-
+  ogin;
   @Post('google/verify')
   async verifyGoogleCredential(@Body() body: { credential: string; clientId?: string }) {
     try {
       console.log('🟢 [GOOGLE_ONE_TAP] Starting credential verification');
-      
+
       if (!body.credential) {
         throw new HttpException('Credential is required', HttpStatus.BAD_REQUEST);
       }
 
       // Verify the Google JWT credential
       const result = await this.authService.verifyGoogleCredential(body.credential);
-      
+
       console.log('🟢 [GOOGLE_ONE_TAP] Verification successful for user:', result.user.email);
-      
+
       return {
         success: true,
         user: result.user,

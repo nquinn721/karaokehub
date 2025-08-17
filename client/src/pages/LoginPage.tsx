@@ -1,4 +1,5 @@
 import { LoadingButton } from '@components/LoadingButton';
+import GoogleOneTap from '@components/GoogleOneTap';
 import { faFacebook } from '@fortawesome/free-brands-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Box, Button, Container, Divider, Link, Paper, TextField, Typography } from '@mui/material';
@@ -90,6 +91,13 @@ const LoginPage: React.FC = observer(() => {
           <Typography component="h1" variant="h4" sx={{ mb: 3, fontWeight: 600 }}>
             Welcome Back
           </Typography>
+
+          {/* Google One Tap - will show prompt automatically and provide fallback button */}
+          <GoogleOneTap
+            onSuccess={() => navigate(redirectPath)}
+            showButton={false} // We'll keep your existing button styling, this just handles One Tap
+            context="signin"
+          />
 
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
             <TextField

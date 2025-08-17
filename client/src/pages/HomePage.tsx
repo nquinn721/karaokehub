@@ -1,11 +1,12 @@
 import { BannerAdWithUpgrade, WideAdWithUpgrade } from '@components/AdWithUpgrade';
 import { CustomCard } from '@components/CustomCard';
+import GoogleOneTap from '@components/GoogleOneTap';
 import { MapComponent } from '@components/MapComponent';
 import { SEO, seoConfigs } from '@components/SEO';
 import { faLocationDot, faMicrophone, faMobile, faUsers } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Box, Container, Grid, Typography, useTheme } from '@mui/material';
-import { subscriptionStore } from '@stores/index';
+import { authStore, subscriptionStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React from 'react';
 
@@ -15,6 +16,18 @@ const HomePage: React.FC = observer(() => {
   return (
     <Box data-homepage>
       <SEO {...seoConfigs.home} />
+
+      {/* Google One Tap for non-authenticated users */}
+      {!authStore.isAuthenticated && (
+        <GoogleOneTap
+          onSuccess={() => {
+            // User will be redirected by the One Tap component
+            console.log('Google One Tap success on homepage');
+          }}
+          showButton={false} // Only show the prompt, no button
+          context="signin"
+        />
+      )}
 
       {/* Hero Section with full-width purple gradient background */}
       <Box

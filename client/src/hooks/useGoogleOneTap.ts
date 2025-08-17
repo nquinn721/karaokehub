@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
 import { authStore } from '@stores/index';
+import { useEffect, useRef } from 'react';
 
 // Types for Google Identity Services
 declare global {
@@ -30,7 +30,15 @@ interface GoogleOneTapConfig {
 
 interface GoogleCredentialResponse {
   credential: string;
-  select_by: 'auto' | 'user' | 'user_1tap' | 'user_2tap' | 'btn' | 'btn_confirm' | 'btn_add_session' | 'btn_confirm_add_session';
+  select_by:
+    | 'auto'
+    | 'user'
+    | 'user_1tap'
+    | 'user_2tap'
+    | 'btn'
+    | 'btn_confirm'
+    | 'btn_add_session'
+    | 'btn_confirm_add_session';
   clientId?: string;
 }
 
@@ -76,27 +84,30 @@ export const useGoogleOneTap = (options: UseGoogleOneTapOptions = {}) => {
   const handleCredentialResponse = async (response: GoogleCredentialResponse) => {
     try {
       console.log('Google One Tap credential received:', response.select_by);
-      
+
       // Send the credential to your backend for verification
       // This should go to the same endpoint as your OAuth callback
       // but handle JWT token instead of authorization code
-      const result = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/google/verify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const result = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/google/verify`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            credential: response.credential,
+            clientId: response.clientId,
+          }),
         },
-        body: JSON.stringify({
-          credential: response.credential,
-          clientId: response.clientId,
-        }),
-      });
+      );
 
       if (!result.ok) {
         throw new Error('Failed to verify Google credential');
       }
 
       const authData = await result.json();
-      
+
       // Update auth store with the response
       if (authData.success && authData.token) {
         const result = await authStore.handleOneTapSuccess(authData);
@@ -109,7 +120,6 @@ export const useGoogleOneTap = (options: UseGoogleOneTapOptions = {}) => {
       } else {
         throw new Error(authData.error || 'Authentication failed');
       }
-
     } catch (error) {
       console.error('Google One Tap error:', error);
       onError?.(error);
@@ -128,6 +138,15 @@ export const useGoogleOneTap = (options: UseGoogleOneTapOptions = {}) => {
     }
 
     try {
+      console.log('🟢 [GOOGLE_ONE_TAP] Initializing with:', {
+        clientId,
+        domain: window.location.hostname,
+        origin: window.location.origin,
+        auto_select,
+        cancel_on_tap_outside,
+        context,
+      });
+
       window.google.accounts.id.initialize({
         client_id: clientId,
         callback: handleCredentialResponse,
@@ -138,9 +157,11 @@ export const useGoogleOneTap = (options: UseGoogleOneTapOptions = {}) => {
       });
 
       isInitialized.current = true;
-      console.log('Google One Tap initialized');
+      console.log('🟢 [GOOGLE_ONE_TAP] Initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize Google One Tap:', error);
+      console.error('🔴 [GOOGLE_ONE_TAP] Failed to initialize Google One Tap:', error);
+      console.error('🔴 [GOOGLE_ONE_TAP] Domain authorization required in Google Cloud Console');
+      console.error('🔴 [GOOGLE_ONE_TAP] Add this origin to authorized JavaScript origins:', window.location.origin);
       onError?.(error);
     }
   };
@@ -153,10 +174,17 @@ export const useGoogleOneTap = (options: UseGoogleOneTapOptions = {}) => {
     try {
       window.google.accounts.id.prompt((notification) => {
         console.log('Google One Tap notification:', notification);
-        
+
         // Handle different notification types
         if (notification.isNotDisplayed()) {
-          console.log('One Tap not displayed:', notification.getNotDisplayedReason());
+          const reason = notification.getNotDisplayedReason();
+          console.log('🔴 [GOOGLE_ONE_TAP] One Tap not displayed:', reason);
+          
+          if (reason === 'unregistered_origin') {
+            console.error('🔴 [GOOGLE_ONE_TAP] DOMAIN ERROR: Add this origin to Google Cloud Console:');
+            console.error('🔴 [GOOGLE_ONE_TAP] Origin:', window.location.origin);
+            console.error('🔴 [GOOGLE_ONE_TAP] Instructions: https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid');
+          }
         } else if (notification.isSkippedMoment()) {
           console.log('One Tap skipped:', notification.getSkippedReason());
         } else if (notification.isDismissedMoment()) {
