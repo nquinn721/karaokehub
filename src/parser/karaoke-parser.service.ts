@@ -787,7 +787,12 @@ ${htmlContent}`;
 
     try {
       // Validate input data
-      if (!approvedData || !approvedData.vendor || !approvedData.shows || approvedData.shows.length === 0) {
+      if (
+        !approvedData ||
+        !approvedData.vendor ||
+        !approvedData.shows ||
+        approvedData.shows.length === 0
+      ) {
         throw new Error('Invalid data: missing vendor information or no shows found');
       }
 
@@ -808,6 +813,26 @@ ${htmlContent}`;
         this.logger.log(`Created vendor with ID: ${vendor.id}`);
       } else {
         this.logger.log(`Using existing vendor: ${vendor.name} (ID: ${vendor.id})`);
+        
+        // Update vendor with any missing information
+        let vendorUpdated = false;
+        if (!vendor.owner && approvedData.vendor.owner) {
+          vendor.owner = approvedData.vendor.owner;
+          vendorUpdated = true;
+        }
+        if (!vendor.website && approvedData.vendor.website) {
+          vendor.website = approvedData.vendor.website;
+          vendorUpdated = true;
+        }
+        if (!vendor.description && approvedData.vendor.description) {
+          vendor.description = approvedData.vendor.description;
+          vendorUpdated = true;
+        }
+        
+        if (vendorUpdated) {
+          vendor = await this.vendorRepository.save(vendor);
+          this.logger.log(`Updated existing vendor: ${vendor.name} with missing information`);
+        }
       }
 
       // 2. Create or update DJs
@@ -850,6 +875,8 @@ ${htmlContent}`;
 
       // 3. Create shows
       let showsCreated = 0;
+      let showsUpdated = 0;
+      let showsDuplicated = 0;
       const showPromises = approvedData.shows.map(async (showData) => {
         // Find DJ if specified
         let djId: string | undefined;
@@ -871,7 +898,61 @@ ${htmlContent}`;
 
         const normalizedDay = dayMapping[showData.day?.toLowerCase()] || 'monday';
 
-        this.logger.log(`Creating show: ${showData.venue} on ${normalizedDay} at ${showData.time}`);
+        // Check for existing show with same vendor, day, time, venue, and DJ
+        const existingShow = await this.showRepository.findOne({
+          where: {
+            vendorId: vendor.id,
+            day: normalizedDay as any,
+            time: showData.time,
+            venue: showData.venue,
+            djId: djId || null, // Handle both null and undefined DJs
+          },
+        });
+
+        if (existingShow) {
+          // Update existing show with any missing information
+          let showUpdated = false;
+          if (!existingShow.address && showData.address) {
+            existingShow.address = showData.address;
+            showUpdated = true;
+          }
+          if (!existingShow.venuePhone && showData.venuePhone) {
+            existingShow.venuePhone = showData.venuePhone;
+            showUpdated = true;
+          }
+          if (!existingShow.venueWebsite && showData.venueWebsite) {
+            existingShow.venueWebsite = showData.venueWebsite;
+            showUpdated = true;
+          }
+          if (!existingShow.description && showData.description) {
+            existingShow.description = showData.description;
+            showUpdated = true;
+          }
+          if (!existingShow.notes && showData.notes) {
+            existingShow.notes = showData.notes;
+            showUpdated = true;
+          }
+          if (!existingShow.startTime && showData.startTime) {
+            existingShow.startTime = showData.startTime;
+            showUpdated = true;
+          }
+          if (!existingShow.endTime && showData.endTime) {
+            existingShow.endTime = showData.endTime;
+            showUpdated = true;
+          }
+
+          if (showUpdated) {
+            await this.showRepository.save(existingShow);
+            this.logger.log(`Updated existing show: ${showData.venue} on ${normalizedDay} at ${showData.time}`);
+            showsUpdated++;
+          } else {
+            this.logger.log(`Skipping duplicate show: ${showData.venue} on ${normalizedDay} at ${showData.time}`);
+            showsDuplicated++;
+          }
+          return existingShow;
+        }
+
+        this.logger.log(`Creating new show: ${showData.venue} on ${normalizedDay} at ${showData.time}`);
 
         const show = this.showRepository.create({
           vendorId: vendor.id,
@@ -905,7 +986,7 @@ ${htmlContent}`;
       // 5. Delete the schedule after approval
       await this.parsedScheduleRepository.delete(parsedScheduleId);
 
-      const successMessage = `Successfully saved data: 1 vendor, ${djsCreated} new DJs (${djsUpdated} updated), ${showsCreated} shows`;
+      const successMessage = `Successfully saved: 1 vendor, ${djsCreated} new DJs (${djsUpdated} updated), ${showsCreated} new shows (${showsUpdated} updated, ${showsDuplicated} duplicates skipped)`;
       this.logger.log(successMessage);
 
       return {
@@ -917,6 +998,8 @@ ${htmlContent}`;
           djsCreated,
           djsUpdated,
           showsCreated,
+          showsUpdated,
+          showsDuplicated,
         },
       };
     } catch (error) {

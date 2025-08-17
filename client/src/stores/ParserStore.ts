@@ -66,7 +66,7 @@ export class ParserStore {
   isInitialized = false;
   parsingStartTime: Date | null = null;
   parsingElapsedTime = 0;
-  parsingTimer: NodeJS.Timeout | null = null;
+  parsingTimer: number | null = null;
 
   constructor() {
     makeAutoObservable(this);
@@ -127,7 +127,7 @@ export class ParserStore {
       this.parsingElapsedTime = 0;
     });
 
-    this.parsingTimer = setInterval(() => {
+    this.parsingTimer = window.setInterval(() => {
       if (this.parsingStartTime) {
         runInAction(() => {
           this.parsingElapsedTime = Date.now() - this.parsingStartTime!.getTime();
@@ -138,7 +138,7 @@ export class ParserStore {
 
   stopParsingTimer() {
     if (this.parsingTimer) {
-      clearInterval(this.parsingTimer);
+      window.clearInterval(this.parsingTimer);
       this.parsingTimer = null;
     }
   }
@@ -357,9 +357,9 @@ export class ParserStore {
       // Refresh pending reviews
       await this.fetchPendingReviews();
 
-      return { 
+      return {
         success: true,
-        message: response.data?.result?.message || response.data?.message 
+        message: response.data?.result?.message || response.data?.message,
       };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to approve selected items';
@@ -370,7 +370,9 @@ export class ParserStore {
   }
 
   // Approve all items from a parsed schedule
-  async approveAllItems(reviewId: string): Promise<{ success: boolean; error?: string; message?: string }> {
+  async approveAllItems(
+    reviewId: string,
+  ): Promise<{ success: boolean; error?: string; message?: string }> {
     try {
       this.setLoading(true);
 
@@ -380,9 +382,9 @@ export class ParserStore {
       // Refresh pending reviews
       await this.fetchPendingReviews();
 
-      return { 
-        success: true, 
-        message: response.data?.result?.message || response.data?.message 
+      return {
+        success: true,
+        message: response.data?.result?.message || response.data?.message,
       };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to approve items';
