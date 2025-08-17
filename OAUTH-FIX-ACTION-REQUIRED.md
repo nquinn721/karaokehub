@@ -29,7 +29,7 @@ Run this script to update Google OAuth secrets:
 2. Navigate to **APIs & Services** → **Credentials**
 3. Find your OAuth 2.0 Client ID
 4. Update **Authorized redirect URIs** to include:
-   - `https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback` (production)
+   - `https://karaoke-hub.com/api/auth/google/callback` (production)
    - `http://localhost:8000/api/auth/google/callback` (development)
 
 ### Step 3: Redeploy to Cloud Run
@@ -48,16 +48,16 @@ gcloud run deploy karaokehub --source . --region us-central1 --allow-unauthentic
 
 ### Production Test:
 
-1. Visit: `https://karaokehub-203453576607.us-central1.run.app/login`
+1. Visit: `https://karaoke-hub.com/login`
 2. Click **"Continue with Google"**
 3. Should successfully authenticate and redirect back
 
 ### Expected OAuth Flow:
 
-1. **Initiate**: `https://karaokehub-203453576607.us-central1.run.app/api/auth/google`
+1. **Initiate**: `https://karaoke-hub.com/api/auth/google`
 2. **Google Auth**: User authenticates with Google
-3. **Callback**: `https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback`
-4. **Success**: `https://karaokehub-203453576607.us-central1.run.app/auth/success?token=JWT_TOKEN`
+3. **Callback**: `https://karaoke-hub.com/api/auth/google/callback`
+4. **Success**: `https://karaoke-hub.com/auth/success?token=JWT_TOKEN`
 
 ## 🔍 Root Cause Summary
 

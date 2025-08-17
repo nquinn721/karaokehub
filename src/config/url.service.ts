@@ -48,7 +48,7 @@ export class UrlService {
    */
   getServiceUrl(): string {
     if (this.isProduction) {
-      return 'https://karaokehub-203453576607.us-central1.run.app'; // Direct Cloud Run URL
+      return 'https://karaoke-hub.com'; // Use production domain
     }
     return 'http://localhost:8000';
   }

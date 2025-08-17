@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { OAuth2Client } from 'google-auth-library';
 import * as bcrypt from 'bcryptjs';
+import { OAuth2Client } from 'google-auth-library';
 import { UserService } from '../user/user.service';
 import { CreateUserDto, LoginDto } from './dto/auth.dto';
 
@@ -229,10 +229,12 @@ export class AuthService {
     }
   }
 
-  async verifyGoogleCredential(credential: string): Promise<{ user: User; token: string; isNewUser: boolean }> {
+  async verifyGoogleCredential(
+    credential: string,
+  ): Promise<{ user: User; token: string; isNewUser: boolean }> {
     try {
       console.log('🟢 [GOOGLE_ONE_TAP] Starting credential verification');
-      
+
       // Verify the Google JWT token
       const ticket = await this.googleClient.verifyIdToken({
         idToken: credential,
@@ -258,7 +260,7 @@ export class AuthService {
 
       if (existingUser) {
         console.log('🟢 [GOOGLE_ONE_TAP] Existing user found:', email);
-        
+
         // Update user info if needed (in case profile changed)
         if (existingUser.name !== name || existingUser.avatar !== picture) {
           existingUser = await this.userService.update(existingUser.id, {
@@ -268,7 +270,7 @@ export class AuthService {
         }
       } else {
         console.log('🟢 [GOOGLE_ONE_TAP] Creating new user:', email);
-        
+
         // Create new user
         existingUser = await this.userService.create({
           email,
@@ -278,7 +280,7 @@ export class AuthService {
           providerId: googleId,
           // No password for OAuth users
         });
-        
+
         isNewUser = true;
       }
 

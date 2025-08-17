@@ -1,6 +1,7 @@
 # Google One Tap Implementation Guide
 
 ## Overview
+
 You now have both Google One Tap and traditional Google OAuth implemented:
 
 1. **Google One Tap**: Automatic sign-in prompt that appears in the top-right corner (like Redfin)
@@ -9,6 +10,7 @@ You now have both Google One Tap and traditional Google OAuth implemented:
 ## What Was Implemented
 
 ### Frontend Changes
+
 - ✅ Added Google Identity Services script to `client/index.html`
 - ✅ Created `useGoogleOneTap` hook for One Tap functionality
 - ✅ Created `GoogleOneTap` component for easy integration
@@ -16,6 +18,7 @@ You now have both Google One Tap and traditional Google OAuth implemented:
 - ✅ Updated `AuthStore` with `handleOneTapSuccess` method
 
 ### Backend Changes
+
 - ✅ Added `google-auth-library` package for JWT verification
 - ✅ Created `/api/auth/google/verify` endpoint for One Tap verification
 - ✅ Added `verifyGoogleCredential` method to `AuthService`
@@ -24,6 +27,7 @@ You now have both Google One Tap and traditional Google OAuth implemented:
 ## How It Works
 
 ### Google One Tap Flow
+
 1. User visits login page
 2. Google One Tap prompt automatically appears (if user is signed into Google)
 3. User clicks "Continue" on the One Tap prompt
@@ -33,6 +37,7 @@ You now have both Google One Tap and traditional Google OAuth implemented:
 7. User is automatically logged in
 
 ### Traditional OAuth Flow (Unchanged)
+
 1. User clicks "Continue with Google" button
 2. Redirects to Google OAuth consent screen
 3. Google redirects back to `/api/auth/google/callback`
@@ -41,10 +46,11 @@ You now have both Google One Tap and traditional Google OAuth implemented:
 ## Testing Instructions
 
 1. **Start your servers**:
+
    ```bash
    # Terminal 1 - Backend
    npm run start:dev
-   
+
    # Terminal 2 - Frontend
    cd client
    npm run dev
@@ -62,27 +68,32 @@ You now have both Google One Tap and traditional Google OAuth implemented:
 ## Configuration
 
 The implementation uses your existing Google OAuth credentials:
+
 - Client ID: `203453576607-fjkvjl9f2sve5gsm4n94fdsgmphgcs8u.apps.googleusercontent.com`
 - The same client ID works for both One Tap and traditional OAuth
 
 ## Troubleshooting
 
 ### One Tap Not Appearing
+
 - Make sure you're signed into Google in your browser
 - One Tap may not show if user previously dismissed it
 - Check browser console for any errors
 
 ### Backend Errors
+
 - Ensure `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set in environment
 - Check server logs for detailed error messages
 
 ### Testing Both Flows
+
 - Use incognito/private browsing to test fresh user experience
 - Clear cookies to reset One Tap state
 
 ## Features
 
 ### Current Implementation
+
 - ✅ Automatic One Tap prompt on login page
 - ✅ Fallback to traditional OAuth button
 - ✅ Same user creation/login logic for both flows
@@ -90,6 +101,7 @@ The implementation uses your existing Google OAuth credentials:
 - ✅ MobX state management integration
 
 ### User Experience
+
 - **Returning users**: See One Tap prompt for instant sign-in
 - **New users**: Can choose either One Tap or traditional OAuth
 - **Privacy-conscious users**: Can dismiss One Tap and use traditional flow

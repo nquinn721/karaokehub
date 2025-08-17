@@ -338,13 +338,9 @@ export class KaraokeParserService {
     try {
       this.logger.log(`Launching Puppeteer for: ${url}`);
 
-      // Launch browser with optimized settings
-      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
-      this.logger.log(`Using Chromium executable path: ${executablePath}`);
-
+      // Launch browser with simple settings - let Puppeteer find Chrome automatically
       browser = await puppeteer.launch({
         headless: true,
-        executablePath: executablePath,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -2101,13 +2097,9 @@ ${JSON.stringify(facebookData, null, 2)}`;
     try {
       this.logger.log(`Starting debug Puppeteer extraction for: ${url}`);
 
-      // Launch browser
-      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
-      this.logger.log(`Debug: Using Chromium executable path: ${executablePath}`);
-
+      // Launch browser - let Puppeteer find Chrome automatically
       browser = await puppeteer.launch({
         headless: true, // Always headless for production stability
-        executablePath: executablePath,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -2263,12 +2255,8 @@ ${JSON.stringify(facebookData, null, 2)}`;
     try {
       this.logger.log(`Extracting content and images from: ${url}`);
 
-      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
-      this.logger.log(`ExtractPostContent: Using Chromium executable path: ${executablePath}`);
-
       browser = await puppeteer.launch({
         headless: true,
-        executablePath: executablePath,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',

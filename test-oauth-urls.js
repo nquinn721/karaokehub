@@ -40,7 +40,7 @@ class MockUrlService {
 
   getServiceUrl() {
     if (this.isProduction) {
-      return 'https://karaokehub-203453576607.us-central1.run.app';
+      return 'https://karaoke-hub.com';
     }
     return 'http://localhost:8000';
   }

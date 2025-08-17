@@ -90,15 +90,11 @@ export class ShowStore {
       const { mapStore } = await import('./MapStore');
       if (mapStore && mapStore.isInitialized && mapStore.searchCenter) {
         // Fetch shows based on current search center and new selected day
-        console.log('Day changed, refetching shows for search center:', mapStore.searchCenter);
-
         await this.fetchShows(this.selectedDay, {
           lat: mapStore.searchCenter.lat,
           lng: mapStore.searchCenter.lng,
           radius: mapStore.getDynamicRadius(),
         });
-
-        console.log('Shows refreshed for day change');
       }
     } catch (error) {
       console.warn('Could not refresh shows for day change:', error);
@@ -120,7 +116,6 @@ export class ShowStore {
     mapCenter?: { lat: number; lng: number; radius?: number },
   ) {
     try {
-      console.log('ShowStore fetchShows called with day:', day, 'mapCenter:', mapCenter);
       this.setLoading(true);
 
       let endpoint: string;
@@ -129,15 +124,12 @@ export class ShowStore {
         // Use location-based query with map center
         const radius = mapCenter.radius || 35;
         endpoint = apiStore.endpoints.shows.nearby(mapCenter.lat, mapCenter.lng, radius, day);
-        console.log('Fetching shows from nearby endpoint:', endpoint);
       } else {
         // Fallback to day-based or all shows
         endpoint = day ? apiStore.endpoints.shows.byDay(day) : apiStore.endpoints.shows.base;
-        console.log('Fetching shows from standard endpoint:', endpoint);
       }
 
       const response = await apiStore.get(endpoint);
-      console.log('API response received:', response?.length || 0, 'shows');
 
       runInAction(() => {
         this.shows = response || [];
@@ -305,17 +297,6 @@ export class ShowStore {
 
   get showsForSelectedDay() {
     const filtered = this.shows.filter((show) => show.day === this.selectedDay);
-    console.log(
-      `ShowStore.showsForSelectedDay: ${filtered.length} shows for ${this.selectedDay} (total shows: ${this.shows.length})`,
-    );
-    console.log(
-      'All shows:',
-      this.shows.map((s) => ({ id: s.id, day: s.day, venue: s.venue })),
-    );
-    console.log(
-      'Filtered shows:',
-      filtered.map((s) => ({ id: s.id, day: s.day, venue: s.venue })),
-    );
     return filtered;
   }
 

@@ -11,8 +11,8 @@ This guide covers the complete setup for Google and Facebook OAuth authenticatio
 
 ### Production
 
-- **Google OAuth callback**: `https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback`
-- **Facebook OAuth callback**: `https://karaokehub-203453576607.us-central1.run.app/api/auth/facebook/callback`
+- **Google OAuth callback**: `https://karaoke-hub.com/api/auth/google/callback`
+- **Facebook OAuth callback**: `https://karaoke-hub.com/api/auth/facebook/callback`
 
 ## Google OAuth Setup
 
@@ -35,7 +35,7 @@ http://localhost:8000/api/auth/google/callback
 **For Production:**
 
 ```
-https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback
+https://karaoke-hub.com/api/auth/google/callback
 ```
 
 ### 3. Configure Authorized JavaScript Origins (Optional)
@@ -61,7 +61,7 @@ http://localhost:8000
 
 ```
 https://karaoke-hub.com
-https://karaokehub-203453576607.us-central1.run.app
+https://karaoke-hub.com
 ```
 
 ### 4. Environment Variables
@@ -99,7 +99,7 @@ http://localhost:8000/api/auth/facebook/callback
 **For Production:**
 
 ```
-https://karaokehub-203453576607.us-central1.run.app/api/auth/facebook/callback
+https://karaoke-hub.com/api/auth/facebook/callback
 ```
 
 ### 3. Configure App Domains
@@ -114,7 +114,7 @@ localhost
 
 ```
 karaoke-hub.com
-karaokehub-203453576607.us-central1.run.app
+karaoke-hub.com
 ```
 
 ### 4. Site URL Configuration
@@ -225,7 +225,7 @@ This ensures consistent URL handling across the application.
 
 ```bash
 cd /d/Projects/KaraokePal
-node -e "console.log('Local Google:', 'http://localhost:8000/api/auth/google/callback'); console.log('Prod Google:', 'https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback');"
+node -e "console.log('Local Google:', 'http://localhost:8000/api/auth/google/callback'); console.log('Prod Google:', 'https://karaoke-hub.com/api/auth/google/callback');"
 ```
 
 ### Test Backend OAuth Endpoints:

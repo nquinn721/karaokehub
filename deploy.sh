@@ -18,7 +18,7 @@ gcloud builds submit --config cloudbuild.yaml .
 
 if [ $? -eq 0 ]; then
     echo "✅ Deployment complete!"
-    echo "🌍 Service URL: https://karaokehub-203453576607.us-central1.run.app"
+    echo "🌍 Service URL: https://karaoke-hub.com"
     
     # Show deployment status
     echo "📊 Checking deployment status..."

@@ -6,7 +6,7 @@ The OAuth consent screen shows:
 
 ```
 to continue to
-karaokehub-203453576607.us-central1.run.app
+karaoke-hub.com
 ```
 
 ## Solution: Update OAuth Consent Screen
@@ -27,7 +27,7 @@ karaokehub-203453576607.us-central1.run.app
 Application name: KaraokeHub
 User support email: [your-email]
 Application logo: Upload /client/public/images/karaoke-hub-logo.png
-Application home page: https://karaokehub-203453576607.us-central1.run.app
+Application home page: https://karaoke-hub.com
 ```
 
 ### 4. Logo Specifications ✅

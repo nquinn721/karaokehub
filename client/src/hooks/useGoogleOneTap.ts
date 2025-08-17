@@ -165,7 +165,10 @@ export const useGoogleOneTap = (options: UseGoogleOneTapOptions = {}) => {
     } catch (error) {
       console.error('🔴 [GOOGLE_ONE_TAP] Failed to initialize Google One Tap:', error);
       console.error('🔴 [GOOGLE_ONE_TAP] Domain authorization required in Google Cloud Console');
-      console.error('🔴 [GOOGLE_ONE_TAP] Add this origin to authorized JavaScript origins:', window.location.origin);
+      console.error(
+        '🔴 [GOOGLE_ONE_TAP] Add this origin to authorized JavaScript origins:',
+        window.location.origin,
+      );
       onError?.(error);
     }
   };
@@ -183,11 +186,15 @@ export const useGoogleOneTap = (options: UseGoogleOneTapOptions = {}) => {
         if (notification.isNotDisplayed()) {
           const reason = notification.getNotDisplayedReason();
           console.log('🔴 [GOOGLE_ONE_TAP] One Tap not displayed:', reason);
-          
+
           if (reason === 'unregistered_origin') {
-            console.error('🔴 [GOOGLE_ONE_TAP] DOMAIN ERROR: Add this origin to Google Cloud Console:');
+            console.error(
+              '🔴 [GOOGLE_ONE_TAP] DOMAIN ERROR: Add this origin to Google Cloud Console:',
+            );
             console.error('🔴 [GOOGLE_ONE_TAP] Origin:', window.location.origin);
-            console.error('🔴 [GOOGLE_ONE_TAP] Instructions: https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid');
+            console.error(
+              '🔴 [GOOGLE_ONE_TAP] Instructions: https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid',
+            );
             console.error('🔴 [GOOGLE_ONE_TAP] If origin is already added, try:');
             console.error('🔴 [GOOGLE_ONE_TAP] 1. Clear browser cache');
             console.error('🔴 [GOOGLE_ONE_TAP] 2. Wait 10-15 minutes for Google propagation');

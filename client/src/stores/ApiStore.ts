@@ -583,6 +583,9 @@ class ApiStore {
 
   clearToken() {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('token'); // Also clear 'token' key for compatibility
+    sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('token');
     // Remove default headers if axios instance is available
     if (
       globalAxiosInstance &&

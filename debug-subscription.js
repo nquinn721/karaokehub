@@ -30,7 +30,7 @@ async function debugUserSubscription(userEmail) {
     // Get user
     const userRepository = AppDataSource.getRepository('User');
     const user = await userRepository.findOne({ where: { email: userEmail } });
-    
+
     if (!user) {
       console.log('❌ User not found with email:', userEmail);
       return;
@@ -68,11 +68,13 @@ async function debugUserSubscription(userEmail) {
     });
 
     // Check access levels
-    const hasAdFree = (subscription.status === 'active' || subscription.status === 'trialing') &&
-                     (subscription.plan === 'ad_free' || subscription.plan === 'premium');
-    
-    const hasPremium = (subscription.status === 'active' || subscription.status === 'trialing') &&
-                      subscription.plan === 'premium';
+    const hasAdFree =
+      (subscription.status === 'active' || subscription.status === 'trialing') &&
+      (subscription.plan === 'ad_free' || subscription.plan === 'premium');
+
+    const hasPremium =
+      (subscription.status === 'active' || subscription.status === 'trialing') &&
+      subscription.plan === 'premium';
 
     console.log('🔍 Access Analysis:');
     console.log('  - Has Ad-Free Access:', hasAdFree ? '✅ YES' : '❌ NO');
@@ -84,7 +86,7 @@ async function debugUserSubscription(userEmail) {
       console.log('⚠️  ISSUE: User has ad-free plan but status prevents access');
       console.log('   - Expected Status: "active" or "trialing"');
       console.log('   - Actual Status:', subscription.status);
-      
+
       if (subscription.status === 'past_due') {
         console.log('   - Suggestion: Payment may have failed, check Stripe dashboard');
       } else if (subscription.status === 'canceled') {
@@ -93,7 +95,6 @@ async function debugUserSubscription(userEmail) {
         console.log('   - Suggestion: Payment setup incomplete, user needs to complete setup');
       }
     }
-
   } catch (error) {
     console.error('❌ Error:', error.message);
   } finally {

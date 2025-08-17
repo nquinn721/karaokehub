@@ -22,10 +22,10 @@ Google OAuth login doesn't work in Cloud Run due to several configuration issues
 ```typescript
 const backendUrl = isProduction
   ? configService.get<string>('BACKEND_URL') ||
-    'https://karaokehub-203453576607.us-central1.run.app'
+    'https://karaoke-hub.com'
   : 'http://localhost:8000';
 
-// Callback URL is now: https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback
+// Callback URL is now: https://karaoke-hub.com/api/auth/google/callback
 ```
 
 ### 2. Updated Cloud Run Configuration
@@ -36,9 +36,9 @@ Added missing environment variables:
 
 ```yaml
 - name: BACKEND_URL
-  value: 'https://karaokehub-203453576607.us-central1.run.app'
+  value: 'https://karaoke-hub.com'
 - name: ALLOWED_ORIGINS
-  value: 'https://karaokehub-203453576607.us-central1.run.app'
+  value: 'https://karaoke-hub.com'
 ```
 
 ### 3. Updated Environment Template
@@ -67,7 +67,7 @@ BACKEND_URL=http://localhost:8000
 3. Find your OAuth 2.0 Client ID
 4. Update **Authorized redirect URIs** to include:
    - `http://localhost:8000/api/auth/google/callback` (development)
-   - `https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback` (production)
+   - `https://karaoke-hub.com/api/auth/google/callback` (production)
 
 ### 2. Verify Google Secrets in Cloud Run
 
@@ -125,10 +125,10 @@ git push origin main
 
 ### 2. Production Testing
 
-1. Visit: `https://karaokehub-203453576607.us-central1.run.app/login`
+1. Visit: `https://karaoke-hub.com/login`
 2. Click "Continue with Google"
-3. Should redirect to: `https://karaokehub-203453576607.us-central1.run.app/api/auth/google`
-4. After Google auth, should return to: `https://karaokehub-203453576607.us-central1.run.app/auth/success?token=...`
+3. Should redirect to: `https://karaoke-hub.com/api/auth/google`
+4. After Google auth, should return to: `https://karaoke-hub.com/auth/success?token=...`
 
 ## 🔍 Debugging Steps
 
@@ -142,9 +142,9 @@ git push origin main
 
 **Production:**
 
-- Initiate: `https://karaokehub-203453576607.us-central1.run.app/api/auth/google`
-- Callback: `https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback`
-- Success: `https://karaokehub-203453576607.us-central1.run.app/auth/success?token=...`
+- Initiate: `https://karaoke-hub.com/api/auth/google`
+- Callback: `https://karaoke-hub.com/api/auth/google/callback`
+- Success: `https://karaoke-hub.com/auth/success?token=...`
 
 ### Check Cloud Run Logs
 
@@ -187,14 +187,14 @@ The primary issue was that the Google OAuth Strategy was configured with the **f
 **Before:**
 
 ```
-Callback URL: https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback
+Callback URL: https://karaoke-hub.com/api/auth/google/callback
 (Frontend URL + API path = WRONG)
 ```
 
 **After:**
 
 ```
-Callback URL: https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback
+Callback URL: https://karaoke-hub.com/api/auth/google/callback
 (Backend URL + API path = CORRECT)
 ```
 

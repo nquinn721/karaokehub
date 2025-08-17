@@ -18,13 +18,13 @@ const requiredOrigins = [
   'http://localhost:5173',
   'http://localhost:8000',
   'http://127.0.0.1:3000',
-  'http://127.0.0.1:5173', 
+  'http://127.0.0.1:5173',
   'http://127.0.0.1:8000',
   'https://karaoke-hub.com',
-  'https://www.karaoke-hub.com'
+  'https://www.karaoke-hub.com',
 ];
 
-requiredOrigins.forEach(origin => {
+requiredOrigins.forEach((origin) => {
   const isCurrent = origin === window.location.origin;
   console.log(`${isCurrent ? '👉' : '  '} ${origin} ${isCurrent ? '(CURRENT)' : ''}`);
 });
@@ -35,7 +35,7 @@ console.log('- Add this to Google Cloud Console ASAP!');
 
 console.log('\n🔧 Google Cloud Console Steps:');
 console.log('1. Go to: https://console.cloud.google.com/');
-console.log('2. APIs & Services > Credentials');  
+console.log('2. APIs & Services > Credentials');
 console.log('3. Edit OAuth 2.0 Client ID');
 console.log('4. Add missing origin to "Authorized JavaScript origins"');
 console.log('5. Save and wait 2-3 minutes');

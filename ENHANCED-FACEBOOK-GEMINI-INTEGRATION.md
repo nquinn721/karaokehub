@@ -82,7 +82,7 @@ Our enhanced system successfully extracted:
 ### Cloud Build Status
 
 - ✅ **Build Successful**: `d83f203d-d1c9-4fdb-9edc-944b2f95aee0`
-- ✅ **Deployed to**: `https://karaokehub-203453576607.us-central1.run.app`
+- ✅ **Deployed to**: `https://karaoke-hub.com`
 - ✅ **TypeScript Compilation**: No errors
 - ✅ **Docker Build**: Successfully completed
 - ✅ **Service Health**: Running and serving traffic

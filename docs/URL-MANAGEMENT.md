@@ -10,7 +10,7 @@ This document outlines the centralized URL management system and domain configur
 
 - **Frontend**: Served from the same domain as the backend
 - **Backend API**: Available at `https://karaoke-hub.com/api/*`
-- **Direct Cloud Run URL**: `https://karaokehub-203453576607.us-central1.run.app` (used for OAuth callbacks)
+- **Direct Cloud Run URL**: `https://karaoke-hub.com` (used for OAuth callbacks)
 
 ### Development URLs
 
@@ -27,7 +27,7 @@ A centralized service that manages all URLs used throughout the application:
 // Get environment-specific URLs
 urlService.getFrontendUrl(); // https://karaoke-hub.com (prod) or http://localhost:5173 (dev)
 urlService.getBackendUrl(); // https://karaoke-hub.com (prod) or http://localhost:8000 (dev)
-urlService.getServiceUrl(); // https://karaokehub-203453576607.us-central1.run.app (for OAuth)
+urlService.getServiceUrl(); // https://karaoke-hub.com (for OAuth)
 
 // Build specific URLs
 urlService.buildFrontendUrl('/dashboard'); // https://karaoke-hub.com/dashboard
@@ -151,7 +151,7 @@ const successUrl = `${frontendUrl}/auth/success?token=${token}`;
 // ❌ Manual environment detection
 const isProduction = process.env.NODE_ENV === 'production';
 const backendUrl = isProduction
-  ? process.env.BACKEND_URL || 'https://karaokehub-203453576607.us-central1.run.app'
+  ? process.env.BACKEND_URL || 'https://karaoke-hub.com'
   : 'http://localhost:8000';
 ```
 

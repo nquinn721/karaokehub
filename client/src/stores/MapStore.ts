@@ -59,22 +59,16 @@ export class MapStore {
     // 16+: Neighborhood (5-15 miles)
 
     if (this._mapZoom <= 6) {
-      console.log(`Dynamic radius: 150 miles for zoom ${this._mapZoom} (Country/State level)`);
       return 150; // Very wide area for country/state view
     } else if (this._mapZoom <= 8) {
-      console.log(`Dynamic radius: 100 miles for zoom ${this._mapZoom} (Large Metro level)`);
       return 100; // Large metro area
     } else if (this._mapZoom <= 10) {
-      console.log(`Dynamic radius: 60 miles for zoom ${this._mapZoom} (Metro Area level)`);
       return 60; // Metro area
     } else if (this._mapZoom <= 12) {
-      console.log(`Dynamic radius: 35 miles for zoom ${this._mapZoom} (Greater City level)`);
       return 35; // Greater city area (current default)
     } else if (this._mapZoom <= 14) {
-      console.log(`Dynamic radius: 20 miles for zoom ${this._mapZoom} (Local Area level)`);
       return 20; // Local area
     } else {
-      console.log(`Dynamic radius: 10 miles for zoom ${this._mapZoom} (Neighborhood level)`);
       return 10; // Neighborhood level
     }
   }
@@ -111,15 +105,6 @@ export class MapStore {
       // Set up autorun to update map markers when shows change
       autorun(() => {
         if (this.showStore?.shows.length > 0 && this.mapInstance && !this.isGeocoding) {
-          // Include selectedDay in the reactive computation to trigger re-update
-          const selectedDay = this.showStore?.selectedDay;
-          console.log(
-            'AutoRun triggered - shows:',
-            this.showStore.shows.length,
-            'selectedDay:',
-            selectedDay,
-          );
-
           // Update map markers when shows change
           this.updateMapMarkers();
         }
@@ -143,24 +128,10 @@ export class MapStore {
     try {
       // Get all shows for the selected day from ShowStore
       const showsToDisplay = this.showStore.showsForSelectedDay;
-      console.log(`Updating map with ${showsToDisplay.length} shows for selected day`);
-      console.log(
-        'Shows to display:',
-        showsToDisplay.map((s: any) => ({
-          id: s.id,
-          venue: s.venue,
-          day: s.day,
-          lat: s.lat,
-          lng: s.lng,
-          address: s.address,
-        })),
-      );
 
       // For now, display all shows even without coordinates
       // TODO: Implement geocoding service to add coordinates to shows
       const validShows = showsToDisplay; // Don't filter by coordinates for now
-
-      console.log(`Displaying ${validShows.length} shows (including those without coordinates)`);
 
       // Convert to GeocodedShow format for map display
       const geocodedShows: GeocodedShow[] = validShows.map((show: any) => ({
@@ -178,7 +149,6 @@ export class MapStore {
       // Update map markers
       if (this.mapInstance && geocodedShows.length > 0) {
         // Map component will automatically update from geocodedShows observable
-        console.log(`Updated geocodedShows with ${geocodedShows.length} markers`);
       }
     } catch (error) {
       console.error('Error updating map markers:', error);
@@ -231,8 +201,6 @@ export class MapStore {
         console.warn('No geocoding results found');
         return null;
       }
-
-      console.log('Reverse geocoding results:', data.results.length, 'results found');
 
       // Define major metropolitan areas for better city detection
       const majorCities = new Set([

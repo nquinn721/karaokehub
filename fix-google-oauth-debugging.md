@@ -17,7 +17,7 @@
 
 ```
 https://karaoke-hub.com/api/auth/google/callback
-https://karaokehub-203453576607.us-central1.run.app/api/auth/google/callback
+https://karaoke-hub.com/api/auth/google/callback
 http://localhost:8000/api/auth/google/callback
 ```
 
@@ -25,7 +25,7 @@ http://localhost:8000/api/auth/google/callback
 
 ```
 https://karaoke-hub.com
-https://karaokehub-203453576607.us-central1.run.app
+https://karaoke-hub.com
 http://localhost:5173
 http://localhost:8000
 ```
@@ -46,5 +46,5 @@ http://localhost:8000
 ## Test URLs:
 
 - **Production**: https://karaoke-hub.com (click "Login with Google")
-- **Cloud Run Direct**: https://karaokehub-203453576607.us-central1.run.app
+- **Cloud Run Direct**: https://karaoke-hub.com
 - **OAuth Test**: https://karaoke-hub.com/api/auth/google
