@@ -987,6 +987,25 @@ ${htmlContent}`;
         optimizeForSpeed: true,
       });
 
+      // Save screenshot to file for debugging purposes
+      const fs = require('fs');
+      const path = require('path');
+      const screenshotDir = path.join(process.cwd(), 'debug-screenshots');
+
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(screenshotDir)) {
+        fs.mkdirSync(screenshotDir, { recursive: true });
+      }
+
+      // Generate filename with timestamp and domain
+      const urlObj = new URL(url);
+      const domain = urlObj.hostname.replace(/\./g, '_');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const screenshotPath = path.join(screenshotDir, `${domain}_${timestamp}.jpg`);
+
+      fs.writeFileSync(screenshotPath, screenshot);
+      this.logger.log(`Screenshot saved to: ${screenshotPath}`);
+
       this.logger.log(
         `Successfully captured full-page screenshot from ${url} (${screenshot.length} bytes, ${htmlContent.length} characters HTML)`,
       );
@@ -1014,60 +1033,41 @@ ${htmlContent}`;
 
       const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
-      const prompt = `Analyze this ENTIRE screenshot of a karaoke schedule website and extract ALL karaoke shows from the COMPLETE weekly schedule.
+      const prompt = `Analyze this screenshot and give me all the karaoke shows.
 
-CRITICAL INSTRUCTIONS:
-- This is a LONG page with shows for ALL 7 days of the week (Monday through Sunday)
-- Scroll through the ENTIRE image and extract shows from ALL sections, not just the top
-- Look for venue names organized by day of the week throughout the ENTIRE screenshot
-- Each venue + day combination = one show entry
-- Extract ALL shows from Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, AND Sunday
+Extract:
+- All venue names, addresses, phone numbers, and showtimes
+- All DJ/host names mentioned
+- The vendor/company information
 
-EXCLUSIONS: Skip shows marked "CLOSED", "CANCELLED", "SUSPENDED", "UNAVAILABLE", "DISCONTINUED", "TEMPORARILY CLOSED", "OUT OF BUSINESS", "INACTIVE", "NOT RUNNING"
-
-VISUAL PARSING FOR ENTIRE PAGE:
-- Scan the COMPLETE image from top to bottom
-- Look for day-of-week headers (Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday)
-- Under each day, extract ALL venue names and their details
-- Extract show times, DJ names, addresses, and phone numbers for each venue
-- Convert times to 24-hour format (9 pm = "21:00", 7 pm = "19:00")
-
-EXPECTED OUTPUT: This page typically contains 35-40+ shows across all 7 days. Make sure you find shows for ALL days.
-
-Website URL: ${url}
-
-Return JSON (no extra text):
+Format as JSON:
 {
   "vendor": {
-    "name": "Business Name",
-    "owner": "Owner Name if available", 
+    "name": "Company Name",
     "website": "${url}",
     "description": "Brief description",
     "confidence": 0.9
   },
   "djs": [
     {
-      "name": "DJ/host name",
+      "name": "DJ Name",
       "confidence": 0.8,
-      "context": "Venues where they perform",
+      "context": "Where they perform",
       "aliases": []
     }
   ],
   "shows": [
     {
       "venue": "Venue Name",
-      "address": "Full address if visible",
-      "venuePhone": "Phone number if visible",
-      "venueWebsite": "Venue website if available",
+      "address": "Full address",
+      "venuePhone": "Phone number",
       "date": "day_of_week",
-      "time": "original time format like '9 pm'",
-      "startTime": "24-hour format like '21:00'",
+      "time": "time like '7 pm'",
+      "startTime": "24-hour format like '19:00'",
       "endTime": "close",
-      "day": "day_of_week", 
-      "djName": "DJ/host name",
-      "description": "Additional details",
-      "notes": "Special notes",
-      "confidence": 0.8
+      "day": "day_of_week",
+      "djName": "DJ name if mentioned",
+      "confidence": 0.9
     }
   ]
 }`;
