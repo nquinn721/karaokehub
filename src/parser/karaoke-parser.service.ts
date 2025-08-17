@@ -950,6 +950,32 @@ ${htmlContent}`;
       // Reduced wait time for dynamic content
       await new Promise((resolve) => setTimeout(resolve, 1500)); // Reduced from 3000
 
+      // Scroll to bottom to ensure all content is loaded (for lazy loading)
+      await page.evaluate(() => {
+        return new Promise((resolve) => {
+          let totalHeight = 0;
+          const distance = 100;
+          const timer = setInterval(() => {
+            const scrollHeight = document.body.scrollHeight;
+            window.scrollBy(0, distance);
+            totalHeight += distance;
+
+            if (totalHeight >= scrollHeight) {
+              clearInterval(timer);
+              resolve(null);
+            }
+          }, 100);
+        });
+      });
+
+      // Scroll back to top for consistent screenshot
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Get page dimensions for logging
+      const pageHeight = await page.evaluate(() => document.body.scrollHeight);
+      this.logger.log(`Page content height: ${pageHeight}px`);
+
       // Get the HTML content for backup parsing
       const htmlContent = await page.content();
 
@@ -988,24 +1014,25 @@ ${htmlContent}`;
 
       const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
-      const prompt = `Analyze this screenshot of a karaoke schedule website and extract ALL karaoke shows.
+      const prompt = `Analyze this ENTIRE screenshot of a karaoke schedule website and extract ALL karaoke shows from the COMPLETE weekly schedule.
 
-CRITICAL: Extract each venue + day combination as a separate show.
+CRITICAL INSTRUCTIONS:
+- This is a LONG page with shows for ALL 7 days of the week (Monday through Sunday)
+- Scroll through the ENTIRE image and extract shows from ALL sections, not just the top
+- Look for venue names organized by day of the week throughout the ENTIRE screenshot
+- Each venue + day combination = one show entry
+- Extract ALL shows from Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, AND Sunday
 
-EXCLUDE: Shows marked "CLOSED", "CANCELLED", "SUSPENDED", "UNAVAILABLE", "DISCONTINUED", "TEMPORARILY CLOSED", "OUT OF BUSINESS", "INACTIVE", "NOT RUNNING"
+EXCLUSIONS: Skip shows marked "CLOSED", "CANCELLED", "SUSPENDED", "UNAVAILABLE", "DISCONTINUED", "TEMPORARILY CLOSED", "OUT OF BUSINESS", "INACTIVE", "NOT RUNNING"
 
-VISUAL PARSING INSTRUCTIONS:
-- Look for venue names organized by day of the week
-- Extract show times that appear near each venue (like "9 pm", "10 pm", "8 pm", etc.)
-- Identify DJ/host names associated with each venue
-- Extract addresses and phone numbers when visible
-- Each venue appearing on a specific day = one show entry
+VISUAL PARSING FOR ENTIRE PAGE:
+- Scan the COMPLETE image from top to bottom
+- Look for day-of-week headers (Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday)
+- Under each day, extract ALL venue names and their details
+- Extract show times, DJ names, addresses, and phone numbers for each venue
+- Convert times to 24-hour format (9 pm = "21:00", 7 pm = "19:00")
 
-TIME EXTRACTION:
-- Look for times displayed visually near venue names
-- Common formats: "9 pm", "10 pm", "7 pm", "8:30 pm", "9:30", etc.
-- Convert to 24-hour format for startTime (9 pm = "21:00", 7 pm = "19:00")
-- Use "close" for endTime if no specific end time is shown
+EXPECTED OUTPUT: This page typically contains 35-40+ shows across all 7 days. Make sure you find shows for ALL days.
 
 Website URL: ${url}
 
