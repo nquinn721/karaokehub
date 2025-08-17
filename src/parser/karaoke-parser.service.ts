@@ -1045,19 +1045,16 @@ ${htmlContent}`;
 
       await Promise.all(showPromises);
 
-      // 4. Update the schedule to approved status
+      // 4. Update the schedule to approved status (but don't delete yet)
       await this.parsedScheduleRepository.update(parsedScheduleId, {
         status: ParseStatus.APPROVED,
         aiAnalysis: approvedData as any,
       });
 
-      // 5. Delete the schedule after approval
-      await this.parsedScheduleRepository.delete(parsedScheduleId);
-
       const successMessage = `Successfully saved: 1 vendor, ${djsCreated} new DJs (${djsUpdated} updated), ${showsCreated} new shows (${showsUpdated} updated, ${showsDuplicated} duplicates skipped)`;
       this.logger.log(successMessage);
 
-      return {
+      const result = {
         success: true,
         message: successMessage,
         stats: {
@@ -1070,6 +1067,18 @@ ${htmlContent}`;
           showsDuplicated,
         },
       };
+
+      // 5. Only delete the schedule after everything is successfully saved
+      try {
+        await this.parsedScheduleRepository.delete(parsedScheduleId);
+        this.logger.log(`Successfully deleted approved schedule ${parsedScheduleId} from database`);
+      } catch (deleteError) {
+        // Log the error but don't fail the entire operation since data was saved successfully
+        this.logger.error(`Warning: Failed to delete approved schedule ${parsedScheduleId}: ${deleteError.message}`);
+        this.logger.error('Data was saved successfully, but schedule cleanup failed');
+      }
+
+      return result;
     } catch (error) {
       this.logger.error(`Error approving and saving data: ${error.message}`);
       this.logger.error(error.stack);
