@@ -115,7 +115,7 @@ const ParserReviewPage: React.FC = observer(() => {
       }
     } else {
       // Use traditional parse for review
-      const result = await parserStore.parseWebsite(newUrl);
+      const result = await parserStore.parseWebsite(newUrl, true); // Use Puppeteer for review page
       if (result.success) {
         setNewUrl('');
         setAutoApprove(false);

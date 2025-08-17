@@ -11,7 +11,7 @@ export class ParserController {
   ) {}
 
   @Post('parse-website')
-  async parseWebsite(@Body() body: { url: string }) {
+  async parseWebsite(@Body() body: { url: string; usePuppeteer?: boolean }) {
     try {
       // First, try to add URL to the urls_to_parse table
       let urlToParse;
@@ -35,14 +35,18 @@ export class ParserController {
   }
 
   @Post('parse-and-save-website')
-  async parseAndSaveWebsite(@Body() body: { url: string }) {
+  async parseAndSaveWebsite(
+    @Body() body: { url: string; usePuppeteer?: boolean; isCustomUrl?: boolean },
+  ) {
     try {
-      // First, try to add URL to the urls_to_parse table
+      // Only add URL to the urls_to_parse table if it's not a custom URL
       let urlToParse;
-      try {
-        urlToParse = await this.urlToParseService.create(body.url);
-      } catch (error) {
-        // URL may already exist in urls_to_parse table, continuing with parsing
+      if (!body.isCustomUrl) {
+        try {
+          urlToParse = await this.urlToParseService.create(body.url);
+        } catch (error) {
+          // URL may already exist in urls_to_parse table, continuing with parsing
+        }
       }
 
       // Then parse and save the website

@@ -17,8 +17,8 @@ const HomePage: React.FC = observer(() => {
     <Box data-homepage>
       <SEO {...seoConfigs.home} />
 
-      {/* Google One Tap for non-authenticated users - temporarily disabled due to 403 issue */}
-      {false && !authStore.isAuthenticated && (
+      {/* Google One Tap for non-authenticated users */}
+      {!authStore.isAuthenticated && (
         <GoogleOneTap
           onSuccess={() => {
             // User will be redirected by the One Tap component

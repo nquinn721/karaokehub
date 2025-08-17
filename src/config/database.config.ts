@@ -38,11 +38,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       SongFavorite,
     ],
     synchronize: true, // Enable sync if explicitly set or in development
-    logging: !isProduction
-      ? ['error', 'warn'] // Only log errors and warnings, no queries
-      : configService.get('DATABASE_LOGGING') === 'true'
-        ? ['error', 'warn']
-        : false,
+    logging: false, // Turn off SQL logging completely
 
     // Connection pool options for TypeORM
     ...(isProduction && {

@@ -9,6 +9,7 @@ import {
   faPlus,
   faRefresh,
   faTimes,
+  faTrash,
   faUserShield,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -25,6 +26,7 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
+  DialogContentText,
   DialogTitle,
   Divider,
   FormControl,
@@ -49,7 +51,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { authStore, parserStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 
 const AdminParserPage: React.FC = observer(() => {
@@ -62,6 +64,10 @@ const AdminParserPage: React.FC = observer(() => {
   const [selectedReview, setSelectedReview] = useState<any>(null);
   const [reviewDialog, setReviewDialog] = useState(false);
   const [reviewComments, setReviewComments] = useState('');
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState(false);
+  const [urlToDelete, setUrlToDelete] = useState<{ id: number; url: string } | null>(null);
+
+  const logContainerRef = useRef<HTMLDivElement>(null);
 
   // Redirect non-admin users
   if (!authStore.isAdmin) {
@@ -74,6 +80,13 @@ const AdminParserPage: React.FC = observer(() => {
     parserStore.fetchUrlsToParse();
   }, []);
 
+  // Auto-scroll to bottom when new log entries are added
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [parserStore.parsingLog.length]);
+
   const handleParseUrl = async () => {
     const urlToParse = selectedUrl || customUrl;
     if (!urlToParse) return;
@@ -85,10 +98,13 @@ const AdminParserPage: React.FC = observer(() => {
       const result = await parserStore.parseAndSaveWebsite(urlToParse);
       setParseResult(result);
 
-      // Refresh pending reviews to show the new parsed data
-      await parserStore.fetchPendingReviews();
+      // Only refresh pending reviews if parsing was successful
+      if (result.success) {
+        await parserStore.fetchPendingReviews();
+      }
     } catch (error) {
       console.error('Error parsing URL:', error);
+      // The error will be shown via parserStore.error from the store
     } finally {
       setIsParsingUrl(false);
     }
@@ -196,10 +212,68 @@ const AdminParserPage: React.FC = observer(() => {
                   onChange={(e) => setSelectedUrl(e.target.value)}
                   label="Select URL to Parse"
                   disabled={showCustomUrl}
+                  renderValue={(value) => (
+                    <Box
+                      sx={{
+                        wordBreak: 'break-all',
+                        whiteSpace: 'normal',
+                        py: 0.5,
+                      }}
+                    >
+                      {value}
+                    </Box>
+                  )}
                 >
                   {parserStore.urlsToParse.map((url) => (
-                    <MenuItem key={url.id} value={url.url}>
-                      {url.url}
+                    <MenuItem
+                      key={url.id}
+                      value={url.url}
+                      sx={{
+                        display: 'flex !important',
+                        flexDirection: 'row !important',
+                        justifyContent: 'space-between !important',
+                        alignItems: 'center !important',
+                        py: 1,
+                        minHeight: '48px',
+                        '&.Mui-selected': {
+                          display: 'flex !important',
+                          flexDirection: 'row !important',
+                          justifyContent: 'space-between !important',
+                          alignItems: 'center !important',
+                        },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          flex: 1,
+                          mr: 1,
+                          wordBreak: 'break-all',
+                          whiteSpace: 'normal',
+                          maxWidth: 'calc(100% - 40px)',
+                          alignSelf: 'center',
+                        }}
+                      >
+                        {url.url}
+                      </Box>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={async (e) => {
+                          e.stopPropagation(); // Prevent MenuItem selection
+                          setUrlToDelete({ id: url.id, url: url.url });
+                          setDeleteConfirmDialog(true);
+                        }}
+                        title="Delete URL"
+                        sx={{
+                          minWidth: '32px',
+                          width: '32px',
+                          height: '32px',
+                          flexShrink: 0,
+                          alignSelf: 'center',
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faTrash} size="sm" />
+                      </IconButton>
                     </MenuItem>
                   ))}
                 </Select>
@@ -209,7 +283,17 @@ const AdminParserPage: React.FC = observer(() => {
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => setShowCustomUrl(!showCustomUrl)}
+                  onClick={() => {
+                    const newShowCustomUrl = !showCustomUrl;
+                    setShowCustomUrl(newShowCustomUrl);
+                    if (newShowCustomUrl) {
+                      // Switching to custom URL - clear selected URL
+                      setSelectedUrl('');
+                    } else {
+                      // Switching back to dropdown - clear custom URL
+                      setCustomUrl('');
+                    }
+                  }}
                   startIcon={<FontAwesomeIcon icon={faPlus} />}
                 >
                   {showCustomUrl ? 'Use Dropdown' : 'Custom URL'}
@@ -255,9 +339,15 @@ const AdminParserPage: React.FC = observer(() => {
               </Alert>
             )}
 
-            {parseResult && (
+            {parseResult && parseResult.success && (
               <Alert severity="success" sx={{ mb: 2 }}>
                 Website parsed successfully! Check the review queue below.
+              </Alert>
+            )}
+
+            {parseResult && !parseResult.success && parseResult.error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                Parsing failed: {parseResult.error}
               </Alert>
             )}
           </Paper>
@@ -308,12 +398,130 @@ const AdminParserPage: React.FC = observer(() => {
               </Grid>
             </Grid>
 
+            {/* Selected URL Display */}
+            {selectedUrl && (
+              <>
+                <Divider sx={{ my: 2 }} />
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    Selected URL:
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    component="a"
+                    href={selectedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{
+                      color: 'primary.main',
+                      textDecoration: 'underline',
+                      wordBreak: 'break-all',
+                      '&:hover': {
+                        color: 'primary.dark',
+                      },
+                    }}
+                  >
+                    {selectedUrl}
+                  </Typography>
+                </Box>
+              </>
+            )}
+
+            {/* Parser Live Log */}
+            <Divider sx={{ my: 2 }} />
+            <Box>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 2,
+                }}
+              >
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Parser Log:
+                </Typography>
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={() => parserStore.clearLog()}
+                  sx={{ minWidth: 'auto', p: 0.5 }}
+                >
+                  Clear
+                </Button>
+              </Box>
+              {parserStore.parsingLog.length > 0 ? (
+                <Box
+                  ref={logContainerRef}
+                  sx={{
+                    maxHeight: 200,
+                    overflow: 'auto',
+                    bgcolor: 'grey.900',
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    p: 1,
+                    fontFamily: 'monospace',
+                    fontSize: '0.75rem',
+                  }}
+                >
+                  {parserStore.parsingLog.map((logEntry) => (
+                    <Box
+                      key={logEntry.id}
+                      sx={{
+                        display: 'flex',
+                        gap: 1,
+                        py: 0.25,
+                        borderBottom: '1px solid',
+                        borderColor: 'grey.800',
+                        '&:last-child': { borderBottom: 'none' },
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'grey.500',
+                          minWidth: '60px',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {logEntry.timestamp.toLocaleTimeString()}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color:
+                            logEntry.level === 'success'
+                              ? 'success.main'
+                              : logEntry.level === 'error'
+                                ? 'error.main'
+                                : logEntry.level === 'warning'
+                                  ? 'warning.main'
+                                  : 'text.primary',
+                        }}
+                      >
+                        {logEntry.message}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                  No log entries yet
+                </Typography>
+              )}
+            </Box>
+
             <Divider sx={{ my: 2 }} />
 
             <Button
               fullWidth
               variant="outlined"
-              onClick={() => parserStore.fetchPendingReviews()}
+              onClick={async () => {
+                parserStore.addLogEntry('Refreshing data...', 'info');
+                await parserStore.fetchPendingReviews();
+                parserStore.addLogEntry('Data refreshed successfully', 'success');
+              }}
               startIcon={<FontAwesomeIcon icon={faRefresh} />}
             >
               Refresh Data
@@ -575,6 +783,48 @@ const AdminParserPage: React.FC = observer(() => {
             startIcon={<FontAwesomeIcon icon={faCheck} />}
           >
             Approve
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmDialog}
+        onClose={() => setDeleteConfirmDialog(false)}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Are you sure you want to delete this URL from the parse queue?
+            <br />
+            <strong>{urlToDelete?.url}</strong>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmDialog(false)} color="primary">
+            Cancel
+          </Button>
+          <Button
+            onClick={async () => {
+              if (urlToDelete) {
+                const result = await parserStore.deleteUrlToParse(urlToDelete.id);
+                if (!result.success && result.error) {
+                  console.error('Failed to delete URL:', result.error);
+                }
+                // Clear selection if this URL was selected
+                if (selectedUrl === urlToDelete.url) {
+                  setSelectedUrl('');
+                }
+              }
+              setDeleteConfirmDialog(false);
+              setUrlToDelete(null);
+            }}
+            color="error"
+            variant="contained"
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

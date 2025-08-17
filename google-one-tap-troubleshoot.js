@@ -10,7 +10,9 @@ if (window.google?.accounts?.id) {
   console.log('✅ Google Identity Services loaded');
 } else {
   console.log('❌ Google Identity Services NOT loaded');
-  console.log('💡 Solution: Ensure script tag is present: <script src="https://accounts.google.com/gsi/client" async defer></script>');
+  console.log(
+    '💡 Solution: Ensure script tag is present: <script src="https://accounts.google.com/gsi/client" async defer></script>',
+  );
 }
 
 // Check current domain/origin
@@ -23,21 +25,24 @@ console.log('Current protocol:', window.location.protocol);
 console.log('\n3. Authentication Status:');
 if (localStorage.getItem('token') || sessionStorage.getItem('token')) {
   console.log('⚠️ User appears to be already signed in');
-  console.log('💡 Google One Tap usually doesn\'t show for already authenticated users');
+  console.log("💡 Google One Tap usually doesn't show for already authenticated users");
 } else {
   console.log('✅ No existing auth token found');
 }
 
 // Check cookies for Google
 console.log('\n4. Google Cookies:');
-const googleCookies = document.cookie.split(';').filter(cookie => 
-  cookie.toLowerCase().includes('google') || 
-  cookie.toLowerCase().includes('gsi') ||
-  cookie.toLowerCase().includes('g_state')
-);
+const googleCookies = document.cookie
+  .split(';')
+  .filter(
+    (cookie) =>
+      cookie.toLowerCase().includes('google') ||
+      cookie.toLowerCase().includes('gsi') ||
+      cookie.toLowerCase().includes('g_state'),
+  );
 if (googleCookies.length > 0) {
   console.log('🍪 Found Google-related cookies:');
-  googleCookies.forEach(cookie => console.log('  -', cookie.trim()));
+  googleCookies.forEach((cookie) => console.log('  -', cookie.trim()));
 } else {
   console.log('✅ No Google-related cookies found');
 }
@@ -70,17 +75,17 @@ if (window.google?.accounts?.id) {
       },
       auto_select: false, // Disable auto-select for testing
       cancel_on_tap_outside: true,
-      context: 'signin'
+      context: 'signin',
     });
 
     // Prompt with detailed notification logging
     window.google.accounts.id.prompt((notification) => {
       console.log('🔔 One Tap Notification:', notification);
-      
+
       if (notification.isNotDisplayed()) {
         const reason = notification.getNotDisplayedReason();
         console.log('❌ One Tap NOT displayed. Reason:', reason);
-        
+
         switch (reason) {
           case 'browser_not_supported':
             console.log('💡 Browser not supported for One Tap');
@@ -120,7 +125,7 @@ if (window.google?.accounts?.id) {
         console.log('✅ One Tap should be displayed!');
       }
     });
-    
+
     console.log('✅ Test initiated - check for notifications above');
   } catch (error) {
     console.log('❌ Error testing One Tap:', error);

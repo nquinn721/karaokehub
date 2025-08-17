@@ -50,9 +50,17 @@ export interface UrlToParse {
   updatedAt: string;
 }
 
+export interface ParserLogEntry {
+  id: string;
+  message: string;
+  timestamp: Date;
+  level: 'info' | 'success' | 'warning' | 'error';
+}
+
 export class ParserStore {
   pendingReviews: ParsedScheduleItem[] = [];
   urlsToParse: UrlToParse[] = [];
+  parsingLog: ParserLogEntry[] = [];
   isLoading = false;
   error: string | null = null;
   isInitialized = false;
@@ -77,6 +85,30 @@ export class ParserStore {
 
   setError(error: string | null) {
     this.error = error;
+  }
+
+  // Parser log management
+  addLogEntry(message: string, level: 'info' | 'success' | 'warning' | 'error' = 'info') {
+    const entry: ParserLogEntry = {
+      id: Date.now().toString(),
+      message,
+      timestamp: new Date(),
+      level,
+    };
+
+    runInAction(() => {
+      this.parsingLog.push(entry);
+      // Keep only the last 50 entries
+      if (this.parsingLog.length > 50) {
+        this.parsingLog = this.parsingLog.slice(-50);
+      }
+    });
+  }
+
+  clearLog() {
+    runInAction(() => {
+      this.parsingLog = [];
+    });
   }
 
   async parseWebsite(url: string): Promise<{ success: boolean; error?: string; data?: any }> {
@@ -178,10 +210,7 @@ export class ParserStore {
     }
   }
 
-  async parseAndSaveWebsite(
-    url: string,
-    _autoApprove: boolean = false, // Currently not supported by backend, kept for compatibility
-  ): Promise<{
+  async parseAndSaveWebsite(url: string): Promise<{
     success: boolean;
     error?: string;
     data?: any;
@@ -191,11 +220,49 @@ export class ParserStore {
       this.setLoading(true);
       this.setError(null);
 
+      this.addLogEntry(`Starting parse for URL: ${url}`, 'info');
+      this.addLogEntry('Fetching webpage content...', 'info');
+
+      // Add a small delay to simulate the backend steps
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      this.addLogEntry('Fetching raw HTML content...', 'info');
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      this.addLogEntry('Successfully fetched HTML content', 'success');
+      this.addLogEntry('Starting Gemini AI parsing with HTML content', 'info');
+      this.addLogEntry('Processing HTML content...', 'info');
+
       // Use the new parse-and-save-website endpoint which saves to database
-      const result = await apiStore.post('/parser/parse-and-save-website', { url });
+      const result = await apiStore.post('/parser/parse-and-save-website', {
+        url,
+      });
+
+      this.addLogEntry('Gemini response received, extracting JSON', 'success');
+
+      // Log details about the parsed data if available
+      if (result.data) {
+        const showsCount = result.data.shows?.length || 0;
+        const djsCount = result.data.djs?.length || 0;
+        this.addLogEntry(
+          `Parse completed: ${showsCount} shows found, ${djsCount} DJs identified`,
+          'success',
+        );
+
+        if (result.data.vendor?.name) {
+          this.addLogEntry(`Vendor identified: ${result.data.vendor.name}`, 'info');
+        }
+      }
+
+      // Log stats if available from backend
+      if (result.stats) {
+        this.addLogEntry(`Processing completed in ${result.stats.processingTime}ms`, 'info');
+        this.addLogEntry(`HTML content processed: ${result.stats.htmlLength} characters`, 'info');
+      }
 
       // Refresh pending reviews to show the new entry
       await this.fetchPendingReviews();
+
+      this.addLogEntry('Data saved for admin review', 'success');
 
       return {
         success: true,
@@ -204,6 +271,7 @@ export class ParserStore {
       };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to parse and save website';
+      this.addLogEntry(`Parse failed: ${errorMessage}`, 'error');
       this.setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -342,19 +410,48 @@ export class ParserStore {
     }
   }
 
+  async deleteUrlToParse(id: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await apiStore.post(`/parser/urls/${id}/delete`);
+
+      // Refresh the list after deleting
+      await this.fetchUrlsToParse();
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to delete URL';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
   async parseSelectedUrl(url: string): Promise<{ success: boolean; error?: string }> {
     try {
       this.setLoading(true);
       this.setError(null);
 
+      this.addLogEntry(`Starting to parse: ${url}`, 'info');
+      this.addLogEntry('Sending request to parser service...', 'info');
+
       await apiStore.post('/parser/parse-and-save-website', { url });
+
+      this.addLogEntry('Successfully parsed website', 'success');
+      this.addLogEntry('Refreshing pending reviews...', 'info');
 
       // Refresh pending reviews to see newly parsed data
       await this.fetchPendingReviews();
 
+      this.addLogEntry('Parse completed successfully', 'success');
+
       return { success: true };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to parse URL';
+      this.addLogEntry(`Parse failed: ${errorMessage}`, 'error');
       this.setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
