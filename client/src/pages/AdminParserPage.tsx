@@ -30,6 +30,7 @@ import {
   DialogTitle,
   Divider,
   FormControl,
+  FormControlLabel,
   Grid,
   IconButton,
   InputLabel,
@@ -38,6 +39,8 @@ import {
   ListItemText,
   MenuItem,
   Paper,
+  Radio,
+  RadioGroup,
   Select,
   Table,
   TableBody,
@@ -59,6 +62,7 @@ const AdminParserPage: React.FC = observer(() => {
   const [selectedUrl, setSelectedUrl] = useState('');
   const [customUrl, setCustomUrl] = useState('');
   const [showCustomUrl, setShowCustomUrl] = useState(false);
+  const [parseMethod, setParseMethod] = useState<'html' | 'screenshot'>('html');
   const [isParsingUrl, setIsParsingUrl] = useState(false);
   const [parseResult, setParseResult] = useState<any>(null);
   const [selectedReview, setSelectedReview] = useState<any>(null);
@@ -95,7 +99,7 @@ const AdminParserPage: React.FC = observer(() => {
     setParseResult(null);
 
     try {
-      const result = await parserStore.parseAndSaveWebsite(urlToParse);
+      const result = await parserStore.parseAndSaveWebsite(urlToParse, parseMethod);
       setParseResult(result);
 
       // Only refresh pending reviews if parsing was successful
@@ -318,6 +322,35 @@ const AdminParserPage: React.FC = observer(() => {
                   sx={{ mb: 2 }}
                 />
               )}
+
+              {/* Parsing Method Selection */}
+              <FormControl component="fieldset" sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Parsing Method
+                </Typography>
+                <RadioGroup
+                  row
+                  value={parseMethod}
+                  onChange={(e) => setParseMethod(e.target.value as 'html' | 'screenshot')}
+                >
+                  <FormControlLabel
+                    value="html"
+                    control={<Radio />}
+                    label="HTML Parsing"
+                  />
+                  <FormControlLabel
+                    value="screenshot"
+                    control={<Radio />}
+                    label="Screenshot Parsing"
+                  />
+                </RadioGroup>
+                <Typography variant="caption" color="text.secondary">
+                  {parseMethod === 'html' 
+                    ? 'Parse the HTML content with data attributes (current method)'
+                    : 'Take a full-page screenshot and parse visually (better for complex layouts)'
+                  }
+                </Typography>
+              </FormControl>
 
               <Button
                 fullWidth

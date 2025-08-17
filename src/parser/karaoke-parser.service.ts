@@ -65,11 +65,11 @@ export class KaraokeParserService {
     try {
       this.logger.log(`Starting parse for URL: ${url}`);
 
-      // Step 1: Get clean webpage content
-      const webpageContent = await this.fetchWebpageContent(url);
+      // Step 1: Get webpage content and screenshot for visual parsing
+      const webpageData = await this.fetchWebpageWithScreenshot(url);
 
-      // Step 2: Parse with Gemini AI
-      const parsedData = await this.parseWithGemini(webpageContent, url);
+      // Step 2: Parse with Gemini AI using both HTML and visual data
+      const parsedData = await this.parseWithGeminiVision(webpageData, url);
 
       this.logger.log(
         `Parse completed successfully for ${url}: ${parsedData.shows.length} shows found`,
@@ -166,12 +166,79 @@ export class KaraokeParserService {
   }
 
   /**
-   * Step 1: Use Puppeteer to fetch raw HTML content from website
+   * Parse and save website using full-page screenshot for visual analysis
    */
-  private async fetchRawHtml(url: string): Promise<string> {
+  async parseWebsiteWithScreenshot(url: string): Promise<{
+    parsedScheduleId: string;
+    data: ParsedKaraokeData;
+    stats: {
+      showsFound: number;
+      djsFound: number;
+      vendorName: string;
+      htmlLength: number;
+      processingTime: number;
+    };
+  }> {
+    const startTime = Date.now();
+
+    try {
+      this.logger.log(`Starting screenshot-based parse and save operation for URL: ${url}`);
+
+      // Take a full-page screenshot and parse with Gemini Vision
+      const { screenshot, htmlContent } = await this.captureFullPageScreenshot(url);
+      const parsedData = await this.parseScreenshotWithGemini(screenshot, url);
+
+      // Save to parsed_schedules table for admin review
+      const truncatedContent =
+        htmlContent.length > 10000 ? htmlContent.substring(0, 10000) + '...' : htmlContent;
+
+      const parsedSchedule = this.parsedScheduleRepository.create({
+        url: url,
+        rawData: {
+          url: url,
+          title: this.extractTitleFromHtml(htmlContent),
+          content: truncatedContent,
+          parsedAt: new Date(),
+        },
+        aiAnalysis: parsedData,
+        status: ParseStatus.PENDING_REVIEW,
+      });
+
+      const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
+      const processingTime = Date.now() - startTime;
+
+      this.logger.log(`Successfully saved screenshot-parsed data for admin review. ID: ${savedSchedule.id}`);
+      this.logger.log(
+        `Screenshot processing completed in ${processingTime}ms - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}`,
+      );
+
+      return {
+        parsedScheduleId: savedSchedule.id,
+        data: parsedData,
+        stats: {
+          showsFound: parsedData.shows?.length || 0,
+          djsFound: parsedData.djs?.length || 0,
+          vendorName: parsedData.vendor?.name || 'Unknown',
+          htmlLength: htmlContent.length,
+          processingTime,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Error parsing website with screenshot ${url}:`, error);
+      throw new Error(`Failed to parse website with screenshot: ${error.message}`);
+    }
+  }
+
+  /**
+   * Fetch HTML content and take a screenshot for visual parsing
+   */
+  private async fetchWebpageWithScreenshot(url: string): Promise<{
+    htmlContent: string;
+    screenshot: Buffer;
+  }> {
     let browser;
     try {
-      this.logger.log(`Fetching raw HTML content from: ${url}`);
+      this.logger.log(`Fetching webpage content and screenshot from: ${url}`);
 
       browser = await puppeteer.launch({
         headless: true,
@@ -189,28 +256,71 @@ export class KaraokeParserService {
 
       // Navigate and wait for full page load
       await page.goto(url, {
-        waitUntil: 'networkidle2', // Wait until network is idle
+        waitUntil: 'networkidle2',
         timeout: 30000,
       });
 
-      // Wait additional time for any dynamic content
+      // Wait additional time for any dynamic content to load
       await new Promise((resolve) => setTimeout(resolve, 3000));
 
-      // Get the raw HTML content
+      // Extract data attributes that contain time information
+      const timeData = await page.evaluate(() => {
+        const elements = document.querySelectorAll('[data-day], [data-time], [data-month]');
+        return Array.from(elements).map(el => ({
+          tagName: el.tagName,
+          dataDay: el.getAttribute('data-day'),
+          dataTime: el.getAttribute('data-time'),
+          dataMonth: el.getAttribute('data-month'),
+          textContent: el.textContent?.trim(),
+          className: el.className
+        }));
+      });
+
+      // Get both HTML content and screenshot
       const htmlContent = await page.content();
+      
+      // Create enhanced content that includes the data attributes in readable format
+      let enhancedContent = htmlContent;
+      if (timeData.length > 0) {
+        enhancedContent += '\n\n<!-- EXTRACTED DATA ATTRIBUTES FOR TIME PARSING -->\n';
+        timeData.forEach((item, index) => {
+          if (item.dataDay || item.dataTime || item.dataMonth) {
+            enhancedContent += `<!-- Element ${index + 1}: `;
+            if (item.dataDay) enhancedContent += `TIME="${item.dataDay}" `;
+            if (item.dataTime) enhancedContent += `TIME="${item.dataTime}" `;
+            if (item.dataMonth) enhancedContent += `DAY="${item.dataMonth}" `;
+            enhancedContent += `TEXT="${item.textContent}" -->\n`;
+          }
+        });
+      }
+      
+      const screenshot = await page.screenshot({
+        fullPage: true,
+        type: 'png',
+      });
 
       this.logger.log(
-        `Successfully fetched HTML content from ${url} (${htmlContent.length} characters)`,
+        `Successfully fetched HTML (${htmlContent.length} characters) and screenshot from ${url}`,
       );
-      return htmlContent;
+      this.logger.log(`Found ${timeData.length} elements with time data attributes`);
+
+      return { htmlContent: enhancedContent, screenshot };
     } catch (error) {
-      this.logger.error(`Error fetching HTML content from ${url}:`, error);
+      this.logger.error(`Error fetching webpage content and screenshot from ${url}:`, error);
       throw error;
     } finally {
       if (browser) {
         await browser.close();
       }
     }
+  }
+
+  /**
+   * Step 1: Use Puppeteer to fetch raw HTML content from website
+   */
+  private async fetchRawHtml(url: string): Promise<string> {
+    const result = await this.fetchWebpageWithScreenshot(url);
+    return result.htmlContent;
   }
 
   /**
@@ -242,6 +352,33 @@ export class KaraokeParserService {
     } catch (error) {
       this.logger.error('Error parsing with Gemini:', error);
       throw new Error(`Gemini parsing failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Use Gemini AI with vision to parse webpage using both HTML and screenshot
+   */
+  private async parseWithGeminiVision(
+    webpageData: { htmlContent: string; screenshot: Buffer },
+    url: string,
+  ): Promise<ParsedKaraokeData> {
+    try {
+      this.logger.log('Starting Gemini AI vision parsing with HTML and screenshot');
+      this.logger.log(`Processing HTML content: ${webpageData.htmlContent.length} characters`);
+
+      // Trim unnecessary HTML content first
+      const trimmedHtml = this.trimHtmlContent(webpageData.htmlContent);
+      this.logger.log(
+        `After trimming: ${trimmedHtml.length} characters (${(((webpageData.htmlContent.length - trimmedHtml.length) / webpageData.htmlContent.length) * 100).toFixed(1)}% reduction)`,
+      );
+
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+
+      // Process with enhanced HTML content that includes data attributes
+      return this.parseSingleHtmlContent(trimmedHtml, url, model);
+    } catch (error) {
+      this.logger.error('Error parsing with Gemini vision:', error);
+      throw new Error(`Gemini vision parsing failed: ${error.message}`);
     }
   }
 
@@ -317,14 +454,18 @@ SHOW EXTRACTION RULES:
 - Extract venue name, day, time, and DJ/host name for each entry
 - If a venue appears under multiple days, create separate show entries for each day
 
-TIME PARSING INSTRUCTIONS:
-- Look for specific start times like "9 pm", "9:30", "10:00 pm", "7 pm", etc.
-- Look for end times like "1 am", "1:30 am", "midnight", "close", etc.
-- Convert times to 24-hour format: 9 pm = "21:00", 7 pm = "19:00", 1 am = "01:00", midnight = "00:00"
-- For startTime: Use the actual parsed start time in HH:MM format
-- For endTime: Use the actual parsed end time in HH:MM format, or "close" if no specific end time
-- For time field: Show original format like "9 pm - 1 am" or "9 pm - close"
-- Times may appear anywhere in the content, not necessarily next to venue details
+TIME PARSING INSTRUCTIONS - CRITICAL:
+- LOOK FOR DATA ATTRIBUTES: Times are stored in HTML data attributes like data-day="9 pm"
+- Check for HTML comments that show EXTRACTED DATA ATTRIBUTES 
+- Pattern: <!-- Element X: TIME="9 pm" DAY="Monday" TEXT="venue info" -->
+- EXAMPLE: If you see TIME="9 pm" in data attributes → time="9 pm", startTime="21:00"
+- EXAMPLE: If you see TIME="10 pm" in data attributes → time="10 pm", startTime="22:00"  
+- EXAMPLE: If you see TIME="7 pm" in data attributes → time="7 pm", startTime="19:00"
+- EXAMPLE: If you see TIME="8 pm" in data attributes → time="8 pm", startTime="20:00"
+- EXAMPLE: If you see TIME="9:30" in data attributes → time="9:30 pm", startTime="21:30"
+- For endTime: Use "close" since no specific end times are provided
+- NEVER leave time fields as null - extract the time from the data attributes
+- Data attributes contain the actual show times that may not appear in visible text
 
 Website URL: ${url}
 
@@ -352,9 +493,9 @@ Return JSON (no extra text):
       "venuePhone": "Phone number",
       "venueWebsite": "Venue website if available",
       "date": "day_of_week",
-      "time": "start_time - end_time",
-      "startTime": "HH:MM",
-      "endTime": "HH:MM or close",
+      "time": "REQUIRED: original time format like '9 pm' or '10:00 pm'",
+      "startTime": "REQUIRED: 24-hour format like '21:00' or '22:00'",
+      "endTime": "HH:MM format or 'close'",
       "day": "day_of_week", 
       "djName": "DJ/host name",
       "description": "Additional details",
@@ -759,5 +900,179 @@ ${htmlContent}`;
       transformedUrl: url, // No transformation for now
       suggestions: [],
     };
+  }
+
+  /**
+   * Capture a full-page screenshot of the website
+   */
+  private async captureFullPageScreenshot(url: string): Promise<{
+    screenshot: Buffer;
+    htmlContent: string;
+  }> {
+    let browser;
+    try {
+      this.logger.log(`Capturing full-page screenshot from: ${url}`);
+
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-web-security',
+        ],
+      });
+
+      const page = await browser.newPage();
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+      await page.setViewport({ width: 1280, height: 720 });
+
+      // Navigate and wait for full page load
+      await page.goto(url, {
+        waitUntil: 'networkidle2',
+        timeout: 30000,
+      });
+
+      // Wait additional time for any dynamic content
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Get the HTML content for backup parsing
+      const htmlContent = await page.content();
+
+      // Take a full-page screenshot
+      const screenshot = await page.screenshot({
+        fullPage: true,
+        type: 'png',
+      });
+
+      this.logger.log(
+        `Successfully captured full-page screenshot from ${url} (${screenshot.length} bytes, ${htmlContent.length} characters HTML)`,
+      );
+
+      return { screenshot, htmlContent };
+    } catch (error) {
+      this.logger.error(`Error capturing screenshot from ${url}:`, error);
+      throw error;
+    } finally {
+      if (browser) {
+        await browser.close();
+      }
+    }
+  }
+
+  /**
+   * Parse screenshot using Gemini Vision API
+   */
+  private async parseScreenshotWithGemini(screenshot: Buffer, url: string): Promise<ParsedKaraokeData> {
+    try {
+      this.logger.log('Starting Gemini Vision parsing with screenshot');
+
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+
+      const prompt = `Analyze this screenshot of a karaoke schedule website and extract ALL karaoke shows.
+
+CRITICAL: Extract each venue + day combination as a separate show.
+
+EXCLUDE: Shows marked "CLOSED", "CANCELLED", "SUSPENDED", "UNAVAILABLE", "DISCONTINUED", "TEMPORARILY CLOSED", "OUT OF BUSINESS", "INACTIVE", "NOT RUNNING"
+
+VISUAL PARSING INSTRUCTIONS:
+- Look for venue names organized by day of the week
+- Extract show times that appear near each venue (like "9 pm", "10 pm", "8 pm", etc.)
+- Identify DJ/host names associated with each venue
+- Extract addresses and phone numbers when visible
+- Each venue appearing on a specific day = one show entry
+
+TIME EXTRACTION:
+- Look for times displayed visually near venue names
+- Common formats: "9 pm", "10 pm", "7 pm", "8:30 pm", "9:30", etc.
+- Convert to 24-hour format for startTime (9 pm = "21:00", 7 pm = "19:00")
+- Use "close" for endTime if no specific end time is shown
+
+Website URL: ${url}
+
+Return JSON (no extra text):
+{
+  "vendor": {
+    "name": "Business Name",
+    "owner": "Owner Name if available", 
+    "website": "${url}",
+    "description": "Brief description",
+    "confidence": 0.9
+  },
+  "djs": [
+    {
+      "name": "DJ/host name",
+      "confidence": 0.8,
+      "context": "Venues where they perform",
+      "aliases": []
+    }
+  ],
+  "shows": [
+    {
+      "venue": "Venue Name",
+      "address": "Full address if visible",
+      "venuePhone": "Phone number if visible",
+      "venueWebsite": "Venue website if available",
+      "date": "day_of_week",
+      "time": "original time format like '9 pm'",
+      "startTime": "24-hour format like '21:00'",
+      "endTime": "close",
+      "day": "day_of_week", 
+      "djName": "DJ/host name",
+      "description": "Additional details",
+      "notes": "Special notes",
+      "confidence": 0.8
+    }
+  ]
+}`;
+
+      const imagePart = {
+        inlineData: {
+          data: screenshot.toString('base64'),
+          mimeType: 'image/png',
+        },
+      };
+
+      const result = await model.generateContent([prompt, imagePart]);
+      const response = await result.response;
+      const text = response.text();
+
+      this.logger.log('Gemini Vision response received, extracting JSON');
+      this.logger.log(`Gemini Vision response length: ${text.length} characters`);
+
+      // Log usage metadata if available
+      if (result.response.usageMetadata) {
+        const usage = result.response.usageMetadata;
+        this.logger.log(
+          `Token usage - Prompt: ${usage.promptTokenCount || 'N/A'}, Candidates: ${usage.candidatesTokenCount || 'N/A'}, Total: ${usage.totalTokenCount || 'N/A'}`,
+        );
+      }
+
+      // Clean and parse JSON response
+      const cleanJsonString = this.cleanGeminiResponse(text);
+      const parsedData = JSON.parse(cleanJsonString);
+
+      this.logger.log(
+        `Vision parsed data extracted - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}, Vendor: ${parsedData.vendor?.name || 'Unknown'}`,
+      );
+
+      // Ensure required structure with defaults
+      const finalData: ParsedKaraokeData = {
+        vendor: parsedData.vendor || this.generateVendorFromUrl(url),
+        djs: Array.isArray(parsedData.djs) ? parsedData.djs : [],
+        shows: Array.isArray(parsedData.shows) ? this.normalizeShowTimes(parsedData.shows) : [],
+        rawData: {
+          url,
+          title: 'Screenshot-based parsing',
+          content: 'Parsed from full-page screenshot',
+          parsedAt: new Date(),
+        },
+      };
+
+      return finalData;
+    } catch (error) {
+      this.logger.error('Error parsing screenshot with Gemini Vision:', error);
+      throw new Error(`Gemini Vision parsing failed: ${error.message}`);
+    }
   }
 }

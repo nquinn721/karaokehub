@@ -242,7 +242,7 @@ export class ParserStore {
     }
   }
 
-  async parseAndSaveWebsite(url: string): Promise<{
+  async parseAndSaveWebsite(url: string, parseMethod: 'html' | 'screenshot' = 'html'): Promise<{
     success: boolean;
     error?: string;
     data?: any;
@@ -254,11 +254,13 @@ export class ParserStore {
       this.startParsingTimer();
 
       this.addLogEntry(`Starting parse for URL: ${url}`, 'info');
+      this.addLogEntry(`Using ${parseMethod} parsing method`, 'info');
       this.addLogEntry('Fetching webpage content...', 'info');
 
       // Use the new parse-and-save-website endpoint which saves to database
       const result = await apiStore.post('/parser/parse-and-save-website', {
         url,
+        parseMethod,
       });
 
       this.addLogEntry('Gemini response received, extracting JSON', 'success');

@@ -36,7 +36,12 @@ export class ParserController {
 
   @Post('parse-and-save-website')
   async parseAndSaveWebsite(
-    @Body() body: { url: string; usePuppeteer?: boolean; isCustomUrl?: boolean },
+    @Body() body: { 
+      url: string; 
+      usePuppeteer?: boolean; 
+      isCustomUrl?: boolean;
+      parseMethod?: 'html' | 'screenshot';
+    },
   ) {
     try {
       // Only add URL to the urls_to_parse table if it's not a custom URL
@@ -49,8 +54,15 @@ export class ParserController {
         }
       }
 
-      // Then parse and save the website
-      const result = await this.karaokeParserService.parseAndSaveWebsite(body.url);
+      // Parse using the specified method (default to HTML parsing for backward compatibility)
+      const parseMethod = body.parseMethod || 'html';
+      let result;
+      
+      if (parseMethod === 'screenshot') {
+        result = await this.karaokeParserService.parseWebsiteWithScreenshot(body.url);
+      } else {
+        result = await this.karaokeParserService.parseAndSaveWebsite(body.url);
+      }
 
       return {
         message: 'Website parsed and saved for admin review',
