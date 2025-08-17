@@ -145,20 +145,18 @@ export class MapStore {
       const showsToDisplay = this.showStore.showsForSelectedDay;
       console.log(`Updating map with ${showsToDisplay.length} shows for selected day`);
 
-      // Filter shows that have valid coordinates (from server geocoding)
-      const validShows = showsToDisplay.filter(
-        (show: any) =>
-          show.lat && show.lng && !isNaN(parseFloat(show.lat)) && !isNaN(parseFloat(show.lng)),
-      );
-
-      console.log(`Found ${validShows.length} shows with valid coordinates`);
+      // For now, display all shows even without coordinates
+      // TODO: Implement geocoding service to add coordinates to shows
+      const validShows = showsToDisplay; // Don't filter by coordinates for now
+      
+      console.log(`Displaying ${validShows.length} shows (including those without coordinates)`);
 
       // Convert to GeocodedShow format for map display
       const geocodedShows: GeocodedShow[] = validShows.map((show: any) => ({
         ...show,
         distance: 0, // Distance will be calculated if needed
-        lat: parseFloat(show.lat),
-        lng: parseFloat(show.lng),
+        lat: parseFloat(show.lat) || 0, // Default to 0 if no coordinates
+        lng: parseFloat(show.lng) || 0, // Default to 0 if no coordinates
       }));
 
       runInAction(() => {
