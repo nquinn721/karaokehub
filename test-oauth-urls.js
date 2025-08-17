@@ -42,7 +42,7 @@ class MockUrlService {
     if (this.isProduction) {
       return 'https://karaokehub-203453576607.us-central1.run.app';
     }
-    return this.configService.get('SERVICE_URL') || 'http://localhost:8000';
+    return 'http://localhost:8000';
   }
 
   buildServiceUrl(path) {

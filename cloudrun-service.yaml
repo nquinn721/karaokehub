@@ -110,8 +110,6 @@ spec:
               value: 'price_premium_monthly'
             - name: PUPPETEER_EXECUTABLE_PATH
               value: '/usr/bin/chromium-browser'
-            - name: SERVICE_URL
-              value: 'https://karaokehub-203453576607.us-central1.run.app'
             # Ollama configuration (disabled in Cloud Run by default)
             # Uncomment and set these if you deploy a separate Ollama service:
             # - name: ENABLE_OLLAMA

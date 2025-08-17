@@ -104,9 +104,8 @@ jobs:
         run: |
           URL=$(gcloud run services describe $SERVICE_NAME --region=$REGION --format='value(status.url)')
           echo "Service deployed at: $URL"
-          echo "SERVICE_URL=$URL" >> $GITHUB_ENV
 
       - name: Update status
         run: |
           echo "✅ Deployment successful!"
-          echo "🚀 Service URL: $SERVICE_URL"
+          echo "🚀 Service URL: $URL"

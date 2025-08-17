@@ -58,8 +58,6 @@ urlService.getAllowedOrigins(); // CORS origins
   value: 'https://karaoke-hub.com'
 - name: BACKEND_URL
   value: 'https://karaoke-hub.com' # Same domain, API served from /api
-- name: SERVICE_URL
-  value: 'https://karaokehub-203453576607.us-central1.run.app' # Direct Cloud Run URL
 - name: ALLOWED_ORIGINS
   value: 'https://karaoke-hub.com'
 ```
@@ -70,7 +68,6 @@ urlService.getAllowedOrigins(); // CORS origins
 # .env
 FRONTEND_URL=http://localhost:5173
 BACKEND_URL=http://localhost:8000
-SERVICE_URL=http://localhost:8000
 ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176
 ```
 

@@ -50,7 +50,7 @@ export class UrlService {
     if (this.isProduction) {
       return 'https://karaokehub-203453576607.us-central1.run.app'; // Direct Cloud Run URL
     }
-    return this.configService.get<string>('SERVICE_URL') || 'http://localhost:8000';
+    return 'http://localhost:8000';
   }
 
   /**
