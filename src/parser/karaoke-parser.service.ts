@@ -339,9 +339,12 @@ export class KaraokeParserService {
       this.logger.log(`Launching Puppeteer for: ${url}`);
 
       // Launch browser with optimized settings
+      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
+      this.logger.log(`Using Chromium executable path: ${executablePath}`);
+      
       browser = await puppeteer.launch({
         headless: true,
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH, // Use system Chromium in production
+        executablePath: executablePath,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -2093,15 +2096,18 @@ ${JSON.stringify(facebookData, null, 2)}`;
   /**
    * Debug method to see what Puppeteer is extracting from a URL
    */
-  async debugPuppeteerExtraction(url: string, takeScreenshot: boolean = false): Promise<any> {
+  async debugPuppeteerExtraction(url: string): Promise<any> {
     let browser;
     try {
       this.logger.log(`Starting debug Puppeteer extraction for: ${url}`);
 
       // Launch browser
+      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
+      this.logger.log(`Debug: Using Chromium executable path: ${executablePath}`);
+      
       browser = await puppeteer.launch({
-        headless: !takeScreenshot, // Use non-headless if taking screenshot for better debugging
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+        headless: true, // Always headless for production stability
+        executablePath: executablePath,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -2201,23 +2207,6 @@ ${JSON.stringify(facebookData, null, 2)}`;
       debugData.extraction = extractedData;
       debugData.extractedTextPreview = extractedData.textContent.substring(0, 500) + '...';
 
-      // Take screenshot if requested
-      if (takeScreenshot) {
-        try {
-          const screenshotPath = `./debug_screenshots/puppeteer_${Date.now()}.png`;
-          await page.screenshot({
-            path: screenshotPath,
-            fullPage: true,
-            type: 'png',
-          });
-          debugData.screenshotPath = screenshotPath;
-          this.logger.log(`Screenshot saved to: ${screenshotPath}`);
-        } catch (screenshotError) {
-          this.logger.warn('Failed to take screenshot:', screenshotError.message);
-          debugData.screenshotError = screenshotError.message;
-        }
-      }
-
       return debugData;
     } catch (error) {
       this.logger.error(`Error in debug Puppeteer extraction for ${url}:`, error);
@@ -2274,9 +2263,12 @@ ${JSON.stringify(facebookData, null, 2)}`;
     try {
       this.logger.log(`Extracting content and images from: ${url}`);
 
+      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
+      this.logger.log(`ExtractPostContent: Using Chromium executable path: ${executablePath}`);
+
       browser = await puppeteer.launch({
         headless: true,
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+        executablePath: executablePath,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
