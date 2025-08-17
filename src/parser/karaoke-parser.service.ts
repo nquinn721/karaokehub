@@ -938,8 +938,8 @@ ${htmlContent}`;
 
       const page = await browser.newPage();
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-      // Reduced viewport size for faster screenshot processing
-      await page.setViewport({ width: 1024, height: 600 });
+      // Use larger viewport for better content capture
+      await page.setViewport({ width: 1280, height: 1024 });
 
       // Navigate and wait for full page load
       await page.goto(url, {
@@ -951,6 +951,7 @@ ${htmlContent}`;
       await new Promise((resolve) => setTimeout(resolve, 1500)); // Reduced from 3000
 
       // Scroll to bottom to ensure all content is loaded (for lazy loading)
+      this.logger.log('Scrolling to ensure all content is loaded...');
       await page.evaluate(() => {
         return new Promise((resolve) => {
           let totalHeight = 0;
@@ -974,37 +975,23 @@ ${htmlContent}`;
 
       // Get page dimensions for logging
       const pageHeight = await page.evaluate(() => document.body.scrollHeight);
-      this.logger.log(`Page content height: ${pageHeight}px`);
+      const pageWidth = await page.evaluate(() => document.body.scrollWidth);
+      this.logger.log(`📏 Page dimensions: ${pageWidth}x${pageHeight}px`);
+      
+      if (pageHeight < 8000) {
+        this.logger.warn(`⚠️  Page seems short (${pageHeight}px), expected ~9000px for full content`);
+      }
 
       // Get the HTML content for backup parsing
       const htmlContent = await page.content();
 
-      // Take a optimized screenshot with smaller dimensions and compression
+      // Take a high-quality screenshot
       const screenshot = await page.screenshot({
         fullPage: true,
         type: 'jpeg',
-        quality: 80, // Compress JPEG to reduce file size
-        optimizeForSpeed: true,
+        quality: 90, // Higher quality for better text recognition
+        optimizeForSpeed: false,
       });
-
-      // Save screenshot to file for debugging purposes
-      const fs = require('fs');
-      const path = require('path');
-      const screenshotDir = path.join(process.cwd(), 'debug-screenshots');
-
-      // Create directory if it doesn't exist
-      if (!fs.existsSync(screenshotDir)) {
-        fs.mkdirSync(screenshotDir, { recursive: true });
-      }
-
-      // Generate filename with timestamp and domain
-      const urlObj = new URL(url);
-      const domain = urlObj.hostname.replace(/\./g, '_');
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const screenshotPath = path.join(screenshotDir, `${domain}_${timestamp}.jpg`);
-
-      fs.writeFileSync(screenshotPath, screenshot);
-      this.logger.log(`Screenshot saved to: ${screenshotPath}`);
 
       this.logger.log(
         `Successfully captured full-page screenshot from ${url} (${screenshot.length} bytes, ${htmlContent.length} characters HTML)`,
@@ -1033,14 +1020,20 @@ ${htmlContent}`;
 
       const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
-      const prompt = `Analyze this screenshot and give me all the karaoke shows.
+      const prompt = `Analyze this screenshot and extract ALL karaoke shows from the ENTIRE weekly schedule.
 
-Extract:
-- All venue names, addresses, phone numbers, and showtimes
-- All DJ/host names mentioned
+CRITICAL: This page contains shows for ALL 7 DAYS (Monday through Sunday). You must extract shows from the COMPLETE page, not just the top section.
+
+Extract from the ENTIRE image:
+- ALL venue names from Monday through Sunday
+- ALL addresses, phone numbers, and showtimes  
+- ALL DJ/host names mentioned anywhere on the page
 - The vendor/company information
 
-Format as JSON:
+EXPECTED: There should be 35-40+ shows total across all days of the week.
+
+Return ONLY valid JSON with no extra text:
+
 {
   "vendor": {
     "name": "Company Name",
@@ -1099,9 +1092,56 @@ Format as JSON:
         );
       }
 
-      // Clean and parse JSON response
-      const cleanJsonString = this.cleanGeminiResponse(text);
-      const parsedData = JSON.parse(cleanJsonString);
+      // Clean and parse JSON response with better error handling
+      this.logger.log('Raw Gemini response (first 500 chars):', text.substring(0, 500));
+      this.logger.log(`Full response length: ${text.length} characters`);
+      
+      let parsedData;
+      try {
+        const cleanJsonString = this.cleanGeminiResponse(text);
+        this.logger.log('Cleaned JSON (first 500 chars):', cleanJsonString.substring(0, 500));
+        this.logger.log(`Cleaned JSON length: ${cleanJsonString.length} characters`);
+        parsedData = JSON.parse(cleanJsonString);
+        this.logger.log('✅ JSON parsing successful');
+      } catch (jsonError) {
+        this.logger.error('❌ JSON parsing failed, attempting to fix common issues:', jsonError.message);
+        
+        // Try to fix common JSON issues
+        let fixedJson = this.cleanGeminiResponse(text);
+        
+        // Fix common trailing comma issues
+        fixedJson = fixedJson.replace(/,(\s*[}\]])/g, '$1');
+        
+        // Fix missing quotes around property names
+        fixedJson = fixedJson.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+        
+        // Try to find and fix incomplete JSON by finding the last valid closing brace
+        const lastValidJson = this.extractValidJson(fixedJson);
+        if (lastValidJson) {
+          try {
+            parsedData = JSON.parse(lastValidJson);
+            this.logger.log('✅ Successfully parsed JSON after fixing');
+          } catch (secondError) {
+            this.logger.error('❌ Even fixed JSON failed to parse:', secondError.message);
+            throw new Error(`JSON parsing failed: ${jsonError.message}`);
+          }
+        } else {
+          throw new Error(`JSON parsing failed: ${jsonError.message}`);
+        }
+      }
+
+      // Log detailed parsing results
+      const showCount = parsedData.shows?.length || 0;
+      const djCount = parsedData.djs?.length || 0;
+      const vendorName = parsedData.vendor?.name || 'Unknown';
+      
+      this.logger.log(`📊 Parsing Results: ${showCount} shows, ${djCount} DJs, vendor: ${vendorName}`);
+      
+      if (showCount < 30) {
+        this.logger.warn(`⚠️  WARNING: Only found ${showCount} shows, expected 35-40+. May be incomplete parsing.`);
+      } else {
+        this.logger.log(`✅ Good show count: ${showCount} shows found`);
+      }
 
       this.logger.log(
         `Vision parsed data extracted - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}, Vendor: ${parsedData.vendor?.name || 'Unknown'}`,
@@ -1124,6 +1164,36 @@ Format as JSON:
     } catch (error) {
       this.logger.error('Error parsing screenshot with Gemini Vision:', error);
       throw new Error(`Gemini Vision parsing failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Extract valid JSON from potentially truncated/malformed response
+   */
+  private extractValidJson(jsonString: string): string | null {
+    try {
+      // Try to find the last complete JSON structure
+      let braceCount = 0;
+      let lastValidIndex = -1;
+      
+      for (let i = 0; i < jsonString.length; i++) {
+        if (jsonString[i] === '{') {
+          braceCount++;
+        } else if (jsonString[i] === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            lastValidIndex = i;
+          }
+        }
+      }
+      
+      if (lastValidIndex > 0) {
+        return jsonString.substring(0, lastValidIndex + 1);
+      }
+      
+      return null;
+    } catch (error) {
+      return null;
     }
   }
 }

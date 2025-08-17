@@ -106,6 +106,13 @@ export class ParserStore {
         this.parsingLog = this.parsingLog.slice(-5);
       }
     });
+
+    // Auto-remove entry after 5 seconds
+    setTimeout(() => {
+      runInAction(() => {
+        this.parsingLog = this.parsingLog.filter((log) => log.id !== entry.id);
+      });
+    }, 5000);
   }
 
   clearLog() {
