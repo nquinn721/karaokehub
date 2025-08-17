@@ -786,6 +786,11 @@ ${htmlContent}`;
     this.logger.log(`Starting approval process for schedule ${parsedScheduleId}`);
 
     try {
+      // Validate input data
+      if (!approvedData || !approvedData.vendor || !approvedData.shows || approvedData.shows.length === 0) {
+        throw new Error('Invalid data: missing vendor information or no shows found');
+      }
+
       // 1. Find or create the vendor
       let vendor = await this.vendorRepository.findOne({
         where: { name: approvedData.vendor.name },
@@ -810,7 +815,14 @@ ${htmlContent}`;
       let djsCreated = 0;
       let djsUpdated = 0;
 
-      for (const djData of approvedData.djs) {
+      // Handle empty DJs array gracefully
+      const djsData = approvedData.djs || [];
+      for (const djData of djsData) {
+        if (!djData.name || djData.name.trim() === '') {
+          this.logger.warn('Skipping DJ with empty name');
+          continue;
+        }
+
         let dj = await this.djRepository.findOne({
           where: { name: djData.name, vendorId: vendor.id },
         });
