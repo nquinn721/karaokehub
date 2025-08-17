@@ -242,7 +242,10 @@ export class ParserStore {
     }
   }
 
-  async parseAndSaveWebsite(url: string, parseMethod: 'html' | 'screenshot' = 'html'): Promise<{
+  async parseAndSaveWebsite(
+    url: string,
+    parseMethod: 'html' | 'screenshot' = 'html',
+  ): Promise<{
     success: boolean;
     error?: string;
     data?: any;

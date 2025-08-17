@@ -333,11 +333,7 @@ const AdminParserPage: React.FC = observer(() => {
                   value={parseMethod}
                   onChange={(e) => setParseMethod(e.target.value as 'html' | 'screenshot')}
                 >
-                  <FormControlLabel
-                    value="html"
-                    control={<Radio />}
-                    label="HTML Parsing"
-                  />
+                  <FormControlLabel value="html" control={<Radio />} label="HTML Parsing" />
                   <FormControlLabel
                     value="screenshot"
                     control={<Radio />}
@@ -345,10 +341,9 @@ const AdminParserPage: React.FC = observer(() => {
                   />
                 </RadioGroup>
                 <Typography variant="caption" color="text.secondary">
-                  {parseMethod === 'html' 
+                  {parseMethod === 'html'
                     ? 'Parse the HTML content with data attributes (current method)'
-                    : 'Take a full-page screenshot and parse visually (better for complex layouts)'
-                  }
+                    : 'Take a full-page screenshot and parse visually (better for complex layouts)'}
                 </Typography>
               </FormControl>
 

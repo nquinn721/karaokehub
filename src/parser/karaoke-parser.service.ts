@@ -207,7 +207,9 @@ export class KaraokeParserService {
       const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
       const processingTime = Date.now() - startTime;
 
-      this.logger.log(`Successfully saved screenshot-parsed data for admin review. ID: ${savedSchedule.id}`);
+      this.logger.log(
+        `Successfully saved screenshot-parsed data for admin review. ID: ${savedSchedule.id}`,
+      );
       this.logger.log(
         `Screenshot processing completed in ${processingTime}ms - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}`,
       );
@@ -266,19 +268,19 @@ export class KaraokeParserService {
       // Extract data attributes that contain time information
       const timeData = await page.evaluate(() => {
         const elements = document.querySelectorAll('[data-day], [data-time], [data-month]');
-        return Array.from(elements).map(el => ({
+        return Array.from(elements).map((el) => ({
           tagName: el.tagName,
           dataDay: el.getAttribute('data-day'),
           dataTime: el.getAttribute('data-time'),
           dataMonth: el.getAttribute('data-month'),
           textContent: el.textContent?.trim(),
-          className: el.className
+          className: el.className,
         }));
       });
 
       // Get both HTML content and screenshot
       const htmlContent = await page.content();
-      
+
       // Create enhanced content that includes the data attributes in readable format
       let enhancedContent = htmlContent;
       if (timeData.length > 0) {
@@ -293,7 +295,7 @@ export class KaraokeParserService {
           }
         });
       }
-      
+
       const screenshot = await page.screenshot({
         fullPage: true,
         type: 'png',
@@ -963,7 +965,10 @@ ${htmlContent}`;
   /**
    * Parse screenshot using Gemini Vision API
    */
-  private async parseScreenshotWithGemini(screenshot: Buffer, url: string): Promise<ParsedKaraokeData> {
+  private async parseScreenshotWithGemini(
+    screenshot: Buffer,
+    url: string,
+  ): Promise<ParsedKaraokeData> {
     try {
       this.logger.log('Starting Gemini Vision parsing with screenshot');
 

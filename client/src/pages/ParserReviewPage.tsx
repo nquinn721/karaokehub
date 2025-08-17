@@ -38,7 +38,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { authStore, parserStore } from '@stores/index';
+import { authStore, parserStore, uiStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
@@ -112,14 +112,25 @@ const ParserReviewPage: React.FC = observer(() => {
         setNewUrl('');
         setAutoApprove(false);
         setUrlToParseDialog(false);
+      } else {
+        uiStore.addNotification(
+          result.error || 'Failed to parse and save website. Please try again.',
+          'error',
+        );
       }
     } else {
       // Use traditional parse for review
       const result = await parserStore.parseWebsite(newUrl);
       if (result.success) {
+        uiStore.addNotification('Website parsed successfully! Check pending reviews.', 'success');
         setNewUrl('');
         setAutoApprove(false);
         setUrlToParseDialog(false);
+      } else {
+        uiStore.addNotification(
+          result.error || 'Failed to parse website. Please try again.',
+          'error',
+        );
       }
     }
   };
@@ -149,11 +160,17 @@ const ParserReviewPage: React.FC = observer(() => {
 
     const result = await parserStore.approveSelectedItems(selectedReview, selectedItems);
     if (result.success) {
+      uiStore.addNotification('Selected items approved successfully!', 'success');
       setSelectedReview(null);
       setEditedData(null);
       setSelectedVendor(false);
       setSelectedDjs([]);
       setSelectedShows([]);
+    } else {
+      uiStore.addNotification(
+        result.error || 'Failed to approve selected items. Please try again.',
+        'error',
+      );
     }
   };
 
@@ -162,11 +179,17 @@ const ParserReviewPage: React.FC = observer(() => {
 
     const result = await parserStore.approveAllItems(selectedReview);
     if (result.success) {
+      uiStore.addNotification('All items approved successfully!', 'success');
       setSelectedReview(null);
       setEditedData(null);
       setSelectedVendor(false);
       setSelectedDjs([]);
       setSelectedShows([]);
+    } else {
+      uiStore.addNotification(
+        result.error || 'Failed to approve items. Please try again.',
+        'error',
+      );
     }
   };
 
@@ -175,8 +198,11 @@ const ParserReviewPage: React.FC = observer(() => {
 
     const result = await parserStore.rejectParsedData(selectedReview, reason);
     if (result.success) {
+      uiStore.addNotification('Items rejected successfully!', 'success');
       setSelectedReview(null);
       setEditedData(null);
+    } else {
+      uiStore.addNotification(result.error || 'Failed to reject items. Please try again.', 'error');
     }
   };
 
@@ -185,8 +211,11 @@ const ParserReviewPage: React.FC = observer(() => {
 
     const result = await parserStore.parseSelectedUrl(selectedUrlToParse);
     if (result.success) {
+      uiStore.addNotification('URL parsed successfully!', 'success');
       // Reset selection after successful parsing
       setSelectedUrlToParse('');
+    } else {
+      uiStore.addNotification(result.error || 'Failed to parse URL. Please try again.', 'error');
     }
   };
   const getConfidenceColor = (confidence: number) => {

@@ -36,9 +36,10 @@ export class ParserController {
 
   @Post('parse-and-save-website')
   async parseAndSaveWebsite(
-    @Body() body: { 
-      url: string; 
-      usePuppeteer?: boolean; 
+    @Body()
+    body: {
+      url: string;
+      usePuppeteer?: boolean;
       isCustomUrl?: boolean;
       parseMethod?: 'html' | 'screenshot';
     },
@@ -57,7 +58,7 @@ export class ParserController {
       // Parse using the specified method (default to HTML parsing for backward compatibility)
       const parseMethod = body.parseMethod || 'html';
       let result;
-      
+
       if (parseMethod === 'screenshot') {
         result = await this.karaokeParserService.parseWebsiteWithScreenshot(body.url);
       } else {
