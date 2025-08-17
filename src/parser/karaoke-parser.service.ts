@@ -3,6 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as puppeteer from 'puppeteer';
 import { Repository } from 'typeorm';
+import { DJ } from '../dj/dj.entity';
+import { Show } from '../show/show.entity';
+import { Vendor } from '../vendor/vendor.entity';
 import { ParsedSchedule, ParseStatus } from './parsed-schedule.entity';
 
 export interface ParsedKaraokeData {
@@ -50,6 +53,12 @@ export class KaraokeParserService {
   constructor(
     @InjectRepository(ParsedSchedule)
     private parsedScheduleRepository: Repository<ParsedSchedule>,
+    @InjectRepository(Vendor)
+    private vendorRepository: Repository<Vendor>,
+    @InjectRepository(DJ)
+    private djRepository: Repository<DJ>,
+    @InjectRepository(Show)
+    private showRepository: Repository<Show>,
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -774,17 +783,135 @@ ${htmlContent}`;
     parsedScheduleId: string,
     approvedData: ParsedKaraokeData,
   ): Promise<any> {
-    // Update the schedule to approved
-    await this.parsedScheduleRepository.update(parsedScheduleId, {
-      status: ParseStatus.APPROVED,
-      aiAnalysis: approvedData as any,
-    });
+    this.logger.log(`Starting approval process for schedule ${parsedScheduleId}`);
+    
+    try {
+      // 1. Find or create the vendor
+      let vendor = await this.vendorRepository.findOne({
+        where: { name: approvedData.vendor.name },
+      });
 
-    // Delete the schedule after approval
-    await this.parsedScheduleRepository.delete(parsedScheduleId);
-    this.logger.log(`Deleted approved schedule ${parsedScheduleId} from database`);
+      if (!vendor) {
+        this.logger.log(`Creating new vendor: ${approvedData.vendor.name}`);
+        vendor = this.vendorRepository.create({
+          name: approvedData.vendor.name,
+          owner: approvedData.vendor.owner || '',
+          website: approvedData.vendor.website,
+          description: approvedData.vendor.description,
+        });
+        vendor = await this.vendorRepository.save(vendor);
+        this.logger.log(`Created vendor with ID: ${vendor.id}`);
+      } else {
+        this.logger.log(`Using existing vendor: ${vendor.name} (ID: ${vendor.id})`);
+      }
 
-    return { success: true, message: 'Data approved and saved, schedule removed' };
+      // 2. Create or update DJs
+      const djMap = new Map<string, DJ>();
+      let djsCreated = 0;
+      let djsUpdated = 0;
+
+      for (const djData of approvedData.djs) {
+        let dj = await this.djRepository.findOne({
+          where: { name: djData.name, vendorId: vendor.id },
+        });
+
+        if (!dj) {
+          this.logger.log(`Creating new DJ: ${djData.name}`);
+          dj = this.djRepository.create({
+            name: djData.name,
+            vendorId: vendor.id,
+            isActive: true,
+          });
+          dj = await this.djRepository.save(dj);
+          djsCreated++;
+        } else {
+          this.logger.log(`Using existing DJ: ${dj.name} (ID: ${dj.id})`);
+          // Update DJ to active if it was inactive
+          if (!dj.isActive) {
+            dj.isActive = true;
+            await this.djRepository.save(dj);
+            djsUpdated++;
+          }
+        }
+        djMap.set(djData.name, dj);
+      }
+
+      // 3. Create shows
+      let showsCreated = 0;
+      const showPromises = approvedData.shows.map(async (showData) => {
+        // Find DJ if specified
+        let djId: string | undefined;
+        if (showData.djName) {
+          const dj = djMap.get(showData.djName);
+          djId = dj?.id;
+        }
+
+        // Convert day and time to proper format
+        const dayMapping: { [key: string]: string } = {
+          monday: 'monday',
+          tuesday: 'tuesday',
+          wednesday: 'wednesday',
+          thursday: 'thursday',
+          friday: 'friday',
+          saturday: 'saturday',
+          sunday: 'sunday',
+        };
+
+        const normalizedDay = dayMapping[showData.day?.toLowerCase()] || 'monday';
+
+        this.logger.log(`Creating show: ${showData.venue} on ${normalizedDay} at ${showData.time}`);
+        
+        const show = this.showRepository.create({
+          vendorId: vendor.id,
+          djId: djId,
+          venue: showData.venue,
+          address: showData.address,
+          day: normalizedDay as any, // Cast to DayOfWeek enum
+          time: showData.time,
+          startTime: showData.startTime,
+          endTime: showData.endTime,
+          description: showData.description,
+          notes: showData.notes,
+          venuePhone: showData.venuePhone,
+          venueWebsite: showData.venueWebsite,
+          isActive: true,
+        });
+
+        const savedShow = await this.showRepository.save(show);
+        showsCreated++;
+        return savedShow;
+      });
+
+      await Promise.all(showPromises);
+
+      // 4. Update the schedule to approved status
+      await this.parsedScheduleRepository.update(parsedScheduleId, {
+        status: ParseStatus.APPROVED,
+        aiAnalysis: approvedData as any,
+      });
+
+      // 5. Delete the schedule after approval
+      await this.parsedScheduleRepository.delete(parsedScheduleId);
+      
+      const successMessage = `Successfully saved data: 1 vendor, ${djsCreated} new DJs (${djsUpdated} updated), ${showsCreated} shows`;
+      this.logger.log(successMessage);
+
+      return { 
+        success: true, 
+        message: successMessage,
+        stats: {
+          vendorId: vendor.id,
+          vendorName: vendor.name,
+          djsCreated,
+          djsUpdated,
+          showsCreated,
+        }
+      };
+    } catch (error) {
+      this.logger.error(`Error approving and saving data: ${error.message}`);
+      this.logger.error(error.stack);
+      throw new Error(`Failed to approve and save data: ${error.message}`);
+    }
   }
 
   async approveAllItems(parsedScheduleId: string): Promise<any> {
@@ -1020,7 +1147,7 @@ ${htmlContent}`;
     try {
       this.logger.log('Starting Gemini Vision parsing with screenshot');
 
-      const model = this.genAI.getGenerativeModel({ 
+      const model = this.genAI.getGenerativeModel({
         model: 'gemini-1.5-flash', // Faster model for vision tasks
         generationConfig: {
           temperature: 0.1, // Lower temperature for more consistent parsing
@@ -1084,11 +1211,14 @@ Return ONLY valid JSON with no extra text:
 
       this.logger.log(`Making Gemini Vision API request with optimized settings...`);
       this.logger.log(`Image size: ${(screenshot.length / 1024 / 1024).toFixed(2)} MB`);
-      
+
       const result = (await Promise.race([
         model.generateContent([prompt, imagePart]),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Gemini Vision API timeout after 120 seconds')), 120000),
+          setTimeout(
+            () => reject(new Error('Gemini Vision API timeout after 120 seconds')),
+            120000,
+          ),
         ),
       ])) as any;
       const response = await result.response;
