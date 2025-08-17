@@ -1,4 +1,5 @@
 import {
+  faAngleDown,
   faBars,
   faCog,
   faHome,
@@ -414,7 +415,7 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                 {authStore.isAuthenticated ? (
                   <>
                     {/* User Avatar and Name Display */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       {/* Display Name - Hidden on mobile, clickable to open menu */}
                       <Typography
                         variant="body2"
@@ -425,7 +426,7 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                           display: { xs: 'none', sm: 'block' },
                           cursor: 'pointer',
                           userSelect: 'none',
-                          padding: '4px 8px',
+                          padding: '4px 4px 4px 8px',
                           borderRadius: 1,
                           transition: 'all 0.2s ease-in-out',
                           '&:hover': {
@@ -439,6 +440,28 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                       >
                         {authStore.user && getUserDisplayName(authStore.user)}
                       </Typography>
+
+                      {/* Caret Icon */}
+                      <Box
+                        onClick={handleMenuOpen}
+                        sx={{
+                          display: { xs: 'none', sm: 'flex' },
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                          color: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                          padding: '4px 2px',
+                          borderRadius: 1,
+                          transition: 'all 0.2s ease-in-out',
+                          '&:hover': {
+                            backgroundColor:
+                              theme.palette.mode === 'light'
+                                ? 'rgba(255, 255, 255, 0.1)'
+                                : 'rgba(255, 255, 255, 0.05)',
+                          },
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faAngleDown} size="sm" />
+                      </Box>
 
                       <IconButton
                         size="large"

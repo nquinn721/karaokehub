@@ -297,6 +297,38 @@ export class AuthStore {
     return stored;
   }
 
+  // Handle One Tap authentication success
+  async handleOneTapSuccess(authData: { token: string; user: User; isNewUser?: boolean }) {
+    try {
+      runInAction(() => {
+        this.user = authData.user;
+        this.token = authData.token;
+        this.isAuthenticated = true;
+        this.isLoading = false;
+        this.isNewUser = authData.isNewUser || false;
+
+        // Show modal if user doesn't have a stage name
+        this.showPostLoginModal = !authData.user?.stageName;
+      });
+
+      // Set token in API store
+      apiStore.setToken(authData.token);
+
+      // Fetch subscription status after successful login
+      import('./index').then(({ subscriptionStore }) => {
+        subscriptionStore.fetchSubscriptionStatus().catch((error) => {
+          console.warn('Failed to fetch subscription status after One Tap login:', error);
+        });
+      });
+
+      console.log('One Tap authentication successful');
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to handle One Tap success:', error);
+      return { success: false, error: 'Failed to complete authentication' };
+    }
+  }
+
   // Handle OAuth success callback
   async handleAuthSuccess(token: string, navigate: (path: string) => void) {
     try {

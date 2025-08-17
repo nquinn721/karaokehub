@@ -53,6 +53,36 @@ export class AuthController {
     }
   }
 
+  @Post('google/verify')
+  async verifyGoogleCredential(@Body() body: { credential: string; clientId?: string }) {
+    try {
+      console.log('🟢 [GOOGLE_ONE_TAP] Starting credential verification');
+      
+      if (!body.credential) {
+        throw new HttpException('Credential is required', HttpStatus.BAD_REQUEST);
+      }
+
+      // Verify the Google JWT credential
+      const result = await this.authService.verifyGoogleCredential(body.credential);
+      
+      console.log('🟢 [GOOGLE_ONE_TAP] Verification successful for user:', result.user.email);
+      
+      return {
+        success: true,
+        user: result.user,
+        token: result.token,
+        isNewUser: result.isNewUser,
+        message: result.isNewUser ? 'Account created successfully' : 'Login successful',
+      };
+    } catch (error) {
+      console.error('🔴 [GOOGLE_ONE_TAP] Verification failed:', error.message);
+      throw new HttpException(
+        error.message || 'Google credential verification failed',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+  }
+
   @Get('google')
   @UseGuards(AuthGuard('google'))
   async googleAuth(@Req() req) {

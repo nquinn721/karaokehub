@@ -144,11 +144,22 @@ export class MapStore {
       // Get all shows for the selected day from ShowStore
       const showsToDisplay = this.showStore.showsForSelectedDay;
       console.log(`Updating map with ${showsToDisplay.length} shows for selected day`);
+      console.log(
+        'Shows to display:',
+        showsToDisplay.map((s: any) => ({
+          id: s.id,
+          venue: s.venue,
+          day: s.day,
+          lat: s.lat,
+          lng: s.lng,
+          address: s.address,
+        })),
+      );
 
       // For now, display all shows even without coordinates
       // TODO: Implement geocoding service to add coordinates to shows
       const validShows = showsToDisplay; // Don't filter by coordinates for now
-      
+
       console.log(`Displaying ${validShows.length} shows (including those without coordinates)`);
 
       // Convert to GeocodedShow format for map display

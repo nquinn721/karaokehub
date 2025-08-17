@@ -341,7 +341,7 @@ export class KaraokeParserService {
       // Launch browser with optimized settings
       const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
       this.logger.log(`Using Chromium executable path: ${executablePath}`);
-      
+
       browser = await puppeteer.launch({
         headless: true,
         executablePath: executablePath,
@@ -2104,7 +2104,7 @@ ${JSON.stringify(facebookData, null, 2)}`;
       // Launch browser
       const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser';
       this.logger.log(`Debug: Using Chromium executable path: ${executablePath}`);
-      
+
       browser = await puppeteer.launch({
         headless: true, // Always headless for production stability
         executablePath: executablePath,

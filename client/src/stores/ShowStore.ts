@@ -304,7 +304,19 @@ export class ShowStore {
   }
 
   get showsForSelectedDay() {
-    return this.shows.filter((show) => show.day === this.selectedDay);
+    const filtered = this.shows.filter((show) => show.day === this.selectedDay);
+    console.log(
+      `ShowStore.showsForSelectedDay: ${filtered.length} shows for ${this.selectedDay} (total shows: ${this.shows.length})`,
+    );
+    console.log(
+      'All shows:',
+      this.shows.map((s) => ({ id: s.id, day: s.day, venue: s.venue })),
+    );
+    console.log(
+      'Filtered shows:',
+      filtered.map((s) => ({ id: s.id, day: s.day, venue: s.venue })),
+    );
+    return filtered;
   }
 
   get showsWithCoordinates() {

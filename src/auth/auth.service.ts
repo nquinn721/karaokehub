@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { OAuth2Client } from 'google-auth-library';
 import * as bcrypt from 'bcryptjs';
 import { UserService } from '../user/user.service';
 import { CreateUserDto, LoginDto } from './dto/auth.dto';
@@ -17,10 +18,18 @@ export interface User {
 
 @Injectable()
 export class AuthService {
+  private googleClient: OAuth2Client;
+
   constructor(
     private jwtService: JwtService,
     private userService: UserService,
-  ) {}
+  ) {
+    // Initialize Google OAuth2 client
+    this.googleClient = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+    );
+  }
 
   async register(
     createUserDto: CreateUserDto,
@@ -217,6 +226,75 @@ export class AuthService {
     } catch (error) {
       console.error('JWT validation failed:', error.message);
       throw error;
+    }
+  }
+
+  async verifyGoogleCredential(credential: string): Promise<{ user: User; token: string; isNewUser: boolean }> {
+    try {
+      console.log('🟢 [GOOGLE_ONE_TAP] Starting credential verification');
+      
+      // Verify the Google JWT token
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload) {
+        throw new Error('Invalid Google credential payload');
+      }
+
+      console.log('🟢 [GOOGLE_ONE_TAP] Google credential verified for:', payload.email);
+
+      const { sub: googleId, email, name, picture } = payload;
+
+      if (!email || !googleId) {
+        throw new Error('Required user information missing from Google credential');
+      }
+
+      // Check if user exists
+      let existingUser = await this.userService.findByEmail(email);
+      let isNewUser = false;
+
+      if (existingUser) {
+        console.log('🟢 [GOOGLE_ONE_TAP] Existing user found:', email);
+        
+        // Update user info if needed (in case profile changed)
+        if (existingUser.name !== name || existingUser.avatar !== picture) {
+          existingUser = await this.userService.update(existingUser.id, {
+            name: name || existingUser.name,
+            avatar: picture || existingUser.avatar,
+          });
+        }
+      } else {
+        console.log('🟢 [GOOGLE_ONE_TAP] Creating new user:', email);
+        
+        // Create new user
+        existingUser = await this.userService.create({
+          email,
+          name: name || email.split('@')[0], // Use part before @ as fallback name
+          avatar: picture,
+          provider: 'google',
+          providerId: googleId,
+          // No password for OAuth users
+        });
+        
+        isNewUser = true;
+      }
+
+      // Generate JWT token
+      const token = this.generateToken(existingUser);
+
+      console.log('🟢 [GOOGLE_ONE_TAP] Authentication successful for:', email, { isNewUser });
+
+      return {
+        user: existingUser,
+        token,
+        isNewUser,
+      };
+    } catch (error) {
+      console.error('🔴 [GOOGLE_ONE_TAP] Verification failed:', error.message);
+      throw new Error(`Google credential verification failed: ${error.message}`);
     }
   }
 

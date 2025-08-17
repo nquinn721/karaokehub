@@ -188,13 +188,15 @@ export class SubscriptionService {
 
   async hasActiveSubscription(userId: string): Promise<boolean> {
     const subscription = await this.getUserSubscription(userId);
-    return subscription?.status === SubscriptionStatus.ACTIVE || false;
+    return (subscription?.status === SubscriptionStatus.ACTIVE || 
+            subscription?.status === SubscriptionStatus.TRIALING) || false;
   }
 
   async hasAdFreeAccess(userId: string): Promise<boolean> {
     const subscription = await this.getUserSubscription(userId);
     return (
-      subscription?.status === SubscriptionStatus.ACTIVE &&
+      (subscription?.status === SubscriptionStatus.ACTIVE || 
+       subscription?.status === SubscriptionStatus.TRIALING) &&
       (subscription.plan === SubscriptionPlan.AD_FREE ||
         subscription.plan === SubscriptionPlan.PREMIUM)
     );
@@ -203,7 +205,8 @@ export class SubscriptionService {
   async hasPremiumAccess(userId: string): Promise<boolean> {
     const subscription = await this.getUserSubscription(userId);
     return (
-      subscription?.status === SubscriptionStatus.ACTIVE &&
+      (subscription?.status === SubscriptionStatus.ACTIVE || 
+       subscription?.status === SubscriptionStatus.TRIALING) &&
       subscription.plan === SubscriptionPlan.PREMIUM
     );
   }
