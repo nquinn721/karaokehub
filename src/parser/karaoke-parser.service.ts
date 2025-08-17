@@ -68,6 +68,64 @@ export class KaraokeParserService {
   }
 
   /**
+   * Helper method to validate and convert time values for database storage
+   */
+  private validateTimeValue(timeValue: string | undefined): string | undefined {
+    if (!timeValue || timeValue.trim() === '') {
+      return undefined;
+    }
+
+    const normalizedTime = timeValue.toLowerCase().trim();
+    
+    // Handle common non-time values
+    const invalidTimeValues = ['close', 'late', 'varies', 'tbd', 'n/a', 'na', 'unknown', 'open'];
+    if (invalidTimeValues.includes(normalizedTime)) {
+      return undefined;
+    }
+
+    // If it's already in HH:MM format, return as is
+    if (/^\d{1,2}:\d{2}$/.test(normalizedTime)) {
+      return normalizedTime;
+    }
+
+    // Try to convert common time formats
+    // Convert "10:30 pm" to "22:30"
+    const timeWithAmPm = normalizedTime.match(/^(\d{1,2}):?(\d{2})?\s*(am|pm)$/i);
+    if (timeWithAmPm) {
+      let hours = parseInt(timeWithAmPm[1]);
+      const minutes = timeWithAmPm[2] || '00';
+      const period = timeWithAmPm[3].toLowerCase();
+      
+      if (period === 'pm' && hours !== 12) {
+        hours += 12;
+      } else if (period === 'am' && hours === 12) {
+        hours = 0;
+      }
+      
+      return `${hours.toString().padStart(2, '0')}:${minutes}`;
+    }
+
+    // Convert "10 pm" to "22:00"
+    const simpleTimeWithAmPm = normalizedTime.match(/^(\d{1,2})\s*(am|pm)$/i);
+    if (simpleTimeWithAmPm) {
+      let hours = parseInt(simpleTimeWithAmPm[1]);
+      const period = simpleTimeWithAmPm[2].toLowerCase();
+      
+      if (period === 'pm' && hours !== 12) {
+        hours += 12;
+      } else if (period === 'am' && hours === 12) {
+        hours = 0;
+      }
+      
+      return `${hours.toString().padStart(2, '0')}:00`;
+    }
+
+    // If we can't parse it, return undefined (don't store invalid time)
+    this.logger.warn(`Could not parse time value: "${timeValue}", storing as null`);
+    return undefined;
+  }
+
+  /**
    * Main parsing method - takes a URL and returns parsed karaoke data
    */
   async parseWebsite(url: string): Promise<ParsedKaraokeData> {
@@ -933,12 +991,18 @@ ${htmlContent}`;
             showUpdated = true;
           }
           if (!existingShow.startTime && showData.startTime) {
-            existingShow.startTime = showData.startTime;
-            showUpdated = true;
+            const validatedStartTime = this.validateTimeValue(showData.startTime);
+            if (validatedStartTime) {
+              existingShow.startTime = validatedStartTime;
+              showUpdated = true;
+            }
           }
           if (!existingShow.endTime && showData.endTime) {
-            existingShow.endTime = showData.endTime;
-            showUpdated = true;
+            const validatedEndTime = this.validateTimeValue(showData.endTime);
+            if (validatedEndTime) {
+              existingShow.endTime = validatedEndTime;
+              showUpdated = true;
+            }
           }
 
           if (showUpdated) {
@@ -954,6 +1018,10 @@ ${htmlContent}`;
 
         this.logger.log(`Creating new show: ${showData.venue} on ${normalizedDay} at ${showData.time}`);
 
+        // Validate and convert time values
+        const validatedStartTime = this.validateTimeValue(showData.startTime);
+        const validatedEndTime = this.validateTimeValue(showData.endTime);
+
         const show = this.showRepository.create({
           vendorId: vendor.id,
           djId: djId,
@@ -961,8 +1029,8 @@ ${htmlContent}`;
           address: showData.address,
           day: normalizedDay as any, // Cast to DayOfWeek enum
           time: showData.time,
-          startTime: showData.startTime,
-          endTime: showData.endTime,
+          startTime: validatedStartTime,
+          endTime: validatedEndTime,
           description: showData.description,
           notes: showData.notes,
           venuePhone: showData.venuePhone,
