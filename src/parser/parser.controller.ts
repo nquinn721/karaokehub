@@ -243,10 +243,7 @@ export class ParserController {
   @Post('debug-puppeteer')
   async debugPuppeteer(@Body() body: { url: string; takeScreenshot?: boolean }) {
     try {
-      const result = await this.karaokeParserService.debugPuppeteerExtraction(
-        body.url,
-        body.takeScreenshot,
-      );
+      const result = await this.karaokeParserService.debugPuppeteerExtraction(body.url);
       return result;
     } catch (error) {
       console.error('Error debugging Puppeteer:', error);
