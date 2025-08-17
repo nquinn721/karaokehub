@@ -977,9 +977,11 @@ ${htmlContent}`;
       const pageHeight = await page.evaluate(() => document.body.scrollHeight);
       const pageWidth = await page.evaluate(() => document.body.scrollWidth);
       this.logger.log(`📏 Page dimensions: ${pageWidth}x${pageHeight}px`);
-      
+
       if (pageHeight < 8000) {
-        this.logger.warn(`⚠️  Page seems short (${pageHeight}px), expected ~9000px for full content`);
+        this.logger.warn(
+          `⚠️  Page seems short (${pageHeight}px), expected ~9000px for full content`,
+        );
       }
 
       // Get the HTML content for backup parsing
@@ -989,8 +991,8 @@ ${htmlContent}`;
       const screenshot = await page.screenshot({
         fullPage: true,
         type: 'jpeg',
-        quality: 90, // Higher quality for better text recognition
-        optimizeForSpeed: false,
+        quality: 85, // Balanced quality for faster processing
+        optimizeForSpeed: false, // Keep false for better quality
       });
 
       this.logger.log(
@@ -1018,7 +1020,15 @@ ${htmlContent}`;
     try {
       this.logger.log('Starting Gemini Vision parsing with screenshot');
 
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+      const model = this.genAI.getGenerativeModel({ 
+        model: 'gemini-1.5-flash', // Faster model for vision tasks
+        generationConfig: {
+          temperature: 0.1, // Lower temperature for more consistent parsing
+          topP: 0.8,
+          topK: 40,
+          maxOutputTokens: 8192, // Sufficient for large JSON response
+        },
+      });
 
       const prompt = `Analyze this screenshot and extract ALL karaoke shows from the ENTIRE weekly schedule.
 
@@ -1072,10 +1082,13 @@ Return ONLY valid JSON with no extra text:
         },
       };
 
+      this.logger.log(`Making Gemini Vision API request with optimized settings...`);
+      this.logger.log(`Image size: ${(screenshot.length / 1024 / 1024).toFixed(2)} MB`);
+      
       const result = (await Promise.race([
         model.generateContent([prompt, imagePart]),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Gemini Vision API timeout after 45 seconds')), 45000),
+          setTimeout(() => reject(new Error('Gemini Vision API timeout after 120 seconds')), 120000),
         ),
       ])) as any;
       const response = await result.response;
@@ -1095,7 +1108,7 @@ Return ONLY valid JSON with no extra text:
       // Clean and parse JSON response with better error handling
       this.logger.log('Raw Gemini response (first 500 chars):', text.substring(0, 500));
       this.logger.log(`Full response length: ${text.length} characters`);
-      
+
       let parsedData;
       try {
         const cleanJsonString = this.cleanGeminiResponse(text);
@@ -1104,17 +1117,20 @@ Return ONLY valid JSON with no extra text:
         parsedData = JSON.parse(cleanJsonString);
         this.logger.log('✅ JSON parsing successful');
       } catch (jsonError) {
-        this.logger.error('❌ JSON parsing failed, attempting to fix common issues:', jsonError.message);
-        
+        this.logger.error(
+          '❌ JSON parsing failed, attempting to fix common issues:',
+          jsonError.message,
+        );
+
         // Try to fix common JSON issues
         let fixedJson = this.cleanGeminiResponse(text);
-        
+
         // Fix common trailing comma issues
         fixedJson = fixedJson.replace(/,(\s*[}\]])/g, '$1');
-        
+
         // Fix missing quotes around property names
         fixedJson = fixedJson.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
-        
+
         // Try to find and fix incomplete JSON by finding the last valid closing brace
         const lastValidJson = this.extractValidJson(fixedJson);
         if (lastValidJson) {
@@ -1134,11 +1150,15 @@ Return ONLY valid JSON with no extra text:
       const showCount = parsedData.shows?.length || 0;
       const djCount = parsedData.djs?.length || 0;
       const vendorName = parsedData.vendor?.name || 'Unknown';
-      
-      this.logger.log(`📊 Parsing Results: ${showCount} shows, ${djCount} DJs, vendor: ${vendorName}`);
-      
+
+      this.logger.log(
+        `📊 Parsing Results: ${showCount} shows, ${djCount} DJs, vendor: ${vendorName}`,
+      );
+
       if (showCount < 30) {
-        this.logger.warn(`⚠️  WARNING: Only found ${showCount} shows, expected 35-40+. May be incomplete parsing.`);
+        this.logger.warn(
+          `⚠️  WARNING: Only found ${showCount} shows, expected 35-40+. May be incomplete parsing.`,
+        );
       } else {
         this.logger.log(`✅ Good show count: ${showCount} shows found`);
       }
@@ -1175,7 +1195,7 @@ Return ONLY valid JSON with no extra text:
       // Try to find the last complete JSON structure
       let braceCount = 0;
       let lastValidIndex = -1;
-      
+
       for (let i = 0; i < jsonString.length; i++) {
         if (jsonString[i] === '{') {
           braceCount++;
@@ -1186,11 +1206,11 @@ Return ONLY valid JSON with no extra text:
           }
         }
       }
-      
+
       if (lastValidIndex > 0) {
         return jsonString.substring(0, lastValidIndex + 1);
       }
-      
+
       return null;
     } catch (error) {
       return null;
