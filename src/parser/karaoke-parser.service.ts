@@ -305,11 +305,26 @@ export class KaraokeParserService {
     url: string,
     model: any,
   ): Promise<ParsedKaraokeData> {
-    const prompt = `Find all karaoke shows in this HTML content.
+    const prompt = `Extract ALL karaoke shows from this HTML content. Each venue + day combination is a separate show.
+
+CRITICAL: For each venue mentioned, create a separate show entry for EACH day of the week it appears.
 
 EXCLUDE: Shows marked "CLOSED", "CANCELLED", "SUSPENDED", "UNAVAILABLE", "DISCONTINUED", "TEMPORARILY CLOSED", "OUT OF BUSINESS", "INACTIVE", "NOT RUNNING"
 
-TIME PARSING: Look for times anywhere in the content (formats: "9 pm", "9:30", "10:00 pm"). Times may not be inline with venue details. Convert to 24-hour format. If only start time found, use "close" for end time.
+SHOW EXTRACTION RULES:
+- Each venue name + day of week = one show entry
+- Look for patterns like "Monday: Park St Tavern - 9 pm - Mattallica"
+- Extract venue name, day, time, and DJ/host name for each entry
+- If a venue appears under multiple days, create separate show entries for each day
+
+TIME PARSING INSTRUCTIONS:
+- Look for specific start times like "9 pm", "9:30", "10:00 pm", "7 pm", etc.
+- Look for end times like "1 am", "1:30 am", "midnight", "close", etc.
+- Convert times to 24-hour format: 9 pm = "21:00", 7 pm = "19:00", 1 am = "01:00", midnight = "00:00"
+- For startTime: Use the actual parsed start time in HH:MM format
+- For endTime: Use the actual parsed end time in HH:MM format, or "close" if no specific end time
+- For time field: Show original format like "9 pm - 1 am" or "9 pm - close"
+- Times may appear anywhere in the content, not necessarily next to venue details
 
 Website URL: ${url}
 
@@ -337,9 +352,9 @@ Return JSON (no extra text):
       "venuePhone": "Phone number",
       "venueWebsite": "Venue website if available",
       "date": "day_of_week",
-      "time": "start_time - end_time (or start_time - close)",
-      "startTime": "HH:MM (24-hour format)",
-      "endTime": "HH:MM (24-hour format, or 'close')",
+      "time": "start_time - end_time",
+      "startTime": "HH:MM",
+      "endTime": "HH:MM or close",
       "day": "day_of_week", 
       "djName": "DJ/host name",
       "description": "Additional details",
@@ -390,6 +405,9 @@ ${htmlContent}`;
     this.logger.log('Gemini response received, extracting JSON');
     this.logger.log(`Gemini response length: ${text.length} characters`);
 
+    // DEBUG: Log the actual Gemini response to see what it's returning
+    this.logger.log(`Gemini raw response: ${text}`);
+
     // Log usage metadata if available
     if (result.response.usageMetadata) {
       const usage = result.response.usageMetadata;
@@ -400,6 +418,7 @@ ${htmlContent}`;
 
     // Clean and parse JSON response
     const cleanJsonString = this.cleanGeminiResponse(text);
+    this.logger.log(`Cleaned JSON: ${cleanJsonString}`);
     const parsedData = JSON.parse(cleanJsonString);
 
     this.logger.log(

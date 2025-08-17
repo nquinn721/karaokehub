@@ -111,7 +111,7 @@ const SubmitShowPage: React.FC = observer(() => {
     setError('');
 
     try {
-      const result = await parserStore.parseWebsite(url, false); // Use Gemini Vision for best quality
+      const result = await parserStore.parseWebsite(url);
       if (result.success && result.data) {
         setParsedData(result.data);
         setSuccess('URL parsed successfully! Please review the data below.');

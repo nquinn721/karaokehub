@@ -298,7 +298,16 @@ class ApiStore {
     }
 
     try {
-      const response = await this.axiosInstance.post<T>(url, data, config);
+      // Check if this is a parser endpoint that needs longer timeout
+      const isParserEndpoint =
+        url.includes('/parser/parse') || url.includes('/parser/parse-and-save');
+
+      // Use longer timeout for parser endpoints (10 minutes) or default config
+      const requestConfig = isParserEndpoint
+        ? { ...config, timeout: 600000 } // 10 minutes for parsing
+        : config;
+
+      const response = await this.axiosInstance.post<T>(url, data, requestConfig);
 
       if (!hasInterceptors) {
         runInAction(() => {

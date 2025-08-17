@@ -83,7 +83,7 @@ const ParserReviewPage: React.FC = observer(() => {
 
     if (autoApprove) {
       // Use parse and save directly
-      const result = await parserStore.parseAndSaveWebsite(newUrl, true);
+      const result = await parserStore.parseAndSaveWebsite(newUrl);
       if (result.success && result.data) {
         // Show success dialog with details
         const avgDjConfidence =
@@ -115,7 +115,7 @@ const ParserReviewPage: React.FC = observer(() => {
       }
     } else {
       // Use traditional parse for review
-      const result = await parserStore.parseWebsite(newUrl, true); // Use Puppeteer for review page
+      const result = await parserStore.parseWebsite(newUrl);
       if (result.success) {
         setNewUrl('');
         setAutoApprove(false);

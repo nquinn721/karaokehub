@@ -329,9 +329,34 @@ const AdminParserPage: React.FC = observer(() => {
                   isParsingUrl ? <CircularProgress size={16} /> : <FontAwesomeIcon icon={faPlay} />
                 }
               >
-                {isParsingUrl ? 'Parsing...' : 'Parse Website'}
+                {isParsingUrl
+                  ? `Parsing... (${parserStore.getFormattedElapsedTime()})`
+                  : 'Parse Website'}
               </Button>
             </Box>
+
+            {/* Parsing Status */}
+            {isParsingUrl && (
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 2,
+                  bgcolor: 'primary.50',
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor: 'primary.200',
+                }}
+              >
+                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <CircularProgress size={16} sx={{ mr: 1 }} />
+                  <strong>Parsing in progress... ({parserStore.getFormattedElapsedTime()})</strong>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  This may take several minutes depending on website size. The parser is processing
+                  the content and extracting show information.
+                </Typography>
+              </Box>
+            )}
 
             {parserStore.error && (
               <Alert severity="error" sx={{ mb: 2 }}>

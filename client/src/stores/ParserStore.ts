@@ -64,6 +64,9 @@ export class ParserStore {
   isLoading = false;
   error: string | null = null;
   isInitialized = false;
+  parsingStartTime: Date | null = null;
+  parsingElapsedTime = 0;
+  parsingTimer: NodeJS.Timeout | null = null;
 
   constructor() {
     makeAutoObservable(this);
@@ -98,9 +101,9 @@ export class ParserStore {
 
     runInAction(() => {
       this.parsingLog.push(entry);
-      // Keep only the last 50 entries
-      if (this.parsingLog.length > 50) {
-        this.parsingLog = this.parsingLog.slice(-50);
+      // Keep only the last 5 entries
+      if (this.parsingLog.length > 5) {
+        this.parsingLog = this.parsingLog.slice(-5);
       }
     });
   }
@@ -109,6 +112,35 @@ export class ParserStore {
     runInAction(() => {
       this.parsingLog = [];
     });
+  }
+
+  startParsingTimer() {
+    runInAction(() => {
+      this.parsingStartTime = new Date();
+      this.parsingElapsedTime = 0;
+    });
+
+    this.parsingTimer = setInterval(() => {
+      if (this.parsingStartTime) {
+        runInAction(() => {
+          this.parsingElapsedTime = Date.now() - this.parsingStartTime!.getTime();
+        });
+      }
+    }, 1000);
+  }
+
+  stopParsingTimer() {
+    if (this.parsingTimer) {
+      clearInterval(this.parsingTimer);
+      this.parsingTimer = null;
+    }
+  }
+
+  getFormattedElapsedTime(): string {
+    const seconds = Math.floor(this.parsingElapsedTime / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
 
   async parseWebsite(url: string): Promise<{ success: boolean; error?: string; data?: any }> {
@@ -219,18 +251,10 @@ export class ParserStore {
     try {
       this.setLoading(true);
       this.setError(null);
+      this.startParsingTimer();
 
       this.addLogEntry(`Starting parse for URL: ${url}`, 'info');
       this.addLogEntry('Fetching webpage content...', 'info');
-
-      // Add a small delay to simulate the backend steps
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      this.addLogEntry('Fetching raw HTML content...', 'info');
-
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      this.addLogEntry('Successfully fetched HTML content', 'success');
-      this.addLogEntry('Starting Gemini AI parsing with HTML content', 'info');
-      this.addLogEntry('Processing HTML content...', 'info');
 
       // Use the new parse-and-save-website endpoint which saves to database
       const result = await apiStore.post('/parser/parse-and-save-website', {
@@ -270,11 +294,26 @@ export class ParserStore {
         parsedScheduleId: result.parsedScheduleId,
       };
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to parse and save website';
-      this.addLogEntry(`Parse failed: ${errorMessage}`, 'error');
+      let errorMessage = 'Failed to parse and save website';
+
+      // Check if it's a timeout error
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        errorMessage = 'Parser request timed out - this usually indicates a server error';
+        this.addLogEntry('Request timed out - server may have encountered an error', 'error');
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+        this.addLogEntry(`Server error: ${errorMessage}`, 'error');
+      } else if (error.message) {
+        errorMessage = error.message;
+        this.addLogEntry(`Network error: ${errorMessage}`, 'error');
+      } else {
+        this.addLogEntry('Unknown error occurred during parsing', 'error');
+      }
+
       this.setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
+      this.stopParsingTimer();
       this.setLoading(false);
     }
   }
