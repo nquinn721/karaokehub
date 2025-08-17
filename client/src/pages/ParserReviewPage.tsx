@@ -160,7 +160,9 @@ const ParserReviewPage: React.FC = observer(() => {
 
     const result = await parserStore.approveSelectedItems(selectedReview, selectedItems);
     if (result.success) {
-      uiStore.addNotification('Selected items approved successfully!', 'success');
+      // Show detailed success message if available
+      const message = result.message || 'Selected items approved successfully!';
+      uiStore.addNotification(message, 'success');
       setSelectedReview(null);
       setEditedData(null);
       setSelectedVendor(false);
@@ -179,7 +181,9 @@ const ParserReviewPage: React.FC = observer(() => {
 
     const result = await parserStore.approveAllItems(selectedReview);
     if (result.success) {
-      uiStore.addNotification('All items approved successfully!', 'success');
+      // Show detailed success message if available
+      const message = result.message || 'All items approved successfully!';
+      uiStore.addNotification(message, 'success');
       setSelectedReview(null);
       setEditedData(null);
       setSelectedVendor(false);

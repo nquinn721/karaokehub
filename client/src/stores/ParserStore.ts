@@ -339,7 +339,7 @@ export class ParserStore {
   async approveSelectedItems(
     reviewId: string,
     _selectedItems: any, // Currently not used, approves all data
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; message?: string }> {
     try {
       this.setLoading(true);
 
@@ -350,14 +350,17 @@ export class ParserStore {
       }
 
       // Use the approve-schedule endpoint with the modified data
-      await apiStore.post(`/parser/approve-schedule/${reviewId}`, {
+      const response = await apiStore.post(`/parser/approve-schedule/${reviewId}`, {
         approvedData: review.aiAnalysis,
       });
 
       // Refresh pending reviews
       await this.fetchPendingReviews();
 
-      return { success: true };
+      return { 
+        success: true,
+        message: response.data?.result?.message || response.data?.message 
+      };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to approve selected items';
       return { success: false, error: errorMessage };
@@ -367,17 +370,20 @@ export class ParserStore {
   }
 
   // Approve all items from a parsed schedule
-  async approveAllItems(reviewId: string): Promise<{ success: boolean; error?: string }> {
+  async approveAllItems(reviewId: string): Promise<{ success: boolean; error?: string; message?: string }> {
     try {
       this.setLoading(true);
 
       // Use the new approve-all endpoint
-      await apiStore.post(`/parser/approve-all/${reviewId}`);
+      const response = await apiStore.post(`/parser/approve-all/${reviewId}`);
 
       // Refresh pending reviews
       await this.fetchPendingReviews();
 
-      return { success: true };
+      return { 
+        success: true, 
+        message: response.data?.result?.message || response.data?.message 
+      };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to approve items';
       return { success: false, error: errorMessage };

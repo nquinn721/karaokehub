@@ -784,7 +784,7 @@ ${htmlContent}`;
     approvedData: ParsedKaraokeData,
   ): Promise<any> {
     this.logger.log(`Starting approval process for schedule ${parsedScheduleId}`);
-    
+
     try {
       // 1. Find or create the vendor
       let vendor = await this.vendorRepository.findOne({
@@ -860,7 +860,7 @@ ${htmlContent}`;
         const normalizedDay = dayMapping[showData.day?.toLowerCase()] || 'monday';
 
         this.logger.log(`Creating show: ${showData.venue} on ${normalizedDay} at ${showData.time}`);
-        
+
         const show = this.showRepository.create({
           vendorId: vendor.id,
           djId: djId,
@@ -892,12 +892,12 @@ ${htmlContent}`;
 
       // 5. Delete the schedule after approval
       await this.parsedScheduleRepository.delete(parsedScheduleId);
-      
+
       const successMessage = `Successfully saved data: 1 vendor, ${djsCreated} new DJs (${djsUpdated} updated), ${showsCreated} shows`;
       this.logger.log(successMessage);
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: successMessage,
         stats: {
           vendorId: vendor.id,
@@ -905,7 +905,7 @@ ${htmlContent}`;
           djsCreated,
           djsUpdated,
           showsCreated,
-        }
+        },
       };
     } catch (error) {
       this.logger.error(`Error approving and saving data: ${error.message}`);
