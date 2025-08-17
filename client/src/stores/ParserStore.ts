@@ -1,4 +1,5 @@
 import { makeAutoObservable, runInAction } from 'mobx';
+import { Socket } from 'socket.io-client';
 import { apiStore } from './ApiStore';
 
 export interface ParsedVendorData {
@@ -18,10 +19,16 @@ export interface ParsedDJData {
 
 export interface ParsedShowData {
   venue: string;
-  date: string;
   time: string;
   djName?: string;
   description?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  venuePhone?: string;
+  venueWebsite?: string;
+  imageUrl?: string;
   confidence: number;
 }
 
@@ -67,9 +74,38 @@ export class ParserStore {
   parsingStartTime: Date | null = null;
   parsingElapsedTime = 0;
   parsingTimer: number | null = null;
+  socket: Socket | null = null;
 
   constructor() {
     makeAutoObservable(this);
+    // Don't auto-initialize WebSocket - let WebSocketStore handle connections
+  }
+
+  // Setup parser-specific WebSocket events through the shared WebSocketStore
+  setupParserEvents(socket: Socket) {
+    if (!socket) return;
+    
+    socket.on('parser-log', (data: { message: string; timestamp: string }) => {
+      this.addLogEntry(data.message, 'info');
+    });
+
+    socket.on('parser-error', (data: { message: string; timestamp: string }) => {
+      this.addLogEntry(data.message, 'error');
+    });
+  }
+
+  // Initialize WebSocket connection for real-time parser logs (legacy method - now deprecated)
+  initializeWebSocket() {
+    // This method is deprecated - use setupParserEvents with shared WebSocketStore instead
+    console.warn('ParserStore.initializeWebSocket() is deprecated. Use setupParserEvents() with shared WebSocketStore.');
+  }
+
+  // Cleanup WebSocket connection
+  disconnect() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
   }
 
   // Initialize store by fetching pending reviews
@@ -92,8 +128,9 @@ export class ParserStore {
 
   // Parser log management
   addLogEntry(message: string, level: 'info' | 'success' | 'warning' | 'error' = 'info') {
+    // Generate a unique ID using timestamp + random component to prevent duplicates
     const entry: ParserLogEntry = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       message,
       timestamp: new Date(),
       level,

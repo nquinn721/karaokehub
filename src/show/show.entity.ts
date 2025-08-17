@@ -37,10 +37,16 @@ export class Show {
   address: string;
 
   @Column({ nullable: true })
-  venue: string;
+  city: string;
 
-  @Column({ type: 'date', nullable: true })
-  date: Date;
+  @Column({ nullable: true })
+  state: string;
+
+  @Column({ nullable: true })
+  zip: string;
+
+  @Column({ nullable: true })
+  venue: string;
 
   @Column({ nullable: true })
   time: string;
@@ -57,9 +63,6 @@ export class Show {
 
   @Column({ type: 'time', nullable: true })
   endTime: string;
-
-  @Column({ nullable: true })
-  notes: string;
 
   @Column({ nullable: true })
   description: string;

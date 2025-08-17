@@ -23,11 +23,21 @@ interface KaraokeRoom {
   };
 }
 
+interface ParserLogEntry {
+  id: string;
+  message: string;
+  timestamp: Date;
+  level: 'info' | 'success' | 'warning' | 'error';
+}
+
 @WebSocketGateway({
   cors: {
     origin: true, // Will be dynamically set
     credentials: true,
   },
+  maxHttpBufferSize: 1e6, // 1MB limit
+  pingTimeout: 60000,
+  pingInterval: 25000,
 })
 export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -36,6 +46,8 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
   private logger: Logger = new Logger('KaraokeWebSocketGateway');
   private rooms: Map<string, KaraokeRoom> = new Map();
   private userSockets: Map<string, string> = new Map(); // userId -> socketId
+  private parserLogs: ParserLogEntry[] = []; // Store parser logs
+  private connectedClients: Set<string> = new Set(); // Track connected client IDs
 
   constructor(private urlService: UrlService) {
     // Update CORS origins dynamically
@@ -44,7 +56,16 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
   }
 
   handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}`);
+    // Check if too many clients are connected (simple rate limiting)
+    if (this.connectedClients.size > 100) {
+      this.logger.warn(`Connection limit reached. Rejecting client: ${client.id}`);
+      client.emit('error', { message: 'Server is at capacity. Please try again later.' });
+      client.disconnect();
+      return;
+    }
+
+    this.connectedClients.add(client.id);
+    this.logger.log(`Client connected: ${client.id} (Total: ${this.connectedClients.size})`);
 
     // Send welcome message
     client.emit('welcome', {
@@ -54,7 +75,8 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
   }
 
   handleDisconnect(client: Socket) {
-    this.logger.log(`Client disconnected: ${client.id}`);
+    this.connectedClients.delete(client.id);
+    this.logger.log(`Client disconnected: ${client.id} (Total: ${this.connectedClients.size})`);
 
     // Remove from user sockets mapping
     for (const [userId, socketId] of this.userSockets.entries()) {
@@ -232,5 +254,53 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
       rooms: roomList,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  // Parser log methods
+  @SubscribeMessage('join-parser-logs')
+  handleJoinParserLogs(@ConnectedSocket() client: Socket) {
+    client.join('parser-logs');
+    // Send current logs to the client
+    client.emit('parser-logs-history', this.parserLogs);
+  }
+
+  @SubscribeMessage('leave-parser-logs')
+  handleLeaveParserLogs(@ConnectedSocket() client: Socket) {
+    client.leave('parser-logs');
+  }
+
+  // Method to broadcast parser logs to all subscribed clients
+  broadcastParserLog(message: string, level: 'info' | 'success' | 'warning' | 'error' = 'info') {
+    const logEntry: ParserLogEntry = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      message,
+      timestamp: new Date(),
+      level,
+    };
+
+    // Add to internal log storage
+    this.parserLogs.push(logEntry);
+
+    // Keep only the last 50 entries in memory
+    if (this.parserLogs.length > 50) {
+      this.parserLogs = this.parserLogs.slice(-50);
+    }
+
+    // Broadcast to all clients subscribed to parser logs
+    this.server.to('parser-logs').emit('parser-log', logEntry);
+
+    // Auto-remove log entry after 5 seconds
+    setTimeout(() => {
+      this.parserLogs = this.parserLogs.filter((log) => log.id !== logEntry.id);
+      this.server.to('parser-logs').emit('parser-log-expired', logEntry.id);
+    }, 5000);
+
+    return logEntry;
+  }
+
+  // Method to clear all parser logs
+  clearParserLogs() {
+    this.parserLogs = [];
+    this.server.to('parser-logs').emit('parser-logs-cleared');
   }
 }

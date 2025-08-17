@@ -5,5 +5,6 @@ import { KaraokeWebSocketGateway } from './websocket.gateway';
 @Module({
   imports: [ConfigApiModule],
   providers: [KaraokeWebSocketGateway],
+  exports: [KaraokeWebSocketGateway],
 })
 export class WebSocketModule {}

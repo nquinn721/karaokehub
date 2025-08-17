@@ -53,6 +53,9 @@ export class RootStore {
     this.subscriptionStore = subscriptionStoreInstance; // Use the singleton instance
     this.apiStore = apiStoreInstance;
 
+    // Setup WebSocket connection and parser events
+    this.setupWebSocket();
+
     // Setup autorun to fetch subscription status when auth state changes
     autorun(() => {
       if (this.authStore.isAuthenticated && this.authStore.token) {
@@ -65,6 +68,24 @@ export class RootStore {
         this.subscriptionStore.clearSubscriptionStatus();
       }
     });
+  }
+
+  private setupWebSocket() {
+    // Connect to WebSocket server
+    this.webSocketStore.connect();
+    
+    // Setup parser-specific events when WebSocket connects
+    autorun(() => {
+      if (this.webSocketStore.isConnected && this.webSocketStore.socket) {
+        this.parserStore.setupParserEvents(this.webSocketStore.socket);
+      }
+    });
+  }
+
+  // Cleanup method for when the app unmounts
+  cleanup() {
+    this.webSocketStore.disconnect();
+    this.parserStore.disconnect();
   }
 }
 

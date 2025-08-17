@@ -503,7 +503,7 @@ const ParserReviewPage: React.FC = observer(() => {
                     </Typography>
                     <Stack spacing={1}>
                       {editedData.djs?.map((dj: any, index: number) => (
-                        <Paper key={index} sx={{ p: 2 }}>
+                        <Paper key={`dj-${index}-${dj.name || 'unnamed'}`} sx={{ p: 2 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                             <Checkbox
                               checked={selectedDjs.includes(`dj-${index}`)}
@@ -544,7 +544,7 @@ const ParserReviewPage: React.FC = observer(() => {
                               <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                 {dj.aliases.map((alias: string, aliasIndex: number) => (
                                   <Chip
-                                    key={aliasIndex}
+                                    key={`alias-${index}-${aliasIndex}-${alias}`}
                                     label={alias}
                                     size="small"
                                     variant="outlined"
@@ -565,7 +565,7 @@ const ParserReviewPage: React.FC = observer(() => {
                               <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                 {dj.socialHandles.map((handle: string, handleIndex: number) => (
                                   <Chip
-                                    key={handleIndex}
+                                    key={`handle-${index}-${handleIndex}-${handle}`}
                                     label={handle}
                                     size="small"
                                     color="primary"
@@ -606,7 +606,10 @@ const ParserReviewPage: React.FC = observer(() => {
                     </Typography>
                     <Stack spacing={2}>
                       {editedData.shows?.map((show: any, index: number) => (
-                        <Paper key={index} sx={{ p: 2 }}>
+                        <Paper
+                          key={`show-${index}-${show.venue || 'unknown'}-${show.time || index}`}
+                          sx={{ p: 2 }}
+                        >
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                             <Checkbox
                               checked={selectedShows.includes(`show-${index}`)}
@@ -622,7 +625,7 @@ const ParserReviewPage: React.FC = observer(() => {
                               color="primary"
                             />
                             <Typography variant="subtitle2" flexGrow={1}>
-                              Select Show: {show.venue} - {show.date} {show.time}
+                              Select Show: {show.venue} - {show.time}
                             </Typography>
                           </Box>
                           <Grid container spacing={2}>
@@ -633,19 +636,6 @@ const ParserReviewPage: React.FC = observer(() => {
                                 onChange={(e) => {
                                   const newShows = [...editedData.shows];
                                   newShows[index] = { ...newShows[index], venue: e.target.value };
-                                  setEditedData({ ...editedData, shows: newShows });
-                                }}
-                                fullWidth
-                                size="small"
-                              />
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <TextField
-                                label="Date"
-                                value={show.date || ''}
-                                onChange={(e) => {
-                                  const newShows = [...editedData.shows];
-                                  newShows[index] = { ...newShows[index], date: e.target.value };
                                   setEditedData({ ...editedData, shows: newShows });
                                 }}
                                 fullWidth
@@ -694,6 +684,50 @@ const ParserReviewPage: React.FC = observer(() => {
                             </Grid>
                             <Grid item xs={12} sm={6}>
                               <TextField
+                                label="City"
+                                value={show.city || ''}
+                                onChange={(e) => {
+                                  const newShows = [...editedData.shows];
+                                  newShows[index] = { ...newShows[index], city: e.target.value };
+                                  setEditedData({ ...editedData, shows: newShows });
+                                }}
+                                fullWidth
+                                size="small"
+                                placeholder="City name"
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <TextField
+                                label="State"
+                                value={show.state || ''}
+                                onChange={(e) => {
+                                  const newShows = [...editedData.shows];
+                                  newShows[index] = { ...newShows[index], state: e.target.value };
+                                  setEditedData({ ...editedData, shows: newShows });
+                                }}
+                                fullWidth
+                                size="small"
+                                placeholder="State (e.g., CA, NY, TX)"
+                                inputProps={{ maxLength: 2, style: { textTransform: 'uppercase' } }}
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={4}>
+                              <TextField
+                                label="ZIP Code"
+                                value={show.zip || ''}
+                                onChange={(e) => {
+                                  const newShows = [...editedData.shows];
+                                  newShows[index] = { ...newShows[index], zip: e.target.value };
+                                  setEditedData({ ...editedData, shows: newShows });
+                                }}
+                                fullWidth
+                                size="small"
+                                placeholder="12345"
+                                inputProps={{ maxLength: 10, pattern: '[0-9]{5}(-[0-9]{4})?' }}
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <TextField
                                 label="Venue Phone"
                                 value={show.venuePhone || ''}
                                 onChange={(e) => {
@@ -724,6 +758,23 @@ const ParserReviewPage: React.FC = observer(() => {
                                 fullWidth
                                 size="small"
                                 placeholder="https://venue-website.com"
+                              />
+                            </Grid>
+                            <Grid item xs={12}>
+                              <TextField
+                                label="Venue Image URL"
+                                value={show.imageUrl || ''}
+                                onChange={(e) => {
+                                  const newShows = [...editedData.shows];
+                                  newShows[index] = {
+                                    ...newShows[index],
+                                    imageUrl: e.target.value,
+                                  };
+                                  setEditedData({ ...editedData, shows: newShows });
+                                }}
+                                fullWidth
+                                size="small"
+                                placeholder="https://example.com/venue-image.jpg"
                               />
                             </Grid>
                             <Grid item xs={12}>

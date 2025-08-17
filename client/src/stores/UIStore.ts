@@ -13,7 +13,7 @@ export class UIStore {
 
   constructor() {
     makeAutoObservable(this);
-    
+
     makePersistable(this, {
       name: 'UIStore',
       properties: ['darkMode', 'sidebarOpen'],
@@ -35,13 +35,13 @@ export class UIStore {
 
   addNotification(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') {
     const notification = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       message,
       type,
       timestamp: new Date(),
     };
     this.notifications.push(notification);
-    
+
     // Auto remove after 5 seconds
     setTimeout(() => {
       this.removeNotification(notification.id);
@@ -49,7 +49,7 @@ export class UIStore {
   }
 
   removeNotification(id: string) {
-    this.notifications = this.notifications.filter(n => n.id !== id);
+    this.notifications = this.notifications.filter((n) => n.id !== id);
   }
 
   clearNotifications() {

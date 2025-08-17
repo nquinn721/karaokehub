@@ -36,12 +36,23 @@ export class WebSocketStore {
   }
 
   connect() {
-    if (this.socket?.connected) return;
+    if (this.socket?.connected) {
+      console.log('WebSocket already connected, skipping connection attempt');
+      return;
+    }
 
-    // Use the WebSocket URL from ApiStore
+    if (this.socket && !this.socket.connected) {
+      // Reuse existing socket if it exists but isn't connected
+      this.socket.connect();
+      return;
+    }
+
+    // Create new socket connection
+    console.log('Creating new WebSocket connection...');
     this.socket = io(apiStore.websocketURL, {
       transports: ['websocket', 'polling'],
       withCredentials: true,
+      forceNew: false, // Reuse existing connection if possible
     });
 
     this.setupEventListeners();
@@ -49,6 +60,8 @@ export class WebSocketStore {
 
   disconnect() {
     if (this.socket) {
+      console.log('Disconnecting WebSocket...');
+      this.socket.removeAllListeners(); // Clean up all event listeners
       this.socket.disconnect();
       runInAction(() => {
         this.socket = null;

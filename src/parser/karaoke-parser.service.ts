@@ -4,8 +4,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as puppeteer from 'puppeteer';
 import { Repository } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
+import { GeocodingService } from '../geocoding/geocoding.service';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
+import { KaraokeWebSocketGateway } from '../websocket/websocket.gateway';
 import { ParsedSchedule, ParseStatus } from './parsed-schedule.entity';
 
 export interface ParsedKaraokeData {
@@ -25,16 +27,18 @@ export interface ParsedKaraokeData {
   shows: Array<{
     venue: string;
     address?: string;
-    date: string;
+    city?: string;
+    state?: string;
+    zip?: string;
     time: string;
     startTime?: string;
     endTime?: string;
     day?: string;
     djName?: string;
     description?: string;
-    notes?: string;
     venuePhone?: string;
     venueWebsite?: string;
+    imageUrl?: string;
     confidence: number;
   }>;
   rawData?: {
@@ -59,12 +63,41 @@ export class KaraokeParserService {
     private djRepository: Repository<DJ>,
     @InjectRepository(Show)
     private showRepository: Repository<Show>,
+    private geocodingService: GeocodingService,
+    private webSocketGateway: KaraokeWebSocketGateway,
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY environment variable is required');
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
+  }
+
+  /**
+   * Enhanced logging method that logs both to console and broadcasts to WebSocket clients
+   */
+  private logAndBroadcast(
+    message: string,
+    level: 'info' | 'success' | 'warning' | 'error' = 'info',
+  ) {
+    // Log to console using NestJS logger
+    switch (level) {
+      case 'success':
+      case 'info':
+        this.logger.log(message);
+        break;
+      case 'warning':
+        this.logger.warn(message);
+        break;
+      case 'error':
+        this.logger.error(message);
+        break;
+    }
+
+    // Broadcast to WebSocket clients
+    if (this.webSocketGateway) {
+      this.webSocketGateway.broadcastParserLog(message, level);
+    }
   }
 
   /**
@@ -76,7 +109,7 @@ export class KaraokeParserService {
     }
 
     const normalizedTime = timeValue.toLowerCase().trim();
-    
+
     // Handle common non-time values
     const invalidTimeValues = ['close', 'late', 'varies', 'tbd', 'n/a', 'na', 'unknown', 'open'];
     if (invalidTimeValues.includes(normalizedTime)) {
@@ -95,13 +128,13 @@ export class KaraokeParserService {
       let hours = parseInt(timeWithAmPm[1]);
       const minutes = timeWithAmPm[2] || '00';
       const period = timeWithAmPm[3].toLowerCase();
-      
+
       if (period === 'pm' && hours !== 12) {
         hours += 12;
       } else if (period === 'am' && hours === 12) {
         hours = 0;
       }
-      
+
       return `${hours.toString().padStart(2, '0')}:${minutes}`;
     }
 
@@ -110,18 +143,18 @@ export class KaraokeParserService {
     if (simpleTimeWithAmPm) {
       let hours = parseInt(simpleTimeWithAmPm[1]);
       const period = simpleTimeWithAmPm[2].toLowerCase();
-      
+
       if (period === 'pm' && hours !== 12) {
         hours += 12;
       } else if (period === 'am' && hours === 12) {
         hours = 0;
       }
-      
+
       return `${hours.toString().padStart(2, '0')}:00`;
     }
 
     // If we can't parse it, return undefined (don't store invalid time)
-    this.logger.warn(`Could not parse time value: "${timeValue}", storing as null`);
+    this.logAndBroadcast(`Could not parse time value: "${timeValue}", storing as null`, 'warning');
     return undefined;
   }
 
@@ -130,7 +163,7 @@ export class KaraokeParserService {
    */
   async parseWebsite(url: string): Promise<ParsedKaraokeData> {
     try {
-      this.logger.log(`Starting parse for URL: ${url}`);
+      this.logAndBroadcast(`Starting parse for URL: ${url}`, 'info');
 
       // Step 1: Get webpage content and screenshot for visual parsing
       const webpageData = await this.fetchWebpageWithScreenshot(url);
@@ -138,12 +171,13 @@ export class KaraokeParserService {
       // Step 2: Parse with Gemini AI using both HTML and visual data
       const parsedData = await this.parseWithGeminiVision(webpageData, url);
 
-      this.logger.log(
+      this.logAndBroadcast(
         `Parse completed successfully for ${url}: ${parsedData.shows.length} shows found`,
+        'success'
       );
       return parsedData;
     } catch (error) {
-      this.logger.error(`Error parsing website ${url}:`, error);
+      this.logAndBroadcast(`Error parsing website ${url}:`, 'error');
       throw new Error(`Failed to parse website: ${error.message}`);
     }
   }
@@ -152,7 +186,7 @@ export class KaraokeParserService {
    * Fetch clean webpage content using intelligent content extraction
    */
   private async fetchWebpageContent(url: string): Promise<string> {
-    this.logger.log(`Fetching webpage content for: ${url}`);
+    this.logAndBroadcast(`Fetching webpage content for: ${url}`, 'info');
 
     try {
       // Use a mock of the fetch_webpage functionality for now
@@ -162,7 +196,7 @@ export class KaraokeParserService {
       // For now, fall back to Puppeteer but with better content extraction
       return await this.fetchRawHtml(url);
     } catch (error) {
-      this.logger.error(`Error fetching webpage content: ${error.message}`);
+      this.logAndBroadcast(`Error fetching webpage content: ${error.message}`, 'error');
       throw error;
     }
   }
@@ -184,7 +218,7 @@ export class KaraokeParserService {
     const startTime = Date.now();
 
     try {
-      this.logger.log(`Starting parse and save operation for URL: ${url}`);
+      this.logAndBroadcast(`Starting parse and save operation for URL: ${url}`, 'info');
 
       // Parse the website
       const parsedData = await this.parseWebsite(url);
@@ -210,9 +244,10 @@ export class KaraokeParserService {
       const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
       const processingTime = Date.now() - startTime;
 
-      this.logger.log(`Successfully saved parsed data for admin review. ID: ${savedSchedule.id}`);
-      this.logger.log(
+      this.logAndBroadcast(`Successfully saved parsed data for admin review. ID: ${savedSchedule.id}`, 'success');
+      this.logAndBroadcast(
         `Processing completed in ${processingTime}ms - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}`,
+        'success'
       );
 
       return {
@@ -227,7 +262,7 @@ export class KaraokeParserService {
         },
       };
     } catch (error) {
-      this.logger.error(`Error parsing and saving website ${url}:`, error);
+      this.logAndBroadcast(`Error parsing and saving website ${url}:`, 'error');
       throw new Error(`Failed to parse and save website: ${error.message}`);
     }
   }
@@ -249,22 +284,23 @@ export class KaraokeParserService {
     const startTime = Date.now();
 
     try {
-      this.logger.log(`Starting screenshot-based parse and save operation for URL: ${url}`);
+      this.logAndBroadcast(`Starting screenshot-based parse and save operation for URL: ${url}`, 'info');
 
       // Take a full-page screenshot and parse with Gemini Vision
-      this.logger.log('Step 1: Capturing screenshot...');
+      this.logAndBroadcast('Step 1: Capturing screenshot...', 'info');
       const screenshotStartTime = Date.now();
       const { screenshot, htmlContent } = await this.captureFullPageScreenshot(url);
       const screenshotTime = Date.now() - screenshotStartTime;
-      this.logger.log(
+      this.logAndBroadcast(
         `Screenshot captured in ${screenshotTime}ms (${(screenshot.length / 1024 / 1024).toFixed(2)} MB)`,
+        'success'
       );
 
-      this.logger.log('Step 2: Processing with Gemini Vision...');
+      this.logAndBroadcast('Step 2: Processing with Gemini Vision...', 'info');
       const geminiStartTime = Date.now();
       const parsedData = await this.parseScreenshotWithGemini(screenshot, url);
       const geminiTime = Date.now() - geminiStartTime;
-      this.logger.log(`Gemini Vision completed in ${geminiTime}ms`);
+      this.logAndBroadcast(`Gemini Vision completed in ${geminiTime}ms`, 'success');
 
       // Save to parsed_schedules table for admin review
       const truncatedContent =
@@ -285,11 +321,13 @@ export class KaraokeParserService {
       const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
       const processingTime = Date.now() - startTime;
 
-      this.logger.log(
+      this.logAndBroadcast(
         `Successfully saved screenshot-parsed data for admin review. ID: ${savedSchedule.id}`,
+        'success'
       );
-      this.logger.log(
+      this.logAndBroadcast(
         `Screenshot processing completed in ${processingTime}ms - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}`,
+        'success'
       );
 
       return {
@@ -304,7 +342,7 @@ export class KaraokeParserService {
         },
       };
     } catch (error) {
-      this.logger.error(`Error parsing website with screenshot ${url}:`, error);
+      this.logAndBroadcast(`Error parsing website with screenshot ${url}:`, 'error');
       throw new Error(`Failed to parse website with screenshot: ${error.message}`);
     }
   }
@@ -318,7 +356,7 @@ export class KaraokeParserService {
   }> {
     let browser;
     try {
-      this.logger.log(`Fetching webpage content and screenshot from: ${url}`);
+      this.logAndBroadcast(`Fetching webpage content and screenshot from: ${url}`, 'info');
 
       browser = await puppeteer.launch({
         headless: true,
@@ -379,14 +417,15 @@ export class KaraokeParserService {
         type: 'png',
       });
 
-      this.logger.log(
+      this.logAndBroadcast(
         `Successfully fetched HTML (${htmlContent.length} characters) and screenshot from ${url}`,
+        'success'
       );
-      this.logger.log(`Found ${timeData.length} elements with time data attributes`);
+      this.logAndBroadcast(`Found ${timeData.length} elements with time data attributes`, 'info');
 
       return { htmlContent: enhancedContent, screenshot };
     } catch (error) {
-      this.logger.error(`Error fetching webpage content and screenshot from ${url}:`, error);
+      this.logAndBroadcast(`Error fetching webpage content and screenshot from ${url}:`, 'error');
       throw error;
     } finally {
       if (browser) {
@@ -408,13 +447,14 @@ export class KaraokeParserService {
    */
   private async parseWithGemini(htmlContent: string, url: string): Promise<ParsedKaraokeData> {
     try {
-      this.logger.log('Starting Gemini AI parsing with HTML content');
-      this.logger.log(`Processing HTML content: ${htmlContent.length} characters`);
+      this.logAndBroadcast('Starting Gemini AI parsing with HTML content', 'info');
+      this.logAndBroadcast(`Processing HTML content: ${htmlContent.length} characters`, 'info');
 
       // Trim unnecessary HTML content first
       const trimmedHtml = this.trimHtmlContent(htmlContent);
-      this.logger.log(
+      this.logAndBroadcast(
         `After trimming: ${trimmedHtml.length} characters (${(((htmlContent.length - trimmedHtml.length) / htmlContent.length) * 100).toFixed(1)}% reduction)`,
+        'info'
       );
 
       const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
@@ -423,14 +463,14 @@ export class KaraokeParserService {
       const maxSingleProcessSize = 1000000; // 1MB - try processing much larger content as single chunk first
       const chunkSize = 200000; // 200KB chunks if we need to split
       if (trimmedHtml.length > maxSingleProcessSize) {
-        this.logger.log('Very large content detected, processing in chunks...');
+        this.logAndBroadcast('Very large content detected, processing in chunks...', 'info');
         return this.parseHtmlInChunks(trimmedHtml, url, model, chunkSize);
       }
 
       // Process smaller content directly
       return this.parseSingleHtmlContent(trimmedHtml, url, model);
     } catch (error) {
-      this.logger.error('Error parsing with Gemini:', error);
+      this.logAndBroadcast('Error parsing with Gemini:', 'error');
       throw new Error(`Gemini parsing failed: ${error.message}`);
     }
   }
@@ -443,13 +483,14 @@ export class KaraokeParserService {
     url: string,
   ): Promise<ParsedKaraokeData> {
     try {
-      this.logger.log('Starting Gemini AI vision parsing with HTML and screenshot');
-      this.logger.log(`Processing HTML content: ${webpageData.htmlContent.length} characters`);
+      this.logAndBroadcast('Starting Gemini AI vision parsing with HTML and screenshot', 'info');
+      this.logAndBroadcast(`Processing HTML content: ${webpageData.htmlContent.length} characters`, 'info');
 
       // Trim unnecessary HTML content first
       const trimmedHtml = this.trimHtmlContent(webpageData.htmlContent);
-      this.logger.log(
+      this.logAndBroadcast(
         `After trimming: ${trimmedHtml.length} characters (${(((webpageData.htmlContent.length - trimmedHtml.length) / webpageData.htmlContent.length) * 100).toFixed(1)}% reduction)`,
+        'info'
       );
 
       const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
@@ -457,7 +498,7 @@ export class KaraokeParserService {
       // Process with enhanced HTML content that includes data attributes
       return this.parseSingleHtmlContent(trimmedHtml, url, model);
     } catch (error) {
-      this.logger.error('Error parsing with Gemini vision:', error);
+      this.logAndBroadcast('Error parsing with Gemini vision:', 'error');
       throw new Error(`Gemini vision parsing failed: ${error.message}`);
     }
   }
@@ -472,12 +513,12 @@ export class KaraokeParserService {
     chunkSize: number,
   ): Promise<ParsedKaraokeData> {
     const chunks = this.splitHtmlIntoChunks(htmlContent, chunkSize);
-    this.logger.log(`Split content into ${chunks.length} chunks for processing`);
+    this.logAndBroadcast(`Split content into ${chunks.length} chunks for processing`, 'info');
 
     const allResults: ParsedKaraokeData[] = [];
 
     for (let i = 0; i < chunks.length; i++) {
-      this.logger.log(`Processing chunk ${i + 1}/${chunks.length}...`);
+      this.logAndBroadcast(`Processing chunk ${i + 1}/${chunks.length}...`, 'info');
       try {
         const chunkResult = await this.parseSingleHtmlContent(chunks[i], url, model);
         allResults.push(chunkResult);
@@ -487,9 +528,9 @@ export class KaraokeParserService {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       } catch (error) {
-        this.logger.warn(
+        this.logAndBroadcast(
           `Failed to process chunk ${i + 1}, continuing with others:`,
-          error.message,
+          'warning'
         );
       }
     }
@@ -534,6 +575,20 @@ SHOW EXTRACTION RULES:
 - Extract venue name, day, time, and DJ/host name for each entry
 - If a venue appears under multiple days, create separate show entries for each day
 
+LOCATION EXTRACTION INSTRUCTIONS:
+- Extract city, state, and ZIP code when available
+- For address: Extract only the street address portion (e.g., "123 Main St" not "123 Main St, Columbus, OH 43215")
+- For city: Extract the city name (e.g., "Columbus")
+- For state: Extract state abbreviation (e.g., "OH", "CA", "NY")
+- For zip: Extract ZIP code in 5-digit or 5+4 format (e.g., "43215" or "43215-1234")
+- Look for address patterns like "123 Main St, Columbus, OH 43215"
+- If full address is available, separate the components appropriately
+
+VENUE INFORMATION EXTRACTION:
+- venueWebsite: Look for venue websites, social media pages, or links related to the venue
+- imageUrl: Look for venue photos, logos, or images related to the venue
+- venuePhone: Look for phone numbers associated with the venue
+
 TIME PARSING INSTRUCTIONS - CRITICAL:
 - LOOK FOR DATA ATTRIBUTES: Times are stored in HTML data attributes like data-day="9 pm"
 - Check for HTML comments that show EXTRACTED DATA ATTRIBUTES 
@@ -543,7 +598,7 @@ TIME PARSING INSTRUCTIONS - CRITICAL:
 - EXAMPLE: If you see TIME="7 pm" in data attributes → time="7 pm", startTime="19:00"
 - EXAMPLE: If you see TIME="8 pm" in data attributes → time="8 pm", startTime="20:00"
 - EXAMPLE: If you see TIME="9:30" in data attributes → time="9:30 pm", startTime="21:30"
-- For endTime: Use "close" since no specific end times are provided
+- For endTime: Look for venue closing times, "until close", or specific end times. If not found, use "00:00" (midnight)
 - NEVER leave time fields as null - extract the time from the data attributes
 - Data attributes contain the actual show times that may not appear in visible text
 
@@ -569,17 +624,19 @@ Return JSON (no extra text):
   "shows": [
     {
       "venue": "Venue Name",
-      "address": "Full address if available",
+      "address": "Street address only (e.g., '123 Main St')",
+      "city": "City name",
+      "state": "State abbreviation (e.g., 'CA', 'NY')",
+      "zip": "ZIP code (e.g., '12345' or '12345-6789')",
       "venuePhone": "Phone number",
       "venueWebsite": "Venue website if available",
-      "date": "day_of_week",
+      "imageUrl": "Venue image URL if available",
       "time": "REQUIRED: original time format like '9 pm' or '10:00 pm'",
       "startTime": "REQUIRED: 24-hour format like '21:00' or '22:00'",
-      "endTime": "HH:MM format or 'close'",
+      "endTime": "HH:MM format or venue closing time or 'close' (default to '00:00' if unknown)",
       "day": "day_of_week", 
       "djName": "DJ/host name",
       "description": "Additional details",
-      "notes": "Special notes",
       "confidence": 0.8
     }
   ]
@@ -605,8 +662,9 @@ ${htmlContent}`;
           error.message?.includes('quota') ||
           error.message?.includes('Too Many Requests')
         ) {
-          this.logger.warn(
+          this.logAndBroadcast(
             `Quota exceeded, attempt ${attempts}/${maxAttempts}. Waiting before retry...`,
+            'warning'
           );
 
           if (attempts < maxAttempts) {
@@ -623,27 +681,29 @@ ${htmlContent}`;
     const response = await result.response;
     const text = response.text();
 
-    this.logger.log('Gemini response received, extracting JSON');
-    this.logger.log(`Gemini response length: ${text.length} characters`);
+    this.logAndBroadcast('Gemini response received, extracting JSON', 'info');
+    this.logAndBroadcast(`Gemini response length: ${text.length} characters`, 'info');
 
     // DEBUG: Log the actual Gemini response to see what it's returning
-    this.logger.log(`Gemini raw response: ${text}`);
+    this.logAndBroadcast(`Gemini raw response: ${text}`, 'info');
 
     // Log usage metadata if available
     if (result.response.usageMetadata) {
       const usage = result.response.usageMetadata;
-      this.logger.log(
+      this.logAndBroadcast(
         `Token usage - Prompt: ${usage.promptTokenCount || 'N/A'}, Candidates: ${usage.candidatesTokenCount || 'N/A'}, Total: ${usage.totalTokenCount || 'N/A'}`,
+        'info'
       );
     }
 
     // Clean and parse JSON response
     const cleanJsonString = this.cleanGeminiResponse(text);
-    this.logger.log(`Cleaned JSON: ${cleanJsonString}`);
+    this.logAndBroadcast(`Cleaned JSON: ${cleanJsonString}`, 'info');
     const parsedData = JSON.parse(cleanJsonString);
 
-    this.logger.log(
+    this.logAndBroadcast(
       `Parsed data extracted - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}, Vendor: ${parsedData.vendor?.name || 'Unknown'}`,
+      'success'
     );
 
     // Ensure required structure with defaults
@@ -695,8 +755,9 @@ ${htmlContent}`;
     const allShows = results.flatMap((r) => r.shows || []);
     const uniqueShows = this.removeDuplicateShows(allShows);
 
-    this.logger.log(
+    this.logAndBroadcast(
       `Combined ${results.length} chunks: ${uniqueShows.length} unique shows, ${uniqueDjs.length} unique DJs`,
+      'success'
     );
 
     return {
@@ -737,7 +798,7 @@ ${htmlContent}`;
     const unique: any[] = [];
     const seenShows = new Set<string>();
 
-    this.logger.log(`Starting deduplication with ${shows.length} shows`);
+    this.logAndBroadcast(`Starting deduplication with ${shows.length} shows`, 'info');
 
     for (const show of shows) {
       // Create a more specific key that includes venue, day, and DJ name
@@ -758,7 +819,7 @@ ${htmlContent}`;
       }
     }
 
-    this.logger.log(`Deduplication: ${shows.length} shows → ${unique.length} unique shows`);
+    this.logAndBroadcast(`Deduplication: ${shows.length} shows → ${unique.length} unique shows`, 'success');
     return unique;
   } /**
    * Clean Gemini response to extract valid JSON
@@ -841,7 +902,7 @@ ${htmlContent}`;
     parsedScheduleId: string,
     approvedData: ParsedKaraokeData,
   ): Promise<any> {
-    this.logger.log(`Starting approval process for schedule ${parsedScheduleId}`);
+    this.logAndBroadcast(`Starting approval process for schedule ${parsedScheduleId}`, 'info');
 
     try {
       // Validate input data
@@ -860,7 +921,7 @@ ${htmlContent}`;
       });
 
       if (!vendor) {
-        this.logger.log(`Creating new vendor: ${approvedData.vendor.name}`);
+        this.logAndBroadcast(`Creating new vendor: ${approvedData.vendor.name}`, 'info');
         vendor = this.vendorRepository.create({
           name: approvedData.vendor.name,
           owner: approvedData.vendor.owner || '',
@@ -871,7 +932,7 @@ ${htmlContent}`;
         this.logger.log(`Created vendor with ID: ${vendor.id}`);
       } else {
         this.logger.log(`Using existing vendor: ${vendor.name} (ID: ${vendor.id})`);
-        
+
         // Update vendor with any missing information
         let vendorUpdated = false;
         if (!vendor.owner && approvedData.vendor.owner) {
@@ -886,7 +947,7 @@ ${htmlContent}`;
           vendor.description = approvedData.vendor.description;
           vendorUpdated = true;
         }
-        
+
         if (vendorUpdated) {
           vendor = await this.vendorRepository.save(vendor);
           this.logger.log(`Updated existing vendor: ${vendor.name} with missing information`);
@@ -986,9 +1047,81 @@ ${htmlContent}`;
             existingShow.description = showData.description;
             showUpdated = true;
           }
-          if (!existingShow.notes && showData.notes) {
-            existingShow.notes = showData.notes;
-            showUpdated = true;
+          if (!existingShow.city && (showData.city || showData.address)) {
+            let city = showData.city;
+            if (!city && showData.address) {
+              const extracted = this.geocodingService.extractCityStateFromAddress(showData.address);
+              city = extracted.city;
+            }
+            if (city) {
+              existingShow.city = city;
+              showUpdated = true;
+            }
+          }
+          if (!existingShow.state && (showData.state || showData.address)) {
+            let state = showData.state;
+            if (!state && showData.address) {
+              const extracted = this.geocodingService.extractCityStateFromAddress(showData.address);
+              state = extracted.state;
+            }
+            if (state) {
+              existingShow.state = state;
+              showUpdated = true;
+            }
+          }
+          if (!existingShow.zip && (showData.zip || showData.address)) {
+            let zip = showData.zip;
+            if (!zip && showData.address) {
+              const extracted = this.geocodingService.extractCityStateFromAddress(showData.address);
+              zip = extracted.zip;
+            }
+            if (zip) {
+              existingShow.zip = zip;
+              showUpdated = true;
+            }
+          }
+          // Try to get coordinates if missing
+          if ((!existingShow.lat || !existingShow.lng) && existingShow.address) {
+            try {
+              const geocodeResult = await this.geocodingService.geocodeAddress(
+                existingShow.address,
+              );
+              if (geocodeResult) {
+                if (!existingShow.lat && geocodeResult.lat) {
+                  existingShow.lat = geocodeResult.lat;
+                  showUpdated = true;
+                }
+                if (!existingShow.lng && geocodeResult.lng) {
+                  existingShow.lng = geocodeResult.lng;
+                  showUpdated = true;
+                }
+                // Also update other missing fields
+                if (!existingShow.city && geocodeResult.city) {
+                  existingShow.city = geocodeResult.city;
+                  showUpdated = true;
+                }
+                if (!existingShow.state && geocodeResult.state) {
+                  existingShow.state = geocodeResult.state;
+                  showUpdated = true;
+                }
+                if (!existingShow.zip && geocodeResult.zip) {
+                  existingShow.zip = geocodeResult.zip;
+                  showUpdated = true;
+                }
+                // Clean the address if it still contains city/state/zip
+                const cleanedAddress = this.geocodingService.cleanStreetAddress(
+                  existingShow.address,
+                );
+                if (cleanedAddress !== existingShow.address) {
+                  existingShow.address = cleanedAddress;
+                  showUpdated = true;
+                }
+              }
+            } catch (geocodeError) {
+              this.logger.warn(
+                `Geocoding failed for existing show ${existingShow.venue}: ${geocodeError.message}`,
+              );
+            }
           }
           if (!existingShow.startTime && showData.startTime) {
             const validatedStartTime = this.validateTimeValue(showData.startTime);
@@ -997,42 +1130,90 @@ ${htmlContent}`;
               showUpdated = true;
             }
           }
-          if (!existingShow.endTime && showData.endTime) {
-            const validatedEndTime = this.validateTimeValue(showData.endTime);
-            if (validatedEndTime) {
-              existingShow.endTime = validatedEndTime;
-              showUpdated = true;
-            }
+          if (!existingShow.endTime) {
+            const validatedEndTime = this.validateTimeValue(showData.endTime) || '00:00'; // Default to midnight
+            existingShow.endTime = validatedEndTime;
+            showUpdated = true;
           }
 
           if (showUpdated) {
             await this.showRepository.save(existingShow);
-            this.logger.log(`Updated existing show: ${showData.venue} on ${normalizedDay} at ${showData.time}`);
+            this.logger.log(
+              `Updated existing show: ${showData.venue} on ${normalizedDay} at ${showData.time}`,
+            );
             showsUpdated++;
           } else {
-            this.logger.log(`Skipping duplicate show: ${showData.venue} on ${normalizedDay} at ${showData.time}`);
+            this.logger.log(
+              `Skipping duplicate show: ${showData.venue} on ${normalizedDay} at ${showData.time}`,
+            );
             showsDuplicated++;
           }
           return existingShow;
         }
 
-        this.logger.log(`Creating new show: ${showData.venue} on ${normalizedDay} at ${showData.time}`);
+        this.logger.log(
+          `Creating new show: ${showData.venue} on ${normalizedDay} at ${showData.time}`,
+        );
 
         // Validate and convert time values
         const validatedStartTime = this.validateTimeValue(showData.startTime);
-        const validatedEndTime = this.validateTimeValue(showData.endTime);
+        const validatedEndTime = this.validateTimeValue(showData.endTime) || '00:00'; // Default to midnight if no end time
+
+        // Extract city, state, zip from parsed data
+        let city = showData.city;
+        let state = showData.state;
+        let zip = showData.zip;
+        let lat: number | undefined;
+        let lng: number | undefined;
+        let cleanedAddress = showData.address;
+
+        // If city/state/zip not provided in parsed data, try to extract from address
+        if ((!city || !state || !zip) && showData.address) {
+          const extracted = this.geocodingService.extractCityStateFromAddress(showData.address);
+          city = city || extracted.city;
+          state = state || extracted.state;
+          zip = zip || extracted.zip;
+        }
+
+        // Try geocoding as fallback if we still don't have all data or to get coordinates
+        if (showData.address) {
+          try {
+            const geocodeResult = await this.geocodingService.geocodeAddress(showData.address);
+            if (geocodeResult) {
+              city = city || geocodeResult.city;
+              state = state || geocodeResult.state;
+              zip = zip || geocodeResult.zip;
+              lat = geocodeResult.lat;
+              lng = geocodeResult.lng;
+
+              // Clean the address to remove city/state/zip components
+              cleanedAddress = this.geocodingService.cleanStreetAddress(showData.address);
+
+              this.logger.log(
+                `Geocoded address for ${showData.venue}: ${city}, ${state} ${zip} (${lat}, ${lng})`,
+              );
+            }
+          } catch (geocodeError) {
+            this.logger.warn(`Geocoding failed for ${showData.venue}: ${geocodeError.message}`);
+          }
+        }
 
         const show = this.showRepository.create({
           vendorId: vendor.id,
           djId: djId,
           venue: showData.venue,
-          address: showData.address,
+          address: cleanedAddress,
+          city: city,
+          state: state,
+          zip: zip,
+          lat: lat,
+          lng: lng,
           day: normalizedDay as any, // Cast to DayOfWeek enum
           time: showData.time,
           startTime: validatedStartTime,
           endTime: validatedEndTime,
           description: showData.description,
-          notes: showData.notes,
+          imageUrl: showData.imageUrl,
           venuePhone: showData.venuePhone,
           venueWebsite: showData.venueWebsite,
           isActive: true,
@@ -1074,7 +1255,9 @@ ${htmlContent}`;
         this.logger.log(`Successfully deleted approved schedule ${parsedScheduleId} from database`);
       } catch (deleteError) {
         // Log the error but don't fail the entire operation since data was saved successfully
-        this.logger.error(`Warning: Failed to delete approved schedule ${parsedScheduleId}: ${deleteError.message}`);
+        this.logger.error(
+          `Warning: Failed to delete approved schedule ${parsedScheduleId}: ${deleteError.message}`,
+        );
         this.logger.error('Data was saved successfully, but schedule cleanup failed');
       }
 
@@ -1223,7 +1406,7 @@ ${htmlContent}`;
   }> {
     let browser;
     try {
-      this.logger.log(`Capturing full-page screenshot from: ${url}`);
+      this.logAndBroadcast(`Capturing full-page screenshot from: ${url}`);
 
       browser = await puppeteer.launch({
         headless: true,
@@ -1250,7 +1433,7 @@ ${htmlContent}`;
       await new Promise((resolve) => setTimeout(resolve, 1500)); // Reduced from 3000
 
       // Scroll to bottom to ensure all content is loaded (for lazy loading)
-      this.logger.log('Scrolling to ensure all content is loaded...');
+      this.logAndBroadcast('Scrolling to ensure all content is loaded...');
       await page.evaluate(() => {
         return new Promise((resolve) => {
           let totalHeight = 0;
@@ -1275,10 +1458,10 @@ ${htmlContent}`;
       // Get page dimensions for logging
       const pageHeight = await page.evaluate(() => document.body.scrollHeight);
       const pageWidth = await page.evaluate(() => document.body.scrollWidth);
-      this.logger.log(`📏 Page dimensions: ${pageWidth}x${pageHeight}px`);
+      this.logAndBroadcast(`📏 Page dimensions: ${pageWidth}x${pageHeight}px`);
 
       if (pageHeight < 8000) {
-        this.logger.warn(
+        this.logAndBroadcast(
           `⚠️  Page seems short (${pageHeight}px), expected ~9000px for full content`,
         );
       }
@@ -1294,13 +1477,13 @@ ${htmlContent}`;
         optimizeForSpeed: false, // Keep false for better quality
       });
 
-      this.logger.log(
+      this.logAndBroadcast(
         `Successfully captured full-page screenshot from ${url} (${screenshot.length} bytes, ${htmlContent.length} characters HTML)`,
       );
 
       return { screenshot, htmlContent };
     } catch (error) {
-      this.logger.error(`Error capturing screenshot from ${url}:`, error);
+      this.logAndBroadcast(`Error capturing screenshot from ${url}: ${error.message}`);
       throw error;
     } finally {
       if (browser) {
@@ -1317,7 +1500,7 @@ ${htmlContent}`;
     url: string,
   ): Promise<ParsedKaraokeData> {
     try {
-      this.logger.log('Starting Gemini Vision parsing with screenshot');
+      this.logAndBroadcast('Starting Gemini Vision parsing with screenshot');
 
       const model = this.genAI.getGenerativeModel({
         model: 'gemini-1.5-flash', // Faster model for vision tasks
@@ -1361,7 +1544,9 @@ Return ONLY valid JSON with no extra text:
   "shows": [
     {
       "venue": "Venue Name",
-      "address": "Full address",
+      "address": "Full address if available",
+      "city": "City name if available",
+      "state": "State abbreviation if available (e.g., CA, NY, TX)",
       "venuePhone": "Phone number",
       "date": "day_of_week",
       "time": "time like '7 pm'",
@@ -1381,8 +1566,8 @@ Return ONLY valid JSON with no extra text:
         },
       };
 
-      this.logger.log(`Making Gemini Vision API request with optimized settings...`);
-      this.logger.log(`Image size: ${(screenshot.length / 1024 / 1024).toFixed(2)} MB`);
+      this.logAndBroadcast(`Making Gemini Vision API request with optimized settings...`);
+      this.logAndBroadcast(`Image size: ${(screenshot.length / 1024 / 1024).toFixed(2)} MB`);
 
       const result = (await Promise.race([
         model.generateContent([prompt, imagePart]),
@@ -1396,13 +1581,13 @@ Return ONLY valid JSON with no extra text:
       const response = await result.response;
       const text = response.text();
 
-      this.logger.log('Gemini Vision response received, extracting JSON');
-      this.logger.log(`Gemini Vision response length: ${text.length} characters`);
+      this.logAndBroadcast('Gemini Vision response received, extracting JSON');
+      this.logAndBroadcast(`Gemini Vision response length: ${text.length} characters`);
 
       // Log usage metadata if available
       if (result.response.usageMetadata) {
         const usage = result.response.usageMetadata;
-        this.logger.log(
+        this.logAndBroadcast(
           `Token usage - Prompt: ${usage.promptTokenCount || 'N/A'}, Candidates: ${usage.candidatesTokenCount || 'N/A'}, Total: ${usage.totalTokenCount || 'N/A'}`,
         );
       }

@@ -5,6 +5,10 @@ interface GeocodeResult {
   lat: number;
   lng: number;
   formatted_address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
 }
 
 @Injectable()
@@ -42,10 +46,35 @@ export class GeocodingService {
         const result = data.results[0];
         const location = result.geometry.location;
 
+        // Extract city and state from address_components
+        const addressComponents = result.address_components || [];
+        let city = '';
+        let state = '';
+        let zip = '';
+        let country = '';
+
+        for (const component of addressComponents) {
+          const types = component.types;
+
+          if (types.includes('locality')) {
+            city = component.long_name;
+          } else if (types.includes('administrative_area_level_1')) {
+            state = component.short_name; // Use short_name for state abbreviation (e.g., "CA")
+          } else if (types.includes('postal_code')) {
+            zip = component.long_name;
+          } else if (types.includes('country')) {
+            country = component.short_name;
+          }
+        }
+
         return {
           lat: location.lat,
           lng: location.lng,
           formatted_address: result.formatted_address,
+          city: city || undefined,
+          state: state || undefined,
+          zip: zip || undefined,
+          country: country || undefined,
         };
       } else if (data.status === 'ZERO_RESULTS') {
         this.logger.warn(`No geocoding results found for address: ${address}`);
@@ -108,6 +137,200 @@ export class GeocodingService {
 
   private toRadians(degrees: number): number {
     return degrees * (Math.PI / 180);
+  }
+
+  /**
+   * Extract city and state from address string using regex patterns
+   * Fallback when geocoding is not available
+   */
+  extractCityStateFromAddress(address: string): { city?: string; state?: string; zip?: string } {
+    if (!address || !address.trim()) {
+      return {};
+    }
+
+    // Common US state abbreviations
+    const stateAbbreviations = [
+      'AL',
+      'AK',
+      'AZ',
+      'AR',
+      'CA',
+      'CO',
+      'CT',
+      'DE',
+      'FL',
+      'GA',
+      'HI',
+      'ID',
+      'IL',
+      'IN',
+      'IA',
+      'KS',
+      'KY',
+      'LA',
+      'ME',
+      'MD',
+      'MA',
+      'MI',
+      'MN',
+      'MS',
+      'MO',
+      'MT',
+      'NE',
+      'NV',
+      'NH',
+      'NJ',
+      'NM',
+      'NY',
+      'NC',
+      'ND',
+      'OH',
+      'OK',
+      'OR',
+      'PA',
+      'RI',
+      'SC',
+      'SD',
+      'TN',
+      'TX',
+      'UT',
+      'VT',
+      'VA',
+      'WA',
+      'WV',
+      'WI',
+      'WY',
+    ];
+
+    const statePattern = stateAbbreviations.join('|');
+
+    // Pattern: City, ST ZIP or City, State ZIP
+    const cityStateZipRegex = new RegExp(
+      `,\\s*([^,]+),\\s*(${statePattern})\\s*(\\d{5})(?:-\\d{4})?$`,
+      'i',
+    );
+    const match = address.match(cityStateZipRegex);
+
+    if (match) {
+      return {
+        city: match[1].trim(),
+        state: match[2].toUpperCase(),
+        zip: match[3],
+      };
+    }
+
+    // Pattern: City, ST (without ZIP)
+    const cityStateRegex = new RegExp(`,\\s*([^,]+),\\s*(${statePattern})$`, 'i');
+    const cityStateMatch = address.match(cityStateRegex);
+
+    if (cityStateMatch) {
+      return {
+        city: cityStateMatch[1].trim(),
+        state: cityStateMatch[2].toUpperCase(),
+      };
+    }
+
+    // Try to extract ZIP code alone
+    const zipRegex = /\b(\d{5})(?:-\d{4})?\b/;
+    const zipMatch = address.match(zipRegex);
+
+    // Try to extract state from end of address
+    const stateOnlyRegex = new RegExp(`\\b(${statePattern})\\b`, 'i');
+    const stateMatch = address.match(stateOnlyRegex);
+
+    const result: { city?: string; state?: string; zip?: string } = {};
+
+    if (stateMatch) {
+      result.state = stateMatch[1].toUpperCase();
+    }
+
+    if (zipMatch) {
+      result.zip = zipMatch[1];
+    }
+
+    return result;
+  }
+
+  /**
+   * Clean address by removing city, state, and ZIP components
+   * Returns just the street address portion
+   */
+  cleanStreetAddress(fullAddress: string): string {
+    if (!fullAddress || !fullAddress.trim()) {
+      return '';
+    }
+
+    // Remove ZIP codes (5 digits or 5-4 format)
+    let cleaned = fullAddress.replace(/\b\d{5}(?:-\d{4})?\b/g, '').trim();
+
+    // Common US state abbreviations
+    const stateAbbreviations = [
+      'AL',
+      'AK',
+      'AZ',
+      'AR',
+      'CA',
+      'CO',
+      'CT',
+      'DE',
+      'FL',
+      'GA',
+      'HI',
+      'ID',
+      'IL',
+      'IN',
+      'IA',
+      'KS',
+      'KY',
+      'LA',
+      'ME',
+      'MD',
+      'MA',
+      'MI',
+      'MN',
+      'MS',
+      'MO',
+      'MT',
+      'NE',
+      'NV',
+      'NH',
+      'NJ',
+      'NM',
+      'NY',
+      'NC',
+      'ND',
+      'OH',
+      'OK',
+      'OR',
+      'PA',
+      'RI',
+      'SC',
+      'SD',
+      'TN',
+      'TX',
+      'UT',
+      'VT',
+      'VA',
+      'WA',
+      'WV',
+      'WI',
+      'WY',
+    ];
+
+    const statePattern = stateAbbreviations.join('|');
+
+    // Remove city, state pattern from the end
+    const cityStatePattern = new RegExp(`,\\s*[^,]+,\\s*(${statePattern})\\s*$`, 'i');
+    cleaned = cleaned.replace(cityStatePattern, '').trim();
+
+    // Remove standalone state abbreviation from the end
+    const stateOnlyPattern = new RegExp(`,\\s*(${statePattern})\\s*$`, 'i');
+    cleaned = cleaned.replace(stateOnlyPattern, '').trim();
+
+    // Remove trailing commas
+    cleaned = cleaned.replace(/,\s*$/, '').trim();
+
+    return cleaned;
   }
 
   /**
