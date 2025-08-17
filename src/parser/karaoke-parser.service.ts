@@ -185,8 +185,19 @@ export class KaraokeParserService {
       this.logger.log(`Starting screenshot-based parse and save operation for URL: ${url}`);
 
       // Take a full-page screenshot and parse with Gemini Vision
+      this.logger.log('Step 1: Capturing screenshot...');
+      const screenshotStartTime = Date.now();
       const { screenshot, htmlContent } = await this.captureFullPageScreenshot(url);
+      const screenshotTime = Date.now() - screenshotStartTime;
+      this.logger.log(
+        `Screenshot captured in ${screenshotTime}ms (${(screenshot.length / 1024 / 1024).toFixed(2)} MB)`,
+      );
+
+      this.logger.log('Step 2: Processing with Gemini Vision...');
+      const geminiStartTime = Date.now();
       const parsedData = await this.parseScreenshotWithGemini(screenshot, url);
+      const geminiTime = Date.now() - geminiStartTime;
+      this.logger.log(`Gemini Vision completed in ${geminiTime}ms`);
 
       // Save to parsed_schedules table for admin review
       const truncatedContent =
@@ -927,24 +938,27 @@ ${htmlContent}`;
 
       const page = await browser.newPage();
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-      await page.setViewport({ width: 1280, height: 720 });
+      // Reduced viewport size for faster screenshot processing
+      await page.setViewport({ width: 1024, height: 600 });
 
       // Navigate and wait for full page load
       await page.goto(url, {
-        waitUntil: 'networkidle2',
-        timeout: 30000,
+        waitUntil: 'domcontentloaded', // Changed from 'networkidle2' to be faster
+        timeout: 20000, // Reduced from 30000
       });
 
-      // Wait additional time for any dynamic content
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      // Reduced wait time for dynamic content
+      await new Promise((resolve) => setTimeout(resolve, 1500)); // Reduced from 3000
 
       // Get the HTML content for backup parsing
       const htmlContent = await page.content();
 
-      // Take a full-page screenshot
+      // Take a optimized screenshot with smaller dimensions and compression
       const screenshot = await page.screenshot({
         fullPage: true,
-        type: 'png',
+        type: 'jpeg',
+        quality: 80, // Compress JPEG to reduce file size
+        optimizeForSpeed: true,
       });
 
       this.logger.log(
@@ -1034,11 +1048,16 @@ Return JSON (no extra text):
       const imagePart = {
         inlineData: {
           data: screenshot.toString('base64'),
-          mimeType: 'image/png',
+          mimeType: 'image/jpeg', // Changed to match JPEG format
         },
       };
 
-      const result = await model.generateContent([prompt, imagePart]);
+      const result = (await Promise.race([
+        model.generateContent([prompt, imagePart]),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Gemini Vision API timeout after 45 seconds')), 45000),
+        ),
+      ])) as any;
       const response = await result.response;
       const text = response.text();
 
