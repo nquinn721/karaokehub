@@ -1344,6 +1344,11 @@ ${htmlContent}`;
    */
   private normalizeShowData(shows: any[]): any[] {
     return shows.map((show, index) => {
+      // Convert time to startTime if missing
+      if (show.time && !show.startTime) {
+        show.startTime = this.convertTimeToStartTime(show.time);
+      }
+
       // Normalize time data
       if (show.startTime && !show.endTime) {
         show.endTime = '00:00';
@@ -1364,12 +1369,50 @@ ${htmlContent}`;
       }
 
       this.logAndBroadcast(
-        `Processed show: ${show.venue} - Address: "${show.address}", City: "${show.city}", State: "${show.state}"`,
+        `Processed show: ${show.venue} - Time: "${show.time}" → StartTime: "${show.startTime}"`,
         'info',
       );
 
       return show;
     });
+  }
+
+  /**
+   * Convert human-readable time to 24-hour format
+   */
+  private convertTimeToStartTime(time: string): string {
+    if (!time) return '00:00';
+    
+    const timeStr = time.toLowerCase().trim();
+    
+    // Handle various time formats
+    const timePatterns = [
+      { pattern: /(\d{1,2}):(\d{2})\s*(pm|am)/i, hasMinutes: true },
+      { pattern: /(\d{1,2})\s*(pm|am)/i, hasMinutes: false },
+      { pattern: /(\d{1,2}):(\d{2})/i, hasMinutes: true }, // 24-hour format already
+    ];
+    
+    for (const { pattern, hasMinutes } of timePatterns) {
+      const match = timeStr.match(pattern);
+      if (match) {
+        let hours = parseInt(match[1]);
+        const minutes = hasMinutes ? parseInt(match[2]) : 0;
+        const period = match[3]?.toLowerCase();
+        
+        // Convert to 24-hour format
+        if (period === 'pm' && hours !== 12) {
+          hours += 12;
+        } else if (period === 'am' && hours === 12) {
+          hours = 0;
+        }
+        
+        // Format as HH:MM
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      }
+    }
+    
+    // Default fallback
+    return '00:00';
   }
 
   /**
@@ -2218,6 +2261,19 @@ For EVERY venue with a complete address (street + city + state), you MUST provid
 - If you cannot determine precise coordinates, provide city-center coordinates as fallback
 - CRITICAL: Double-check that lat/lng coordinates are actually located in the specified city and state
 
+🕒 TIME PARSING INSTRUCTIONS - CRITICAL:
+- ALWAYS provide both "time" (human readable) and "startTime" (24-hour format)
+- EXAMPLE: time="7 pm" → startTime="19:00"
+- EXAMPLE: time="8 pm" → startTime="20:00"
+- EXAMPLE: time="9 pm" → startTime="21:00"
+- EXAMPLE: time="10 pm" → startTime="22:00"
+- EXAMPLE: time="11 pm" → startTime="23:00"
+- EXAMPLE: time="12 pm" → startTime="12:00"
+- EXAMPLE: time="9:30 pm" → startTime="21:30"
+- EXAMPLE: time="7:45 pm" → startTime="19:45"
+- For endTime: Look for explicit end times or use "00:00" (midnight) as default
+- NEVER leave startTime as null - always convert from time field
+
 Return ONLY valid JSON with no extra text:
 
 {
@@ -2612,6 +2668,7 @@ Return ONLY valid JSON with no extra text:
             city: cities[i] || null,
             state: states[i] || null,
             time: times[i] || null,
+            startTime: times[i] ? this.convertTimeToStartTime(times[i]) : null,
             day: days[i] || null,
             djName: djNames[i] || null,
             confidence: 0.3, // Low confidence for emergency extraction
