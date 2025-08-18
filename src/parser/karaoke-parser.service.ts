@@ -173,7 +173,7 @@ export class KaraokeParserService {
 
       this.logAndBroadcast(
         `Parse completed successfully for ${url}: ${parsedData.shows.length} shows found`,
-        'success'
+        'success',
       );
       return parsedData;
     } catch (error) {
@@ -244,10 +244,13 @@ export class KaraokeParserService {
       const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
       const processingTime = Date.now() - startTime;
 
-      this.logAndBroadcast(`Successfully saved parsed data for admin review. ID: ${savedSchedule.id}`, 'success');
+      this.logAndBroadcast(
+        `Successfully saved parsed data for admin review. ID: ${savedSchedule.id}`,
+        'success',
+      );
       this.logAndBroadcast(
         `Processing completed in ${processingTime}ms - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}`,
-        'success'
+        'success',
       );
 
       return {
@@ -284,7 +287,10 @@ export class KaraokeParserService {
     const startTime = Date.now();
 
     try {
-      this.logAndBroadcast(`Starting screenshot-based parse and save operation for URL: ${url}`, 'info');
+      this.logAndBroadcast(
+        `Starting screenshot-based parse and save operation for URL: ${url}`,
+        'info',
+      );
 
       // Take a full-page screenshot and parse with Gemini Vision
       this.logAndBroadcast('Step 1: Capturing screenshot...', 'info');
@@ -293,7 +299,7 @@ export class KaraokeParserService {
       const screenshotTime = Date.now() - screenshotStartTime;
       this.logAndBroadcast(
         `Screenshot captured in ${screenshotTime}ms (${(screenshot.length / 1024 / 1024).toFixed(2)} MB)`,
-        'success'
+        'success',
       );
 
       this.logAndBroadcast('Step 2: Processing with Gemini Vision...', 'info');
@@ -323,11 +329,11 @@ export class KaraokeParserService {
 
       this.logAndBroadcast(
         `Successfully saved screenshot-parsed data for admin review. ID: ${savedSchedule.id}`,
-        'success'
+        'success',
       );
       this.logAndBroadcast(
         `Screenshot processing completed in ${processingTime}ms - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}`,
-        'success'
+        'success',
       );
 
       return {
@@ -419,7 +425,7 @@ export class KaraokeParserService {
 
       this.logAndBroadcast(
         `Successfully fetched HTML (${htmlContent.length} characters) and screenshot from ${url}`,
-        'success'
+        'success',
       );
       this.logAndBroadcast(`Found ${timeData.length} elements with time data attributes`, 'info');
 
@@ -454,7 +460,7 @@ export class KaraokeParserService {
       const trimmedHtml = this.trimHtmlContent(htmlContent);
       this.logAndBroadcast(
         `After trimming: ${trimmedHtml.length} characters (${(((htmlContent.length - trimmedHtml.length) / htmlContent.length) * 100).toFixed(1)}% reduction)`,
-        'info'
+        'info',
       );
 
       const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
@@ -484,13 +490,16 @@ export class KaraokeParserService {
   ): Promise<ParsedKaraokeData> {
     try {
       this.logAndBroadcast('Starting Gemini AI vision parsing with HTML and screenshot', 'info');
-      this.logAndBroadcast(`Processing HTML content: ${webpageData.htmlContent.length} characters`, 'info');
+      this.logAndBroadcast(
+        `Processing HTML content: ${webpageData.htmlContent.length} characters`,
+        'info',
+      );
 
       // Trim unnecessary HTML content first
       const trimmedHtml = this.trimHtmlContent(webpageData.htmlContent);
       this.logAndBroadcast(
         `After trimming: ${trimmedHtml.length} characters (${(((webpageData.htmlContent.length - trimmedHtml.length) / webpageData.htmlContent.length) * 100).toFixed(1)}% reduction)`,
-        'info'
+        'info',
       );
 
       const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
@@ -530,7 +539,7 @@ export class KaraokeParserService {
       } catch (error) {
         this.logAndBroadcast(
           `Failed to process chunk ${i + 1}, continuing with others:`,
-          'warning'
+          'warning',
         );
       }
     }
@@ -664,7 +673,7 @@ ${htmlContent}`;
         ) {
           this.logAndBroadcast(
             `Quota exceeded, attempt ${attempts}/${maxAttempts}. Waiting before retry...`,
-            'warning'
+            'warning',
           );
 
           if (attempts < maxAttempts) {
@@ -692,7 +701,7 @@ ${htmlContent}`;
       const usage = result.response.usageMetadata;
       this.logAndBroadcast(
         `Token usage - Prompt: ${usage.promptTokenCount || 'N/A'}, Candidates: ${usage.candidatesTokenCount || 'N/A'}, Total: ${usage.totalTokenCount || 'N/A'}`,
-        'info'
+        'info',
       );
     }
 
@@ -703,7 +712,7 @@ ${htmlContent}`;
 
     this.logAndBroadcast(
       `Parsed data extracted - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}, Vendor: ${parsedData.vendor?.name || 'Unknown'}`,
-      'success'
+      'success',
     );
 
     // Ensure required structure with defaults
@@ -757,7 +766,7 @@ ${htmlContent}`;
 
     this.logAndBroadcast(
       `Combined ${results.length} chunks: ${uniqueShows.length} unique shows, ${uniqueDjs.length} unique DJs`,
-      'success'
+      'success',
     );
 
     return {
@@ -819,7 +828,10 @@ ${htmlContent}`;
       }
     }
 
-    this.logAndBroadcast(`Deduplication: ${shows.length} shows → ${unique.length} unique shows`, 'success');
+    this.logAndBroadcast(
+      `Deduplication: ${shows.length} shows → ${unique.length} unique shows`,
+      'success',
+    );
     return unique;
   } /**
    * Clean Gemini response to extract valid JSON
@@ -929,9 +941,9 @@ ${htmlContent}`;
           description: approvedData.vendor.description,
         });
         vendor = await this.vendorRepository.save(vendor);
-        this.logger.log(`Created vendor with ID: ${vendor.id}`);
+        this.logAndBroadcast(`Created vendor with ID: ${vendor.id}`, 'success');
       } else {
-        this.logger.log(`Using existing vendor: ${vendor.name} (ID: ${vendor.id})`);
+        this.logAndBroadcast(`Using existing vendor: ${vendor.name} (ID: ${vendor.id})`, 'info');
 
         // Update vendor with any missing information
         let vendorUpdated = false;
@@ -950,7 +962,10 @@ ${htmlContent}`;
 
         if (vendorUpdated) {
           vendor = await this.vendorRepository.save(vendor);
-          this.logger.log(`Updated existing vendor: ${vendor.name} with missing information`);
+          this.logAndBroadcast(
+            `Updated existing vendor: ${vendor.name} with missing information`,
+            'info',
+          );
         }
       }
 
@@ -963,7 +978,7 @@ ${htmlContent}`;
       const djsData = approvedData.djs || [];
       for (const djData of djsData) {
         if (!djData.name || djData.name.trim() === '') {
-          this.logger.warn('Skipping DJ with empty name');
+          this.logAndBroadcast('Skipping DJ with empty name', 'warning');
           continue;
         }
 
@@ -972,7 +987,7 @@ ${htmlContent}`;
         });
 
         if (!dj) {
-          this.logger.log(`Creating new DJ: ${djData.name}`);
+          this.logAndBroadcast(`Creating new DJ: ${djData.name}`, 'info');
           dj = this.djRepository.create({
             name: djData.name,
             vendorId: vendor.id,
@@ -981,7 +996,7 @@ ${htmlContent}`;
           dj = await this.djRepository.save(dj);
           djsCreated++;
         } else {
-          this.logger.log(`Using existing DJ: ${dj.name} (ID: ${dj.id})`);
+          this.logAndBroadcast(`Using existing DJ: ${dj.name} (ID: ${dj.id})`, 'info');
           // Update DJ to active if it was inactive
           if (!dj.isActive) {
             dj.isActive = true;
@@ -1118,8 +1133,9 @@ ${htmlContent}`;
                 }
               }
             } catch (geocodeError) {
-              this.logger.warn(
+              this.logAndBroadcast(
                 `Geocoding failed for existing show ${existingShow.venue}: ${geocodeError.message}`,
+                'warning',
               );
             }
           }
@@ -1138,21 +1154,24 @@ ${htmlContent}`;
 
           if (showUpdated) {
             await this.showRepository.save(existingShow);
-            this.logger.log(
+            this.logAndBroadcast(
               `Updated existing show: ${showData.venue} on ${normalizedDay} at ${showData.time}`,
+              'info',
             );
             showsUpdated++;
           } else {
-            this.logger.log(
+            this.logAndBroadcast(
               `Skipping duplicate show: ${showData.venue} on ${normalizedDay} at ${showData.time}`,
+              'info',
             );
             showsDuplicated++;
           }
           return existingShow;
         }
 
-        this.logger.log(
+        this.logAndBroadcast(
           `Creating new show: ${showData.venue} on ${normalizedDay} at ${showData.time}`,
+          'info',
         );
 
         // Validate and convert time values
@@ -1189,12 +1208,16 @@ ${htmlContent}`;
               // Clean the address to remove city/state/zip components
               cleanedAddress = this.geocodingService.cleanStreetAddress(showData.address);
 
-              this.logger.log(
+              this.logAndBroadcast(
                 `Geocoded address for ${showData.venue}: ${city}, ${state} ${zip} (${lat}, ${lng})`,
+                'info',
               );
             }
           } catch (geocodeError) {
-            this.logger.warn(`Geocoding failed for ${showData.venue}: ${geocodeError.message}`);
+            this.logAndBroadcast(
+              `Geocoding failed for ${showData.venue}: ${geocodeError.message}`,
+              'warning',
+            );
           }
         }
 
@@ -1233,7 +1256,7 @@ ${htmlContent}`;
       });
 
       const successMessage = `Successfully saved: 1 vendor, ${djsCreated} new DJs (${djsUpdated} updated), ${showsCreated} new shows (${showsUpdated} updated, ${showsDuplicated} duplicates skipped)`;
-      this.logger.log(successMessage);
+      this.logAndBroadcast(successMessage, 'success');
 
       const result = {
         success: true,
@@ -1252,19 +1275,23 @@ ${htmlContent}`;
       // 5. Only delete the schedule after everything is successfully saved
       try {
         await this.parsedScheduleRepository.delete(parsedScheduleId);
-        this.logger.log(`Successfully deleted approved schedule ${parsedScheduleId} from database`);
+        this.logAndBroadcast(
+          `Successfully deleted approved schedule ${parsedScheduleId} from database`,
+          'success',
+        );
       } catch (deleteError) {
         // Log the error but don't fail the entire operation since data was saved successfully
-        this.logger.error(
+        this.logAndBroadcast(
           `Warning: Failed to delete approved schedule ${parsedScheduleId}: ${deleteError.message}`,
+          'error',
         );
-        this.logger.error('Data was saved successfully, but schedule cleanup failed');
+        this.logAndBroadcast('Data was saved successfully, but schedule cleanup failed', 'error');
       }
 
       return result;
     } catch (error) {
-      this.logger.error(`Error approving and saving data: ${error.message}`);
-      this.logger.error(error.stack);
+      this.logAndBroadcast(`Error approving and saving data: ${error.message}`, 'error');
+      this.logAndBroadcast(error.stack, 'error');
       throw new Error(`Failed to approve and save data: ${error.message}`);
     }
   }
@@ -1289,7 +1316,7 @@ ${htmlContent}`;
 
     // Delete the schedule after rejection
     await this.parsedScheduleRepository.delete(parsedScheduleId);
-    this.logger.log(`Deleted rejected schedule ${parsedScheduleId} from database`);
+    this.logAndBroadcast(`Deleted rejected schedule ${parsedScheduleId} from database`, 'info');
   }
 
   async saveManualSubmissionForReview(vendorId: string, manualData: any): Promise<ParsedSchedule> {
@@ -1348,13 +1375,14 @@ ${htmlContent}`;
       // Remove leading/trailing whitespace
       trimmed = trimmed.trim();
 
-      this.logger.log(
+      this.logAndBroadcast(
         `HTML trimming: ${htmlContent.length} → ${trimmed.length} chars (${(((htmlContent.length - trimmed.length) / htmlContent.length) * 100).toFixed(1)}% reduction)`,
+        'info',
       );
 
       return trimmed;
     } catch (error) {
-      this.logger.warn('Error trimming HTML content, using original:', error);
+      this.logAndBroadcast('Error trimming HTML content, using original:', 'warning');
       return htmlContent;
     }
   }
@@ -1593,21 +1621,18 @@ Return ONLY valid JSON with no extra text:
       }
 
       // Clean and parse JSON response with better error handling
-      this.logger.log('Raw Gemini response (first 500 chars):', text.substring(0, 500));
-      this.logger.log(`Full response length: ${text.length} characters`);
+      this.logAndBroadcast('Raw Gemini response (first 500 chars):', 'info');
+      this.logAndBroadcast(`Full response length: ${text.length} characters`, 'info');
 
       let parsedData;
       try {
         const cleanJsonString = this.cleanGeminiResponse(text);
-        this.logger.log('Cleaned JSON (first 500 chars):', cleanJsonString.substring(0, 500));
-        this.logger.log(`Cleaned JSON length: ${cleanJsonString.length} characters`);
+        this.logAndBroadcast('Cleaned JSON (first 500 chars):', 'info');
+        this.logAndBroadcast(`Cleaned JSON length: ${cleanJsonString.length} characters`, 'info');
         parsedData = JSON.parse(cleanJsonString);
-        this.logger.log('✅ JSON parsing successful');
+        this.logAndBroadcast('✅ JSON parsing successful', 'success');
       } catch (jsonError) {
-        this.logger.error(
-          '❌ JSON parsing failed, attempting to fix common issues:',
-          jsonError.message,
-        );
+        this.logAndBroadcast('❌ JSON parsing failed, attempting to fix common issues:', 'error');
 
         // Try to fix common JSON issues
         let fixedJson = this.cleanGeminiResponse(text);
@@ -1623,9 +1648,9 @@ Return ONLY valid JSON with no extra text:
         if (lastValidJson) {
           try {
             parsedData = JSON.parse(lastValidJson);
-            this.logger.log('✅ Successfully parsed JSON after fixing');
+            this.logAndBroadcast('✅ Successfully parsed JSON after fixing', 'success');
           } catch (secondError) {
-            this.logger.error('❌ Even fixed JSON failed to parse:', secondError.message);
+            this.logAndBroadcast('❌ Even fixed JSON failed to parse:', 'error');
             throw new Error(`JSON parsing failed: ${jsonError.message}`);
           }
         } else {
@@ -1638,20 +1663,23 @@ Return ONLY valid JSON with no extra text:
       const djCount = parsedData.djs?.length || 0;
       const vendorName = parsedData.vendor?.name || 'Unknown';
 
-      this.logger.log(
+      this.logAndBroadcast(
         `📊 Parsing Results: ${showCount} shows, ${djCount} DJs, vendor: ${vendorName}`,
+        'info',
       );
 
       if (showCount < 30) {
-        this.logger.warn(
+        this.logAndBroadcast(
           `⚠️  WARNING: Only found ${showCount} shows, expected 35-40+. May be incomplete parsing.`,
+          'warning',
         );
       } else {
-        this.logger.log(`✅ Good show count: ${showCount} shows found`);
+        this.logAndBroadcast(`✅ Good show count: ${showCount} shows found`, 'success');
       }
 
-      this.logger.log(
+      this.logAndBroadcast(
         `Vision parsed data extracted - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}, Vendor: ${parsedData.vendor?.name || 'Unknown'}`,
+        'success',
       );
 
       // Ensure required structure with defaults
@@ -1669,7 +1697,7 @@ Return ONLY valid JSON with no extra text:
 
       return finalData;
     } catch (error) {
-      this.logger.error('Error parsing screenshot with Gemini Vision:', error);
+      this.logAndBroadcast('Error parsing screenshot with Gemini Vision:', 'error');
       throw new Error(`Gemini Vision parsing failed: ${error.message}`);
     }
   }

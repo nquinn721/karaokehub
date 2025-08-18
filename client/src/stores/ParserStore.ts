@@ -84,11 +84,30 @@ export class ParserStore {
   // Setup parser-specific WebSocket events through the shared WebSocketStore
   setupParserEvents(socket: Socket) {
     if (!socket) return;
-    
-    socket.on('parser-log', (data: { message: string; timestamp: string }) => {
-      this.addLogEntry(data.message, 'info');
+
+    // Join the parser-logs room to receive parser log broadcasts
+    socket.emit('join-room', 'parser-logs');
+
+    // Listen for parser logs with the new structure
+    socket.on(
+      'parser-log',
+      (logEntry: {
+        id: string;
+        message: string;
+        timestamp: Date;
+        level: 'info' | 'success' | 'warning' | 'error';
+      }) => {
+        this.addLogEntry(logEntry.message, logEntry.level || 'info');
+      },
+    );
+
+    // Listen for log expiration events to remove logs after 5 seconds
+    socket.on('parser-log-expired', (_logId: string) => {
+      // The logs are already managed by the 5-second auto-expiration in the backend
+      // This event is just for sync purposes if needed
     });
 
+    // Keep legacy parser-error handler for backwards compatibility
     socket.on('parser-error', (data: { message: string; timestamp: string }) => {
       this.addLogEntry(data.message, 'error');
     });
@@ -97,7 +116,9 @@ export class ParserStore {
   // Initialize WebSocket connection for real-time parser logs (legacy method - now deprecated)
   initializeWebSocket() {
     // This method is deprecated - use setupParserEvents with shared WebSocketStore instead
-    console.warn('ParserStore.initializeWebSocket() is deprecated. Use setupParserEvents() with shared WebSocketStore.');
+    console.warn(
+      'ParserStore.initializeWebSocket() is deprecated. Use setupParserEvents() with shared WebSocketStore.',
+    );
   }
 
   // Cleanup WebSocket connection

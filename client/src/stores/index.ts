@@ -36,8 +36,11 @@ export class RootStore {
   musicStore: MusicStore;
   subscriptionStore: SubscriptionStore;
   apiStore: typeof apiStoreInstance;
+  
+  private webSocketInitialized = false;
 
   constructor() {
+    console.log('🏪 RootStore constructor called');
     this.authStore = new AuthStore();
     this.uiStore = new UIStore();
     this.showStore = showStoreInstance; // Use the singleton instance
@@ -71,6 +74,14 @@ export class RootStore {
   }
 
   private setupWebSocket() {
+    if (this.webSocketInitialized) {
+      console.log('🔄 WebSocket already initialized, skipping...');
+      return;
+    }
+    
+    console.log('🔌 Initializing WebSocket connection...');
+    this.webSocketInitialized = true;
+    
     // Connect to WebSocket server
     this.webSocketStore.connect();
     
