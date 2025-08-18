@@ -1382,35 +1382,35 @@ ${htmlContent}`;
    */
   private convertTimeToStartTime(time: string): string {
     if (!time) return '00:00';
-    
+
     const timeStr = time.toLowerCase().trim();
-    
+
     // Handle various time formats
     const timePatterns = [
       { pattern: /(\d{1,2}):(\d{2})\s*(pm|am)/i, hasMinutes: true },
       { pattern: /(\d{1,2})\s*(pm|am)/i, hasMinutes: false },
       { pattern: /(\d{1,2}):(\d{2})/i, hasMinutes: true }, // 24-hour format already
     ];
-    
+
     for (const { pattern, hasMinutes } of timePatterns) {
       const match = timeStr.match(pattern);
       if (match) {
         let hours = parseInt(match[1]);
         const minutes = hasMinutes ? parseInt(match[2]) : 0;
         const period = match[3]?.toLowerCase();
-        
+
         // Convert to 24-hour format
         if (period === 'pm' && hours !== 12) {
           hours += 12;
         } else if (period === 'am' && hours === 12) {
           hours = 0;
         }
-        
+
         // Format as HH:MM
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
       }
     }
-    
+
     // Default fallback
     return '00:00';
   }
@@ -1697,9 +1697,11 @@ ${htmlContent}`;
         const coordFields = [];
         if (showData.lat !== undefined) coordFields.push(`lat: ${showData.lat}`);
         if (showData.lng !== undefined) coordFields.push(`lng: ${showData.lng}`);
-        if ((showData as any).latitude !== undefined) coordFields.push(`latitude: ${(showData as any).latitude}`);
-        if ((showData as any).longitude !== undefined) coordFields.push(`longitude: ${(showData as any).longitude}`);
-        
+        if ((showData as any).latitude !== undefined)
+          coordFields.push(`latitude: ${(showData as any).latitude}`);
+        if ((showData as any).longitude !== undefined)
+          coordFields.push(`longitude: ${(showData as any).longitude}`);
+
         if (coordFields.length > 0) {
           this.logAndBroadcast(
             `Gemini coordinate fields for ${showData.venue}: ${coordFields.join(', ')}`,
@@ -1726,16 +1728,13 @@ ${htmlContent}`;
             `Warning: No coordinates provided by Gemini for ${showData.venue}`,
             'warning',
           );
-          
+
           // Fallback: Try to geocode using address components
           if (cleanedAddress && city && state) {
             try {
               const fullAddress = `${showData.venue}, ${cleanedAddress}, ${city}, ${state}`;
-              this.logAndBroadcast(
-                `Attempting fallback geocoding for: ${fullAddress}`,
-                'info',
-              );
-              
+              this.logAndBroadcast(`Attempting fallback geocoding for: ${fullAddress}`, 'info');
+
               const coords = await this.geocodingService.geocodeAddressHybrid(fullAddress);
               if (coords && coords.lat && coords.lng) {
                 lat = coords.lat;
