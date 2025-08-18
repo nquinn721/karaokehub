@@ -1796,7 +1796,7 @@ ${htmlContent}`;
     try {
       this.logAndBroadcast(`Capturing full-page screenshot from: ${url}`);
 
-      // Platform-aware Puppeteer configuration
+      // Platform-aware Puppeteer configuration with aggressive production settings
       const puppeteerArgs = [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -1805,9 +1805,36 @@ ${htmlContent}`;
         '--disable-background-timer-throttling',
         '--disable-backgrounding-occluded-windows',
         '--disable-renderer-backgrounding',
-        '--disable-features=TranslateUI',
+        '--disable-features=TranslateUI,BlinkGenPropertyTrees',
         '--disable-ipc-flooding-protection',
+        '--disable-blink-features=AutomationControlled',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-client-side-phishing-detection',
+        '--disable-component-extensions-with-background-pages',
+        '--disable-default-apps',
+        '--mute-audio',
+        '--disable-sync',
+        '--disable-translate',
       ];
+
+      // Production-specific arguments for Cloud Run
+      if (process.env.NODE_ENV === 'production') {
+        puppeteerArgs.push(
+          '--memory-pressure-off',
+          '--max_old_space_size=256',
+          '--disable-background-networking',
+          '--disable-background-timer-throttling',
+          '--disable-renderer-backgrounding',
+          '--disable-features=site-per-process',
+          '--aggressive-cache-discard',
+          '--disable-hang-monitor',
+          '--disable-prompt-on-repost',
+          '--disable-domain-reliability',
+          '--disable-logging',
+          '--silent',
+        );
+      }
 
       // Additional Linux-specific arguments for production
       if (process.platform === 'linux') {
@@ -1818,31 +1845,64 @@ ${htmlContent}`;
           '--disable-extensions',
           '--disable-default-apps',
           '--disable-background-networking',
+          '--disable-software-rasterizer',
+          '--disable-dev-shm-usage',
+          '--run-all-compositor-stages-before-draw',
+          '--disable-accelerated-2d-canvas',
+          '--disable-accelerated-jpeg-decoding',
+          '--disable-accelerated-mjpeg-decode',
+          '--disable-accelerated-video-decode',
         );
       }
 
       browser = await puppeteer.launch({
-        headless: true,
+        headless: true, // Use headless mode for production stability
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
         args: puppeteerArgs,
-        timeout: 60000, // 60 second timeout
+        timeout: 45000, // Reduced timeout for faster failure
         handleSIGINT: false,
         handleSIGTERM: false,
         handleSIGHUP: false,
+        ignoreDefaultArgs: ['--enable-automation'],
+        devtools: false,
       });
 
-      // Add error listeners to browser
+      // Add error listeners to browser with more aggressive cleanup
       browser.on('disconnected', () => {
-        this.logAndBroadcast('Browser disconnected unexpectedly');
+        this.logAndBroadcast('Browser disconnected unexpectedly - cleaning up resources');
+      });
+
+      browser.on('targetcreated', () => {
+        this.logAndBroadcast('Browser target created');
+      });
+
+      browser.on('targetdestroyed', () => {
+        this.logAndBroadcast('Browser target destroyed');
       });
 
       page = await browser.newPage();
+      
+      // Aggressive page optimization for production
+      await page.setBypassCSP(true);
+      await page.setJavaScriptEnabled(true);
+      
+      // Disable images and CSS for faster loading in production
+      if (process.env.NODE_ENV === 'production') {
+        await page.setRequestInterception(true);
+        page.on('request', (request) => {
+          const resourceType = request.resourceType();
+          if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+            request.abort();
+          } else {
+            request.continue();
+          }
+        });
+      }
 
-      // Set page timeout
-      page.setDefaultTimeout(30000);
-      page.setDefaultNavigationTimeout(30000);
-
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+      // Set aggressive timeouts for production
+      const timeout = process.env.NODE_ENV === 'production' ? 20000 : 30000;
+      page.setDefaultTimeout(timeout);
+      page.setDefaultNavigationTimeout(timeout);      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
       // Use larger viewport for better content capture
       await page.setViewport({ width: 1280, height: 1024 });
 
@@ -1930,22 +1990,49 @@ ${htmlContent}`;
       this.logAndBroadcast(`Error capturing screenshot from ${url}: ${error.message}`);
       throw error;
     } finally {
-      // Properly close resources
-      try {
-        if (page && !page.isClosed()) {
-          await page.close();
+      // Aggressive resource cleanup for production stability
+      const cleanupTimeout = 5000; // 5 second timeout for cleanup
+      
+      const cleanup = async () => {
+        try {
+          // Close page first
+          if (page && !page.isClosed()) {
+            await page.removeAllListeners();
+            await page.close();
+            this.logAndBroadcast('Page closed successfully');
+          }
+        } catch (closeError) {
+          this.logger.warn(`Error closing page: ${closeError.message}`);
         }
-      } catch (closeError) {
-        this.logger.warn(`Error closing page: ${closeError.message}`);
-      }
 
-      try {
-        if (browser && browser.isConnected()) {
-          await browser.close();
+        try {
+          // Then close browser
+          if (browser) {
+            // Remove event listeners to prevent hanging
+            browser.removeAllListeners();
+            
+            if (browser.isConnected()) {
+              const pages = await browser.pages();
+              await Promise.all(pages.map(p => p.close().catch(() => {})));
+              await browser.close();
+              this.logAndBroadcast('Browser closed successfully');
+            }
+          }
+        } catch (closeError) {
+          this.logger.warn(`Error closing browser: ${closeError.message}`);
         }
-      } catch (closeError) {
-        this.logger.warn(`Error closing browser: ${closeError.message}`);
-      }
+
+        // Force garbage collection if available
+        if (global.gc) {
+          global.gc();
+        }
+      };
+
+      // Use timeout to prevent hanging cleanup
+      await Promise.race([
+        cleanup(),
+        new Promise((resolve) => setTimeout(resolve, cleanupTimeout))
+      ]);
     }
   }
 

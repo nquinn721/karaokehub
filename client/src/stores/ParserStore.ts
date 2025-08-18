@@ -234,7 +234,13 @@ export class ParserStore {
   async checkAndRestoreParsingStatus(): Promise<boolean> {
     try {
       const response = await apiStore.get('/parser/parsing-status');
-      const status = response.data;
+      const status = response?.data;
+
+      // Check if status exists and has the expected structure
+      if (!status || typeof status.isCurrentlyParsing === 'undefined') {
+        console.warn('Invalid parsing status response:', status);
+        return false;
+      }
 
       if (status.isCurrentlyParsing) {
         runInAction(() => {
@@ -264,6 +270,7 @@ export class ParserStore {
       return false;
     } catch (error) {
       console.error('Failed to check parsing status:', error);
+      // Don't throw the error, just return false to indicate no parsing is active
       return false;
     }
   }
