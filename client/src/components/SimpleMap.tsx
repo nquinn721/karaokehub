@@ -334,7 +334,7 @@ export const SimpleMap: React.FC = observer(() => {
           }}
         >
           {/* Current location blue dot */}
-          {userLocation && (
+          {userLocation && google?.maps && (
             <Marker
               position={userLocation}
               icon={{

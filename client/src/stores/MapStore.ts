@@ -1,5 +1,5 @@
 import { autorun, makeAutoObservable, runInAction } from 'mobx';
-import { MapMarker } from '../utils/mapClustering';
+import { MapMarker, clusterShows } from '../utils/mapClustering';
 
 export interface UserLocation {
   lat: number;
@@ -877,8 +877,7 @@ export class MapStore {
    */
   updateClusteredMarkers(shows: any[], zoom: number) {
     try {
-      // Dynamic import to avoid circular dependency
-      const { clusterShows } = require('../utils/mapClustering');
+      // Use the imported clusterShows function
       const markers = clusterShows(shows, zoom);
 
       runInAction(() => {
