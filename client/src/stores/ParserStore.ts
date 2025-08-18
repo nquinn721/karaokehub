@@ -26,6 +26,8 @@ export interface ParsedShowData {
   city?: string;
   state?: string;
   zip?: string;
+  lat?: number;
+  lng?: number;
   venuePhone?: string;
   venueWebsite?: string;
   imageUrl?: string;

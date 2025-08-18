@@ -728,6 +728,42 @@ const ParserReviewPage: React.FC = observer(() => {
                             </Grid>
                             <Grid item xs={12} sm={6}>
                               <TextField
+                                label="Latitude"
+                                value={show.lat || ''}
+                                onChange={(e) => {
+                                  const newShows = [...editedData.shows];
+                                  newShows[index] = {
+                                    ...newShows[index],
+                                    lat: parseFloat(e.target.value) || undefined,
+                                  };
+                                  setEditedData({ ...editedData, shows: newShows });
+                                }}
+                                fullWidth
+                                size="small"
+                                placeholder="39.961176"
+                                inputProps={{ step: 'any', type: 'number' }}
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <TextField
+                                label="Longitude"
+                                value={show.lng || ''}
+                                onChange={(e) => {
+                                  const newShows = [...editedData.shows];
+                                  newShows[index] = {
+                                    ...newShows[index],
+                                    lng: parseFloat(e.target.value) || undefined,
+                                  };
+                                  setEditedData({ ...editedData, shows: newShows });
+                                }}
+                                fullWidth
+                                size="small"
+                                placeholder="-82.998794"
+                                inputProps={{ step: 'any', type: 'number' }}
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <TextField
                                 label="Venue Phone"
                                 value={show.venuePhone || ''}
                                 onChange={(e) => {
