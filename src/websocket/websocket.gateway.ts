@@ -289,11 +289,11 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
     // Broadcast to all clients subscribed to parser logs
     this.server.to('parser-logs').emit('parser-log', logEntry);
 
-    // Auto-remove log entry after 5 seconds
+    // Auto-remove log entry after 10 seconds
     setTimeout(() => {
       this.parserLogs = this.parserLogs.filter((log) => log.id !== logEntry.id);
       this.server.to('parser-logs').emit('parser-log-expired', logEntry.id);
-    }, 5000);
+    }, 10000);
 
     return logEntry;
   }

@@ -101,9 +101,9 @@ export class ParserStore {
       },
     );
 
-    // Listen for log expiration events to remove logs after 5 seconds
+    // Listen for log expiration events to remove logs after 10 seconds
     socket.on('parser-log-expired', (_logId: string) => {
-      // The logs are already managed by the 5-second auto-expiration in the backend
+      // The logs are already managed by the 10-second auto-expiration in the backend
       // This event is just for sync purposes if needed
     });
 
@@ -165,12 +165,12 @@ export class ParserStore {
       }
     });
 
-    // Auto-remove entry after 5 seconds
+    // Auto-remove entry after 10 seconds
     setTimeout(() => {
       runInAction(() => {
         this.parsingLog = this.parsingLog.filter((log) => log.id !== entry.id);
       });
-    }, 5000);
+    }, 10000);
   }
 
   clearLog() {
