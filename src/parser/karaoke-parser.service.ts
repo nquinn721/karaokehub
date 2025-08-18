@@ -2214,7 +2214,7 @@ Return ONLY valid JSON with no extra text:
       } catch (jsonError) {
         this.logAndBroadcast('❌ JSON parsing failed, attempting to fix common issues:', 'error');
         this.logAndBroadcast(`JSON Error: ${jsonError.message}`, 'error');
-        
+
         // Log a sample of the problematic JSON for debugging
         if (cleanJsonString) {
           const problemArea = cleanJsonString.substring(Math.max(0, cleanJsonString.length - 1000));
@@ -2232,7 +2232,7 @@ Return ONLY valid JSON with no extra text:
 
         // Fix missing commas between array elements
         fixedJson = fixedJson.replace(/}\s*{/g, '},{');
-        
+
         // Fix decimal numbers that might be causing issues
         fixedJson = fixedJson.replace(/:\s*(\d+\.\d+)([^\d,}\]])/g, ': $1,$2');
 
