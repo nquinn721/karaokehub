@@ -577,7 +577,7 @@ const SubmitShowPage: React.FC = observer(() => {
                             📍 {show.venue}
                           </Typography>
                           <Typography variant="body2" color="text.secondary" gutterBottom>
-                            🗓️ {show.date} • ⏰ {show.time}
+                            ⏰ {show.time}
                           </Typography>
                           {show.djName && (
                             <Typography variant="body2" color="primary">
