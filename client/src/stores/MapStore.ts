@@ -1,4 +1,5 @@
 import { autorun, makeAutoObservable, runInAction } from 'mobx';
+import { MapMarker } from '../utils/mapClustering';
 
 export interface UserLocation {
   lat: number;
@@ -33,6 +34,10 @@ export class MapStore {
   private _mapZoom: number | null = null; // Store current map zoom
   private _preventAutoCenter = false; // Flag to prevent auto-centering when closing InfoWindow
   private _allowAutoFit = true; // Flag to control automatic map fitting to shows
+
+  // Clustering properties
+  public clusteredMarkers: MapMarker[] = [];
+  public selectedCluster: MapMarker | null = null;
 
   // Store references to avoid circular dependencies
   private apiStore: any = null;
@@ -864,6 +869,64 @@ export class MapStore {
   isMarkerSelected(showId: string): boolean {
     return this.selectedMarkerId === showId;
   }
+
+  // ============ CLUSTERING METHODS ============
+
+  /**
+   * Update clustered markers based on current shows and zoom level
+   */
+  updateClusteredMarkers(shows: any[], zoom: number) {
+    try {
+      // Dynamic import to avoid circular dependency
+      const { clusterShows } = require('../utils/mapClustering');
+      const markers = clusterShows(shows, zoom);
+
+      runInAction(() => {
+        this.clusteredMarkers = markers;
+      });
+
+      console.log('Clustering update:', {
+        showsCount: shows.length,
+        zoom,
+        markersGenerated: markers.length,
+      });
+    } catch (error) {
+      console.error('Error updating clustered markers:', error);
+    }
+  }
+
+  /**
+   * Set selected cluster
+   */
+  setSelectedCluster(cluster: MapMarker | null) {
+    runInAction(() => {
+      this.selectedCluster = cluster;
+      // Clear individual marker selection when selecting cluster
+      if (cluster) {
+        this.selectedMarkerId = null;
+      }
+    });
+  }
+
+  /**
+   * Handle cluster click - either show info or zoom in
+   */
+  handleClusterClick(cluster: MapMarker, map: google.maps.Map) {
+    if (!cluster.isCluster) return;
+
+    const currentZoom = map.getZoom() || 10;
+
+    if (currentZoom >= 15) {
+      // At max zoom, show cluster info
+      this.setSelectedCluster(cluster);
+    } else {
+      // Zoom in to expand cluster
+      map.setZoom(currentZoom + 3);
+      map.panTo({ lat: cluster.lat, lng: cluster.lng });
+    }
+  }
+
+  // ============ END CLUSTERING METHODS ============
 
   // Cleanup method for when component unmounts
   cleanup(): void {

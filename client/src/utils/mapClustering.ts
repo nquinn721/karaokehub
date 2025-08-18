@@ -37,29 +37,28 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 
 // Get clustering distance based on zoom level
 function getClusteringDistance(zoom: number): number {
-  // Zoom levels and corresponding clustering distances:
-  // 1-4: Country level (500+ km clustering)
-  // 5-6: State level (200-500 km clustering)
-  // 7-8: Large metro (100-200 km clustering)
-  // 9-10: Metro area (50-100 km clustering)
-  // 11-12: City level (20-50 km clustering)
-  // 13-14: Local area (5-20 km clustering)
-  // 15+: Neighborhood (no clustering)
+  // Aggressive clustering that breaks apart at reasonable zoom levels:
+  // 1-6: Country/state level (1000+ km clustering)
+  // 7-8: Large region (500 km clustering)
+  // 9-10: Metro area (200 km clustering)
+  // 11-12: City level (50 km clustering)
+  // 13-14: Local area (10 km clustering)
+  // 15+: Individual markers (no clustering)
 
-  if (zoom <= 4) {
-    return 500; // 500km for country level
-  } else if (zoom <= 6) {
-    return 200; // 200km for state level
+  console.log(`Getting clustering distance for zoom level: ${zoom}`);
+
+  if (zoom <= 6) {
+    return 1000; // 1000km for country/state level
   } else if (zoom <= 8) {
-    return 100; // 100km for large metro
+    return 500; // 500km for large region
   } else if (zoom <= 10) {
-    return 50; // 50km for metro area
+    return 200; // 200km for metro area
   } else if (zoom <= 12) {
-    return 20; // 20km for city level
+    return 50; // 50km for city level
   } else if (zoom <= 14) {
-    return 5; // 5km for local area
+    return 10; // 10km for local area
   } else {
-    return 0; // No clustering at neighborhood level
+    return 0; // No clustering - show individual markers
   }
 }
 
@@ -67,9 +66,13 @@ function getClusteringDistance(zoom: number): number {
 export function clusterShows(shows: Show[], zoom: number): MapMarker[] {
   const clusteringDistance = getClusteringDistance(zoom);
 
+  console.log(
+    `Clustering ${shows.length} shows at zoom ${zoom} with distance ${clusteringDistance}km`,
+  );
+
   // If no clustering needed at this zoom level, return individual markers
   if (clusteringDistance === 0) {
-    return shows
+    const individualMarkers = shows
       .filter((show) => show.lat && show.lng)
       .map((show) => ({
         id: show.id,
@@ -78,9 +81,11 @@ export function clusterShows(shows: Show[], zoom: number): MapMarker[] {
         show,
         isCluster: false as const,
       }));
+    console.log(`No clustering needed, returning ${individualMarkers.length} individual markers`);
+    return individualMarkers;
   }
 
-  const clusters: ClusterMarker[] = [];
+  const markers: MapMarker[] = [];
   const processedShows = new Set<string>();
 
   shows.forEach((show) => {
@@ -116,14 +121,13 @@ export function clusterShows(shows: Show[], zoom: number): MapMarker[] {
 
     if (clusterShows.length === 1) {
       // Single show, create individual marker
-      clusters.push({
+      markers.push({
         id: show.id,
         lat: showLat,
         lng: showLng,
-        showCount: 1,
-        shows: [show],
-        isCluster: false,
-      } as any); // Type assertion to handle the individual marker case
+        show,
+        isCluster: false as const,
+      });
     } else {
       // Multiple shows, create cluster marker
       // Calculate cluster center (centroid)
@@ -139,7 +143,7 @@ export function clusterShows(shows: Show[], zoom: number): MapMarker[] {
           return sum + lng;
         }, 0) / clusterShows.length;
 
-      clusters.push({
+      markers.push({
         id: `cluster-${show.id}`,
         lat: centerLat,
         lng: centerLng,
@@ -150,7 +154,10 @@ export function clusterShows(shows: Show[], zoom: number): MapMarker[] {
     }
   });
 
-  return clusters;
+  console.log(
+    `Created ${markers.length} markers (${markers.filter((m) => m.isCluster).length} clusters, ${markers.filter((m) => !m.isCluster).length} individual)`,
+  );
+  return markers;
 }
 
 // Create cluster marker icon with count

@@ -57,6 +57,15 @@ export class ShowStore {
   selectedShow: Show | null = null;
   isLoading = false;
 
+  // UI State (moved from ShowsPageStore)
+  public sidebarOpen: boolean = false;
+  public selectedMarkerId: string | null = null;
+
+  // Filter state
+  private _radiusFilter = 25; // miles
+  private _vendorFilter: string | null = null;
+  private _useDayFilter = true;
+
   constructor() {
     makeAutoObservable(this);
     // Initialize with current day but don't fetch automatically
@@ -71,6 +80,110 @@ export class ShowStore {
       DayOfWeek.SATURDAY,
     ];
     this.selectedDay = dayMapping[today];
+
+    // Set initial sidebar state based on device
+    this.initializeSidebarState();
+  }
+
+  private initializeSidebarState() {
+    // Check if we're on mobile (similar to useMediaQuery)
+    const isMobile = window.innerWidth < 900; // md breakpoint
+    this.sidebarOpen = !isMobile; // Default open on desktop, closed on mobile
+  }
+
+  // Filter getters and setters
+  get radiusFilter() {
+    return this._radiusFilter;
+  }
+
+  get vendorFilter() {
+    return this._vendorFilter;
+  }
+
+  get useDayFilter() {
+    return this._useDayFilter;
+  }
+
+  setRadiusFilter(radius: number) {
+    runInAction(() => {
+      this._radiusFilter = radius;
+    });
+  }
+
+  setVendorFilter(vendor: string | null) {
+    runInAction(() => {
+      this._vendorFilter = vendor;
+    });
+  }
+
+  setUseDayFilter(use: boolean) {
+    runInAction(() => {
+      this._useDayFilter = use;
+    });
+  }
+
+  // Get unique vendors for filtering
+  get uniqueVendors() {
+    return Array.from(new Set(this.shows.map((show) => show.vendor?.name).filter(Boolean)));
+  }
+
+  // ============ UI STATE METHODS ============
+
+  setSidebarOpen(open: boolean) {
+    runInAction(() => {
+      this.sidebarOpen = open;
+    });
+  }
+
+  toggleSidebar() {
+    this.setSidebarOpen(!this.sidebarOpen);
+  }
+
+  setSelectedMarkerId(id: string | null) {
+    runInAction(() => {
+      this.selectedMarkerId = id;
+    });
+  }
+
+  // ============ MAP INTEGRATION METHODS ============
+
+  /**
+   * Handle marker click - toggle selection
+   */
+  handleMarkerClick(showId: string) {
+    const newId = this.selectedMarkerId === showId ? null : showId;
+    this.setSelectedMarkerId(newId);
+  }
+
+  // TODO: Distance calculation temporarily disabled - will be moved to server-side
+  // Calculate distance between two points
+  // private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  //   const R = 3959; // Earth's radius in miles
+  //   const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  //   const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  //   const a =
+  //     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+  //     Math.cos((lat1 * Math.PI) / 180) *
+  //       Math.cos((lat2 * Math.PI) / 180) *
+  //       Math.sin(dLng / 2) *
+  //       Math.sin(dLng / 2);
+  //   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  //   return R * c;
+  // }
+
+  // Get filtered shows based on current filters
+  get filteredShows() {
+    return this.shows.filter((show) => {
+      // Vendor filter
+      if (this._vendorFilter && show.vendor?.name !== this._vendorFilter) {
+        return false;
+      }
+
+      // TODO: Radius filter temporarily disabled due to circular dependency
+      // Will be moved to server-side filtering in next iteration
+
+      return true;
+    });
   }
 
   setSelectedDay(day: DayOfWeek) {
@@ -320,6 +433,41 @@ export class ShowStore {
   // Method to get geocoding cache statistics
   getGeocodingCacheStats(): { totalEntries: number; cacheSize: string } {
     return { totalEntries: 0, cacheSize: '0 B' };
+  }
+
+  /**
+   * Handle favorite toggle with store updates
+   */
+  async handleFavoriteToggle(show: any) {
+    try {
+      // Import from index to get the singleton instances
+      const { authStore, favoriteStore } = await import('./index');
+
+      if (!authStore.isAuthenticated) return;
+
+      const isFavorited = show.favorites?.some((fav: any) => fav.userId === authStore.user?.id);
+
+      if (isFavorited) {
+        const favorite = show.favorites?.find((fav: any) => fav.userId === authStore.user?.id);
+        if (favorite) {
+          await favoriteStore.removeFavorite(favorite.id);
+        }
+      } else {
+        await favoriteStore.addFavorite({
+          showId: show.id,
+          day: show.day,
+        });
+      }
+
+      // Refresh shows to update favorites
+      if (this.useDayFilter) {
+        await this.fetchShows(this.selectedDay);
+      } else {
+        await this.fetchShows();
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
   }
 }
 

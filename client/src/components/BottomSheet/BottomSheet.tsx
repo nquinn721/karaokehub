@@ -402,9 +402,10 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         <Box
           sx={{
             flex: 1,
-            overflow: 'hidden',
+            overflow: 'auto',
             display: 'flex',
             flexDirection: 'column',
+            minHeight: 0, // Important for flex scrolling
           }}
         >
           {children}

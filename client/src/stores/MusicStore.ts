@@ -65,6 +65,105 @@ export class MusicStore {
         'Bohemian Rhapsody',
         'My Way',
         'I Want It That Way',
+        'Piano Man',
+        'Total Eclipse of the Heart',
+        'Girls Just Want to Have Fun',
+        'Wonderwall',
+        'Mr. Brightside',
+        "Don't You (Forget About Me)",
+        "Livin' on a Prayer",
+        'We Are the Champions',
+        'Someone Like You',
+        'Rolling in the Deep',
+        'Hey Jude',
+        'Dancing Queen',
+        'Respect',
+        'I Will Survive',
+        'Crazy',
+        'Friends in Low Places',
+        'Love Story',
+        'Shallow',
+        'Perfect',
+        'Imagine',
+        'Hotel California',
+        'Free Bird',
+        'Stairway to Heaven',
+        'Born to Run',
+        'American Pie',
+        // Adding 50+ more unique karaoke classics
+        'Build Me Up Buttercup',
+        'Come on Eileen',
+        'Don\'t Stop Me Now',
+        'Killing Me Softly',
+        'The Way You Look Tonight',
+        'Fly Me to the Moon',
+        'What a Wonderful World',
+        'Can\'t Help Myself',
+        'Mustang Sally',
+        'Proud Mary',
+        'Stand by Me',
+        'La Vida Es Una Fiesta',
+        'Mamma Mia',
+        'Fernando',
+        'Waterloo',
+        'Take Me Home Country Roads',
+        'Rocky Mountain High',
+        'Fire and Rain',
+        'You\'ve Got a Friend',
+        'Bridge Over Troubled Water',
+        'The Sound of Silence',
+        'Mrs. Robinson',
+        'Scarborough Fair',
+        'California Dreamin\'',
+        'Monday Monday',
+        'Good Vibrations',
+        'Surfin\' USA',
+        'Help Me Rhonda',
+        'I Get Around',
+        'Kokomo',
+        'Margaritaville',
+        'Come Monday',
+        'Cheeseburger in Paradise',
+        'Volcano',
+        'Changes in Latitudes',
+        'Sweet Home Alabama',
+        'Free as a Bird',
+        'Simple Man',
+        'Tuesday\'s Gone',
+        'Call Me the Breeze',
+        'Gimme Three Steps',
+        'That Smell',
+        'What\'s Your Name',
+        'You Got That Right',
+        'I Know a Little',
+        'Saturday Love',
+        'Cruise',
+        'Wagon Wheel',
+        'Tennessee Whiskey',
+        'Chicken Fried',
+        'Knee Deep',
+        'Colder Weather',
+        'Tequila Makes Her Clothes Fall Off',
+        'Red High Heels',
+        'American Soldier',
+        'Live Like You Were Dying',
+        'The Dance',
+        'Friends in Low Places',
+        'Achy Breaky Heart',
+        'Mambo No. 5',
+        'Ice Ice Baby',
+        'U Can\'t Touch This',
+        'Jump',
+        '1999',
+        'Purple Rain',
+        'Kiss',
+        'Little Red Corvette',
+        'When Doves Cry',
+        'Raspberry Beret',
+        'Let\'s Go Crazy',
+        'I Would Die 4 U',
+        'Delirious',
+        'Sign O\' the Times',
       ],
     },
     {
@@ -555,7 +654,7 @@ export class MusicStore {
           );
 
           runInAction(() => {
-            if (response && Array.isArray(response)) {
+            if (response && Array.isArray(response) && response.length > 0) {
               const combinedSongs = [...this.songs, ...response];
               // Enhanced deduplication by normalized title for featured categories
               const uniqueSongs = combinedSongs.filter((song, index, arr) => {
@@ -575,6 +674,15 @@ export class MusicStore {
                 );
               });
               this.songs = uniqueSongs;
+              this.currentPage += 1;
+              
+              // Check if we have more queries to load
+              const nextStartIdx = this.currentPage * 2;
+              const hasMoreQueries = nextStartIdx < category.queries.length;
+              this.hasMoreSongs = hasMoreQueries && response.length > 0;
+            } else {
+              // No more results
+              this.hasMoreSongs = false;
             }
             this.isLoadingMore = false;
           });
@@ -597,8 +705,13 @@ export class MusicStore {
             console.log(
               `🎵 Server-side processed: ${response.length} unique songs for category "${categoryId}"`,
             );
+            
+            // Set hasMoreSongs based on whether we got the expected amount and have more queries
+            this.hasMoreSongs = response.length >= 30 && category.queries.length > 2;
+            this.currentPage = 1; // We've loaded the first "page" worth of queries
           } else {
             this.songs = [];
+            this.hasMoreSongs = false;
           }
           this.isLoading = false;
         });
@@ -608,6 +721,7 @@ export class MusicStore {
       runInAction(() => {
         this.isLoading = false;
         this.isLoadingMore = false;
+        this.hasMoreSongs = false; // Stop infinite scroll on error
       });
     }
   }

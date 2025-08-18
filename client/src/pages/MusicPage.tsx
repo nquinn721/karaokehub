@@ -131,24 +131,58 @@ export const MusicPage: React.FC = observer(() => {
 
   // Scroll detection for infinite loading
   useEffect(() => {
+    let scrollTimeout: number | null = null;
+    let lastScrollY = 0;
+
     const handleScroll = () => {
-      if (musicStore.songs.length === 0 || !musicStore.hasMoreSongs || musicStore.isLoadingMore) {
+      // Throttle scroll events
+      if (scrollTimeout) {
         return;
       }
 
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      const scrollHeight = document.documentElement.scrollHeight;
-      const clientHeight = window.innerHeight;
-
-      // Load more when user scrolls to 80% of the page
-      if (scrollTop + clientHeight >= scrollHeight * 0.8) {
-        musicStore.loadMore();
+      const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
+      
+      // Only trigger when scrolling down
+      if (currentScrollY <= lastScrollY) {
+        lastScrollY = currentScrollY;
+        return;
       }
+      lastScrollY = currentScrollY;
+
+      scrollTimeout = window.setTimeout(() => {
+        // More robust checks
+        if (
+          musicStore.songs.length === 0 || 
+          !musicStore.hasMoreSongs || 
+          musicStore.isLoadingMore ||
+          musicStore.isLoading
+        ) {
+          scrollTimeout = null;
+          return;
+        }
+
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const scrollHeight = document.documentElement.scrollHeight;
+        const clientHeight = window.innerHeight;
+
+        // Load more when user scrolls to 85% of the page (more conservative threshold)
+        if (scrollTop + clientHeight >= scrollHeight * 0.85) {
+          console.log('🔄 Triggering loadMore - scroll at 85%');
+          musicStore.loadMore();
+        }
+        
+        scrollTimeout = null;
+      }, 250); // Longer throttle to prevent rapid firing
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+    };
+  }, [musicStore.songs.length, musicStore.hasMoreSongs, musicStore.isLoadingMore, musicStore.isLoading]);
 
   const handleSearch = async (query?: string) => {
     const searchTerm = query || searchQuery;

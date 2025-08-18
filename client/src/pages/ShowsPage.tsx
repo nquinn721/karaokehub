@@ -26,237 +26,79 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { APIProvider, InfoWindow, Map, Marker, useMap } from '@vis.gl/react-google-maps';
 import { observer } from 'mobx-react-lite';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { BottomSheet } from '../components/BottomSheet';
 import { DayOfWeek } from '../components/DayPicker/DayPicker';
 import { SEO } from '../components/SEO';
+import { SimpleMap } from '../components/SimpleMap';
 import { Show } from '../stores/ShowStore';
-import { apiStore, authStore, favoriteStore, mapStore, showStore } from '../stores/index';
-import { clusterShows, createClusterIcon, createShowIcon, MapMarker } from '../utils/mapClustering';
+import { authStore, favoriteStore, mapStore, showStore } from '../stores/index';
 
 const ShowsPage: React.FC = observer(() => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // State for filters
-  const [radiusFilter, setRadiusFilter] = useState<number>(25); // Changed default to 25 miles
-  const [vendorFilter, setVendorFilter] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState<DayOfWeek>(DayOfWeek.MONDAY);
-  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
-  const [useDayFilter] = useState<boolean>(true); // Always enabled for compact design
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(!isMobile); // Default open on desktop, closed on mobile
-
-  // Debounce timer for map movement (500ms as requested)
-  const [mapUpdateTimer, setMapUpdateTimer] = useState<number | null>(null);
-
-  // Clustering state
-  const [currentZoom, setCurrentZoom] = useState<number>(10);
-  const [clusteredMarkers, setClusteredMarkers] = useState<MapMarker[]>([]);
-  const [selectedCluster, setSelectedCluster] = useState<MapMarker | null>(null);
-
-  // Custom debounced function for map updates with 500ms delay
-  const debouncedMapUpdate = (center: { lat: number; lng: number }, zoom: number) => {
-    // Clear existing timer
-    if (mapUpdateTimer) {
-      window.clearTimeout(mapUpdateTimer);
-    }
-
-    // Set new timer for 500ms delay
-    const timer = window.setTimeout(() => {
-      console.log('Map update after 500ms delay:', center, 'zoom:', zoom);
-      mapStore.updateMapPosition(center, zoom);
-    }, 500);
-
-    setMapUpdateTimer(timer);
-  };
-
-  // Cleanup timer on unmount
+  // Initialize stores
   useEffect(() => {
-    return () => {
-      if (mapUpdateTimer) {
-        window.clearTimeout(mapUpdateTimer);
+    // Initialize MapStore if needed and request user location
+    const initializeMap = async () => {
+      if (!mapStore.isInitialized) {
+        await mapStore.initialize();
       }
+      // Request user location for centering map
+      await mapStore.requestUserLocation();
     };
-  }, [mapUpdateTimer]);
 
-  // Get unique vendors for autocomplete
-  const uniqueVendors = Array.from(
-    new Set(showStore.shows.map((show) => show.vendor?.name).filter(Boolean)),
-  );
+    initializeMap();
 
-  // Helper function to calculate distance between two points
-  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-    const R = 3959; // Earth's radius in miles
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLng = ((lng2 - lng1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
-  // Filter shows based on current filters
-  const filteredShows = showStore.shows.filter((show) => {
-    // Vendor filter
-    if (vendorFilter && show.vendor?.name !== vendorFilter) {
-      return false;
-    }
-
-    // Radius filter (if show has coordinates and map center)
-    if (show.lat && show.lng && mapStore.searchCenter) {
-      const distance = calculateDistance(
-        mapStore.searchCenter.lat,
-        mapStore.searchCenter.lng,
-        show.lat,
-        show.lng,
-      );
-      if (distance > radiusFilter) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  // Update clustered markers when shows or zoom changes
-  useEffect(() => {
-    const markers = clusterShows(filteredShows, currentZoom);
-    setClusteredMarkers(markers);
-  }, [filteredShows, currentZoom]);
+    // Set initial sidebar state based on device
+    showStore.setSidebarOpen(!isMobile);
+  }, [isMobile]);
 
   // Load shows when filters change
   useEffect(() => {
     const loadShows = async () => {
-      // Use the same approach as MapComponent - load all shows for the day without proximity filtering
-      if (useDayFilter) {
-        await showStore.fetchShows(selectedDay);
+      console.log('Loading shows (filter change):', {
+        selectedDay: showStore.selectedDay,
+        useDayFilter: showStore.useDayFilter,
+      });
+
+      if (showStore.useDayFilter) {
+        await showStore.fetchShows(showStore.selectedDay);
       } else {
         await showStore.fetchShows();
       }
+
+      console.log('Shows loaded (filter change):', showStore.shows.length);
     };
 
     loadShows();
-  }, [selectedDay, useDayFilter]);
+  }, [showStore.selectedDay, showStore.useDayFilter]);
 
-  // Watch for map position changes and refetch shows - same as MapComponent behavior
+  // Watch for map position changes and refetch shows
   useEffect(() => {
     const loadShowsForMapPosition = async () => {
-      // Use the same approach as MapComponent - load all shows for the day without proximity filtering
-      if (useDayFilter) {
-        await showStore.fetchShows(selectedDay);
+      console.log('Loading shows (map position):', {
+        selectedDay: showStore.selectedDay,
+        useDayFilter: showStore.useDayFilter,
+        searchCenter: mapStore.searchCenter,
+      });
+
+      if (showStore.useDayFilter) {
+        await showStore.fetchShows(showStore.selectedDay);
       } else {
         await showStore.fetchShows();
       }
+
+      console.log('Shows loaded (map position):', showStore.shows.length);
     };
 
     // Only load if we have a search center
     if (mapStore.searchCenter) {
       loadShowsForMapPosition();
     }
-  }, [mapStore.searchCenter, selectedDay, useDayFilter]);
-
-  // Initialize map and location - always re-center on city when visiting Shows page
-  useEffect(() => {
-    const initialize = async () => {
-      // Initialize MapStore if needed
-      if (!mapStore.isInitialized) {
-        await mapStore.initialize();
-      }
-
-      // Always request user location and center on nearest city when visiting Shows page
-      console.log('ShowsPage: Requesting user location for centering...');
-      await mapStore.requestUserLocation();
-
-      // Give a moment for location to be processed
-      setTimeout(() => {
-        console.log('ShowsPage: User location after request:', mapStore.userLocation);
-        console.log('ShowsPage: User city center after request:', mapStore.userCityCenter);
-      }, 1000);
-
-      // Load initial shows if none are loaded
-      if (showStore.shows.length === 0 && !showStore.isLoading) {
-        const mapCenter =
-          mapStore.userCityCenter ||
-          mapStore.userLocation ||
-          mapStore.searchCenter ||
-          mapStore.currentCenter;
-        const searchParams = {
-          lat: mapCenter.lat,
-          lng: mapCenter.lng,
-          radius: radiusFilter,
-        };
-
-        if (useDayFilter) {
-          await showStore.fetchShows(selectedDay, searchParams);
-        } else {
-          await showStore.fetchShows(undefined, searchParams);
-        }
-      }
-    };
-
-    initialize();
-  }, []); // Only run on mount
-
-  // Handle adding/removing favorites
-  const handleFavoriteToggle = async (show: Show) => {
-    if (!authStore.isAuthenticated) return;
-
-    const isFavorited = show.favorites?.some((fav: any) => fav.userId === authStore.user?.id);
-
-    if (isFavorited) {
-      const favorite = show.favorites?.find((fav: any) => fav.userId === authStore.user?.id);
-      if (favorite) {
-        await favoriteStore.removeFavorite(favorite.id);
-      }
-    } else {
-      await favoriteStore.addFavorite({
-        showId: show.id,
-        day: show.day,
-      });
-    }
-
-    // Refresh shows to update favorites
-    const mapCenter = {
-      lat: mapStore.searchCenter?.lat || mapStore.currentCenter.lat,
-      lng: mapStore.searchCenter?.lng || mapStore.currentCenter.lng,
-      radius: radiusFilter,
-    };
-
-    if (useDayFilter) {
-      await showStore.fetchShows(selectedDay, mapCenter);
-    } else {
-      await showStore.fetchShows(undefined, mapCenter);
-    }
-  };
-
-  const handleMarkerClick = (showId: string) => {
-    setSelectedMarkerId(selectedMarkerId === showId ? null : showId);
-    setSelectedCluster(null); // Clear cluster selection when selecting individual show
-  };
-
-  const handleClusterClick = (cluster: MapMarker, map: google.maps.Map) => {
-    if (cluster.isCluster) {
-      if (currentZoom >= 15) {
-        // At max zoom, show cluster info
-        setSelectedCluster(cluster);
-        setSelectedMarkerId(null); // Clear individual show selection
-      } else {
-        // Zoom in to expand cluster
-        map.setZoom(currentZoom + 3);
-        map.panTo({ lat: cluster.lat, lng: cluster.lng });
-      }
-    }
-  };
-
-  const selectedShow = selectedMarkerId
-    ? filteredShows.find((show) => show.id === selectedMarkerId)
-    : null;
+  }, [mapStore.searchCenter, showStore.selectedDay, showStore.useDayFilter]);
 
   // Format time helper
   const formatTime = (time: string): string => {
@@ -274,350 +116,6 @@ const ShowsPage: React.FC = observer(() => {
       return time;
     }
   };
-
-  // MapContent component to handle map instance
-  const MapContent: React.FC = observer(() => {
-    const map = useMap();
-
-    // Set map instance when map is available
-    useEffect(() => {
-      if (map && !mapStore.mapInstance) {
-        mapStore.setMapInstance(map);
-      }
-    }, [map]);
-
-    // Handle map center and zoom changes with debouncing
-    useEffect(() => {
-      if (map) {
-        const handleCenterChanged = () => {
-          const center = map.getCenter();
-          const zoom = map.getZoom();
-          if (center && zoom) {
-            const centerLat = center.lat();
-            const centerLng = center.lng();
-            console.log('Map center changed:', { lat: centerLat, lng: centerLng }, 'zoom:', zoom);
-
-            // Update zoom state for clustering
-            setCurrentZoom(zoom);
-
-            // Use our custom 500ms debounced update
-            debouncedMapUpdate({ lat: centerLat, lng: centerLng }, zoom);
-          }
-        };
-
-        const handleZoomChanged = () => {
-          const zoom = map.getZoom();
-          if (zoom) {
-            console.log('Map zoom changed:', zoom);
-            setCurrentZoom(zoom);
-          }
-        };
-
-        // Add the event listeners
-        const centerListener = map.addListener('center_changed', handleCenterChanged);
-        const zoomListener = map.addListener('zoom_changed', handleZoomChanged);
-
-        // Cleanup listeners on unmount
-        return () => {
-          if (centerListener) {
-            google.maps.event.removeListener(centerListener);
-          }
-          if (zoomListener) {
-            google.maps.event.removeListener(zoomListener);
-          }
-        };
-      }
-    }, [map]);
-
-    return (
-      <>
-        {/* Clustered markers */}
-        {clusteredMarkers.map((marker) => {
-          if (marker.isCluster) {
-            // Cluster marker
-            return (
-              <Marker
-                key={marker.id}
-                position={{ lat: marker.lat, lng: marker.lng }}
-                onClick={() => handleClusterClick(marker, map!)}
-                icon={{
-                  url: createClusterIcon(marker.showCount, selectedCluster?.id === marker.id),
-                  scaledSize: new window.google.maps.Size(50, 50),
-                  anchor: new window.google.maps.Point(25, 25),
-                }}
-                title={`${marker.showCount} shows in this area`}
-              />
-            );
-          } else {
-            // Individual show marker
-            const singleMarker = marker as any; // Type assertion for single marker
-            return (
-              <Marker
-                key={marker.id}
-                position={{ lat: marker.lat, lng: marker.lng }}
-                onClick={() => handleMarkerClick(marker.id)}
-                icon={{
-                  url: createShowIcon(selectedMarkerId === marker.id),
-                  scaledSize: new window.google.maps.Size(32, 32),
-                  anchor: new window.google.maps.Point(16, 16),
-                }}
-                title={singleMarker.show?.venue || 'Karaoke Show'}
-              />
-            );
-          }
-        })}
-
-        {/* Info Window for selected cluster */}
-        {selectedCluster && selectedCluster.isCluster && (
-          <InfoWindow
-            position={{ lat: selectedCluster.lat, lng: selectedCluster.lng }}
-            onCloseClick={() => setSelectedCluster(null)}
-          >
-            <Box
-              sx={{
-                p: 2,
-                maxWidth: 320,
-                backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
-                borderRadius: 2,
-                border: `1px solid ${theme.palette.mode === 'dark' ? '#00bcd4' : '#e0e0e0'}`,
-                boxShadow:
-                  theme.palette.mode === 'dark'
-                    ? '0 4px 20px rgba(0, 188, 212, 0.3)'
-                    : '0 2px 8px rgba(0, 0, 0, 0.1)',
-              }}
-            >
-              <Typography
-                variant="h6"
-                sx={{
-                  color: theme.palette.text.primary,
-                  fontWeight: 600,
-                  mb: 1.5,
-                }}
-              >
-                {selectedCluster.showCount} Karaoke Shows in this Area
-              </Typography>
-
-              <List sx={{ p: 0, maxHeight: 200, overflow: 'auto' }}>
-                {selectedCluster.shows.slice(0, 5).map((show) => (
-                  <ListItem key={show.id} sx={{ px: 0, py: 0.5 }}>
-                    <Box sx={{ width: '100%' }}>
-                      <Typography variant="body2" fontWeight={500}>
-                        {show.venue}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {formatTime(show.startTime)} • {show.dj?.name || 'Unknown Host'}
-                      </Typography>
-                    </Box>
-                  </ListItem>
-                ))}
-                {selectedCluster.showCount > 5 && (
-                  <Typography variant="caption" color="text.secondary" sx={{ px: 0, pt: 1 }}>
-                    ... and {selectedCluster.showCount - 5} more shows
-                  </Typography>
-                )}
-              </List>
-
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                Zoom in to see individual shows
-              </Typography>
-            </Box>
-          </InfoWindow>
-        )}
-
-        {/* Info Window for selected show */}
-        {selectedShow && selectedShow.lat && selectedShow.lng && (
-          <InfoWindow
-            position={{
-              lat:
-                typeof selectedShow.lat === 'string'
-                  ? parseFloat(selectedShow.lat)
-                  : selectedShow.lat,
-              lng:
-                typeof selectedShow.lng === 'string'
-                  ? parseFloat(selectedShow.lng)
-                  : selectedShow.lng,
-            }}
-            onCloseClick={() => setSelectedMarkerId(null)}
-          >
-            <Box
-              sx={{
-                p: 2,
-                maxWidth: 280,
-                backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
-                borderRadius: 2,
-                border: `1px solid ${theme.palette.mode === 'dark' ? '#00bcd4' : '#e0e0e0'}`,
-                boxShadow:
-                  theme.palette.mode === 'dark'
-                    ? '0 4px 20px rgba(0, 188, 212, 0.3)'
-                    : '0 2px 8px rgba(0, 0, 0, 0.1)',
-              }}
-            >
-              {/* Close button in top right corner */}
-              <IconButton
-                size="small"
-                onClick={() => setSelectedMarkerId(null)}
-                sx={{
-                  position: 'absolute',
-                  top: 8,
-                  right: 8,
-                  color: theme.palette.text.secondary,
-                  backgroundColor: theme.palette.background.default,
-                  border: `1px solid ${theme.palette.divider}`,
-                  width: 28,
-                  height: 28,
-                  '&:hover': {
-                    color: theme.palette.text.primary,
-                    backgroundColor: theme.palette.action.hover,
-                    transform: 'scale(1.1)',
-                  },
-                  transition: 'all 0.2s ease',
-                  zIndex: 1,
-                }}
-              >
-                <FontAwesomeIcon icon={faXmark} style={{ fontSize: '12px' }} />
-              </IconButton>
-
-              {/* Title and heart in same row */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, pr: 3 }}>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    color: theme.palette.text.primary,
-                    fontWeight: 600,
-                    fontSize: { xs: '1rem', sm: '1.25rem' },
-                    lineHeight: 1.2,
-                    flex: 1,
-                  }}
-                >
-                  {selectedShow.venue}
-                </Typography>
-
-                {/* Favorite button next to title */}
-                <IconButton
-                  size="small"
-                  onClick={() => handleFavoriteToggle(selectedShow)}
-                  sx={{
-                    color:
-                      authStore.isAuthenticated &&
-                      selectedShow.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
-                        ? theme.palette.error.main
-                        : theme.palette.text.secondary,
-                    '&:hover': {
-                      color: theme.palette.error.main,
-                      backgroundColor: theme.palette.error.main + '10',
-                    },
-                    p: 0.5,
-                    opacity: authStore.isAuthenticated ? 1 : 0.6,
-                  }}
-                >
-                  <FontAwesomeIcon
-                    icon={
-                      authStore.isAuthenticated &&
-                      selectedShow.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
-                        ? faHeart
-                        : faHeartRegular
-                    }
-                    style={{ fontSize: '14px' }}
-                  />
-                </IconButton>
-              </Box>
-
-              {/* Vendor name styled like homepage */}
-              {selectedShow.vendor?.name && (
-                <Typography
-                  variant="body2"
-                  gutterBottom
-                  sx={{
-                    color: theme.palette.text.secondary,
-                    fontStyle: 'italic',
-                    mb: 1,
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                  }}
-                >
-                  by {selectedShow.vendor.name}
-                </Typography>
-              )}
-
-              {/* Address */}
-              {selectedShow.address && (
-                <Typography
-                  variant="body2"
-                  gutterBottom
-                  sx={{
-                    color: theme.palette.text.secondary,
-                    mb: 1.5,
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                    lineHeight: 1.3,
-                  }}
-                >
-                  {selectedShow.address}
-                </Typography>
-              )}
-
-              {/* Time */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <FontAwesomeIcon
-                  icon={faClock}
-                  style={{
-                    fontSize: '12px',
-                    color: theme.palette.primary.main,
-                  }}
-                />
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: theme.palette.text.primary,
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                    fontWeight: 500,
-                  }}
-                >
-                  {formatTime(selectedShow.startTime)}
-                </Typography>
-              </Box>
-
-              {/* DJ */}
-              {selectedShow.dj?.name && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <FontAwesomeIcon
-                    icon={faMicrophone}
-                    style={{
-                      fontSize: '12px',
-                      color: theme.palette.primary.main,
-                    }}
-                  />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: theme.palette.text.primary,
-                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                      fontWeight: 500,
-                    }}
-                  >
-                    {selectedShow.dj.name}
-                  </Typography>
-                </Box>
-              )}
-
-              {/* Description */}
-              {selectedShow.description && (
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: theme.palette.text.secondary,
-                    fontSize: { xs: '0.75rem', sm: '0.8rem' },
-                    lineHeight: 1.4,
-                    mt: 1,
-                  }}
-                >
-                  {selectedShow.description}
-                </Typography>
-              )}
-            </Box>
-          </InfoWindow>
-        )}
-      </>
-    );
-  });
 
   return (
     <>
@@ -647,30 +145,7 @@ const ShowsPage: React.FC = observer(() => {
             height: { xs: '100%', md: '100%' },
           }}
         >
-          <APIProvider apiKey={apiStore.googleMapsApiKey || ''}>
-            <Map
-              style={{
-                width: '100%',
-                height: '100%',
-              }}
-              defaultCenter={
-                mapStore.userCityCenter || mapStore.userLocation || mapStore.currentCenter
-              }
-              defaultZoom={
-                mapStore.userCityCenter || mapStore.userLocation ? 12 : mapStore.initialZoom
-              }
-              gestureHandling="auto"
-              disableDefaultUI={false}
-              zoomControl={true}
-              mapTypeControl={false}
-              scaleControl={true}
-              streetViewControl={false}
-              rotateControl={false}
-              fullscreenControl={false}
-            >
-              <MapContent />
-            </Map>
-          </APIProvider>
+          <SimpleMap />
 
           {/* Toggle Button - Mobile Only */}
           {isMobile && (
@@ -685,7 +160,7 @@ const ShowsPage: React.FC = observer(() => {
               <Fab
                 color="secondary"
                 size="small"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
+                onClick={() => showStore.toggleSidebar()}
                 sx={{
                   backgroundColor: 'background.paper',
                   border: `1px solid ${theme.palette.divider}`,
@@ -694,9 +169,9 @@ const ShowsPage: React.FC = observer(() => {
                     backgroundColor: 'action.hover',
                   },
                 }}
-                title={sidebarOpen ? 'Hide filters and shows' : 'Show filters and shows'}
+                title={showStore.sidebarOpen ? 'Hide filters and shows' : 'Show filters and shows'}
               >
-                <FontAwesomeIcon icon={sidebarOpen ? faXmark : faBars} />
+                <FontAwesomeIcon icon={showStore.sidebarOpen ? faXmark : faBars} />
               </Fab>
             </Box>
           )}
@@ -705,8 +180,8 @@ const ShowsPage: React.FC = observer(() => {
         {/* Bottom Sheet / Sidebar for Shows and Filters */}
         {isMobile ? (
           <BottomSheet
-            isOpen={sidebarOpen}
-            onToggle={() => setSidebarOpen(!sidebarOpen)}
+            isOpen={showStore.sidebarOpen}
+            onToggle={() => showStore.toggleSidebar()}
             snapPoints={[0.3, 0.6, 0.9]}
             initialSnap={0}
           >
@@ -729,7 +204,7 @@ const ShowsPage: React.FC = observer(() => {
                   {Object.values(DayOfWeek)
                     .slice(0, 4)
                     .map((day) => {
-                      const isSelected = selectedDay === day;
+                      const isSelected = showStore.selectedDay === day;
                       const dayLabels = {
                         [DayOfWeek.MONDAY]: 'Mon',
                         [DayOfWeek.TUESDAY]: 'Tue',
@@ -742,7 +217,7 @@ const ShowsPage: React.FC = observer(() => {
                       return (
                         <Box
                           key={day}
-                          onClick={() => setSelectedDay(day)}
+                          onClick={() => showStore.setSelectedDay(day)}
                           sx={{
                             display: 'flex',
                             alignItems: 'center',
@@ -780,7 +255,7 @@ const ShowsPage: React.FC = observer(() => {
                   {Object.values(DayOfWeek)
                     .slice(4)
                     .map((day) => {
-                      const isSelected = selectedDay === day;
+                      const isSelected = showStore.selectedDay === day;
                       const dayLabels = {
                         [DayOfWeek.MONDAY]: 'Mon',
                         [DayOfWeek.TUESDAY]: 'Tue',
@@ -793,7 +268,7 @@ const ShowsPage: React.FC = observer(() => {
                       return (
                         <Box
                           key={day}
-                          onClick={() => setSelectedDay(day)}
+                          onClick={() => showStore.setSelectedDay(day)}
                           sx={{
                             display: 'flex',
                             alignItems: 'center',
@@ -824,11 +299,11 @@ const ShowsPage: React.FC = observer(() => {
               {/* Radius Filter */}
               <Box sx={{ mb: 2 }}>
                 <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-                  Radius: {radiusFilter} miles
+                  Radius: {showStore.radiusFilter} miles
                 </Typography>
                 <Slider
-                  value={radiusFilter}
-                  onChange={(_, value) => setRadiusFilter(value as number)}
+                  value={showStore.radiusFilter}
+                  onChange={(_, value) => showStore.setRadiusFilter(value as number)}
                   min={5}
                   max={100}
                   step={5}
@@ -846,9 +321,9 @@ const ShowsPage: React.FC = observer(() => {
               <Box sx={{ mb: 2 }}>
                 <Autocomplete
                   size="small"
-                  options={uniqueVendors}
-                  value={vendorFilter}
-                  onChange={(_, value) => setVendorFilter(value || null)}
+                  options={showStore.uniqueVendors}
+                  value={showStore.vendorFilter}
+                  onChange={(_, value) => showStore.setVendorFilter(value || null)}
                   renderInput={(params) => (
                     <TextField {...params} label="Filter by vendor" variant="outlined" />
                   )}
@@ -858,7 +333,7 @@ const ShowsPage: React.FC = observer(() => {
             </Box>
 
             {/* Shows List */}
-            <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
               <Box
                 sx={{
                   display: 'flex',
@@ -869,7 +344,8 @@ const ShowsPage: React.FC = observer(() => {
                 }}
               >
                 <Typography variant="h6" sx={{ fontSize: '1rem' }}>
-                  Shows ({filteredShows.length})
+                  Shows ({showStore.filteredShows.length}) | Markers (
+                  {showStore.filteredShows.length}) | Zoom ({8})
                 </Typography>
               </Box>
 
@@ -885,7 +361,7 @@ const ShowsPage: React.FC = observer(() => {
                   >
                     <CircularProgress size={24} />
                   </Box>
-                ) : filteredShows.length === 0 ? (
+                ) : showStore.filteredShows.length === 0 ? (
                   <Box sx={{ p: 3, textAlign: 'center' }}>
                     <Typography variant="body2" color="text.secondary">
                       No shows found for the selected filters.
@@ -893,7 +369,7 @@ const ShowsPage: React.FC = observer(() => {
                   </Box>
                 ) : (
                   <List sx={{ p: 0, pb: { xs: 4, md: 1 } }}>
-                    {filteredShows.map((show: Show) => {
+                    {showStore.filteredShows.map((show: Show) => {
                       const isFavorited = authStore.isAuthenticated
                         ? show.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
                         : false;
@@ -902,8 +378,8 @@ const ShowsPage: React.FC = observer(() => {
                         <React.Fragment key={show.id}>
                           <ListItem disablePadding>
                             <ListItemButton
-                              onClick={() => handleMarkerClick(show.id)}
-                              selected={selectedMarkerId === show.id}
+                              onClick={() => showStore.handleMarkerClick(show.id)}
+                              selected={showStore.selectedMarkerId === show.id}
                               sx={{
                                 p: { xs: 1.5, md: 2.5 },
                                 borderRadius: 2,
@@ -1124,7 +600,7 @@ const ShowsPage: React.FC = observer(() => {
                                     size="small"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleFavoriteToggle(show);
+                                      showStore.handleFavoriteToggle(show);
                                     }}
                                     sx={{
                                       color: isFavorited
@@ -1188,7 +664,7 @@ const ShowsPage: React.FC = observer(() => {
                   {Object.values(DayOfWeek)
                     .slice(0, 4)
                     .map((day) => {
-                      const isSelected = selectedDay === day;
+                      const isSelected = showStore.selectedDay === day;
                       const dayLabels = {
                         [DayOfWeek.MONDAY]: 'Mon',
                         [DayOfWeek.TUESDAY]: 'Tue',
@@ -1201,7 +677,7 @@ const ShowsPage: React.FC = observer(() => {
                       return (
                         <Box
                           key={day}
-                          onClick={() => setSelectedDay(day)}
+                          onClick={() => showStore.setSelectedDay(day)}
                           sx={{
                             display: 'flex',
                             alignItems: 'center',
@@ -1239,7 +715,7 @@ const ShowsPage: React.FC = observer(() => {
                   {Object.values(DayOfWeek)
                     .slice(4)
                     .map((day) => {
-                      const isSelected = selectedDay === day;
+                      const isSelected = showStore.selectedDay === day;
                       const dayLabels = {
                         [DayOfWeek.MONDAY]: 'Mon',
                         [DayOfWeek.TUESDAY]: 'Tue',
@@ -1252,7 +728,7 @@ const ShowsPage: React.FC = observer(() => {
                       return (
                         <Box
                           key={day}
-                          onClick={() => setSelectedDay(day)}
+                          onClick={() => showStore.setSelectedDay(day)}
                           sx={{
                             display: 'flex',
                             alignItems: 'center',
@@ -1283,11 +759,11 @@ const ShowsPage: React.FC = observer(() => {
               {/* Radius Filter */}
               <Box sx={{ mb: 2 }}>
                 <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-                  Radius: {radiusFilter} miles
+                  Radius: {showStore.radiusFilter} miles
                 </Typography>
                 <Slider
-                  value={radiusFilter}
-                  onChange={(_, value) => setRadiusFilter(value as number)}
+                  value={showStore.radiusFilter}
+                  onChange={(_, value) => showStore.setRadiusFilter(value as number)}
                   min={5}
                   max={100}
                   step={5}
@@ -1305,9 +781,9 @@ const ShowsPage: React.FC = observer(() => {
               <Box sx={{ mb: 2 }}>
                 <Autocomplete
                   size="small"
-                  options={uniqueVendors}
-                  value={vendorFilter}
-                  onChange={(_, value) => setVendorFilter(value || null)}
+                  options={showStore.uniqueVendors}
+                  value={showStore.vendorFilter}
+                  onChange={(_, value) => showStore.setVendorFilter(value || null)}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -1340,14 +816,17 @@ const ShowsPage: React.FC = observer(() => {
                   borderBottom: `1px solid ${theme.palette.divider}`,
                 }}
               >
-                <Typography variant="h6">Shows ({filteredShows.length})</Typography>
+                <Typography variant="h6">
+                  Shows ({showStore.filteredShows.length}) | Markers (
+                  {showStore.filteredShows.length}) | Zoom ({8})
+                </Typography>
               </Box>
 
               {showStore.isLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
                   <CircularProgress size={24} />
                 </Box>
-              ) : filteredShows.length === 0 ? (
+              ) : showStore.filteredShows.length === 0 ? (
                 <Typography
                   variant="body2"
                   sx={{ p: 2, textAlign: 'center', color: 'text.secondary' }}
@@ -1356,15 +835,15 @@ const ShowsPage: React.FC = observer(() => {
                 </Typography>
               ) : (
                 <List sx={{ p: 0, pb: 2 }}>
-                  {filteredShows.map((show: Show) => {
+                  {showStore.filteredShows.map((show: Show) => {
                     return (
                       <React.Fragment key={show.id}>
                         <ListItem
                           sx={{ p: 0, mb: { xs: 0.25, md: 0.75 }, mx: { xs: 0.25, md: 0.75 } }}
                         >
                           <ListItemButton
-                            onClick={() => handleMarkerClick(show.id)}
-                            selected={selectedMarkerId === show.id}
+                            onClick={() => showStore.handleMarkerClick(show.id)}
+                            selected={showStore.selectedMarkerId === show.id}
                             sx={{
                               p: { xs: 1.5, md: 2.5 },
                               borderRadius: 0, // Square corners for desktop
@@ -1582,7 +1061,7 @@ const ShowsPage: React.FC = observer(() => {
                                     size="small"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleFavoriteToggle(show);
+                                      showStore.handleFavoriteToggle(show);
                                     }}
                                     sx={{
                                       color:

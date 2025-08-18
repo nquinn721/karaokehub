@@ -1,0 +1,615 @@
+import { faCheck, faDatabase, faTimes, faUpload } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Grid,
+  IconButton,
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Typography,
+} from '@mui/material';
+import { observer } from 'mobx-react-lite';
+import React, { useState } from 'react';
+
+interface UploadData {
+  vendors: any[];
+  djs: any[];
+  shows: any[];
+  metadata?: {
+    uploadedBy?: string;
+    uploadedAt?: string;
+    source?: string;
+    notes?: string;
+  };
+}
+
+interface ValidationResult {
+  success: boolean;
+  message: string;
+  validationSummary?: {
+    vendorsCount: number;
+    djsCount: number;
+    showsCount: number;
+    newItemsCount: number;
+    updateItemsCount: number;
+  };
+  warnings?: string[];
+  errors?: string[];
+}
+
+interface UploadPreview {
+  vendors: {
+    new: any[];
+    existing: Array<{ current: any; updated: any }>;
+  };
+  djs: {
+    new: any[];
+    existing: Array<{ current: any; updated: any }>;
+  };
+  shows: {
+    new: any[];
+    existing: Array<{ current: any; updated: any }>;
+  };
+}
+
+const DataUploadModal: React.FC<{
+  open: boolean;
+  onClose: () => void;
+}> = observer(({ open, onClose }) => {
+  const [step, setStep] = useState<'fetch' | 'preview' | 'confirm' | 'upload' | 'complete'>('fetch');
+  const [uploadData, setUploadData] = useState<UploadData | null>(null);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFetchLocalData = async () => {
+    setError(null);
+    setUploading(true);
+
+    try {
+      // Fetch local database data
+      const response = await fetch('/api/upload/fetch-local-data');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch local data: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setUploadData(data);
+
+      // Automatically validate the fetched data
+      await validateData(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch local data');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const validateData = async (data: UploadData) => {
+    setError(null);
+    setUploading(true);
+
+    try {
+      const response = await fetch('/api/upload/validate-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Validation failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      setValidationResult(result);
+      setStep('preview');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Validation failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!uploadData) return;
+
+    setError(null);
+    setUploading(true);
+    setStep('upload');
+
+    try {
+      const response = await fetch('/api/upload/submit-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(uploadData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      setUploadResult(result);
+      setStep('complete');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+      setStep('preview');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleClose = () => {
+    setStep('fetch');
+    setUploadData(null);
+    setValidationResult(null);
+    setUploadResult(null);
+    setError(null);
+    setUploading(false);
+    onClose();
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const jsonData = JSON.parse(e.target?.result as string);
+
+        // Add metadata
+        const dataWithMetadata: UploadData = {
+          ...jsonData,
+          metadata: {
+            uploadedBy: 'Admin',
+            uploadedAt: new Date().toISOString(),
+            source: 'Local Database Export',
+            notes: `Uploaded from file: ${file.name}`,
+            ...jsonData.metadata,
+          },
+        };
+
+        setUploadData(dataWithMetadata);
+        setError(null);
+        setStep('validate');
+        validateData(dataWithMetadata);
+      } catch (err) {
+        setError("Failed to parse JSON file. Please ensure it's a valid JSON format.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const validateData = async (data: UploadData) => {
+    try {
+      setUploading(true);
+      const response = await fetch('/api/upload/validate-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+      setValidationResult(result);
+
+      if (result.success && result.validationSummary) {
+        setStep('preview');
+        await generatePreview(data);
+      } else {
+        setError(result.message || 'Validation failed');
+      }
+    } catch (err) {
+      setError('Failed to validate data. Please check your connection.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const generatePreview = async (data: UploadData) => {
+    try {
+      const response = await fetch('/api/upload/get-upload-preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setUploadPreview(result.preview);
+        setStep('confirm');
+      } else {
+        setError(result.message || 'Failed to generate preview');
+      }
+    } catch (err) {
+      setError('Failed to generate preview. Please check your connection.');
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!uploadData) return;
+
+    try {
+      setUploading(true);
+      setStep('upload');
+
+      const response = await fetch('/api/upload/submit-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(uploadData),
+      });
+
+      const result = await response.json();
+      setUploadResult(result);
+
+      if (result.success) {
+        // Success - show results for a few seconds then close
+        setTimeout(() => {
+          handleClose();
+        }, 5000);
+      } else {
+        setError(result.message || 'Upload failed');
+      }
+    } catch (err) {
+      setError('Failed to upload data. Please check your connection.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleClose = () => {
+    setStep('select');
+    setUploadData(null);
+    setValidationResult(null);
+    setUploadPreview(null);
+    setUploading(false);
+    setUploadResult(null);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    onClose();
+  };
+
+  const renderStepContent = () => {
+    switch (step) {
+      case 'select':
+        return (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <FontAwesomeIcon
+              icon={faFileCode}
+              size="3x"
+              style={{ color: '#1976d2', marginBottom: '16px' }}
+            />
+            <Typography variant="h6" gutterBottom>
+              Select Data File
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Choose a JSON file containing vendors, DJs, and shows data from your local database.
+            </Typography>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              style={{ display: 'none' }}
+              onChange={handleFileSelect}
+            />
+            <Button
+              variant="contained"
+              startIcon={<FontAwesomeIcon icon={faUpload} />}
+              onClick={() => fileInputRef.current?.click()}
+              size="large"
+            >
+              Choose JSON File
+            </Button>
+          </Box>
+        );
+
+      case 'validate':
+        return (
+          <Box sx={{ py: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <FontAwesomeIcon icon={faCheck} style={{ color: '#4caf50', marginRight: '8px' }} />
+              <Typography variant="h6">Validating Data...</Typography>
+            </Box>
+            <LinearProgress sx={{ mb: 2 }} />
+            <Typography variant="body2" color="text.secondary">
+              Checking data format and relationships...
+            </Typography>
+          </Box>
+        );
+
+      case 'preview':
+      case 'confirm':
+        return (
+          <Box sx={{ py: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Upload Preview
+            </Typography>
+
+            {validationResult?.validationSummary && (
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={4}>
+                  <Card variant="outlined">
+                    <CardContent sx={{ textAlign: 'center', py: 1 }}>
+                      <Typography variant="h4" color="primary.main">
+                        {validationResult.validationSummary.vendorsCount}
+                      </Typography>
+                      <Typography variant="caption">Vendors</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={4}>
+                  <Card variant="outlined">
+                    <CardContent sx={{ textAlign: 'center', py: 1 }}>
+                      <Typography variant="h4" color="success.main">
+                        {validationResult.validationSummary.djsCount}
+                      </Typography>
+                      <Typography variant="caption">DJs</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={4}>
+                  <Card variant="outlined">
+                    <CardContent sx={{ textAlign: 'center', py: 1 }}>
+                      <Typography variant="h4" color="warning.main">
+                        {validationResult.validationSummary.showsCount}
+                      </Typography>
+                      <Typography variant="caption">Shows</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            )}
+
+            <Box sx={{ mb: 2 }}>
+              <Chip
+                label={`${validationResult?.validationSummary?.newItemsCount || 0} new items`}
+                color="success"
+                size="small"
+                sx={{ mr: 1 }}
+              />
+              <Chip
+                label={`${validationResult?.validationSummary?.updateItemsCount || 0} updates`}
+                color="warning"
+                size="small"
+              />
+            </Box>
+
+            {validationResult?.warnings && validationResult.warnings.length > 0 && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Warnings ({validationResult.warnings.length}):
+                </Typography>
+                <List dense>
+                  {validationResult.warnings.slice(0, 3).map((warning, index) => (
+                    <ListItem key={index} sx={{ py: 0 }}>
+                      <ListItemText
+                        primary={warning}
+                        primaryTypographyProps={{ variant: 'body2' }}
+                      />
+                    </ListItem>
+                  ))}
+                  {validationResult.warnings.length > 3 && (
+                    <Typography variant="caption" color="text.secondary">
+                      ... and {validationResult.warnings.length - 3} more warnings
+                    </Typography>
+                  )}
+                </List>
+              </Alert>
+            )}
+
+            {validationResult?.errors && validationResult.errors.length > 0 && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Errors ({validationResult.errors.length}):
+                </Typography>
+                <List dense>
+                  {validationResult.errors.slice(0, 3).map((error, index) => (
+                    <ListItem key={index} sx={{ py: 0 }}>
+                      <ListItemText primary={error} primaryTypographyProps={{ variant: 'body2' }} />
+                    </ListItem>
+                  ))}
+                  {validationResult.errors.length > 3 && (
+                    <Typography variant="caption" color="text.secondary">
+                      ... and {validationResult.errors.length - 3} more errors
+                    </Typography>
+                  )}
+                </List>
+              </Alert>
+            )}
+
+            {uploadPreview && (
+              <Box sx={{ mt: 2 }}>
+                <Accordion>
+                  <AccordionSummary>
+                    <Typography variant="subtitle2">
+                      Preview Changes (
+                      {uploadPreview.vendors.new.length +
+                        uploadPreview.djs.new.length +
+                        uploadPreview.shows.new.length}{' '}
+                      new,{' '}
+                      {uploadPreview.vendors.existing.length +
+                        uploadPreview.djs.existing.length +
+                        uploadPreview.shows.existing.length}{' '}
+                      updates)
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Typography variant="caption" color="text.secondary">
+                      New: {uploadPreview.vendors.new.length} vendors,{' '}
+                      {uploadPreview.djs.new.length} DJs, {uploadPreview.shows.new.length} shows
+                      <br />
+                      Updates: {uploadPreview.vendors.existing.length} vendors,{' '}
+                      {uploadPreview.djs.existing.length} DJs, {uploadPreview.shows.existing.length}{' '}
+                      shows
+                    </Typography>
+                  </AccordionDetails>
+                </Accordion>
+              </Box>
+            )}
+          </Box>
+        );
+
+      case 'upload':
+        return (
+          <Box sx={{ py: 4, textAlign: 'center' }}>
+            {uploadResult ? (
+              <Box>
+                <FontAwesomeIcon
+                  icon={faCheck}
+                  size="3x"
+                  style={{ color: '#4caf50', marginBottom: '16px' }}
+                />
+                <Typography variant="h6" gutterBottom>
+                  Upload Complete!
+                </Typography>
+                {uploadResult.uploadSummary && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Created: {uploadResult.uploadSummary.vendorsCreated} vendors,{' '}
+                      {uploadResult.uploadSummary.djsCreated} DJs,{' '}
+                      {uploadResult.uploadSummary.showsCreated} shows
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Updated: {uploadResult.uploadSummary.vendorsUpdated} vendors,{' '}
+                      {uploadResult.uploadSummary.djsUpdated} DJs,{' '}
+                      {uploadResult.uploadSummary.showsUpdated} shows
+                    </Typography>
+                  </Box>
+                )}
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', mt: 2 }}
+                >
+                  This dialog will close automatically in a few seconds...
+                </Typography>
+              </Box>
+            ) : (
+              <Box>
+                <FontAwesomeIcon
+                  icon={faUpload}
+                  size="3x"
+                  style={{ color: '#1976d2', marginBottom: '16px' }}
+                />
+                <Typography variant="h6" gutterBottom>
+                  Uploading Data...
+                </Typography>
+                <LinearProgress sx={{ mt: 2, width: '200px', mx: 'auto' }} />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  Saving data to production database...
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const getDialogActions = () => {
+    switch (step) {
+      case 'select':
+        return <Button onClick={handleClose}>Cancel</Button>;
+
+      case 'validate':
+        return (
+          <Button onClick={handleClose} disabled={uploading}>
+            Cancel
+          </Button>
+        );
+
+      case 'confirm':
+        const hasErrors = validationResult?.errors && validationResult.errors.length > 0;
+        return (
+          <>
+            <Button onClick={handleClose}>Cancel</Button>
+            <Button
+              onClick={handleUpload}
+              variant="contained"
+              disabled={hasErrors}
+              startIcon={<FontAwesomeIcon icon={faUpload} />}
+            >
+              Upload to Production
+            </Button>
+          </>
+        );
+
+      case 'upload':
+        return uploadResult ? (
+          <Button onClick={handleClose} variant="contained">
+            Close
+          </Button>
+        ) : (
+          <Button onClick={handleClose} disabled={uploading}>
+            Cancel
+          </Button>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={uploading ? undefined : handleClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: { minHeight: '400px' },
+      }}
+    >
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6">Upload Data to Production</Typography>
+        {!uploading && (
+          <IconButton onClick={handleClose} size="small">
+            <FontAwesomeIcon icon={faTimes} />
+          </IconButton>
+        )}
+      </DialogTitle>
+
+      <DialogContent sx={{ minHeight: '300px' }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+        {renderStepContent()}
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, pb: 2 }}>{getDialogActions()}</DialogActions>
+    </Dialog>
+  );
+});
+
+export default DataUploadModal;

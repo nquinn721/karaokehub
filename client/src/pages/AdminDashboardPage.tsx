@@ -1,10 +1,12 @@
 import AdminBreadcrumb from '@components/AdminBreadcrumb';
 import AdminDataTables from '@components/AdminDataTables';
+import DataUploadModal from '@components/DataUploadModal';
 import {
   faMapMarkerAlt,
   faMusic,
   faPlus,
   faSync,
+  faUpload,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -22,7 +24,7 @@ import {
 } from '@mui/material';
 import { adminStore, authStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 
 // Simple stat card component
@@ -73,6 +75,7 @@ const StatCard = ({
 
 const AdminDashboardPage = observer(() => {
   const navigate = useNavigate();
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
   useEffect(() => {
     if (!authStore.isAuthenticated || !authStore.user?.isAdmin) {
@@ -132,6 +135,13 @@ const AdminDashboardPage = observer(() => {
               Refresh
             </Button>
             <Button
+              variant="outlined"
+              startIcon={<FontAwesomeIcon icon={faUpload} />}
+              onClick={() => setUploadModalOpen(true)}
+            >
+              Upload Data
+            </Button>
+            <Button
               variant="contained"
               startIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => navigate('/admin/parser')}
@@ -183,6 +193,9 @@ const AdminDashboardPage = observer(() => {
 
       {/* Data Management */}
       <AdminDataTables />
+
+      {/* Data Upload Modal */}
+      <DataUploadModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} />
     </Container>
   );
 });

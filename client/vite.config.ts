@@ -20,11 +20,11 @@ export default defineConfig({
     port: 5173, // Updated to match our documentation
     proxy: {
       '/api': {
-        target: 'http://localhost:8000', // Updated to new backend port
+        target: 'http://localhost:8000', // Backend is running on port 8000
         changeOrigin: true,
       },
       '/socket.io': {
-        target: 'http://localhost:8000', // Updated to new backend port
+        target: 'http://localhost:8000', // Backend is running on port 8000
         changeOrigin: true,
         ws: true,
       },

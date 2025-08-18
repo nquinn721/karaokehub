@@ -48,10 +48,22 @@ import {
 import { APIProvider, InfoWindow, Map, Marker, useMap } from '@vis.gl/react-google-maps';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useRef, useState } from 'react';
+import {
+  ClusterMarker,
+  MapMarker,
+  SingleMarker,
+  clusterShows,
+  createClusterIcon,
+} from '../utils/mapClustering';
 
 export const MapComponent: React.FC = observer(() => {
   const theme = useTheme();
   const showListRef = useRef<HTMLDivElement>(null);
+
+  // Clustering state
+  const [currentZoom, setCurrentZoom] = useState<number>(10);
+  const [clusteredMarkers, setClusteredMarkers] = useState<MapMarker[]>([]);
+  const [selectedCluster, setSelectedCluster] = useState<ClusterMarker | null>(null);
 
   // Paywall state
   const [showPaywall, setShowPaywall] = useState(false);
@@ -144,6 +156,20 @@ export const MapComponent: React.FC = observer(() => {
       executePendingAction();
     }
   }, [subscriptionStore.isSubscribed, pendingFavoriteAction]);
+
+  // Clustering effect - update clustered markers when shows or zoom changes
+  React.useEffect(() => {
+    if (mapStore.geocodedShows.length > 0) {
+      // Convert GeocodedShow to the format expected by clustering function
+      const showsForClustering = mapStore.geocodedShows.map((show) => ({
+        ...show,
+        lat: show.lat,
+        lng: show.lng,
+      }));
+      const markers = clusterShows(showsForClustering as any[], currentZoom);
+      setClusteredMarkers(markers);
+    }
+  }, [mapStore.geocodedShows, currentZoom]);
 
   // Favorite handling functions
   const handleFavorite = async (showId: string, day: string) => {
@@ -241,30 +267,55 @@ export const MapComponent: React.FC = observer(() => {
     mapStore.panToShow(show);
   };
 
+  // Handle cluster click - zoom in to cluster center
+  const handleClusterClick = (cluster: ClusterMarker, map: google.maps.Map) => {
+    setSelectedCluster(cluster);
+    if (currentZoom >= 17) {
+      // If already zoomed in far enough, just select the cluster
+      mapStore.selectedMarkerId = null; // Clear individual show selection
+    } else {
+      // Zoom in to cluster center
+      map.panTo({ lat: cluster.lat, lng: cluster.lng });
+      map.setZoom(Math.min(currentZoom + 3, 17));
+    }
+  };
+
   // MapContent component that has access to the map instance
   const MapContent: React.FC<{
     theme: any;
     handleMarkerClick: (show: any) => void;
+    handleClusterClick: (cluster: ClusterMarker, map: google.maps.Map) => void;
+    clusteredMarkers: MapMarker[];
+    selectedCluster: ClusterMarker | null;
     formatTime: (time: string) => string;
     onMapLoad: (map: google.maps.Map) => void;
-  }> = observer(({ theme, handleMarkerClick, formatTime, onMapLoad }) => {
-    const map = useMap();
+  }> = observer(
+    ({
+      theme,
+      handleMarkerClick,
+      handleClusterClick,
+      clusteredMarkers,
+      selectedCluster,
+      formatTime,
+      onMapLoad,
+    }) => {
+      const map = useMap();
 
-    // Call onMapLoad immediately when map is available
-    if (map && onMapLoad) {
-      onMapLoad(map);
-    }
+      // Call onMapLoad immediately when map is available
+      if (map && onMapLoad) {
+        onMapLoad(map);
+      }
 
-    // Enhanced fullscreen detection with custom controls
-    useEffect(() => {
-      if (!map) return;
+      // Enhanced fullscreen detection with custom controls
+      useEffect(() => {
+        if (!map) return;
 
-      console.log('Map instance available, setting up fullscreen detection');
+        console.log('Map instance available, setting up fullscreen detection');
 
-      // Create custom control for fullscreen show list
-      const createShowListControl = () => {
-        const controlDiv = document.createElement('div');
-        controlDiv.style.cssText = `
+        // Create custom control for fullscreen show list
+        const createShowListControl = () => {
+          const controlDiv = document.createElement('div');
+          controlDiv.style.cssText = `
           position: fixed;
           top: 0;
           left: 0;
@@ -277,11 +328,11 @@ export const MapComponent: React.FC = observer(() => {
           transform: translateX(0);
           display: none;
         `;
-        controlDiv.id = 'fullscreen-show-list';
+          controlDiv.id = 'fullscreen-show-list';
 
-        // Create toggle button container
-        const toggleContainer = document.createElement('div');
-        toggleContainer.style.cssText = `
+          // Create toggle button container
+          const toggleContainer = document.createElement('div');
+          toggleContainer.style.cssText = `
           position: absolute;
           right: -16px;
           top: 50%;
@@ -297,47 +348,47 @@ export const MapComponent: React.FC = observer(() => {
           transition: all 0.2s ease;
         `;
 
-        // Create toggle button
-        const toggleButton = document.createElement('div');
-        toggleButton.style.cssText = `
+          // Create toggle button
+          const toggleButton = document.createElement('div');
+          toggleButton.style.cssText = `
           color: ${theme.palette.primary.main};
           font-size: 20px;
           font-weight: bold;
           user-select: none;
           transition: transform 0.3s ease;
         `;
-        toggleButton.innerHTML = '«';
+          toggleButton.innerHTML = '«';
 
-        // State for panel (starts open)
-        let isOpen = true;
+          // State for panel (starts open)
+          let isOpen = true;
 
-        // Make toggle state accessible globally for show clicks
-        (window as any).fullscreenPanelState = {
-          isOpen: true,
-          toggleButton: null,
-          controlDiv: null,
-        };
+          // Make toggle state accessible globally for show clicks
+          (window as any).fullscreenPanelState = {
+            isOpen: true,
+            toggleButton: null,
+            controlDiv: null,
+          };
 
-        // Toggle functionality
-        const togglePanel = () => {
-          isOpen = !isOpen;
-          (window as any).fullscreenPanelState.isOpen = isOpen;
+          // Toggle functionality
+          const togglePanel = () => {
+            isOpen = !isOpen;
+            (window as any).fullscreenPanelState.isOpen = isOpen;
 
-          if (isOpen) {
-            controlDiv.style.transform = 'translateX(0)';
-            toggleButton.innerHTML = '«';
-          } else {
-            controlDiv.style.transform = 'translateX(-100%)';
-            toggleButton.innerHTML = '»';
-          }
-        };
+            if (isOpen) {
+              controlDiv.style.transform = 'translateX(0)';
+              toggleButton.innerHTML = '«';
+            } else {
+              controlDiv.style.transform = 'translateX(-100%)';
+              toggleButton.innerHTML = '»';
+            }
+          };
 
-        toggleContainer.addEventListener('click', togglePanel);
-        toggleContainer.appendChild(toggleButton);
+          toggleContainer.addEventListener('click', togglePanel);
+          toggleContainer.appendChild(toggleButton);
 
-        // Create content panel
-        const contentPanel = document.createElement('div');
-        contentPanel.style.cssText = `
+          // Create content panel
+          const contentPanel = document.createElement('div');
+          contentPanel.style.cssText = `
           position: absolute;
           top: 0;
           left: 0;
@@ -351,9 +402,9 @@ export const MapComponent: React.FC = observer(() => {
           overflow: hidden;
         `;
 
-        // Create header with count
-        const headerDiv = document.createElement('div');
-        headerDiv.style.cssText = `
+          // Create header with count
+          const headerDiv = document.createElement('div');
+          headerDiv.style.cssText = `
           background: ${theme.palette.background.paper};
           color: ${theme.palette.text.primary};
           padding: 16px;
@@ -361,21 +412,21 @@ export const MapComponent: React.FC = observer(() => {
           border-bottom: 1px solid ${theme.palette.divider};
         `;
 
-        // Create title
-        const titleDiv = document.createElement('div');
-        titleDiv.style.cssText = `font-weight: 600; font-size: 1.1rem; margin-bottom: 4px;`;
-        titleDiv.textContent = `Shows for ${showStore.selectedDay}`;
+          // Create title
+          const titleDiv = document.createElement('div');
+          titleDiv.style.cssText = `font-weight: 600; font-size: 1.1rem; margin-bottom: 4px;`;
+          titleDiv.textContent = `Shows for ${showStore.selectedDay}`;
 
-        // Create count
-        const countDiv = document.createElement('div');
-        countDiv.style.cssText = `font-size: 0.875rem; color: ${theme.palette.text.secondary};`;
-        countDiv.textContent = `${showStore.showsForSelectedDay.length} show(s) found`;
+          // Create count
+          const countDiv = document.createElement('div');
+          countDiv.style.cssText = `font-size: 0.875rem; color: ${theme.palette.text.secondary};`;
+          countDiv.textContent = `${showStore.showsForSelectedDay.length} show(s) found`;
 
-        headerDiv.appendChild(titleDiv);
-        headerDiv.appendChild(countDiv);
+          headerDiv.appendChild(titleDiv);
+          headerDiv.appendChild(countDiv);
 
-        const contentDiv = document.createElement('div');
-        contentDiv.style.cssText = `
+          const contentDiv = document.createElement('div');
+          contentDiv.style.cssText = `
           flex: 1;
           overflow-y: auto;
           padding: 0;
@@ -397,54 +448,54 @@ export const MapComponent: React.FC = observer(() => {
             background: ${theme.palette.primary.dark};
           }
         `;
-        contentDiv.id = 'fullscreen-show-content';
+          contentDiv.id = 'fullscreen-show-content';
 
-        // Assemble the structure
-        contentPanel.appendChild(headerDiv);
-        contentPanel.appendChild(contentDiv);
-        controlDiv.appendChild(contentPanel);
-        controlDiv.appendChild(toggleContainer);
+          // Assemble the structure
+          contentPanel.appendChild(headerDiv);
+          contentPanel.appendChild(contentDiv);
+          controlDiv.appendChild(contentPanel);
+          controlDiv.appendChild(toggleContainer);
 
-        // Store references for global access
-        (window as any).fullscreenPanelState.toggleButton = toggleButton;
-        (window as any).fullscreenPanelState.controlDiv = controlDiv;
+          // Store references for global access
+          (window as any).fullscreenPanelState.toggleButton = toggleButton;
+          (window as any).fullscreenPanelState.controlDiv = controlDiv;
 
-        // Add global event listener to prevent panel from being hidden by any external clicks
-        const preventPanelHiding = (event: Event) => {
-          const panel = document.getElementById('fullscreen-show-list');
-          const panelState = (window as any).fullscreenPanelState;
+          // Add global event listener to prevent panel from being hidden by any external clicks
+          const preventPanelHiding = (event: Event) => {
+            const panel = document.getElementById('fullscreen-show-list');
+            const panelState = (window as any).fullscreenPanelState;
 
-          // If clicking within the panel, ensure it stays open
-          if (panel && panelState && event.target) {
-            const target = event.target as HTMLElement;
-            if (panel.contains(target)) {
-              console.log('Click within panel detected, ensuring panel stays open');
-              setTimeout(() => {
-                if (panelState.isOpen) {
-                  panel.style.display = 'block';
-                  panel.style.transform = 'translateX(0)';
-                }
-              }, 10);
+            // If clicking within the panel, ensure it stays open
+            if (panel && panelState && event.target) {
+              const target = event.target as HTMLElement;
+              if (panel.contains(target)) {
+                console.log('Click within panel detected, ensuring panel stays open');
+                setTimeout(() => {
+                  if (panelState.isOpen) {
+                    panel.style.display = 'block';
+                    panel.style.transform = 'translateX(0)';
+                  }
+                }, 10);
+              }
             }
-          }
+          };
+
+          // Attach the listener to the control div
+          controlDiv.addEventListener('click', preventPanelHiding);
+          controlDiv.addEventListener('mousedown', preventPanelHiding);
+
+          return controlDiv;
         };
 
-        // Attach the listener to the control div
-        controlDiv.addEventListener('click', preventPanelHiding);
-        controlDiv.addEventListener('mousedown', preventPanelHiding);
+        const showListControl = createShowListControl();
 
-        return controlDiv;
-      };
+        // Function to update the control content
+        const updateShowListControl = () => {
+          const contentDiv = document.getElementById('fullscreen-show-content');
+          if (!contentDiv) return;
 
-      const showListControl = createShowListControl();
-
-      // Function to update the control content
-      const updateShowListControl = () => {
-        const contentDiv = document.getElementById('fullscreen-show-content');
-        if (!contentDiv) return;
-
-        if (showStore.isLoading) {
-          contentDiv.innerHTML = `
+          if (showStore.isLoading) {
+            contentDiv.innerHTML = `
             <div style="display: flex; justify-content: center; padding: 40px;">
               <div style="width: 24px; height: 24px; border: 3px solid ${theme.palette.action.disabled}; border-top: 3px solid ${theme.palette.primary.main}; border-radius: 50%; animation: spin 1s linear infinite;"></div>
             </div>
@@ -452,16 +503,16 @@ export const MapComponent: React.FC = observer(() => {
               @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
             </style>
           `;
-        } else if (showStore.showsForSelectedDay.length === 0) {
-          contentDiv.innerHTML = `
+          } else if (showStore.showsForSelectedDay.length === 0) {
+            contentDiv.innerHTML = `
             <div style="text-align: center; padding: 40px; color: ${theme.palette.text.secondary}; font-family: Roboto, sans-serif;">
               No shows found for ${showStore.selectedDay}
             </div>
           `;
-        } else {
-          contentDiv.innerHTML = showStore.showsForSelectedDay
-            .map(
-              (show) => `
+          } else {
+            contentDiv.innerHTML = showStore.showsForSelectedDay
+              .map(
+                (show) => `
             <div style="
               padding: 0;
               margin: 0 6px 12px 6px;
@@ -640,498 +691,496 @@ export const MapComponent: React.FC = observer(() => {
               </div>
             </div>
           `,
-            )
-            .join('');
-        }
-      };
-
-      // Add global handler for show clicks in fullscreen
-      (window as any).mapComponentHandleShowClick = (showId: string) => {
-        const show = showStore.showsForSelectedDay.find((s) => s.id === showId);
-        if (show) {
-          // Set selected show in store
-          showStore.setSelectedShow(show);
-
-          // Center map on show location with proper zoom
-          if (mapStore.mapInstance) {
-            const geocodedShow = mapStore.geocodedShows.find((s) => s.id === show.id);
-            if (geocodedShow) {
-              const location = { lat: geocodedShow.lat, lng: geocodedShow.lng };
-
-              // Use setCenter and setZoom for immediate centering
-              mapStore.mapInstance.setCenter(location);
-              mapStore.mapInstance.setZoom(16);
-
-              // Update selected marker using the proper method
-              mapStore.handleMarkerClick(show);
-            }
+              )
+              .join('');
           }
+        };
 
-          // Function to ensure panel stays open
-          const ensurePanelOpen = () => {
-            const panelState = (window as any).fullscreenPanelState;
-            const panel = document.getElementById('fullscreen-show-list');
+        // Add global handler for show clicks in fullscreen
+        (window as any).mapComponentHandleShowClick = (showId: string) => {
+          const show = showStore.showsForSelectedDay.find((s) => s.id === showId);
+          if (show) {
+            // Set selected show in store
+            showStore.setSelectedShow(show);
 
-            if (panel && panelState) {
-              // Force panel to be visible and in correct position
-              panel.style.display = 'block !important';
-              panel.style.visibility = 'visible !important';
-              panel.style.transform = 'translateX(0) !important';
-              panel.style.opacity = '1 !important';
+            // Center map on show location with proper zoom
+            if (mapStore.mapInstance) {
+              const geocodedShow = mapStore.geocodedShows.find((s) => s.id === show.id);
+              if (geocodedShow) {
+                const location = { lat: geocodedShow.lat, lng: geocodedShow.lng };
 
-              // Update toggle button state
-              if (panelState.toggleButton) {
-                panelState.toggleButton.innerHTML = '«';
+                // Use setCenter and setZoom for immediate centering
+                mapStore.mapInstance.setCenter(location);
+                mapStore.mapInstance.setZoom(16);
+
+                // Update selected marker using the proper method
+                mapStore.handleMarkerClick(show);
               }
-
-              // Force state to open
-              panelState.isOpen = true;
-
-              console.log('Panel forcefully ensured open after show click');
-            } else {
-              console.log('Panel or panelState not found:', {
-                panel: !!panel,
-                panelState: !!panelState,
-              });
             }
-          };
 
-          // Ensure panel stays open immediately and after multiple delays
-          ensurePanelOpen();
-          setTimeout(ensurePanelOpen, 10);
-          setTimeout(ensurePanelOpen, 50);
-          setTimeout(ensurePanelOpen, 100);
-          setTimeout(ensurePanelOpen, 200);
-          setTimeout(ensurePanelOpen, 500);
-
-          // Update the fullscreen show list to reflect selection
-          updateShowListControl();
-        }
-      };
-
-      const fullscreenChangeHandler = () => {
-        const isFullscreen = !!document.fullscreenElement;
-        console.log('Fullscreen changed:', isFullscreen);
-        console.log('Document fullscreen element:', document.fullscreenElement);
-        console.log('isMapFullscreen:', isFullscreen);
-
-        if (isFullscreen) {
-          // Add controls to map when entering fullscreen
-          // First try the fullscreen element, then fallback to map container
-          const fullscreenElement = document.fullscreenElement as HTMLElement;
-          const mapDiv =
-            fullscreenElement || (document.querySelector('#map-container') as HTMLElement);
-
-          console.log('🎯 Attempting to add controls to:', mapDiv);
-
-          if (mapDiv) {
-            // Add show list control
-            if (!document.getElementById('fullscreen-show-list')) {
-              mapDiv.appendChild(showListControl);
-              updateShowListControl();
-              showListControl.style.display = 'block';
-
-              // Ensure panel starts in open position
+            // Function to ensure panel stays open
+            const ensurePanelOpen = () => {
               const panelState = (window as any).fullscreenPanelState;
-              if (panelState && panelState.controlDiv) {
-                panelState.controlDiv.style.transform = 'translateX(0)';
+              const panel = document.getElementById('fullscreen-show-list');
+
+              if (panel && panelState) {
+                // Force panel to be visible and in correct position
+                panel.style.display = 'block !important';
+                panel.style.visibility = 'visible !important';
+                panel.style.transform = 'translateX(0) !important';
+                panel.style.opacity = '1 !important';
+
+                // Update toggle button state
                 if (panelState.toggleButton) {
                   panelState.toggleButton.innerHTML = '«';
                 }
-                panelState.isOpen = true;
-              }
 
-              console.log('✅ Added show list control to fullscreen element');
-            } else {
-              // Panel already exists, ensure it stays in correct state
-              const panelState = (window as any).fullscreenPanelState;
-              if (panelState && panelState.isOpen && panelState.controlDiv) {
-                panelState.controlDiv.style.display = 'block';
-                panelState.controlDiv.style.transform = 'translateX(0)';
+                // Force state to open
+                panelState.isOpen = true;
+
+                console.log('Panel forcefully ensured open after show click');
+              } else {
+                console.log('Panel or panelState not found:', {
+                  panel: !!panel,
+                  panelState: !!panelState,
+                });
               }
+            };
+
+            // Ensure panel stays open immediately and after multiple delays
+            ensurePanelOpen();
+            setTimeout(ensurePanelOpen, 10);
+            setTimeout(ensurePanelOpen, 50);
+            setTimeout(ensurePanelOpen, 100);
+            setTimeout(ensurePanelOpen, 200);
+            setTimeout(ensurePanelOpen, 500);
+
+            // Update the fullscreen show list to reflect selection
+            updateShowListControl();
+          }
+        };
+
+        const fullscreenChangeHandler = () => {
+          const isFullscreen = !!document.fullscreenElement;
+          console.log('Fullscreen changed:', isFullscreen);
+          console.log('Document fullscreen element:', document.fullscreenElement);
+          console.log('isMapFullscreen:', isFullscreen);
+
+          if (isFullscreen) {
+            // Add controls to map when entering fullscreen
+            // First try the fullscreen element, then fallback to map container
+            const fullscreenElement = document.fullscreenElement as HTMLElement;
+            const mapDiv =
+              fullscreenElement || (document.querySelector('#map-container') as HTMLElement);
+
+            console.log('🎯 Attempting to add controls to:', mapDiv);
+
+            if (mapDiv) {
+              // Add show list control
+              if (!document.getElementById('fullscreen-show-list')) {
+                mapDiv.appendChild(showListControl);
+                updateShowListControl();
+                showListControl.style.display = 'block';
+
+                // Ensure panel starts in open position
+                const panelState = (window as any).fullscreenPanelState;
+                if (panelState && panelState.controlDiv) {
+                  panelState.controlDiv.style.transform = 'translateX(0)';
+                  if (panelState.toggleButton) {
+                    panelState.toggleButton.innerHTML = '«';
+                  }
+                  panelState.isOpen = true;
+                }
+
+                console.log('✅ Added show list control to fullscreen element');
+              } else {
+                // Panel already exists, ensure it stays in correct state
+                const panelState = (window as any).fullscreenPanelState;
+                if (panelState && panelState.isOpen && panelState.controlDiv) {
+                  panelState.controlDiv.style.display = 'block';
+                  panelState.controlDiv.style.transform = 'translateX(0)';
+                }
+              }
+            } else {
+              console.log('❌ Could not find target element for controls');
             }
           } else {
-            console.log('❌ Could not find target element for controls');
+            // Remove controls when exiting fullscreen
+            const existingControl = document.getElementById('fullscreen-show-list');
+            if (existingControl) {
+              existingControl.remove();
+            }
           }
-        } else {
-          // Remove controls when exiting fullscreen
+        };
+
+        document.addEventListener('fullscreenchange', fullscreenChangeHandler);
+
+        // Also check initial state
+        const initialState = !!document.fullscreenElement;
+        console.log('Initial fullscreen state:', initialState);
+
+        // Observe show store changes to update content
+        const updateContent = () => {
+          updateShowListControl();
+          // Update header text
+          const headerDiv = showListControl.querySelector('div') as HTMLDivElement;
+          if (headerDiv) {
+            const titleDiv = headerDiv.querySelector('div:first-child') as HTMLDivElement;
+            const countDiv = headerDiv.querySelector('div:last-child') as HTMLDivElement;
+            if (titleDiv) titleDiv.textContent = `Shows for ${showStore.selectedDay}`;
+            if (countDiv)
+              countDiv.textContent = `${showStore.showsForSelectedDay.length} show(s) found`;
+          }
+        };
+
+        // Update content when store changes
+        updateContent();
+
+        return () => {
+          document.removeEventListener('fullscreenchange', fullscreenChangeHandler);
+          // Clean up global handler
+          delete (window as any).mapComponentHandleShowClick;
+          // Clean up any remaining controls
           const existingControl = document.getElementById('fullscreen-show-list');
           if (existingControl) {
             existingControl.remove();
           }
-        }
-      };
+          const existingButton = document.getElementById('fullscreen-show-button');
+          if (existingButton) {
+            existingButton.remove();
+          }
+        };
+      }, [
+        map,
+        showStore.shows,
+        showStore.selectedDay,
+        showStore.isLoading,
+        showStore.selectedShow,
+        theme,
+      ]);
 
-      document.addEventListener('fullscreenchange', fullscreenChangeHandler);
-
-      // Also check initial state
-      const initialState = !!document.fullscreenElement;
-      console.log('Initial fullscreen state:', initialState);
-
-      // Observe show store changes to update content
-      const updateContent = () => {
-        updateShowListControl();
-        // Update header text
-        const headerDiv = showListControl.querySelector('div') as HTMLDivElement;
-        if (headerDiv) {
-          const titleDiv = headerDiv.querySelector('div:first-child') as HTMLDivElement;
-          const countDiv = headerDiv.querySelector('div:last-child') as HTMLDivElement;
-          if (titleDiv) titleDiv.textContent = `Shows for ${showStore.selectedDay}`;
-          if (countDiv)
-            countDiv.textContent = `${showStore.showsForSelectedDay.length} show(s) found`;
-        }
-      };
-
-      // Update content when store changes
-      updateContent();
-
-      return () => {
-        document.removeEventListener('fullscreenchange', fullscreenChangeHandler);
-        // Clean up global handler
-        delete (window as any).mapComponentHandleShowClick;
-        // Clean up any remaining controls
-        const existingControl = document.getElementById('fullscreen-show-list');
-        if (existingControl) {
-          existingControl.remove();
-        }
-        const existingButton = document.getElementById('fullscreen-show-button');
-        if (existingButton) {
-          existingButton.remove();
-        }
-      };
-    }, [
-      map,
-      showStore.shows,
-      showStore.selectedDay,
-      showStore.isLoading,
-      showStore.selectedShow,
-      theme,
-    ]);
-
-    return (
-      <>
-        {/* User Location Marker */}
-        {mapStore.userLocation && (
-          <Marker
-            position={mapStore.userLocation}
-            icon={`data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+      return (
+        <>
+          {/* User Location Marker */}
+          {mapStore.userLocation && (
+            <Marker
+              position={mapStore.userLocation}
+              icon={`data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
               <circle cx="12" cy="12" r="8" fill="${theme.palette.info.main}" stroke="#fff" stroke-width="2"/>
               <circle cx="12" cy="12" r="3" fill="#fff"/>
             </svg>
           `)}`}
-            title="Your Location"
-          />
-        )}
-
-        {/* Show Markers with Microphone Icons */}
-        {mapStore.geocodedShows.length > 0 && console.log('Total geocoded shows for rendering:', mapStore.geocodedShows.length)}
-        {mapStore.geocodedShows.map((show: any) => {
-          // Check for overlapping markers and add small offset
-          const overlappingShows = mapStore.geocodedShows.filter(
-            (otherShow: any) =>
-              otherShow.id !== show.id &&
-              Math.abs(otherShow.lat - show.lat) < 0.0001 &&
-              Math.abs(otherShow.lng - show.lng) < 0.0001,
-          );
-
-          const offsetMultiplier = overlappingShows.filter((s) => s.id < show.id).length;
-          const offset = offsetMultiplier * 0.0002; // Small offset for overlapping markers
-
-          const position = {
-            lat: show.lat + offset,
-            lng: show.lng + offset,
-          };
-
-          console.log('Rendering marker for show:', {
-            id: show.id,
-            venue: show.venue,
-            lat: show.lat,
-            lng: show.lng,
-            offsetPosition: position,
-            overlappingCount: overlappingShows.length,
-          });
-
-          return (
-            <Marker
-              key={show.id}
-              position={position}
-              onClick={() => handleMarkerClick(show)}
-              title={show.venue || show.vendor?.name || 'Karaoke Show'}
-              icon={createMicrophoneIcon(mapStore.selectedMarkerId === show.id)}
+              title="Your Location"
             />
-          );
-        })()}
+          )}
 
-        {/* Info Window for Selected Show */}
-        {mapStore.selectedMarkerId &&
-          showStore.selectedShow &&
-          (() => {
-            const geocodedShow = mapStore.geocodedShows.find(
-              (s) => s.id === mapStore.selectedMarkerId,
-            );
-            if (!geocodedShow) return null;
+          {/* Clustered Markers */}
+          {clusteredMarkers.map((marker) => {
+            const position = { lat: marker.lat, lng: marker.lng };
 
-            return (
-              <InfoWindow
-                key={geocodedShow.id} // Add key to prevent re-creation
-                position={{
-                  lat: geocodedShow.lat,
-                  lng: geocodedShow.lng,
-                }}
-                pixelOffset={[0, -40]} // Offset to avoid covering marker
-                onCloseClick={() => {
-                  mapStore.closeInfoWindow();
-                }}
-              >
-                <Box
-                  sx={{
-                    maxWidth: { xs: '280px', sm: '320px' },
-                    minWidth: { xs: '250px', sm: '280px' },
-                    p: { xs: 1.5, sm: 2 },
-                    backgroundColor: theme.palette.background.paper,
-                    borderRadius: 2,
-                    boxShadow: theme.shadows[8],
-                    position: 'relative',
-                    maxHeight: { xs: '320px', sm: 'auto' },
-                    overflow: 'auto',
-                    border: `1px solid ${theme.palette.divider}`,
-                    // Custom scrollbar styling
-                    '&::-webkit-scrollbar': {
-                      width: '4px',
-                    },
-                    '&::-webkit-scrollbar-track': {
-                      background: theme.palette.action.hover,
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                      background: theme.palette.primary.main,
-                      borderRadius: '2px',
-                    },
+            if (marker.isCluster) {
+              // Render cluster marker
+              return (
+                <Marker
+                  key={marker.id}
+                  position={position}
+                  onClick={() => map && handleClusterClick(marker, map)}
+                  icon={{
+                    url: createClusterIcon(marker.showCount, selectedCluster?.id === marker.id),
+                    scaledSize: new google.maps.Size(40, 40),
+                    anchor: new google.maps.Point(20, 20),
+                  }}
+                  title={`${marker.showCount} karaoke shows`}
+                />
+              );
+            } else {
+              // Render individual show marker
+              const singleMarker = marker as SingleMarker;
+              return (
+                <Marker
+                  key={marker.id}
+                  position={position}
+                  onClick={() => handleMarkerClick(singleMarker.show)}
+                  title={
+                    singleMarker.show.venue || singleMarker.show.vendor?.name || 'Karaoke Show'
+                  }
+                  icon={createMicrophoneIcon(mapStore.selectedMarkerId === singleMarker.show.id)}
+                />
+              );
+            }
+          })}
+
+          {/* Info Window for Selected Show */}
+          {mapStore.selectedMarkerId &&
+            showStore.selectedShow &&
+            (() => {
+              const geocodedShow = mapStore.geocodedShows.find(
+                (s) => s.id === mapStore.selectedMarkerId,
+              );
+              if (!geocodedShow) return null;
+
+              return (
+                <InfoWindow
+                  key={geocodedShow.id} // Add key to prevent re-creation
+                  position={{
+                    lat: geocodedShow.lat,
+                    lng: geocodedShow.lng,
+                  }}
+                  pixelOffset={[0, -40]} // Offset to avoid covering marker
+                  onCloseClick={() => {
+                    mapStore.closeInfoWindow();
                   }}
                 >
-                  {/* Close button in top right corner */}
-                  <IconButton
-                    size="small"
-                    onClick={() => mapStore.closeInfoWindow()}
+                  <Box
                     sx={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      color: theme.palette.text.secondary,
-                      backgroundColor: theme.palette.background.default,
+                      maxWidth: { xs: '280px', sm: '320px' },
+                      minWidth: { xs: '250px', sm: '280px' },
+                      p: { xs: 1.5, sm: 2 },
+                      backgroundColor: theme.palette.background.paper,
+                      borderRadius: 2,
+                      boxShadow: theme.shadows[8],
+                      position: 'relative',
+                      maxHeight: { xs: '320px', sm: 'auto' },
+                      overflow: 'auto',
                       border: `1px solid ${theme.palette.divider}`,
-                      width: 28,
-                      height: 28,
-                      '&:hover': {
-                        color: theme.palette.text.primary,
-                        backgroundColor: theme.palette.action.hover,
-                        transform: 'scale(1.1)',
+                      // Custom scrollbar styling
+                      '&::-webkit-scrollbar': {
+                        width: '4px',
                       },
-                      transition: 'all 0.2s ease',
-                      zIndex: 1,
+                      '&::-webkit-scrollbar-track': {
+                        background: theme.palette.action.hover,
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        background: theme.palette.primary.main,
+                        borderRadius: '2px',
+                      },
                     }}
                   >
-                    <FontAwesomeIcon icon={faXmark} style={{ fontSize: '12px' }} />
-                  </IconButton>
-
-                  {/* Title and heart in same row */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, pr: 3 }}>
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        color: theme.palette.text.primary,
-                        fontWeight: 600,
-                        fontSize: { xs: '1rem', sm: '1.25rem' },
-                        lineHeight: 1.2,
-                        flex: 1,
-                      }}
-                    >
-                      {showStore.selectedShow?.venue || showStore.selectedShow?.vendor?.name}
-                    </Typography>
-
-                    {/* Favorite button next to title */}
+                    {/* Close button in top right corner */}
                     <IconButton
                       size="small"
-                      onClick={() => {
-                        const selectedShow = showStore.selectedShow;
-                        if (!selectedShow) return;
-
-                        const isFav =
-                          authStore.isAuthenticated && favoriteStore.isFavorite(selectedShow.id);
-                        if (isFav) {
-                          handleUnfavorite(selectedShow.id, showStore.selectedDay);
-                        } else {
-                          handleFavorite(selectedShow.id, showStore.selectedDay);
-                        }
-                      }}
+                      onClick={() => mapStore.closeInfoWindow()}
                       sx={{
-                        color:
-                          authStore.isAuthenticated &&
-                          showStore.selectedShow &&
-                          favoriteStore.isFavorite(showStore.selectedShow.id)
-                            ? theme.palette.error.main
-                            : theme.palette.text.secondary,
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        color: theme.palette.text.secondary,
+                        backgroundColor: theme.palette.background.default,
+                        border: `1px solid ${theme.palette.divider}`,
+                        width: 28,
+                        height: 28,
                         '&:hover': {
-                          color: theme.palette.error.main,
-                          backgroundColor: theme.palette.error.main + '10',
+                          color: theme.palette.text.primary,
+                          backgroundColor: theme.palette.action.hover,
+                          transform: 'scale(1.1)',
                         },
-                        p: 0.5,
-                        opacity: authStore.isAuthenticated ? 1 : 0.6,
+                        transition: 'all 0.2s ease',
+                        zIndex: 1,
                       }}
                     >
-                      <FontAwesomeIcon
-                        icon={
-                          authStore.isAuthenticated &&
-                          showStore.selectedShow &&
-                          favoriteStore.isFavorite(showStore.selectedShow.id)
-                            ? faHeart
-                            : faHeartRegular
-                        }
-                        style={{ fontSize: '14px' }}
-                      />
+                      <FontAwesomeIcon icon={faXmark} style={{ fontSize: '12px' }} />
                     </IconButton>
-                  </Box>
-                  {showStore.selectedShow?.venue && showStore.selectedShow?.vendor?.name && (
+
+                    {/* Title and heart in same row */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, pr: 3 }}>
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          color: theme.palette.text.primary,
+                          fontWeight: 600,
+                          fontSize: { xs: '1rem', sm: '1.25rem' },
+                          lineHeight: 1.2,
+                          flex: 1,
+                        }}
+                      >
+                        {showStore.selectedShow?.venue || showStore.selectedShow?.vendor?.name}
+                      </Typography>
+
+                      {/* Favorite button next to title */}
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          const selectedShow = showStore.selectedShow;
+                          if (!selectedShow) return;
+
+                          const isFav =
+                            authStore.isAuthenticated && favoriteStore.isFavorite(selectedShow.id);
+                          if (isFav) {
+                            handleUnfavorite(selectedShow.id, showStore.selectedDay);
+                          } else {
+                            handleFavorite(selectedShow.id, showStore.selectedDay);
+                          }
+                        }}
+                        sx={{
+                          color:
+                            authStore.isAuthenticated &&
+                            showStore.selectedShow &&
+                            favoriteStore.isFavorite(showStore.selectedShow.id)
+                              ? theme.palette.error.main
+                              : theme.palette.text.secondary,
+                          '&:hover': {
+                            color: theme.palette.error.main,
+                            backgroundColor: theme.palette.error.main + '10',
+                          },
+                          p: 0.5,
+                          opacity: authStore.isAuthenticated ? 1 : 0.6,
+                        }}
+                      >
+                        <FontAwesomeIcon
+                          icon={
+                            authStore.isAuthenticated &&
+                            showStore.selectedShow &&
+                            favoriteStore.isFavorite(showStore.selectedShow.id)
+                              ? faHeart
+                              : faHeartRegular
+                          }
+                          style={{ fontSize: '14px' }}
+                        />
+                      </IconButton>
+                    </Box>
+                    {showStore.selectedShow?.venue && showStore.selectedShow?.vendor?.name && (
+                      <Typography
+                        variant="body2"
+                        gutterBottom
+                        sx={{
+                          color: theme.palette.text.secondary,
+                          fontStyle: 'italic',
+                          mb: 1,
+                          fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                        }}
+                      >
+                        by {showStore.selectedShow.vendor.name}
+                      </Typography>
+                    )}
                     <Typography
                       variant="body2"
                       gutterBottom
                       sx={{
                         color: theme.palette.text.secondary,
-                        fontStyle: 'italic',
-                        mb: 1,
+                        mb: 1.5,
                         fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                        lineHeight: 1.3,
                       }}
                     >
-                      by {showStore.selectedShow.vendor.name}
+                      {showStore.selectedShow?.address}
                     </Typography>
-                  )}
-                  <Typography
-                    variant="body2"
-                    gutterBottom
-                    sx={{
-                      color: theme.palette.text.secondary,
-                      mb: 1.5,
-                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    {showStore.selectedShow?.address}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <FontAwesomeIcon
-                      icon={faMicrophone}
-                      style={{
-                        fontSize: '12px',
-                        color: theme.palette.primary.main,
-                      }}
-                    />
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: theme.palette.text.primary,
-                        fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                      }}
-                    >
-                      Host: {showStore.selectedShow?.dj?.name}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <FontAwesomeIcon
-                      icon={faLocationDot}
-                      style={{
-                        fontSize: '12px',
-                        color: theme.palette.secondary.main,
-                      }}
-                    />
-                    <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
-                      {showStore.selectedShow?.startTime &&
-                        formatTime(showStore.selectedShow.startTime)}{' '}
-                      -{' '}
-                      {showStore.selectedShow?.endTime &&
-                        formatTime(showStore.selectedShow.endTime)}
-                    </Typography>
-                  </Box>
-
-                  {/* Contact Information */}
-                  {showStore.selectedShow?.venuePhone && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                       <FontAwesomeIcon
-                        icon={faPhone}
+                        icon={faMicrophone}
                         style={{
                           fontSize: '12px',
-                          color: theme.palette.success.main,
+                          color: theme.palette.primary.main,
                         }}
                       />
                       <Typography
-                        component="a"
-                        href={`tel:${showStore.selectedShow.venuePhone}`}
                         variant="body2"
                         sx={{
                           color: theme.palette.text.primary,
                           fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                          textDecoration: 'none',
-                          '&:hover': {
-                            color: theme.palette.success.main,
-                          },
                         }}
                       >
-                        {showStore.selectedShow.venuePhone}
+                        Host: {showStore.selectedShow?.dj?.name}
                       </Typography>
                     </Box>
-                  )}
-
-                  {showStore.selectedShow?.venueWebsite && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                       <FontAwesomeIcon
-                        icon={faExternalLinkAlt}
+                        icon={faLocationDot}
                         style={{
                           fontSize: '12px',
-                          color: theme.palette.info.main,
+                          color: theme.palette.secondary.main,
                         }}
                       />
-                      <Typography
-                        component="a"
-                        href={
-                          showStore.selectedShow.venueWebsite.startsWith('http')
-                            ? showStore.selectedShow.venueWebsite
-                            : `https://${showStore.selectedShow.venueWebsite}`
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="body2"
-                        sx={{
-                          color: theme.palette.info.main,
-                          fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                          textDecoration: 'none',
-                          '&:hover': {
-                            textDecoration: 'underline',
-                          },
-                        }}
-                      >
-                        Visit Website
+                      <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
+                        {showStore.selectedShow?.startTime &&
+                          formatTime(showStore.selectedShow.startTime)}{' '}
+                        -{' '}
+                        {showStore.selectedShow?.endTime &&
+                          formatTime(showStore.selectedShow.endTime)}
                       </Typography>
                     </Box>
-                  )}
 
-                  {showStore.selectedShow?.description && (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        mt: 1,
-                        color: theme.palette.text.secondary,
-                        fontStyle: 'italic',
-                      }}
-                    >
-                      {showStore.selectedShow.description}
-                    </Typography>
-                  )}
-                </Box>
-              </InfoWindow>
-            );
-          })()}
-      </>
-    );
-  });
+                    {/* Contact Information */}
+                    {showStore.selectedShow?.venuePhone && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <FontAwesomeIcon
+                          icon={faPhone}
+                          style={{
+                            fontSize: '12px',
+                            color: theme.palette.success.main,
+                          }}
+                        />
+                        <Typography
+                          component="a"
+                          href={`tel:${showStore.selectedShow.venuePhone}`}
+                          variant="body2"
+                          sx={{
+                            color: theme.palette.text.primary,
+                            fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                            textDecoration: 'none',
+                            '&:hover': {
+                              color: theme.palette.success.main,
+                            },
+                          }}
+                        >
+                          {showStore.selectedShow.venuePhone}
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {showStore.selectedShow?.venueWebsite && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <FontAwesomeIcon
+                          icon={faExternalLinkAlt}
+                          style={{
+                            fontSize: '12px',
+                            color: theme.palette.info.main,
+                          }}
+                        />
+                        <Typography
+                          component="a"
+                          href={
+                            showStore.selectedShow.venueWebsite.startsWith('http')
+                              ? showStore.selectedShow.venueWebsite
+                              : `https://${showStore.selectedShow.venueWebsite}`
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          variant="body2"
+                          sx={{
+                            color: theme.palette.info.main,
+                            fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                            textDecoration: 'none',
+                            '&:hover': {
+                              textDecoration: 'underline',
+                            },
+                          }}
+                        >
+                          Visit Website
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {showStore.selectedShow?.description && (
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          mt: 1,
+                          color: theme.palette.text.secondary,
+                          fontStyle: 'italic',
+                        }}
+                      >
+                        {showStore.selectedShow.description}
+                      </Typography>
+                    )}
+                  </Box>
+                </InfoWindow>
+              );
+            })()}
+        </>
+      );
+    },
+  );
 
   // Create microphone marker icon
   const createMicrophoneIcon = (isSelected = false) => {
@@ -1202,6 +1251,8 @@ export const MapComponent: React.FC = observer(() => {
                   rotateControl={false}
                   onBoundsChanged={(e) => {
                     if (e.detail.center && e.detail.zoom) {
+                      // Update clustering zoom state
+                      setCurrentZoom(e.detail.zoom);
                       // Debounce map position updates to prevent render loops
                       mapStore.debouncedUpdateMapPosition(e.detail.center, e.detail.zoom);
                     }
@@ -1210,6 +1261,9 @@ export const MapComponent: React.FC = observer(() => {
                   <MapContent
                     theme={theme}
                     handleMarkerClick={handleMarkerClick}
+                    handleClusterClick={handleClusterClick}
+                    clusteredMarkers={clusteredMarkers}
+                    selectedCluster={selectedCluster}
                     formatTime={formatTime}
                     onMapLoad={mapStore.setMapInstance}
                   />

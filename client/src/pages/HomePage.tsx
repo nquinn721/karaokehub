@@ -1,17 +1,18 @@
 import { BannerAdWithUpgrade, WideAdWithUpgrade } from '@components/AdWithUpgrade';
 import { CustomCard } from '@components/CustomCard';
 import GoogleOneTap from '@components/GoogleOneTap';
-import { MapComponent } from '@components/MapComponent';
 import { SEO, seoConfigs } from '@components/SEO';
 import { faLocationDot, faMicrophone, faMobile, faUsers } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Box, Container, Grid, Typography, useTheme } from '@mui/material';
+import { Box, Button, Container, Grid, Typography, useTheme } from '@mui/material';
 import { authStore, subscriptionStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const HomePage: React.FC = observer(() => {
   const theme = useTheme();
+  const navigate = useNavigate();
 
   return (
     <Box data-homepage>
@@ -97,29 +98,54 @@ const HomePage: React.FC = observer(() => {
               star. Browse our extensive music library featuring hits from every genre and decade,
               connect with local singers, and never miss another karaoke show in your area.
             </Typography>
+
+            {/* Find Shows Button */}
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => navigate('/shows')}
+              sx={{
+                background:
+                  'linear-gradient(45deg, #FF6B6B 0%, #FF8E53 25%, #FF6B9D 50%, #C44569 75%, #F8B500 100%)',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: { xs: '1rem', md: '1.2rem' },
+                px: { xs: 3, md: 4 },
+                py: { xs: 1.5, md: 2 },
+                borderRadius: 3,
+                textTransform: 'none',
+                boxShadow: '0 8px 32px rgba(255, 107, 107, 0.4)',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
+                backdropFilter: 'blur(10px)',
+                '&:hover': {
+                  background:
+                    'linear-gradient(45deg, #FF5252 0%, #FF7043 25%, #E91E63 50%, #AD1457 75%, #FFA000 100%)',
+                  transform: 'translateY(-3px) scale(1.02)',
+                  boxShadow: '0 12px 40px rgba(255, 107, 107, 0.6)',
+                  border: '2px solid rgba(255, 255, 255, 0.5)',
+                },
+                '&:active': {
+                  transform: 'translateY(-1px) scale(1.01)',
+                },
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+            >
+              <FontAwesomeIcon
+                icon={faLocationDot}
+                style={{
+                  marginRight: '8px',
+                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
+                  fontSize: '1.1em',
+                }}
+              />
+              Find Karaoke Shows Near Me
+            </Button>
           </Box>
         </Container>
       </Box>
 
       <Container maxWidth="lg" sx={{ mt: 6 }}>
-        <Box sx={{ mb: 8 }}>
-          <Typography
-            variant="h3"
-            component="h3"
-            gutterBottom
-            sx={{
-              textAlign: 'center',
-              mb: 4,
-              color: theme.palette.text.primary,
-              fontSize: { xs: '1.75rem', md: '2.125rem' },
-            }}
-          >
-            Find Karaoke Shows Near You
-          </Typography>
-          <MapComponent />
-        </Box>
-
-        {/* Ad placement after map - only show if not ad-free */}
+        {/* Ad placement - only show if not ad-free */}
         {!subscriptionStore.hasAdFreeAccess && (
           <Box sx={{ mb: 6 }}>
             <BannerAdWithUpgrade />

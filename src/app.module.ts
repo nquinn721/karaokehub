@@ -17,6 +17,7 @@ import { MusicModule } from './music/music.module';
 import { ParserModule } from './parser/parser.module';
 import { ShowModule } from './show/show.module';
 import { SubscriptionModule } from './subscription/subscription.module';
+import { UploadModule } from './upload/upload.module';
 import { UserModule } from './user/user.module';
 import { VendorModule } from './vendor/vendor.module';
 import { WebSocketModule } from './websocket/websocket.module';
@@ -64,6 +65,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     ParserModule,
     MusicModule,
     SubscriptionModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
