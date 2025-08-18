@@ -138,6 +138,9 @@ export class ParserStore {
     if (socketToUse) {
       socketToUse.emit('leave-parser-logs');
     }
+
+    // Clear logs when leaving the parser logs
+    this.clearLog();
   }
 
   // Initialize store by fetching pending reviews
@@ -195,6 +198,11 @@ export class ParserStore {
     runInAction(() => {
       this.parsingLog = [];
     });
+  }
+
+  // Public method to clear logs when needed (e.g., when switching between pages)
+  clearParsingLogs() {
+    this.clearLog();
   }
 
   startParsingTimer() {
@@ -371,6 +379,9 @@ export class ParserStore {
       this.setLoading(true);
       this.setError(null);
 
+      // Clear previous logs when starting a new test parse
+      this.clearLog();
+
       const result = await apiStore.post('/parser/test-puppeteer', { url });
 
       return { success: true, data: result };
@@ -395,6 +406,10 @@ export class ParserStore {
     try {
       this.setLoading(true);
       this.setError(null);
+
+      // Clear previous logs when starting a new parse
+      this.clearLog();
+
       this.startParsingTimer();
 
       this.addLogEntry(`Starting parse for URL: ${url}`, 'info');

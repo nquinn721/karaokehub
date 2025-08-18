@@ -874,6 +874,12 @@ export class KaraokeParserService {
   ): Promise<ParsedKaraokeData> {
     const prompt = `Extract ALL karaoke shows from this HTML content. Each venue + day combination is a separate show.
 
+CRITICAL RESPONSE REQUIREMENTS:
+- Return ONLY valid JSON, no other text
+- If response would exceed limits, prioritize COMPLETE shows over partial ones
+- Ensure JSON is properly closed with all brackets and braces
+- Maximum 100 shows per response to prevent truncation
+
 CRITICAL: For each venue mentioned, create a separate show entry for EACH day of the week it appears.
 
 EXCLUDE: Shows marked "CLOSED", "CANCELLED", "SUSPENDED", "UNAVAILABLE", "DISCONTINUED", "TEMPORARILY CLOSED", "OUT OF BUSINESS", "INACTIVE", "NOT RUNNING"
@@ -945,9 +951,13 @@ VENUE INFORMATION EXTRACTION:
 For EVERY venue with a complete address (street + city + state), you MUST provide precise latitude and longitude coordinates:
 - Combine the venue name, street address, city, and state to determine the exact location
 - Provide coordinates as precise decimal numbers (6+ decimal places)
-- If address is incomplete (missing street address), still attempt to get city-level coordinates
+- VALIDATE coordinates match the city/state: coordinates must be within the specified city/state boundaries
 - Use your geographic knowledge to provide accurate coordinates for the business location
-- EXAMPLE: "Park St Tavern" at "501 Park St, Columbus, OH" → lat: 39.961176, lng: -82.998794
+- EXAMPLE: "Park St Tavern" at "501 Park St, Columbus, OH" → lat: 39.961176, lng: -82.998794 (verify this is in Columbus, OH)
+- EXAMPLE: "The Walrus" at "1432 E Main St, Columbus, OH" → lat: 39.952583, lng: -82.937125 (verify this is in Columbus, OH)
+- If address is incomplete (missing street address), still attempt to get city-level coordinates
+- If you cannot determine precise coordinates, provide city-center coordinates as fallback
+- CRITICAL: Double-check that lat/lng coordinates are actually located in the specified city and state
 - EXAMPLE: "The Walrus" at "1432 E Main St, Columbus, OH" → lat: 39.952583, lng: -82.937125
 - If you cannot determine precise coordinates, provide city-center coordinates as fallback
 
@@ -1196,7 +1206,64 @@ ${htmlContent}`;
       'success',
     );
     return unique;
-  } /**
+  }
+
+  /**
+   * Pre-validate and fix JSON structure before parsing
+   */
+  private preValidateAndFixJson(jsonString: string): string {
+    let fixed = jsonString.trim();
+
+    // Remove any BOM or invisible characters at the start
+    fixed = fixed.replace(/^\uFEFF/, '');
+
+    // Check for common structural issues
+    const issues = [];
+
+    // Check for unmatched brackets/braces
+    let braceCount = 0;
+    let bracketCount = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let i = 0; i < fixed.length; i++) {
+      const char = fixed[i];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (!inString) {
+        if (char === '{') braceCount++;
+        else if (char === '}') braceCount--;
+        else if (char === '[') bracketCount++;
+        else if (char === ']') bracketCount--;
+      }
+    }
+
+    if (braceCount !== 0) issues.push(`Unmatched braces: ${braceCount}`);
+    if (bracketCount !== 0) issues.push(`Unmatched brackets: ${bracketCount}`);
+    if (inString) issues.push('Unclosed string');
+
+    if (issues.length > 0) {
+      this.logAndBroadcast(`🔧 JSON structure issues detected: ${issues.join(', ')}`, 'warning');
+    }
+
+    return fixed;
+  }
+
+  /**
    * Clean Gemini response to extract valid JSON
    */
   private cleanGeminiResponse(text: string): string {
@@ -1214,6 +1281,21 @@ ${htmlContent}`;
     if (lastBrace !== -1) {
       cleaned = cleaned.substring(0, lastBrace + 1);
     }
+
+    // Fix common JSON formatting issues
+    cleaned = cleaned
+      // Fix unquoted property names
+      .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
+      // Fix single quotes to double quotes
+      .replace(/'/g, '"')
+      // Fix trailing commas before closing brackets/braces
+      .replace(/,(\s*[}\]])/g, '$1')
+      // Fix missing commas between array elements
+      .replace(/}(\s*){/g, '},\n{')
+      // Fix missing commas between object properties
+      .replace(/("(?:\\.|[^"\\])*")\s*("(?:\\.|[^"\\])*"\s*:)/g, '$1,\n$2')
+      // Remove any non-printable characters
+      .replace(/[\x00-\x1F\x7F-\x9F]/g, '');
 
     return cleaned.trim();
   }
@@ -2063,6 +2145,12 @@ ${htmlContent}`;
 
       const prompt = `Analyze this screenshot and extract ALL karaoke shows from the ENTIRE weekly schedule.
 
+CRITICAL RESPONSE REQUIREMENTS:
+- Return ONLY valid JSON, no other text
+- If response would exceed limits, prioritize COMPLETE shows over partial ones
+- Ensure JSON is properly closed with all brackets and braces
+- Maximum 100 shows per response to prevent truncation
+
 CRITICAL: This page contains shows for ALL 7 DAYS (Monday through Sunday). You must extract shows from the COMPLETE page, not just the top section.
 
 Extract from the ENTIRE image:
@@ -2122,11 +2210,13 @@ SMART ADDRESS HANDLING:
 For EVERY venue with a complete address (street + city + state), you MUST provide precise latitude and longitude coordinates:
 - Combine the venue name, street address, city, and state to determine the exact location
 - Provide coordinates as precise decimal numbers (6+ decimal places)
-- If address is incomplete (missing street address), still attempt to get city-level coordinates
+- VALIDATE coordinates match the city/state: coordinates must be within the specified city/state boundaries
 - Use your geographic knowledge to provide accurate coordinates for the business location
-- EXAMPLE: "Park St Tavern" at "501 Park St, Columbus, OH" → lat: 39.961176, lng: -82.998794
-- EXAMPLE: "The Walrus" at "1432 E Main St, Columbus, OH" → lat: 39.952583, lng: -82.937125
+- EXAMPLE: "Park St Tavern" at "501 Park St, Columbus, OH" → lat: 39.961176, lng: -82.998794 (verify this is in Columbus, OH)
+- EXAMPLE: "The Walrus" at "1432 E Main St, Columbus, OH" → lat: 39.952583, lng: -82.937125 (verify this is in Columbus, OH)
+- If address is incomplete (missing street address), still attempt to get city-level coordinates
 - If you cannot determine precise coordinates, provide city-center coordinates as fallback
+- CRITICAL: Double-check that lat/lng coordinates are actually located in the specified city and state
 
 Return ONLY valid JSON with no extra text:
 
@@ -2207,6 +2297,9 @@ Return ONLY valid JSON with no extra text:
       let cleanJsonString;
       try {
         cleanJsonString = this.cleanGeminiResponse(text);
+        // Pre-validate the JSON structure
+        cleanJsonString = this.preValidateAndFixJson(cleanJsonString);
+
         this.logAndBroadcast('Cleaned JSON (first 500 chars):', 'info');
         this.logAndBroadcast(`Cleaned JSON length: ${cleanJsonString.length} characters`, 'info');
         parsedData = JSON.parse(cleanJsonString);
@@ -2214,6 +2307,20 @@ Return ONLY valid JSON with no extra text:
       } catch (jsonError) {
         this.logAndBroadcast('❌ JSON parsing failed, attempting to fix common issues:', 'error');
         this.logAndBroadcast(`JSON Error: ${jsonError.message}`, 'error');
+
+        // Extract position from error message and show context
+        const positionMatch = jsonError.message.match(/position (\d+)/);
+        if (positionMatch && cleanJsonString) {
+          const position = parseInt(positionMatch[1]);
+          const start = Math.max(0, position - 100);
+          const end = Math.min(cleanJsonString.length, position + 100);
+          const context = cleanJsonString.substring(start, end);
+          const marker = ' '.repeat(Math.min(position - start, 100)) + '↑ ERROR HERE';
+
+          this.logAndBroadcast(`🔍 Error context around position ${position}:`, 'error');
+          this.logAndBroadcast(context, 'error');
+          this.logAndBroadcast(marker, 'error');
+        }
 
         // Log a sample of the problematic JSON for debugging
         if (cleanJsonString) {
@@ -2236,6 +2343,57 @@ Return ONLY valid JSON with no extra text:
         // Fix decimal numbers that might be causing issues
         fixedJson = fixedJson.replace(/:\s*(\d+\.\d+)([^\d,}\]])/g, ': $1,$2');
 
+        // Attempt to fix truncated JSON by adding missing closing brackets/braces
+        let braceCount = 0;
+        let bracketCount = 0;
+        let inString = false;
+        let escaped = false;
+
+        for (let i = 0; i < fixedJson.length; i++) {
+          const char = fixedJson[i];
+
+          if (escaped) {
+            escaped = false;
+            continue;
+          }
+
+          if (char === '\\') {
+            escaped = true;
+            continue;
+          }
+
+          if (char === '"') {
+            inString = !inString;
+            continue;
+          }
+
+          if (!inString) {
+            if (char === '{') braceCount++;
+            else if (char === '}') braceCount--;
+            else if (char === '[') bracketCount++;
+            else if (char === ']') bracketCount--;
+          }
+        }
+
+        // Add missing closing characters
+        if (bracketCount > 0 || braceCount > 0) {
+          this.logAndBroadcast(
+            `Attempting to fix truncated JSON: missing ${bracketCount} brackets, ${braceCount} braces`,
+            'info',
+          );
+
+          // Remove any trailing commas first
+          fixedJson = fixedJson.replace(/,\s*$/, '');
+
+          // Close arrays first, then objects
+          for (let i = 0; i < bracketCount; i++) {
+            fixedJson += ']';
+          }
+          for (let i = 0; i < braceCount; i++) {
+            fixedJson += '}';
+          }
+        }
+
         // Try to find and fix incomplete JSON by finding the last valid closing brace
         const lastValidJson = this.extractValidJson(fixedJson);
         if (lastValidJson) {
@@ -2243,12 +2401,97 @@ Return ONLY valid JSON with no extra text:
             parsedData = JSON.parse(lastValidJson);
             this.logAndBroadcast('✅ Successfully parsed JSON after fixing', 'success');
           } catch (secondError) {
-            this.logAndBroadcast('❌ Even fixed JSON failed to parse:', 'error');
-            this.logAndBroadcast(`Second error: ${secondError.message}`, 'error');
-            throw new Error(`JSON parsing failed: ${jsonError.message}`);
+            // If JSON parsing fails again, try to extract partial data
+            this.logAndBroadcast(
+              `❌ Even fixed JSON failed to parse: ${secondError.message}`,
+              'error',
+            );
+
+            // Check if the error is at the end of the JSON (truncation)
+            if (secondError.message.includes('position') && secondError.message.includes('array')) {
+              const position = parseInt(secondError.message.match(/position (\d+)/)?.[1] || '0');
+              this.logAndBroadcast(
+                `🔧 Truncation detected at position ${position}, attempting to recover partial data`,
+                'info',
+              );
+
+              // Try to extract what we can from the beginning
+              try {
+                const partialJson = lastValidJson.substring(0, position);
+                const lastBraceIndex = partialJson.lastIndexOf('}');
+                if (lastBraceIndex > 0) {
+                  const recoveredJson = partialJson.substring(0, lastBraceIndex + 1) + ']}';
+                  const partialData = JSON.parse(recoveredJson);
+                  this.logAndBroadcast(
+                    `🎉 Recovered ${partialData.shows?.length || 0} shows from truncated response`,
+                    'success',
+                  );
+                  parsedData = partialData;
+                } else {
+                  // Try emergency extraction as last resort
+                  const emergencyData = this.extractPartialDataFromMalformedJson(text, url);
+                  if (emergencyData) {
+                    this.logAndBroadcast(
+                      `🚨 Emergency extraction successful - using partial data`,
+                      'warning',
+                    );
+                    parsedData = emergencyData;
+                  } else {
+                    this.logAndBroadcast(
+                      `❌ Could not find valid structure in partial JSON`,
+                      'error',
+                    );
+                    throw new Error(`JSON parsing failed: ${jsonError.message}`);
+                  }
+                }
+              } catch (partialError) {
+                this.logAndBroadcast(
+                  `❌ Partial recovery failed: ${partialError.message}`,
+                  'error',
+                );
+
+                // Try emergency extraction as last resort
+                const emergencyData = this.extractPartialDataFromMalformedJson(text, url);
+                if (emergencyData) {
+                  this.logAndBroadcast(
+                    `🚨 Emergency extraction successful - using partial data`,
+                    'warning',
+                  );
+                  parsedData = emergencyData;
+                } else {
+                  throw new Error(`JSON parsing failed: ${jsonError.message}`);
+                }
+              }
+            } else {
+              // Try emergency extraction as last resort
+              const emergencyData = this.extractPartialDataFromMalformedJson(text, url);
+              if (emergencyData) {
+                this.logAndBroadcast(
+                  `🚨 Emergency extraction successful - using partial data`,
+                  'warning',
+                );
+                parsedData = emergencyData;
+              } else {
+                this.logAndBroadcast(
+                  `❌ Non-truncation error, cannot recover: ${secondError.message}`,
+                  'error',
+                );
+                throw new Error(`JSON parsing failed: ${jsonError.message}`);
+              }
+            }
           }
         } else {
-          throw new Error(`JSON parsing failed: ${jsonError.message}`);
+          // Try emergency extraction as last resort
+          const emergencyData = this.extractPartialDataFromMalformedJson(text, url);
+          if (emergencyData) {
+            this.logAndBroadcast(
+              `🚨 Emergency extraction successful - using partial data`,
+              'warning',
+            );
+            parsedData = emergencyData;
+          } else {
+            throw new Error(`JSON parsing failed: ${jsonError.message}`);
+          }
         }
       }
 
@@ -2260,6 +2503,33 @@ Return ONLY valid JSON with no extra text:
       this.logAndBroadcast(
         `📊 Parsing Results: ${showCount} shows, ${djCount} DJs, vendor: ${vendorName}`,
         'info',
+      );
+
+      // Check for potential truncation indicators
+      if (showCount < 30) {
+        this.logAndBroadcast(
+          `⚠️  WARNING: Only found ${showCount} shows, expected 35-40+. Response may have been truncated.`,
+          'warning',
+        );
+
+        // Check if the original response was very long (potential truncation)
+        if (text.length > 15000) {
+          this.logAndBroadcast(
+            `🔍 Response was ${text.length} characters - likely truncated. Consider reducing scope.`,
+            'warning',
+          );
+        }
+      }
+
+      // Validate coordinate quality
+      const showsWithCoords =
+        parsedData.shows?.filter((show) => show.latitude && show.longitude) || [];
+      const coordPercentage =
+        showCount > 0 ? Math.round((showsWithCoords.length / showCount) * 100) : 0;
+
+      this.logAndBroadcast(
+        `🌍 Coordinate extraction: ${showsWithCoords.length}/${showCount} shows (${coordPercentage}%) have coordinates`,
+        coordPercentage >= 80 ? 'success' : 'warning',
       );
 
       if (showCount < 30) {
@@ -2297,27 +2567,175 @@ Return ONLY valid JSON with no extra text:
   }
 
   /**
-   * Extract valid JSON from potentially truncated/malformed response
+   * Extract partial data from malformed JSON as last resort
    */
+  private extractPartialDataFromMalformedJson(
+    jsonString: string,
+    url: string,
+  ): ParsedKaraokeData | null {
+    try {
+      this.logAndBroadcast(
+        '🚨 Attempting emergency data extraction from malformed JSON...',
+        'warning',
+      );
+
+      // Try to extract basic information using regex patterns
+      const shows = [];
+      const djs = new Set();
+
+      // Look for show-like patterns in the text
+      const venuePattern = /"venue"\s*:\s*"([^"]+)"/g;
+      const addressPattern = /"address"\s*:\s*"([^"]+)"/g;
+      const cityPattern = /"city"\s*:\s*"([^"]+)"/g;
+      const statePattern = /"state"\s*:\s*"([^"]+)"/g;
+      const timePattern = /"time"\s*:\s*"([^"]+)"/g;
+      const djPattern = /"djName"\s*:\s*"([^"]+)"/g;
+      const dayPattern = /"day"\s*:\s*"([^"]+)"/g;
+
+      const venues = Array.from(jsonString.matchAll(venuePattern)).map((m) => m[1]);
+      const addresses = Array.from(jsonString.matchAll(addressPattern)).map((m) => m[1]);
+      const cities = Array.from(jsonString.matchAll(cityPattern)).map((m) => m[1]);
+      const states = Array.from(jsonString.matchAll(statePattern)).map((m) => m[1]);
+      const times = Array.from(jsonString.matchAll(timePattern)).map((m) => m[1]);
+      const djNames = Array.from(jsonString.matchAll(djPattern)).map((m) => m[1]);
+      const days = Array.from(jsonString.matchAll(dayPattern)).map((m) => m[1]);
+
+      // Build basic show objects from extracted data
+      const maxLength = Math.max(venues.length, addresses.length, times.length, days.length);
+
+      for (let i = 0; i < maxLength && i < 50; i++) {
+        // Limit to prevent memory issues
+        if (venues[i]) {
+          const show: any = {
+            venue: venues[i],
+            address: addresses[i] || null,
+            city: cities[i] || null,
+            state: states[i] || null,
+            time: times[i] || null,
+            day: days[i] || null,
+            djName: djNames[i] || null,
+            confidence: 0.3, // Low confidence for emergency extraction
+          };
+
+          shows.push(show);
+
+          if (djNames[i]) {
+            djs.add(djNames[i]);
+          }
+        }
+      }
+
+      if (shows.length > 0) {
+        this.logAndBroadcast(`🎉 Emergency extraction recovered ${shows.length} shows`, 'success');
+
+        return {
+          vendor: this.generateVendorFromUrl(url),
+          djs: Array.from(djs).map((name) => ({ name: String(name), confidence: 0.3 })),
+          shows: shows,
+          rawData: {
+            url,
+            title: 'Emergency extraction',
+            content: 'Recovered from malformed JSON',
+            parsedAt: new Date(),
+          },
+        };
+      }
+
+      return null;
+    } catch (error) {
+      this.logAndBroadcast(`❌ Emergency extraction failed: ${error.message}`, 'error');
+      return null;
+    }
+  }
   private extractValidJson(jsonString: string): string | null {
     try {
       // Try to find the last complete JSON structure
       let braceCount = 0;
+      let bracketCount = 0;
       let lastValidIndex = -1;
+      let inString = false;
+      let escaped = false;
 
       for (let i = 0; i < jsonString.length; i++) {
-        if (jsonString[i] === '{') {
+        const char = jsonString[i];
+
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+
+        if (char === '\\') {
+          escaped = true;
+          continue;
+        }
+
+        if (char === '"') {
+          inString = !inString;
+          continue;
+        }
+
+        if (inString) {
+          continue;
+        }
+
+        if (char === '{') {
           braceCount++;
-        } else if (jsonString[i] === '}') {
+        } else if (char === '}') {
           braceCount--;
-          if (braceCount === 0) {
-            lastValidIndex = i;
-          }
+        } else if (char === '[') {
+          bracketCount++;
+        } else if (char === ']') {
+          bracketCount--;
+        }
+
+        // Check if we have a complete JSON structure
+        if (braceCount === 0 && bracketCount === 0 && i > 0) {
+          lastValidIndex = i;
         }
       }
 
       if (lastValidIndex > 0) {
         return jsonString.substring(0, lastValidIndex + 1);
+      }
+
+      // If no complete structure found, try to fix incomplete arrays/objects
+      if (braceCount > 0 || bracketCount > 0) {
+        let fixed = jsonString.trim();
+
+        // Handle incomplete strings at the end
+        if (inString) {
+          // If we're in the middle of a string, close it
+          fixed += '"';
+          inString = false;
+        }
+
+        // Remove trailing commas that might cause issues
+        fixed = fixed.replace(/,\s*$/, '');
+
+        // If the last character suggests an incomplete value, try to complete it
+        const lastChar = fixed.slice(-1);
+        if (lastChar === ':' || lastChar === ',') {
+          // Remove the problematic trailing character
+          fixed = fixed.slice(0, -1);
+        }
+
+        // Handle incomplete property values (e.g., "name": "incomplete)
+        if (fixed.match(/:\s*"[^"]*$/)) {
+          // Complete the incomplete string value
+          fixed += '"';
+        }
+
+        // Close incomplete arrays first (inner to outer)
+        for (let i = 0; i < bracketCount; i++) {
+          fixed += ']';
+        }
+
+        // Close incomplete objects (inner to outer)
+        for (let i = 0; i < braceCount; i++) {
+          fixed += '}';
+        }
+
+        return fixed;
       }
 
       return null;
