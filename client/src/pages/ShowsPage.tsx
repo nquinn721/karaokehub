@@ -14,7 +14,6 @@ import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import MyLocationIcon from '@mui/icons-material/MyLocation';
 import {
   Alert,
   Autocomplete,
@@ -553,7 +552,7 @@ const ShowsPage: React.FC = observer(() => {
         description="Find karaoke shows near you with our interactive map and advanced filtering options."
       />
 
-      <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }} data-showspage>
+      <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }} data-showspage>
         {/* Map Section - Full width */}
         <Box
           sx={{
@@ -622,20 +621,6 @@ const ShowsPage: React.FC = observer(() => {
                 <FontAwesomeIcon icon={sidebarOpen ? faXmark : faBars} />
               </Fab>
             )}
-
-            {/* Locate User Button */}
-            <Fab
-              color="primary"
-              size="small"
-              onClick={() => mapStore.requestUserLocation()}
-              title={
-                mapStore.hasLocationPermission()
-                  ? 'Go to current location'
-                  : 'Request location permission and go to current location'
-              }
-            >
-              <MyLocationIcon />
-            </Fab>
           </Box>
         </Box>
 
@@ -1058,27 +1043,7 @@ const ShowsPage: React.FC = observer(() => {
                                       </Box>
                                     )}
 
-                                    {/* Current Location Button */}
-                                    <Fab
-                                      color="primary"
-                                      size="small"
-                                      onClick={async () => {
-                                        await mapStore.requestUserLocation();
-                                        setShouldRecenterMap(true);
-                                      }}
-                                      sx={{
-                                        backgroundColor: 'background.paper',
-                                        border: `1px solid ${theme.palette.divider}`,
-                                        color: 'primary.main',
-                                        '&:hover': {
-                                          backgroundColor: 'action.hover',
-                                        },
-                                      }}
-                                      title="Go to my location"
-                                    >
-                                      <MyLocationIcon />
-                                    </Fab>
-                                  </Box>{' '}
+                                  </Box>
                                   {/* Badges section */}
                                   <Box
                                     sx={{ mt: 0.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}
