@@ -1690,8 +1690,27 @@ ${htmlContent}`;
         let city = showData.city;
         let state = showData.state;
         let zip = showData.zip;
-        let lat: number | undefined = showData.lat;
-        let lng: number | undefined = showData.lng;
+        let lat: number | undefined = showData.lat || (showData as any).latitude;
+        let lng: number | undefined = showData.lng || (showData as any).longitude;
+
+        // Debug: Log what coordinate fields Gemini provided
+        const coordFields = [];
+        if (showData.lat !== undefined) coordFields.push(`lat: ${showData.lat}`);
+        if (showData.lng !== undefined) coordFields.push(`lng: ${showData.lng}`);
+        if ((showData as any).latitude !== undefined) coordFields.push(`latitude: ${(showData as any).latitude}`);
+        if ((showData as any).longitude !== undefined) coordFields.push(`longitude: ${(showData as any).longitude}`);
+        
+        if (coordFields.length > 0) {
+          this.logAndBroadcast(
+            `Gemini coordinate fields for ${showData.venue}: ${coordFields.join(', ')}`,
+            'debug',
+          );
+        } else {
+          this.logAndBroadcast(
+            `No coordinate fields found in Gemini response for ${showData.venue}`,
+            'debug',
+          );
+        }
 
         // Trust Gemini's address parsing - use the components as provided
         let cleanedAddress = showData.address;
@@ -1707,6 +1726,32 @@ ${htmlContent}`;
             `Warning: No coordinates provided by Gemini for ${showData.venue}`,
             'warning',
           );
+          
+          // Fallback: Try to geocode using address components
+          if (cleanedAddress && city && state) {
+            try {
+              const fullAddress = `${showData.venue}, ${cleanedAddress}, ${city}, ${state}`;
+              this.logAndBroadcast(
+                `Attempting fallback geocoding for: ${fullAddress}`,
+                'info',
+              );
+              
+              const coords = await this.geocodingService.geocodeAddressHybrid(fullAddress);
+              if (coords && coords.lat && coords.lng) {
+                lat = coords.lat;
+                lng = coords.lng;
+                this.logAndBroadcast(
+                  `Fallback geocoding successful: ${showData.venue} at (${lat}, ${lng})`,
+                  'success',
+                );
+              }
+            } catch (geocodeError) {
+              this.logAndBroadcast(
+                `Fallback geocoding failed for ${showData.venue}: ${geocodeError.message}`,
+                'warning',
+              );
+            }
+          }
         }
 
         const show = this.showRepository.create({
@@ -2249,17 +2294,21 @@ SMART ADDRESS HANDLING:
 - Use context clues to infer missing state (e.g., if other venues mention Ohio, Delaware likely = Delaware, OH)
 - Handle multi-word city names like "Panama City Beach", "Fort Walton Beach", "Lewis Center"
 
-🌍 LAT/LNG COORDINATE EXTRACTION - CRITICAL:
+🌍 LAT/LNG COORDINATE EXTRACTION - CRITICAL REQUIREMENT:
 For EVERY venue with a complete address (street + city + state), you MUST provide precise latitude and longitude coordinates:
+- THIS IS MANDATORY - NEVER leave lat/lng fields empty or null
 - Combine the venue name, street address, city, and state to determine the exact location
 - Provide coordinates as precise decimal numbers (6+ decimal places)
 - VALIDATE coordinates match the city/state: coordinates must be within the specified city/state boundaries
 - Use your geographic knowledge to provide accurate coordinates for the business location
 - EXAMPLE: "Park St Tavern" at "501 Park St, Columbus, OH" → lat: 39.961176, lng: -82.998794 (verify this is in Columbus, OH)
 - EXAMPLE: "The Walrus" at "1432 E Main St, Columbus, OH" → lat: 39.952583, lng: -82.937125 (verify this is in Columbus, OH)
+- EXAMPLE: "Cavan Irish Pub" at "2529 N High St, Columbus, OH" → lat: 40.012345, lng: -83.001234 (verify coordinates)
+- EXAMPLE: "Budd Dairy" at "1086 N High St, Columbus, OH" → lat: 39.978456, lng: -82.999123 (verify coordinates)
 - If address is incomplete (missing street address), still attempt to get city-level coordinates
 - If you cannot determine precise coordinates, provide city-center coordinates as fallback
 - CRITICAL: Double-check that lat/lng coordinates are actually located in the specified city and state
+- NEVER submit a venue without lat/lng coordinates - this is required for mapping functionality
 
 🕒 TIME PARSING INSTRUCTIONS - CRITICAL:
 - ALWAYS provide both "time" (human readable) and "startTime" (24-hour format)
@@ -2298,8 +2347,8 @@ Return ONLY valid JSON with no extra text:
       "city": "ONLY city name",
       "state": "ONLY 2-letter state code",
       "zip": "ONLY zip code",
-      "lat": "REQUIRED: Precise latitude as decimal number (e.g., 39.961176)",
-      "lng": "REQUIRED: Precise longitude as decimal number (e.g., -82.998794)",
+      "lat": 39.961176,
+      "lng": -82.998794,
       "venuePhone": "Phone number",
       "date": "day_of_week",
       "time": "time like '7 pm'",
