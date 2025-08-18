@@ -158,6 +158,20 @@ export class ParserStore {
 
   // Parser log management
   addLogEntry(message: string, level: 'info' | 'success' | 'warning' | 'error' = 'info') {
+    // Check for duplicate messages in the last 5 seconds to prevent duplicate logs
+    const now = Date.now();
+    const recentDuplicate = this.parsingLog.find(
+      (entry) =>
+        entry.message === message &&
+        entry.level === level &&
+        now - entry.timestamp.getTime() < 5000, // Within last 5 seconds
+    );
+
+    if (recentDuplicate) {
+      // Skip adding duplicate message
+      return;
+    }
+
     // Generate a unique ID using timestamp + random component to prevent duplicates
     const entry: ParserLogEntry = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -208,6 +222,50 @@ export class ParserStore {
       window.clearInterval(this.parsingTimer);
       this.parsingTimer = null;
     }
+    runInAction(() => {
+      this.parsingStartTime = null;
+      this.parsingElapsedTime = 0;
+    });
+  }
+
+  /**
+   * Check server parsing status and restore client state if parsing is active
+   */
+  async checkAndRestoreParsingStatus(): Promise<boolean> {
+    try {
+      const response = await apiStore.get('/parser/parsing-status');
+      const status = response.data;
+
+      if (status.isCurrentlyParsing) {
+        runInAction(() => {
+          this.parsingStartTime = new Date(status.parsingStartTime);
+          this.parsingElapsedTime = status.elapsedTimeMs;
+        });
+
+        // Start the timer to keep updating elapsed time
+        this.parsingTimer = window.setInterval(() => {
+          if (this.parsingStartTime) {
+            runInAction(() => {
+              this.parsingElapsedTime = Date.now() - this.parsingStartTime!.getTime();
+            });
+          }
+        }, 1000);
+
+        // Add a log entry to indicate parsing is in progress
+        if (status.currentParsingUrl) {
+          this.addLogEntry(`Parsing in progress: ${status.currentParsingUrl}`, 'info');
+        } else {
+          this.addLogEntry('Parsing in progress...', 'info');
+        }
+
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Failed to check parsing status:', error);
+      return false;
+    }
   }
 
   getFormattedElapsedTime(): string {
@@ -215,6 +273,13 @@ export class ParserStore {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * Check if parsing is currently active (has a start time and timer running)
+   */
+  get isParsingActive(): boolean {
+    return this.parsingStartTime !== null && this.parsingTimer !== null;
   }
 
   async parseWebsite(url: string): Promise<{ success: boolean; error?: string; data?: any }> {

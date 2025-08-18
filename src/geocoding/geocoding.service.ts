@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface GeocodeResult {
   lat: number;
@@ -15,9 +16,12 @@ interface GeocodeResult {
 export class GeocodingService {
   private readonly logger = new Logger(GeocodingService.name);
   private readonly googleMapsApiKey: string;
+  private readonly genAI: GoogleGenerativeAI;
 
   constructor(private configService: ConfigService) {
     this.googleMapsApiKey = this.configService.get<string>('GOOGLE_MAPS_API_KEY');
+    const geminiApiKey = this.configService.get<string>('GEMINI_API_KEY');
+    this.genAI = new GoogleGenerativeAI(geminiApiKey);
   }
 
   async geocodeAddress(address: string): Promise<GeocodeResult | null> {
@@ -374,5 +378,97 @@ export class GeocodingService {
     }
 
     return results;
+  }
+
+  /**
+   * Geocode an address using Gemini AI instead of Google Maps API
+   * This can provide more accurate results for ambiguous addresses
+   */
+  async geocodeAddressWithGemini(address: string): Promise<GeocodeResult | null> {
+    if (!address || !address.trim()) {
+      return null;
+    }
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+
+      const prompt = `Please provide the exact latitude and longitude coordinates for this address: "${address}"
+
+IMPORTANT INSTRUCTIONS:
+- Provide coordinates as precise decimal numbers (6+ decimal places)
+- If the address is ambiguous, choose the most likely location in the United States
+- If it's a business address, find the exact business location
+- Return ONLY a JSON object with this exact format:
+
+{
+  "lat": <decimal_latitude>,
+  "lng": <decimal_longitude>,
+  "city": "<city_name>",
+  "state": "<state_abbreviation>",
+  "zip": "<zip_code>",
+  "formatted_address": "<full_formatted_address>"
+}
+
+If you cannot determine the location with confidence, return:
+{
+  "error": "Unable to determine location"
+}`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text().trim();
+
+      // Parse the JSON response
+      let parsedResponse;
+      try {
+        parsedResponse = JSON.parse(text);
+      } catch (parseError) {
+        this.logger.warn(`Failed to parse Gemini geocoding response: ${text}`);
+        return null;
+      }
+
+      // Check if there was an error
+      if (parsedResponse.error) {
+        this.logger.warn(`Gemini geocoding error for "${address}": ${parsedResponse.error}`);
+        return null;
+      }
+
+      // Validate the response has required fields
+      if (typeof parsedResponse.lat !== 'number' || typeof parsedResponse.lng !== 'number') {
+        this.logger.warn(`Invalid Gemini geocoding response for "${address}": missing lat/lng`);
+        return null;
+      }
+
+      this.logger.log(`Successfully geocoded "${address}" with Gemini: ${parsedResponse.lat}, ${parsedResponse.lng}`);
+
+      return {
+        lat: parsedResponse.lat,
+        lng: parsedResponse.lng,
+        city: parsedResponse.city || '',
+        state: parsedResponse.state || '',
+        zip: parsedResponse.zip || '',
+        formatted_address: parsedResponse.formatted_address || address,
+        country: 'US', // Assume US for now
+      };
+
+    } catch (error) {
+      this.logger.error(`Gemini geocoding failed for "${address}":`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Hybrid geocoding: Try Gemini first, fallback to Google Maps API if needed
+   */
+  async geocodeAddressHybrid(address: string): Promise<GeocodeResult | null> {
+    // Try Gemini first
+    const geminiResult = await this.geocodeAddressWithGemini(address);
+    if (geminiResult) {
+      return geminiResult;
+    }
+
+    // Fallback to traditional Google Maps API geocoding
+    this.logger.warn(`Gemini geocoding failed for "${address}", falling back to Google Maps API`);
+    return await this.geocodeAddress(address);
   }
 }

@@ -19,11 +19,54 @@ export class AppController {
   }
 
   @Get('health')
-  getHealth(): { status: string; timestamp: string } {
-    return {
+  async getHealth(): Promise<{ 
+    status: string; 
+    timestamp: string; 
+    parser?: { status: string; details?: string } 
+  }> {
+    const health: any = {
       status: 'ok',
       timestamp: new Date().toISOString(),
     };
+
+    // Check parser dependencies
+    try {
+      const puppeteer = require('puppeteer');
+      const fs = require('fs');
+      
+      const parserChecks = {
+        puppeteer: !!puppeteer,
+        geminiApiKey: !!process.env.GEMINI_API_KEY,
+        chromiumPath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
+        chromiumExists: false,
+      };
+
+      // Check if Chromium exists
+      try {
+        if (fs.existsSync(parserChecks.chromiumPath)) {
+          parserChecks.chromiumExists = true;
+        }
+      } catch (error) {
+        // Ignore file system errors
+      }
+
+      const parserHealthy = parserChecks.puppeteer && 
+                           parserChecks.geminiApiKey && 
+                           parserChecks.chromiumExists;
+
+      health.parser = {
+        status: parserHealthy ? 'healthy' : 'unhealthy',
+        details: JSON.stringify(parserChecks),
+      };
+
+    } catch (error) {
+      health.parser = {
+        status: 'error',
+        details: error.message,
+      };
+    }
+
+    return health;
   }
 
   @Get('api/env-info')

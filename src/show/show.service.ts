@@ -209,4 +209,80 @@ export class ShowService {
       throw error;
     }
   }
+
+  // Re-geocode shows that have potentially incorrect coordinates
+  async reGeocodeInvalidShows(): Promise<{ processed: number; fixed: number; errors: number }> {
+    this.logger.log('Starting re-geocoding of shows with potentially invalid coordinates...');
+
+    const stats = { processed: 0, fixed: 0, errors: 0 };
+
+    try {
+      // Find shows with coordinates that might be invalid
+      // This includes specific problematic shows we've identified
+      const problematicShowIds = [
+        '6411d87c-741c-4cd7-a08f-d7d60a67452a', // Delaware, OH show with Australia coordinates
+        '33de2af9-2794-4448-8102-edb834ab3ebc', // Sunbury, OH show with Michigan coordinates  
+        '915f1fd6-ed0f-4d90-9e95-4e5f1a6362a1', // Columbus, OH show with Austin, TX coordinates
+      ];
+
+      const showsToReGeocode = await this.showRepository.find({
+        where: problematicShowIds.map(id => ({ id, isActive: true })),
+      });
+
+      this.logger.log(`Found ${showsToReGeocode.length} shows that need re-geocoding`);
+
+      for (const show of showsToReGeocode) {
+        stats.processed++;
+
+        if (!show.address) {
+          this.logger.warn(`Show ${show.id} has no address, skipping`);
+          stats.errors++;
+          continue;
+        }
+
+        try {
+          this.logger.log(`Re-geocoding ${show.venue} at ${show.address}, ${show.city}, ${show.state}`);
+          
+          // Build full address for better geocoding results
+          const fullAddress = `${show.address}, ${show.city}, ${show.state} ${show.zip}`.trim();
+          const geocodeResult = await this.geocodingService.geocodeAddress(fullAddress);
+
+          if (geocodeResult) {
+            // Log the old vs new coordinates
+            this.logger.log(
+              `Show ${show.venue}: OLD coords (${show.lat}, ${show.lng}) -> NEW coords (${geocodeResult.lat}, ${geocodeResult.lng})`
+            );
+
+            await this.showRepository.update(show.id, {
+              lat: geocodeResult.lat,
+              lng: geocodeResult.lng,
+              city: geocodeResult.city || show.city,
+              state: geocodeResult.state || show.state,
+              zip: geocodeResult.zip || show.zip,
+            });
+
+            stats.fixed++;
+            this.logger.log(`Successfully re-geocoded ${show.venue}`);
+          } else {
+            this.logger.warn(`Failed to re-geocode address: ${fullAddress}`);
+            stats.errors++;
+          }
+
+          // Add delay to avoid rate limiting
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        } catch (error) {
+          this.logger.error(`Error re-geocoding show ${show.id}:`, error);
+          stats.errors++;
+        }
+      }
+
+      this.logger.log(
+        `Re-geocoding complete: ${stats.fixed} fixed, ${stats.errors} errors out of ${stats.processed} processed`,
+      );
+      return stats;
+    } catch (error) {
+      this.logger.error('Error during re-geocoding:', error);
+      throw error;
+    }
+  }
 }

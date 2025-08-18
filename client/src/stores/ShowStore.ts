@@ -23,6 +23,8 @@ export interface Show {
   startTime: string;
   endTime: string;
   description?: string;
+  lat?: number; // Latitude coordinate
+  lng?: number; // Longitude coordinate
   vendor?: {
     id: string;
     name: string;

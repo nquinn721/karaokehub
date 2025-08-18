@@ -1,6 +1,7 @@
 import {
   faAngleDown,
   faBars,
+  faCalendarDays,
   faCog,
   faHome,
   faMusic,
@@ -250,6 +251,52 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                 }}
               >
                 Home
+              </Button>
+
+              {/* Shows */}
+              <Button
+                variant={isActivePath('/shows') ? 'contained' : 'text'}
+                size="medium"
+                onClick={() => navigate('/shows')}
+                startIcon={<FontAwesomeIcon icon={faCalendarDays} />}
+                sx={{
+                  color: isActivePath('/shows')
+                    ? theme.palette.primary.contrastText
+                    : theme.palette.mode === 'light'
+                      ? 'white'
+                      : 'inherit',
+                  backgroundColor: isActivePath('/shows')
+                    ? theme.palette.mode === 'light'
+                      ? 'rgba(255, 255, 255, 0.2)'
+                      : theme.palette.primary.main
+                    : 'transparent',
+                  fontWeight: isActivePath('/shows') ? 600 : 500,
+                  textTransform: 'none',
+                  fontSize: '1rem',
+                  px: 2,
+                  py: 1,
+                  borderRadius: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s ease-in-out',
+                  border:
+                    isActivePath('/shows') && theme.palette.mode === 'light'
+                      ? '1px solid rgba(255, 255, 255, 0.3)'
+                      : 'none',
+                  '&:hover': {
+                    backgroundColor: isActivePath('/shows')
+                      ? theme.palette.mode === 'light'
+                        ? 'rgba(255, 255, 255, 0.25)'
+                        : theme.palette.primary.dark
+                      : theme.palette.mode === 'light'
+                        ? 'rgba(255, 255, 255, 0.1)'
+                        : 'rgba(255, 255, 255, 0.05)',
+                    transform: 'translateY(-1px)',
+                  },
+                }}
+              >
+                Shows
               </Button>
 
               {/* Music Search - Only show when authenticated */}
@@ -654,6 +701,34 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   primary="Home"
                   primaryTypographyProps={{
                     fontWeight: isActivePath('/') ? 600 : 400,
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+
+            {/* Shows */}
+            <ListItem disablePadding>
+              <ListItemButton
+                onClick={() => handleMobileNavigation('/shows')}
+                sx={{
+                  backgroundColor: isActivePath('/shows')
+                    ? theme.palette.primary.main
+                    : 'transparent',
+                  color: isActivePath('/shows') ? theme.palette.primary.contrastText : 'inherit',
+                  '&:hover': {
+                    backgroundColor: isActivePath('/shows')
+                      ? theme.palette.primary.dark
+                      : theme.palette.action.hover,
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ color: 'inherit' }}>
+                  <FontAwesomeIcon icon={faCalendarDays} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Shows"
+                  primaryTypographyProps={{
+                    fontWeight: isActivePath('/shows') ? 600 : 400,
                   }}
                 />
               </ListItemButton>

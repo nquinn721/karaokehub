@@ -346,4 +346,14 @@ export class ParserController {
       );
     }
   }
+
+  @Get('parsing-status')
+  async getParsingStatus() {
+    try {
+      return this.karaokeParserService.getParsingStatus();
+    } catch (error) {
+      console.error('Error getting parsing status:', error);
+      throw new HttpException('Failed to get parsing status', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
 }

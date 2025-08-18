@@ -54,6 +54,11 @@ export class KaraokeParserService {
   private readonly logger = new Logger(KaraokeParserService.name);
   private genAI: GoogleGenerativeAI;
 
+  // Parsing status tracking
+  private isCurrentlyParsing = false;
+  private currentParsingUrl: string | null = null;
+  private parsingStartTime: Date | null = null;
+
   constructor(
     @InjectRepository(ParsedSchedule)
     private parsedScheduleRepository: Repository<ParsedSchedule>,
@@ -74,12 +79,154 @@ export class KaraokeParserService {
   }
 
   /**
+   * Get current parsing status
+   */
+  getParsingStatus() {
+    return {
+      isCurrentlyParsing: this.isCurrentlyParsing,
+      currentParsingUrl: this.currentParsingUrl,
+      parsingStartTime: this.parsingStartTime,
+      elapsedTimeMs: this.parsingStartTime ? Date.now() - this.parsingStartTime.getTime() : 0,
+    };
+  }
+
+  /**
+   * Set parsing status
+   */
+  private setParsingStatus(isActive: boolean, url?: string) {
+    this.isCurrentlyParsing = isActive;
+    if (isActive) {
+      this.currentParsingUrl = url || null;
+      this.parsingStartTime = new Date();
+    } else {
+      this.currentParsingUrl = null;
+      this.parsingStartTime = null;
+    }
+  }
+
+  /**
+   * Create production-ready Puppeteer configuration with fallback paths
+   */
+  private createPuppeteerConfig(): {
+    headless: boolean;
+    executablePath: string | undefined;
+    args: string[];
+    timeout: number;
+  } {
+    const puppeteerArgs = [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-web-security',
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
+    ];
+
+    // Additional Linux-specific arguments for production
+    if (process.platform === 'linux') {
+      puppeteerArgs.push(
+        '--disable-gpu',
+        '--no-zygote',
+        '--single-process', // Important for Docker containers
+        '--disable-extensions',
+        '--disable-software-rasterizer',
+        '--disable-background-networking',
+        '--disable-default-apps',
+        '--disable-sync',
+        '--disable-translate',
+        '--hide-scrollbars',
+        '--metrics-recording-only',
+        '--mute-audio',
+        '--no-first-run',
+        '--safebrowsing-disable-auto-update',
+        '--ignore-gpu-blacklist',
+        '--ignore-certificate-errors',
+        '--ignore-ssl-errors',
+        '--ignore-certificate-errors-spki-list',
+      );
+    }
+
+    // Try to find the best executable path with fallbacks
+    let executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+
+    if (process.platform === 'linux' && !executablePath) {
+      const fs = require('fs');
+      const commonPaths = [
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/google-chrome',
+        '/opt/google/chrome/chrome',
+      ];
+
+      // Find the first path that exists
+      for (const path of commonPaths) {
+        try {
+          if (fs.existsSync(path)) {
+            executablePath = path;
+            this.logAndBroadcast(`Found Chrome/Chromium at: ${path}`, 'info');
+            break;
+          }
+        } catch (error) {
+          // Continue to next path
+        }
+      }
+
+      if (!executablePath) {
+        this.logAndBroadcast(
+          'Warning: No Chrome/Chromium executable found in common paths',
+          'warning',
+        );
+        this.logAndBroadcast(`Checked paths: ${commonPaths.join(', ')}`, 'warning');
+      }
+    }
+
+    this.logAndBroadcast(
+      `Platform: ${process.platform}, Puppeteer args: ${puppeteerArgs.join(' ')}`,
+      'info',
+    );
+    this.logAndBroadcast(`Using executable path: ${executablePath || 'default Chrome'}`, 'info');
+
+    return {
+      headless: true,
+      executablePath: executablePath || undefined,
+      args: puppeteerArgs,
+      timeout: 60000, // 60 second timeout
+    };
+  }
+
+  /**
    * Enhanced logging method that logs both to console and broadcasts to WebSocket clients
    */
+  private recentLogMessages: Map<string, number> = new Map(); // Track recent messages with timestamps
+
   private logAndBroadcast(
     message: string,
     level: 'info' | 'success' | 'warning' | 'error' = 'info',
   ) {
+    // Check for duplicate messages in the last 3 seconds
+    const messageKey = `${level}:${message}`;
+    const now = Date.now();
+    const lastLogTime = this.recentLogMessages.get(messageKey);
+
+    if (lastLogTime && now - lastLogTime < 3000) {
+      // Skip duplicate message within 3 seconds
+      return;
+    }
+
+    // Update the timestamp for this message
+    this.recentLogMessages.set(messageKey, now);
+
+    // Clean up old entries periodically (keep only last 10 seconds)
+    if (this.recentLogMessages.size > 100) {
+      for (const [key, timestamp] of this.recentLogMessages.entries()) {
+        if (now - timestamp > 10000) {
+          this.recentLogMessages.delete(key);
+        }
+      }
+    }
+
     // Log to console using NestJS logger
     switch (level) {
       case 'success':
@@ -159,25 +306,117 @@ export class KaraokeParserService {
   }
 
   /**
+   * Normalize state names to standard abbreviations
+   */
+  private normalizeState(stateName: string): string {
+    if (!stateName) return '';
+
+    const stateMap: { [key: string]: string } = {
+      alabama: 'AL',
+      alaska: 'AK',
+      arizona: 'AZ',
+      arkansas: 'AR',
+      california: 'CA',
+      colorado: 'CO',
+      connecticut: 'CT',
+      delaware: 'DE',
+      florida: 'FL',
+      georgia: 'GA',
+      hawaii: 'HI',
+      idaho: 'ID',
+      illinois: 'IL',
+      indiana: 'IN',
+      iowa: 'IA',
+      kansas: 'KS',
+      kentucky: 'KY',
+      louisiana: 'LA',
+      maine: 'ME',
+      maryland: 'MD',
+      massachusetts: 'MA',
+      michigan: 'MI',
+      minnesota: 'MN',
+      mississippi: 'MS',
+      missouri: 'MO',
+      montana: 'MT',
+      nebraska: 'NE',
+      nevada: 'NV',
+      'new hampshire': 'NH',
+      'new jersey': 'NJ',
+      'new mexico': 'NM',
+      'new york': 'NY',
+      'north carolina': 'NC',
+      'north dakota': 'ND',
+      ohio: 'OH',
+      oklahoma: 'OK',
+      oregon: 'OR',
+      pennsylvania: 'PA',
+      'rhode island': 'RI',
+      'south carolina': 'SC',
+      'south dakota': 'SD',
+      tennessee: 'TN',
+      texas: 'TX',
+      utah: 'UT',
+      vermont: 'VT',
+      virginia: 'VA',
+      washington: 'WA',
+      'west virginia': 'WV',
+      wisconsin: 'WI',
+      wyoming: 'WY',
+    };
+
+    const normalized = stateName.toLowerCase().trim();
+
+    // If it's already an abbreviation, return uppercase
+    if (normalized.length === 2) {
+      return normalized.toUpperCase();
+    }
+
+    // Look up full state name
+    return stateMap[normalized] || stateName.toUpperCase();
+  }
+
+  /**
    * Main parsing method - takes a URL and returns parsed karaoke data
    */
   async parseWebsite(url: string): Promise<ParsedKaraokeData> {
     try {
-      this.logAndBroadcast(`Starting parse for URL: ${url}`, 'info');
+      this.logAndBroadcast(`Starting HTML parse for URL: ${url}`, 'info');
 
-      // Step 1: Get webpage content and screenshot for visual parsing
-      const webpageData = await this.fetchWebpageWithScreenshot(url);
+      // Get webpage HTML content only
+      const htmlContent = await this.fetchRawHtml(url);
+      this.logAndBroadcast(`Processing HTML content: ${htmlContent.length} characters`, 'info');
 
-      // Step 2: Parse with Gemini AI using both HTML and visual data
-      const parsedData = await this.parseWithGeminiVision(webpageData, url);
+      // Trim unnecessary HTML content first
+      const trimmedHtml = this.trimHtmlContent(htmlContent);
+      this.logAndBroadcast(
+        `After trimming: ${trimmedHtml.length} characters (${(((htmlContent.length - trimmedHtml.length) / htmlContent.length) * 100).toFixed(1)}% reduction)`,
+        'info',
+      );
+
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+
+      // Parse HTML content with enhanced prompt
+      const parsedData = await this.parseSingleHtmlContent(trimmedHtml, url, model);
 
       this.logAndBroadcast(
-        `Parse completed successfully for ${url}: ${parsedData.shows.length} shows found`,
+        `HTML parse completed successfully for ${url}: ${parsedData.shows.length} shows found`,
         'success',
       );
       return parsedData;
     } catch (error) {
-      this.logAndBroadcast(`Error parsing website ${url}:`, 'error');
+      this.logAndBroadcast(`Error parsing website ${url}: ${error.message}`, 'error');
+      this.logAndBroadcast(`Error stack: ${error.stack}`, 'error');
+
+      // Log platform and environment info for debugging
+      this.logAndBroadcast(
+        `Platform: ${process.platform}, NODE_ENV: ${process.env.NODE_ENV}`,
+        'info',
+      );
+      this.logAndBroadcast(
+        `Puppeteer executable path: ${process.env.PUPPETEER_EXECUTABLE_PATH || 'default'}`,
+        'info',
+      );
+
       throw new Error(`Failed to parse website: ${error.message}`);
     }
   }
@@ -218,6 +457,9 @@ export class KaraokeParserService {
     const startTime = Date.now();
 
     try {
+      // Set parsing status to active
+      this.setParsingStatus(true, url);
+
       this.logAndBroadcast(`Starting parse and save operation for URL: ${url}`, 'info');
 
       // Parse the website
@@ -265,8 +507,23 @@ export class KaraokeParserService {
         },
       };
     } catch (error) {
-      this.logAndBroadcast(`Error parsing and saving website ${url}:`, 'error');
+      this.logAndBroadcast(`Error parsing and saving website ${url}: ${error.message}`, 'error');
+      this.logAndBroadcast(`Error stack: ${error.stack}`, 'error');
+
+      // Log platform and environment info for debugging
+      this.logAndBroadcast(
+        `Platform: ${process.platform}, NODE_ENV: ${process.env.NODE_ENV}`,
+        'info',
+      );
+      this.logAndBroadcast(
+        `Puppeteer executable path: ${process.env.PUPPETEER_EXECUTABLE_PATH || 'default'}`,
+        'info',
+      );
+
       throw new Error(`Failed to parse and save website: ${error.message}`);
+    } finally {
+      // Clear parsing status
+      this.setParsingStatus(false);
     }
   }
 
@@ -348,7 +605,32 @@ export class KaraokeParserService {
         },
       };
     } catch (error) {
-      this.logAndBroadcast(`Error parsing website with screenshot ${url}:`, 'error');
+      this.logAndBroadcast(
+        `Error parsing website with screenshot ${url}: ${error.message}`,
+        'error',
+      );
+      this.logAndBroadcast(`Error stack: ${error.stack}`, 'error');
+
+      // Log specific Puppeteer error details
+      if (error.message.includes('chrome') || error.message.includes('chromium')) {
+        this.logAndBroadcast('Puppeteer Chrome/Chromium error detected', 'error');
+        this.logAndBroadcast(
+          `Platform: ${process.platform}, NODE_ENV: ${process.env.NODE_ENV}`,
+          'info',
+        );
+        this.logAndBroadcast(
+          `Puppeteer executable path: ${process.env.PUPPETEER_EXECUTABLE_PATH || 'default'}`,
+          'info',
+        );
+      }
+
+      if (error.message.includes('timeout') || error.message.includes('Navigation timeout')) {
+        this.logAndBroadcast(
+          'Timeout error detected - may be network or performance issue',
+          'warning',
+        );
+      }
+
       throw new Error(`Failed to parse website with screenshot: ${error.message}`);
     }
   }
@@ -364,16 +646,40 @@ export class KaraokeParserService {
     try {
       this.logAndBroadcast(`Fetching webpage content and screenshot from: ${url}`, 'info');
 
-      browser = await puppeteer.launch({
-        headless: true,
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-web-security',
-        ],
-      });
+      const puppeteerConfig = this.createPuppeteerConfig();
+
+      // Try multiple launch attempts with different configurations
+      let launchAttempts = 0;
+      const maxAttempts = 3;
+
+      while (launchAttempts < maxAttempts) {
+        try {
+          launchAttempts++;
+          this.logAndBroadcast(`Puppeteer launch attempt ${launchAttempts}/${maxAttempts}`, 'info');
+
+          browser = await puppeteer.launch(puppeteerConfig);
+          break; // Success, exit the retry loop
+        } catch (launchError) {
+          this.logAndBroadcast(
+            `Launch attempt ${launchAttempts} failed: ${launchError.message}`,
+            'warning',
+          );
+
+          if (launchAttempts === maxAttempts) {
+            // Last attempt failed, throw the error
+            throw launchError;
+          }
+
+          // Wait before retry
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+
+          // Try with more conservative settings on retry
+          if (launchAttempts === 2) {
+            puppeteerConfig.args.push('--disable-features=VizDisplayCompositor');
+            this.logAndBroadcast('Adding conservative flags for retry', 'info');
+          }
+        }
+      }
 
       const page = await browser.newPage();
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
@@ -483,37 +789,6 @@ export class KaraokeParserService {
   }
 
   /**
-   * Use Gemini AI with vision to parse webpage using both HTML and screenshot
-   */
-  private async parseWithGeminiVision(
-    webpageData: { htmlContent: string; screenshot: Buffer },
-    url: string,
-  ): Promise<ParsedKaraokeData> {
-    try {
-      this.logAndBroadcast('Starting Gemini AI vision parsing with HTML and screenshot', 'info');
-      this.logAndBroadcast(
-        `Processing HTML content: ${webpageData.htmlContent.length} characters`,
-        'info',
-      );
-
-      // Trim unnecessary HTML content first
-      const trimmedHtml = this.trimHtmlContent(webpageData.htmlContent);
-      this.logAndBroadcast(
-        `After trimming: ${trimmedHtml.length} characters (${(((webpageData.htmlContent.length - trimmedHtml.length) / webpageData.htmlContent.length) * 100).toFixed(1)}% reduction)`,
-        'info',
-      );
-
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-
-      // Process with enhanced HTML content that includes data attributes
-      return this.parseSingleHtmlContent(trimmedHtml, url, model);
-    } catch (error) {
-      this.logAndBroadcast('Error parsing with Gemini vision:', 'error');
-      throw new Error(`Gemini vision parsing failed: ${error.message}`);
-    }
-  }
-
-  /**
    * Parse large HTML content in chunks and combine results
    */
   private async parseHtmlInChunks(
@@ -585,14 +860,57 @@ SHOW EXTRACTION RULES:
 - Extract venue name, day, time, and DJ/host name for each entry
 - If a venue appears under multiple days, create separate show entries for each day
 
-LOCATION EXTRACTION INSTRUCTIONS:
-- Extract city, state, and ZIP code when available
-- For address: Extract only the street address portion (e.g., "123 Main St" not "123 Main St, Columbus, OH 43215")
-- For city: Extract the city name (e.g., "Columbus")
-- For state: Extract state abbreviation (e.g., "OH", "CA", "NY")
-- For zip: Extract ZIP code in 5-digit or 5+4 format (e.g., "43215" or "43215-1234")
-- Look for address patterns like "123 Main St, Columbus, OH 43215"
-- If full address is available, separate the components appropriately
+🚨 CRITICAL ADDRESS COMPONENT SEPARATION RULES 🚨
+NEVER MIX ADDRESS COMPONENTS - SEPARATE THEM CLEANLY:
+
+✅ CORRECT address component separation:
+Input: "1930 Lewis Turner Blvd Fort Walton Beach, FL 32647"
+→ address: "1930 Lewis Turner Blvd"
+→ city: "Fort Walton Beach"  
+→ state: "FL"
+→ zip: "32647"
+
+Input: "630 North High Street Columbus, Ohio 43215"
+→ address: "630 North High Street"
+→ city: "Columbus"
+→ state: "OH"
+→ zip: "43215"
+
+❌ WRONG - DON'T DO THIS:
+address: "1930 Lewis Turner Blvd Fort Walton Beach, FL 32647" ← CONTAINS CITY/STATE/ZIP
+address: "630 North High Street Columbus, Ohio 43215" ← CONTAINS CITY/STATE/ZIP
+
+ADDRESS FIELD RULES:
+- ONLY include street number and street name
+- NO city names in address field
+- NO state names in address field  
+- NO ZIP codes in address field
+- NO commas in address field
+- Examples: "1930 Lewis Turner Blvd", "630 North High Street", "8939 South Old State Road"
+
+CITY FIELD RULES:
+- ONLY the city name
+- Multi-word cities are OK: "Panama City Beach", "Fort Walton Beach", "Lewis Center"
+- NO state abbreviations in city field
+- NO ZIP codes in city field
+- NO commas in city field
+
+STATE FIELD RULES:
+- ONLY 2-letter state abbreviation: "OH", "FL", "CA", "NY", "TX", etc.
+- Convert full state names: "Ohio" → "OH", "Florida" → "FL", "California" → "CA"
+
+MORE ADDRESS PARSING EXAMPLES:
+- "8939 South Old State Road Lewis Center, Ohio" → address: "8939 South Old State Road", city: "Lewis Center", state: "OH"
+- "Front Beach Road Panama City Beach" → address: "Front Beach Road", city: "Panama City Beach", state: "FL"
+- "59 Potter Street Delaware" → address: "59 Potter Street", city: "Delaware", state: "OH"
+- "8010 Surf Drive Panama City Beach" → address: "8010 Surf Drive", city: "Panama City Beach", state: "FL"
+- "Columbus, Ohio" → address: null, city: "Columbus", state: "OH"
+- "Lewis Center" → address: null, city: "Lewis Center", state: "OH"
+
+SMART ADDRESS HANDLING:
+- If only city+state given, leave address field null but populate city and state
+- Use context clues to infer missing state (e.g., if other venues mention Ohio, Delaware likely = Delaware, OH)
+- Handle multi-word city names like "Panama City Beach", "Fort Walton Beach", "Lewis Center"
 
 VENUE INFORMATION EXTRACTION:
 - venueWebsite: Look for venue websites, social media pages, or links related to the venue
@@ -614,6 +932,14 @@ TIME PARSING INSTRUCTIONS - CRITICAL:
 
 Website URL: ${url}
 
+🚨 FINAL VALIDATION CHECKLIST - VERIFY EACH SHOW BEFORE OUTPUT:
+✅ address field: Contains ONLY street address (no city, state, zip) OR is null
+✅ city field: Contains ONLY city name (no commas, no state, no zip)
+✅ state field: Contains ONLY 2-letter abbreviation (OH, FL, etc.)
+✅ zip field: Contains ONLY ZIP code (12345 or 12345-6789) OR is null
+✅ No mixed components in any field
+✅ All leading/trailing spaces and punctuation removed
+
 Return JSON (no extra text):
 {
   "vendor": {
@@ -634,10 +960,10 @@ Return JSON (no extra text):
   "shows": [
     {
       "venue": "Venue Name",
-      "address": "Street address only (e.g., '123 Main St')",
-      "city": "City name",
-      "state": "State abbreviation (e.g., 'CA', 'NY')",
-      "zip": "ZIP code (e.g., '12345' or '12345-6789')",
+      "address": "Street address ONLY (e.g., '8939 South Old State Road', '630 North High Street') OR null if no street address",
+      "city": "City name ONLY (e.g., 'Lewis Center', 'Panama City Beach', 'Columbus', 'Delaware')",
+      "state": "State abbreviation ONLY (e.g., 'OH', 'FL', 'CA', 'NY')",
+      "zip": "ZIP code ONLY (e.g., '12345' or '12345-6789') OR null",
       "venuePhone": "Phone number",
       "venueWebsite": "Venue website if available",
       "imageUrl": "Venue image URL if available",
@@ -892,11 +1218,38 @@ ${htmlContent}`;
    * Normalize show times to ensure consistency
    */
   private normalizeShowTimes(shows: any[]): any[] {
-    return shows.map((show) => {
-      // If no end time specified, default to midnight
+    return this.normalizeShowData(shows);
+  }
+
+  /**
+   * Normalize show data including times and addresses
+   */
+  private normalizeShowData(shows: any[]): any[] {
+    return shows.map((show, index) => {
+      // Normalize time data
       if (show.startTime && !show.endTime) {
         show.endTime = '00:00';
       }
+
+      // Trust Gemini's address parsing - just clean up any extra whitespace
+      if (show.address) {
+        show.address = show.address.trim();
+      }
+      if (show.city) {
+        show.city = show.city.trim();
+      }
+      if (show.state) {
+        show.state = show.state.trim().toUpperCase();
+      }
+      if (show.zip) {
+        show.zip = show.zip.trim();
+      }
+
+      this.logAndBroadcast(
+        `Processed show: ${show.venue} - Address: "${show.address}", City: "${show.city}", State: "${show.state}"`,
+        'info',
+      );
+
       return show;
     });
   }
@@ -1099,7 +1452,7 @@ ${htmlContent}`;
           // Try to get coordinates if missing
           if ((!existingShow.lat || !existingShow.lng) && existingShow.address) {
             try {
-              const geocodeResult = await this.geocodingService.geocodeAddress(
+              const geocodeResult = await this.geocodingService.geocodeAddressHybrid(
                 existingShow.address,
               );
               if (geocodeResult) {
@@ -1124,14 +1477,7 @@ ${htmlContent}`;
                   existingShow.zip = geocodeResult.zip;
                   showUpdated = true;
                 }
-                // Clean the address if it still contains city/state/zip
-                const cleanedAddress = this.geocodingService.cleanStreetAddress(
-                  existingShow.address,
-                );
-                if (cleanedAddress !== existingShow.address) {
-                  existingShow.address = cleanedAddress;
-                  showUpdated = true;
-                }
+                // Trust the existing address parsing - don't re-clean it
               }
             } catch (geocodeError) {
               this.logAndBroadcast(
@@ -1185,32 +1531,43 @@ ${htmlContent}`;
         let zip = showData.zip;
         let lat: number | undefined;
         let lng: number | undefined;
+
+        // Trust Gemini's address parsing - use the components as provided
         let cleanedAddress = showData.address;
 
-        // If city/state/zip not provided in parsed data, try to extract from address
-        if ((!city || !state || !zip) && showData.address) {
-          const extracted = this.geocodingService.extractCityStateFromAddress(showData.address);
-          city = city || extracted.city;
-          state = state || extracted.state;
-          zip = zip || extracted.zip;
+        // Only use geocoding to get coordinates and fill in missing fields if truly empty
+        if (showData.address && !city && !state) {
+          // Only as a last resort if Gemini didn't provide city/state at all
+          try {
+            const extracted = this.geocodingService.extractCityStateFromAddress(showData.address);
+            city = city || extracted.city;
+            state = state || extracted.state;
+            zip = zip || extracted.zip;
+          } catch (error) {
+            this.logAndBroadcast(
+              `Fallback address extraction failed for ${showData.venue}: ${error.message}`,
+              'warning',
+            );
+          }
         }
 
-        // Try geocoding as fallback if we still don't have all data or to get coordinates
-        if (showData.address) {
+        // Try geocoding to get coordinates (but don't override address components)
+        if (showData.address || city) {
           try {
-            const geocodeResult = await this.geocodingService.geocodeAddress(showData.address);
+            const addressForGeocoding = showData.address || `${city}, ${state}`;
+            const geocodeResult = await this.geocodingService.geocodeAddressHybrid(addressForGeocoding);
             if (geocodeResult) {
-              city = city || geocodeResult.city;
-              state = state || geocodeResult.state;
-              zip = zip || geocodeResult.zip;
+              // Only fill in missing coordinates and missing location data
               lat = geocodeResult.lat;
               lng = geocodeResult.lng;
 
-              // Clean the address to remove city/state/zip components
-              cleanedAddress = this.geocodingService.cleanStreetAddress(showData.address);
+              // Only use geocoding results to fill empty fields, don't override Gemini's parsing
+              if (!city) city = geocodeResult.city;
+              if (!state) state = geocodeResult.state;
+              if (!zip) zip = geocodeResult.zip;
 
               this.logAndBroadcast(
-                `Geocoded address for ${showData.venue}: ${city}, ${state} ${zip} (${lat}, ${lng})`,
+                `Geocoded coordinates: ${showData.venue} at (${lat}, ${lng})`,
                 'info',
               );
             }
@@ -1437,15 +1794,32 @@ ${htmlContent}`;
     try {
       this.logAndBroadcast(`Capturing full-page screenshot from: ${url}`);
 
+      // Platform-aware Puppeteer configuration
+      const puppeteerArgs = [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-web-security',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+      ];
+
+      // Additional Linux-specific arguments for production
+      if (process.platform === 'linux') {
+        puppeteerArgs.push(
+          '--disable-gpu',
+          '--no-zygote',
+          '--single-process', // Important for Docker containers
+          '--disable-extensions',
+        );
+      }
+
       browser = await puppeteer.launch({
         headless: true,
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-web-security',
-        ],
+        args: puppeteerArgs,
+        timeout: 60000, // 60 second timeout
       });
 
       const page = await browser.newPage();
@@ -1554,6 +1928,51 @@ Extract from the ENTIRE image:
 
 EXPECTED: There should be 35-40+ shows total across all days of the week.
 
+CRITICAL: SEPARATE ADDRESS COMPONENTS PROPERLY
+The most important part is to separate address information into distinct fields:
+
+❌ WRONG - DON'T DO THIS:
+address: "1930 Lewis Turner Blvd Fort Walton Beach, FL 32647" ← CONTAINS CITY/STATE/ZIP
+address: "630 North High Street Columbus, Ohio 43215" ← CONTAINS CITY/STATE/ZIP
+
+✅ CORRECT - DO THIS:
+address: "1930 Lewis Turner Blvd" ← ONLY STREET ADDRESS
+city: "Fort Walton Beach" ← ONLY CITY NAME
+state: "FL" ← ONLY STATE ABBREVIATION
+zip: "32647" ← ONLY ZIP CODE
+
+ADDRESS FIELD RULES:
+- ONLY include street number and street name
+- NO city names in address field
+- NO state names in address field  
+- NO ZIP codes in address field
+- NO commas in address field
+- Examples: "1930 Lewis Turner Blvd", "630 North High Street", "8939 South Old State Road"
+
+CITY FIELD RULES:
+- ONLY the city name
+- Multi-word cities are OK: "Panama City Beach", "Fort Walton Beach", "Lewis Center"
+- NO state abbreviations in city field
+- NO ZIP codes in city field
+- NO commas in city field
+
+STATE FIELD RULES:
+- ONLY 2-letter state abbreviation: "OH", "FL", "CA", "NY", "TX", etc.
+- Convert full state names: "Ohio" → "OH", "Florida" → "FL", "California" → "CA"
+
+MORE ADDRESS PARSING EXAMPLES:
+- "8939 South Old State Road Lewis Center, Ohio" → address: "8939 South Old State Road", city: "Lewis Center", state: "OH"
+- "Front Beach Road Panama City Beach" → address: "Front Beach Road", city: "Panama City Beach", state: "FL"
+- "59 Potter Street Delaware" → address: "59 Potter Street", city: "Delaware", state: "OH"
+- "8010 Surf Drive Panama City Beach" → address: "8010 Surf Drive", city: "Panama City Beach", state: "FL"
+- "Columbus, Ohio" → address: null, city: "Columbus", state: "OH"
+- "Lewis Center" → address: null, city: "Lewis Center", state: "OH"
+
+SMART ADDRESS HANDLING:
+- If only city+state given, leave address field null but populate city and state
+- Use context clues to infer missing state (e.g., if other venues mention Ohio, Delaware likely = Delaware, OH)
+- Handle multi-word city names like "Panama City Beach", "Fort Walton Beach", "Lewis Center"
+
 Return ONLY valid JSON with no extra text:
 
 {
@@ -1574,9 +1993,10 @@ Return ONLY valid JSON with no extra text:
   "shows": [
     {
       "venue": "Venue Name",
-      "address": "Full address if available",
-      "city": "City name if available",
-      "state": "State abbreviation if available (e.g., CA, NY, TX)",
+      "address": "ONLY street address (no city/state/zip)",
+      "city": "ONLY city name",
+      "state": "ONLY 2-letter state code",
+      "zip": "ONLY zip code",
       "venuePhone": "Phone number",
       "date": "day_of_week",
       "time": "time like '7 pm'",

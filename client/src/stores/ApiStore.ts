@@ -500,8 +500,13 @@ class ApiStore {
 
   // Get Google Maps API key from config
   get googleMapsApiKey(): string | undefined {
-    // Return current value without triggering async fetch
-    return this.clientConfig?.googleMapsApiKey;
+    // First try to get from server config
+    if (this.clientConfig?.googleMapsApiKey) {
+      return this.clientConfig.googleMapsApiKey;
+    }
+
+    // Fallback to Vite environment variable for development
+    return import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   }
 
   // API endpoints - centralized URL management

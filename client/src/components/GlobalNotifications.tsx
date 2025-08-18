@@ -43,6 +43,10 @@ const GlobalNotifications: React.FC = observer(() => {
             sx={{
               borderRadius: 2,
               fontWeight: 500,
+              color: 'white',
+              '& .MuiAlert-message': {
+                color: 'white',
+              },
             }}
           >
             {notification.message}

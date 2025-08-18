@@ -67,4 +67,9 @@ export class ShowController {
   geocodeExistingShows() {
     return this.showService.geocodeExistingShows();
   }
+
+  @Post('re-geocode-invalid')
+  reGeocodeInvalidShows() {
+    return this.showService.reGeocodeInvalidShows();
+  }
 }

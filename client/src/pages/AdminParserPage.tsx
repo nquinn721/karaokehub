@@ -2,6 +2,7 @@ import AdminBreadcrumb from '@components/AdminBreadcrumb';
 import {
   faCheck,
   faChevronDown,
+  faCopy,
   faExclamationTriangle,
   faEye,
   faGlobe,
@@ -52,7 +53,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { authStore, parserStore } from '@stores/index';
+import { authStore, parserStore, uiStore, webSocketStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
@@ -82,6 +83,31 @@ const AdminParserPage: React.FC = observer(() => {
     // Initialize parser store data
     parserStore.initialize();
     parserStore.fetchUrlsToParse();
+
+    // Set up WebSocket for parser logs
+    if (webSocketStore.isConnected && webSocketStore.socket) {
+      parserStore.setupParserEvents(webSocketStore.socket);
+    } else {
+      // Connect WebSocket if not already connected
+      webSocketStore.connect();
+    }
+
+    // Check if parsing is already in progress on the server
+    const checkParsingStatus = async () => {
+      const isParsingActive = await parserStore.checkAndRestoreParsingStatus();
+      if (isParsingActive) {
+        setIsParsingUrl(true);
+      }
+    };
+
+    checkParsingStatus();
+
+    // Cleanup WebSocket connection when component unmounts
+    return () => {
+      if (webSocketStore.socket) {
+        parserStore.leaveParserLogs(webSocketStore.socket);
+      }
+    };
   }, []);
 
   // Auto-scroll to bottom when new log entries are added
@@ -90,6 +116,40 @@ const AdminParserPage: React.FC = observer(() => {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [parserStore.parsingLog.length]);
+
+  // Monitor parsing completion through log messages
+  useEffect(() => {
+    const lastLog = parserStore.parsingLog[parserStore.parsingLog.length - 1];
+    if (lastLog && isParsingUrl) {
+      // Check for completion messages
+      const completionMessages = [
+        'Data saved for admin review',
+        'Parse completed:',
+        'Parsing completed successfully',
+        'Error parsing and saving website',
+        'Failed to parse and save website',
+        'Request timed out',
+      ];
+
+      const isCompleted = completionMessages.some((msg) => lastLog.message.includes(msg));
+
+      if (isCompleted) {
+        // Add a small delay to ensure all logs are received
+        setTimeout(() => {
+          setIsParsingUrl(false);
+          parserStore.stopParsingTimer();
+
+          // Refresh pending reviews if parsing was successful
+          if (
+            lastLog.message.includes('Data saved for admin review') ||
+            lastLog.message.includes('Parse completed:')
+          ) {
+            parserStore.fetchPendingReviews();
+          }
+        }, 1000);
+      }
+    }
+  }, [parserStore.parsingLog, isParsingUrl]);
 
   const handleParseUrl = async () => {
     const urlToParse = selectedUrl || customUrl;
@@ -459,23 +519,37 @@ const AdminParserPage: React.FC = observer(() => {
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     Selected URL:
                   </Typography>
-                  <Typography
-                    variant="body2"
-                    component="a"
-                    href={selectedUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{
-                      color: 'primary.main',
-                      textDecoration: 'underline',
-                      wordBreak: 'break-all',
-                      '&:hover': {
-                        color: 'primary.dark',
-                      },
-                    }}
-                  >
-                    {selectedUrl}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography
+                      variant="body2"
+                      component="a"
+                      href={selectedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{
+                        color: 'primary.main',
+                        textDecoration: 'underline',
+                        wordBreak: 'break-all',
+                        flex: 1,
+                        '&:hover': {
+                          color: 'primary.dark',
+                        },
+                      }}
+                    >
+                      {selectedUrl}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedUrl);
+                        uiStore.addNotification('URL copied to clipboard!', 'success');
+                      }}
+                      title="Copy URL"
+                      sx={{ ml: 1 }}
+                    >
+                      <FontAwesomeIcon icon={faCopy} style={{ fontSize: '14px' }} />
+                    </IconButton>
+                  </Box>
                 </Box>
               </>
             )}
@@ -748,54 +822,96 @@ const AdminParserPage: React.FC = observer(() => {
                             {selectedReview.aiAnalysis.shows.map((show: any, index: number) => (
                               <ListItem key={index} sx={{ borderBottom: '1px solid #eee', py: 2 }}>
                                 <ListItemText
-                                  primary={
-                                    <Box>
-                                      <Typography variant="subtitle1" fontWeight="bold">
-                                        {show.venue}
-                                      </Typography>
-                                      <Typography variant="body2" color="text.secondary">
-                                        {show.address}
-                                      </Typography>
-                                    </Box>
-                                  }
+                                  primary={show.venue}
+                                  primaryTypographyProps={{
+                                    variant: 'subtitle1',
+                                    fontWeight: 'bold',
+                                    component: 'div',
+                                  }}
                                   secondary={
-                                    <Box sx={{ mt: 1 }}>
-                                      <Typography variant="body2">
+                                    <Box component="div" sx={{ mt: 1 }}>
+                                      {/* Address Information */}
+                                      <Box sx={{ mb: 1 }}>
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                          component="div"
+                                        >
+                                          <strong>Address Components:</strong>
+                                        </Typography>
+                                        <Box sx={{ ml: 1, mt: 0.5 }}>
+                                          {show.address && (
+                                            <Typography variant="body2" component="div">
+                                              <strong>Street:</strong> {show.address}
+                                            </Typography>
+                                          )}
+                                          {show.city && (
+                                            <Typography variant="body2" component="div">
+                                              <strong>City:</strong> {show.city}
+                                            </Typography>
+                                          )}
+                                          {show.state && (
+                                            <Typography variant="body2" component="div">
+                                              <strong>State:</strong> {show.state}
+                                            </Typography>
+                                          )}
+                                          {show.zip && (
+                                            <Typography variant="body2" component="div">
+                                              <strong>ZIP:</strong> {show.zip}
+                                            </Typography>
+                                          )}
+                                          {!show.address && !show.city && !show.state && (
+                                            <Typography
+                                              variant="body2"
+                                              color="warning.main"
+                                              component="div"
+                                            >
+                                              No address components found
+                                            </Typography>
+                                          )}
+                                        </Box>
+                                      </Box>
+
+                                      {/* Show Information */}
+                                      <Typography variant="body2" component="div">
                                         <strong>Day:</strong> {show.day || show.date}
                                       </Typography>
-                                      <Typography variant="body2">
+                                      <Typography variant="body2" component="div">
                                         <strong>Time:</strong> {show.time} ({show.startTime} -{' '}
                                         {show.endTime})
                                       </Typography>
-                                      <Typography variant="body2">
+                                      <Typography variant="body2" component="div">
                                         <strong>DJ:</strong> {show.djName || 'Unknown'}
                                       </Typography>
                                       {show.venuePhone && (
-                                        <Typography variant="body2">
+                                        <Typography variant="body2" component="div">
                                           <strong>Phone:</strong> {show.venuePhone}
                                         </Typography>
                                       )}
                                       {show.venueWebsite && (
-                                        <Typography variant="body2">
+                                        <Typography variant="body2" component="div">
                                           <strong>Website:</strong> {show.venueWebsite}
                                         </Typography>
                                       )}
                                       {show.description && (
-                                        <Typography variant="body2">
+                                        <Typography variant="body2" component="div">
                                           <strong>Description:</strong> {show.description}
                                         </Typography>
                                       )}
                                       {show.notes && (
-                                        <Typography variant="body2">
+                                        <Typography variant="body2" component="div">
                                           <strong>Notes:</strong> {show.notes}
                                         </Typography>
                                       )}
-                                      <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                      <Typography variant="body2" sx={{ mt: 0.5 }} component="div">
                                         <strong>Confidence:</strong>{' '}
                                         {Math.round(show.confidence * 100)}%
                                       </Typography>
                                     </Box>
                                   }
+                                  secondaryTypographyProps={{
+                                    component: 'div',
+                                  }}
                                 />
                               </ListItem>
                             ))}

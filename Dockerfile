@@ -41,14 +41,28 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 # Install dumb-init for proper signal handling and Chromium for Puppeteer
-RUN apk add --no-cache dumb-init chromium
+RUN apk add --no-cache \
+    dumb-init \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    font-noto-emoji
 
 # Set Puppeteer to use installed Chromium
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV CHROMIUM_PATH=/usr/bin/chromium-browser
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nestjs -u 1001
+
+# Give the user access to chromium
+RUN chmod 755 /usr/bin/chromium-browser
 
 # Copy built application
 COPY --from=server-builder --chown=nestjs:nodejs /app/dist ./dist
