@@ -2204,14 +2204,22 @@ Return ONLY valid JSON with no extra text:
       this.logAndBroadcast(`Full response length: ${text.length} characters`, 'info');
 
       let parsedData;
+      let cleanJsonString;
       try {
-        const cleanJsonString = this.cleanGeminiResponse(text);
+        cleanJsonString = this.cleanGeminiResponse(text);
         this.logAndBroadcast('Cleaned JSON (first 500 chars):', 'info');
         this.logAndBroadcast(`Cleaned JSON length: ${cleanJsonString.length} characters`, 'info');
         parsedData = JSON.parse(cleanJsonString);
         this.logAndBroadcast('✅ JSON parsing successful', 'success');
       } catch (jsonError) {
         this.logAndBroadcast('❌ JSON parsing failed, attempting to fix common issues:', 'error');
+        this.logAndBroadcast(`JSON Error: ${jsonError.message}`, 'error');
+        
+        // Log a sample of the problematic JSON for debugging
+        if (cleanJsonString) {
+          const problemArea = cleanJsonString.substring(Math.max(0, cleanJsonString.length - 1000));
+          this.logAndBroadcast(`Last 1000 chars of JSON: ${problemArea}`, 'error');
+        }
 
         // Try to fix common JSON issues
         let fixedJson = this.cleanGeminiResponse(text);
@@ -2222,6 +2230,12 @@ Return ONLY valid JSON with no extra text:
         // Fix missing quotes around property names
         fixedJson = fixedJson.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
 
+        // Fix missing commas between array elements
+        fixedJson = fixedJson.replace(/}\s*{/g, '},{');
+        
+        // Fix decimal numbers that might be causing issues
+        fixedJson = fixedJson.replace(/:\s*(\d+\.\d+)([^\d,}\]])/g, ': $1,$2');
+
         // Try to find and fix incomplete JSON by finding the last valid closing brace
         const lastValidJson = this.extractValidJson(fixedJson);
         if (lastValidJson) {
@@ -2230,6 +2244,7 @@ Return ONLY valid JSON with no extra text:
             this.logAndBroadcast('✅ Successfully parsed JSON after fixing', 'success');
           } catch (secondError) {
             this.logAndBroadcast('❌ Even fixed JSON failed to parse:', 'error');
+            this.logAndBroadcast(`Second error: ${secondError.message}`, 'error');
             throw new Error(`JSON parsing failed: ${jsonError.message}`);
           }
         } else {

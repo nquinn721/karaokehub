@@ -184,18 +184,11 @@ export class ParserStore {
 
     runInAction(() => {
       this.parsingLog.push(entry);
-      // Keep only the last 5 entries
-      if (this.parsingLog.length > 5) {
-        this.parsingLog = this.parsingLog.slice(-5);
+      // Keep only the last 50 entries to prevent memory issues
+      if (this.parsingLog.length > 50) {
+        this.parsingLog = this.parsingLog.slice(-50);
       }
     });
-
-    // Auto-remove entry after 10 seconds
-    setTimeout(() => {
-      runInAction(() => {
-        this.parsingLog = this.parsingLog.filter((log) => log.id !== entry.id);
-      });
-    }, 10000);
   }
 
   clearLog() {
