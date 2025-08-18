@@ -380,6 +380,13 @@ export class KaraokeParserService {
    */
   async parseWebsite(url: string): Promise<ParsedKaraokeData> {
     try {
+      // Log memory usage before parsing
+      const memUsage = process.memoryUsage();
+      this.logAndBroadcast(
+        `Memory before parsing: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB heap, ${Math.round(memUsage.rss / 1024 / 1024)}MB RSS`,
+        'info'
+      );
+
       this.logAndBroadcast(`Starting HTML parse for URL: ${url}`, 'info');
 
       // Get webpage HTML content only
@@ -402,8 +409,23 @@ export class KaraokeParserService {
         `HTML parse completed successfully for ${url}: ${parsedData.shows.length} shows found`,
         'success',
       );
+
+      // Log memory usage after parsing
+      const memUsageAfter = process.memoryUsage();
+      this.logAndBroadcast(
+        `Memory after parsing: ${Math.round(memUsageAfter.heapUsed / 1024 / 1024)}MB heap, ${Math.round(memUsageAfter.rss / 1024 / 1024)}MB RSS`,
+        'info'
+      );
+
       return parsedData;
     } catch (error) {
+      // Log memory usage on error
+      const memUsageError = process.memoryUsage();
+      this.logAndBroadcast(
+        `Memory during error: ${Math.round(memUsageError.heapUsed / 1024 / 1024)}MB heap, ${Math.round(memUsageError.rss / 1024 / 1024)}MB RSS`,
+        'error'
+      );
+
       this.logAndBroadcast(`Error parsing website ${url}: ${error.message}`, 'error');
       this.logAndBroadcast(`Error stack: ${error.stack}`, 'error');
 

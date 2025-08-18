@@ -1,4 +1,9 @@
 #!/bin/bash
+# KaraokeHub Stripe Local Testing Helper Script
+# ---------------------------------------------
+# Usage: bash stripe-test-local.sh [command]
+# Commands: setup, test-subscription, test-payment, test-customer, products, webhook-status, events, logs, help
+# See docs/STRIPE-LOCAL-TESTING.md for details.
 
 # Stripe Local Testing Helper Script
 # Usage: ./stripe-test-local.sh [command]

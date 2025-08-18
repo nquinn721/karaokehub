@@ -557,10 +557,23 @@ export class MusicStore {
           runInAction(() => {
             if (response && Array.isArray(response)) {
               const combinedSongs = [...this.songs, ...response];
-              // Simple deduplication by id for pagination
-              const uniqueSongs = combinedSongs.filter(
-                (song, index, arr) => arr.findIndex((s) => s.id === song.id) === index,
-              );
+              // Enhanced deduplication by normalized title for featured categories
+              const uniqueSongs = combinedSongs.filter((song, index, arr) => {
+                const normalizeTitle = (title: string) =>
+                  title
+                    ?.toLowerCase()
+                    ?.replace(/\s*\(.*?\)/g, '') // Remove parentheses content
+                    ?.replace(/\s*\[.*?\]/g, '') // Remove brackets content
+                    ?.replace(/[''""`´]/g, '') // Remove quotes
+                    ?.replace(/[^\w\s]/g, ' ') // Replace special chars with spaces
+                    ?.replace(/\s+/g, ' ') // Normalize whitespace
+                    ?.trim() || '';
+
+                const currentNormalized = normalizeTitle(song.title);
+                return (
+                  arr.findIndex((s) => normalizeTitle(s.title) === currentNormalized) === index
+                );
+              });
               this.songs = uniqueSongs;
             }
             this.isLoadingMore = false;

@@ -529,7 +529,7 @@ export class MusicService {
     const allSongs: MusicSearchResult[] = [];
     const seenSongs = new Set<string>();
 
-    // Normalize song for deduplication
+    // Normalize song for deduplication - enhanced for featured categories
     const normalizeSong = (song: MusicSearchResult): string => {
       const title =
         song.title
@@ -538,23 +538,21 @@ export class MusicService {
           ?.replace(/\s*\(.*?\)/g, '') // Remove anything in parentheses
           ?.replace(/\s*\[.*?\]/g, '') // Remove anything in brackets
           ?.replace(
-            /\s*-\s*(re-?recorded?|remaster|acoustic|live|instrumental|karaoke|version).*$/gi,
+            /\s*-\s*(re-?recorded?|remaster|acoustic|live|instrumental|karaoke|version|tribute|cover|edit|remix).*$/gi,
             '',
           ) // Remove version suffixes
           ?.replace(
-            /\s*(re-?recorded?|remaster|acoustic|live|instrumental|karaoke|version)\s*$/gi,
+            /\s*(re-?recorded?|remaster|acoustic|live|instrumental|karaoke|version|tribute|cover|edit|remix)\s*$/gi,
             '',
           ) // Remove version words at end
+          ?.replace(/[''""`´]/g, '') // Remove quotes and apostrophes
           ?.replace(/[^\w\s]/g, ' ') // Replace special chars with spaces
           ?.replace(/\s+/g, ' ') // Normalize whitespace
           ?.trim() || '';
-      const artist =
-        song.artist
-          ?.toLowerCase()
-          ?.replace(/[^\w\s]/g, ' ')
-          ?.replace(/\s+/g, ' ')
-          ?.trim() || '';
-      return `${title}|${artist}`;
+
+      // For featured categories, prioritize title-only deduplication
+      // This ensures "Don't Stop Believin'" by different artists is treated as duplicate
+      return title;
     };
 
     // Process queries in batches to avoid overwhelming the APIs

@@ -1,4 +1,9 @@
 #!/bin/bash
+# KaraokeHub Enhanced Deployment & Parser Test Script
+# --------------------------------------------------
+# Builds, deploys, and tests the parser endpoint on Cloud Run.
+# Usage: bash deploy-with-parser-test.sh
+# Fetches logs if tests fail for easier debugging.
 
 # Enhanced deployment script with parser testing
 set -e

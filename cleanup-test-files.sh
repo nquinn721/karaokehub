@@ -1,4 +1,9 @@
 #!/bin/bash
+# KaraokeHub Test File Cleanup Script
+# -----------------------------------
+# Removes debug and test files created during address parsing and debugging.
+# Usage: bash cleanup-test-files.sh
+# Prompts for confirmation before deleting files.
 
 echo "🧹 CLEANING UP TEST FILES CREATED DURING ADDRESS PARSING DEBUG..."
 echo ""
