@@ -552,7 +552,14 @@ const ShowsPage: React.FC = observer(() => {
         description="Find karaoke shows near you with our interactive map and advanced filtering options."
       />
 
-      <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }} data-showspage>
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          height: { xs: 'calc(100vh - 60px)', md: 'calc(100vh - 80px)' }, 
+          overflow: 'hidden' 
+        }} 
+        data-showspage
+      >
         {/* Map Section - Full width */}
         <Box
           sx={{
