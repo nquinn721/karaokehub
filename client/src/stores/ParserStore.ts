@@ -86,7 +86,7 @@ export class ParserStore {
     if (!socket) return;
 
     // Join the parser-logs room to receive parser log broadcasts
-    socket.emit('join-room', 'parser-logs');
+    socket.emit('join-parser-logs');
 
     // Listen for parser logs with the new structure
     socket.on(
@@ -124,8 +124,17 @@ export class ParserStore {
   // Cleanup WebSocket connection
   disconnect() {
     if (this.socket) {
+      this.socket.emit('leave-parser-logs');
       this.socket.disconnect();
       this.socket = null;
+    }
+  }
+
+  // New method to leave parser logs without disconnecting the socket
+  leaveParserLogs(socket?: Socket) {
+    const socketToUse = socket || this.socket;
+    if (socketToUse) {
+      socketToUse.emit('leave-parser-logs');
     }
   }
 
