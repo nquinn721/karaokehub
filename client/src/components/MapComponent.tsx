@@ -825,6 +825,7 @@ export const MapComponent: React.FC = observer(() => {
         )}
 
         {/* Show Markers with Microphone Icons */}
+        {mapStore.geocodedShows.length > 0 && console.log('Total geocoded shows for rendering:', mapStore.geocodedShows.length)}
         {mapStore.geocodedShows.map((show: any) => {
           // Check for overlapping markers and add small offset
           const overlappingShows = mapStore.geocodedShows.filter(
@@ -860,7 +861,7 @@ export const MapComponent: React.FC = observer(() => {
               icon={createMicrophoneIcon(mapStore.selectedMarkerId === show.id)}
             />
           );
-        })}
+        })()}
 
         {/* Info Window for Selected Show */}
         {mapStore.selectedMarkerId &&

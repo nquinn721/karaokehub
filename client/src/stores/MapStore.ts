@@ -22,7 +22,7 @@ export class MapStore {
   public selectedMarkerId: string | null = null;
   public mapInstance: google.maps.Map | null = null;
   public initialCenter = { lat: 40.7128, lng: -74.006 }; // Default to NYC
-  public initialZoom = 5;
+  public initialZoom = 10;
   public isInitialized = false;
   public locationError: string | null = null;
   public hasSetInitialBounds = false;

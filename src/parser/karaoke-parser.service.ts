@@ -384,7 +384,7 @@ export class KaraokeParserService {
       const memUsage = process.memoryUsage();
       this.logAndBroadcast(
         `Memory before parsing: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB heap, ${Math.round(memUsage.rss / 1024 / 1024)}MB RSS`,
-        'info'
+        'info',
       );
 
       this.logAndBroadcast(`Starting HTML parse for URL: ${url}`, 'info');
@@ -414,7 +414,7 @@ export class KaraokeParserService {
       const memUsageAfter = process.memoryUsage();
       this.logAndBroadcast(
         `Memory after parsing: ${Math.round(memUsageAfter.heapUsed / 1024 / 1024)}MB heap, ${Math.round(memUsageAfter.rss / 1024 / 1024)}MB RSS`,
-        'info'
+        'info',
       );
 
       return parsedData;
@@ -423,7 +423,7 @@ export class KaraokeParserService {
       const memUsageError = process.memoryUsage();
       this.logAndBroadcast(
         `Memory during error: ${Math.round(memUsageError.heapUsed / 1024 / 1024)}MB heap, ${Math.round(memUsageError.rss / 1024 / 1024)}MB RSS`,
-        'error'
+        'error',
       );
 
       this.logAndBroadcast(`Error parsing website ${url}: ${error.message}`, 'error');
@@ -1903,11 +1903,11 @@ ${htmlContent}`;
       });
 
       page = await browser.newPage();
-      
+
       // Aggressive page optimization for production
       await page.setBypassCSP(true);
       await page.setJavaScriptEnabled(true);
-      
+
       // Disable images and CSS for faster loading in production
       if (process.env.NODE_ENV === 'production') {
         await page.setRequestInterception(true);
@@ -1924,7 +1924,8 @@ ${htmlContent}`;
       // Set aggressive timeouts for production
       const timeout = process.env.NODE_ENV === 'production' ? 20000 : 30000;
       page.setDefaultTimeout(timeout);
-      page.setDefaultNavigationTimeout(timeout);      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+      page.setDefaultNavigationTimeout(timeout);
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
       // Use larger viewport for better content capture
       await page.setViewport({ width: 1280, height: 1024 });
 
@@ -2014,7 +2015,7 @@ ${htmlContent}`;
     } finally {
       // Aggressive resource cleanup for production stability
       const cleanupTimeout = 5000; // 5 second timeout for cleanup
-      
+
       const cleanup = async () => {
         try {
           // Close page first
@@ -2032,10 +2033,10 @@ ${htmlContent}`;
           if (browser) {
             // Remove event listeners to prevent hanging
             browser.removeAllListeners();
-            
+
             if (browser.isConnected()) {
               const pages = await browser.pages();
-              await Promise.all(pages.map(p => p.close().catch(() => {})));
+              await Promise.all(pages.map((p) => p.close().catch(() => {})));
               await browser.close();
               this.logAndBroadcast('Browser closed successfully');
             }
@@ -2053,7 +2054,7 @@ ${htmlContent}`;
       // Use timeout to prevent hanging cleanup
       await Promise.race([
         cleanup(),
-        new Promise((resolve) => setTimeout(resolve, cleanupTimeout))
+        new Promise((resolve) => setTimeout(resolve, cleanupTimeout)),
       ]);
     }
   }

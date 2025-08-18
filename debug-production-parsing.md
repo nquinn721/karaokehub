@@ -5,7 +5,8 @@
 ### Root Cause Analysis
 
 The discrepancy is likely due to **memory constraints** in Cloud Run:
-- Current Memory Limit: **512Mi** 
+
+- Current Memory Limit: **512Mi**
 - Puppeteer with `--single-process` + Chromium can easily exceed this
 - When memory is exhausted, some parsing operations fail silently
 
@@ -20,7 +21,7 @@ Update the memory limit in `cloudbuild.yaml`:
 
 # To:
 - '--memory'
-- '1Gi'  # or '2Gi' for better performance
+- '1Gi' # or '2Gi' for better performance
 ```
 
 ### Solution 2: Optimize Puppeteer for Low Memory
@@ -36,9 +37,9 @@ if (process.platform === 'linux') {
     '--disable-renderer-backgrounding',
     '--disable-backgrounding-occluded-windows',
     '--disable-ipc-flooding-protection',
-    '--disable-dev-shm-usage',  // Already present
-    '--disable-extensions',     // Already present
-    '--single-process',         // Already present
+    '--disable-dev-shm-usage', // Already present
+    '--disable-extensions', // Already present
+    '--single-process', // Already present
   );
 }
 ```
@@ -62,7 +63,7 @@ Add this to the parseWebsite method in `karaoke-parser.service.ts`:
 const memUsage = process.memoryUsage();
 this.logAndBroadcast(
   `Memory before parsing: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB heap, ${Math.round(memUsage.rss / 1024 / 1024)}MB RSS`,
-  'info'
+  'info',
 );
 
 // Add error handling for memory issues
@@ -72,7 +73,7 @@ try {
   const memUsageAfter = process.memoryUsage();
   this.logAndBroadcast(
     `Memory after error: ${Math.round(memUsageAfter.heapUsed / 1024 / 1024)}MB heap, ${Math.round(memUsageAfter.rss / 1024 / 1024)}MB RSS`,
-    'error'
+    'error',
   );
   throw error;
 }
@@ -81,6 +82,7 @@ try {
 ### Immediate Actions
 
 1. **Deploy with increased memory:**
+
    ```bash
    # Quick deploy with more memory
    gcloud run deploy karaokehub \
@@ -97,6 +99,7 @@ try {
 ### Expected Results
 
 After increasing memory to 1Gi:
+
 - Should parse all 41 shows consistently
 - Better Puppeteer stability
 - Reduced parsing timeouts
@@ -105,6 +108,7 @@ After increasing memory to 1Gi:
 ### Monitoring
 
 Watch the logs during parsing to confirm:
+
 - "X Shows Found" messages increase to 41
 - No memory-related errors
 - Faster parsing completion times

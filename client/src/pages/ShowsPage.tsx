@@ -1,14 +1,14 @@
+import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
   faBars,
   faClock,
+  faHeart,
   faMapMarkerAlt,
   faMicrophone,
   faMusic,
   faUser,
   faXmark,
-  faHeart,
 } from '@fortawesome/free-solid-svg-icons';
-import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Autocomplete,
@@ -34,17 +34,7 @@ import { DayOfWeek } from '../components/DayPicker/DayPicker';
 import { SEO } from '../components/SEO';
 import { Show } from '../stores/ShowStore';
 import { apiStore, authStore, favoriteStore, mapStore, showStore } from '../stores/index';
-
-// Create microphone marker icon
-const createMicrophoneIcon = (isSelected = false) => {
-  const iconColor = isSelected ? '#d32f2f' : '#f44336'; // Red colors - darker when selected, lighter when not
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-      <circle cx="16" cy="16" r="14" fill="${iconColor}" stroke="#fff" stroke-width="2"/>
-      <path d="M16 20c2.21 0 3.98-1.79 3.98-4L20 10c0-2.21-1.79-4-4-4s-4 1.79-4 4v6c0 2.21 1.79 4 4 4zm6.6-4c0 4-3.4 6.8-6.6 6.8s-6.6-2.8-6.6-6.8H8c0 4.55 3.62 8.31 8 8.96V28h2v-3.04c4.38-.65 8-4.41 8-8.96h-1.4z" fill="#fff"/>
-    </svg>
-  `)}`;
-};
+import { clusterShows, createClusterIcon, createShowIcon, MapMarker } from '../utils/mapClustering';
 
 const ShowsPage: React.FC = observer(() => {
   const theme = useTheme();
@@ -57,31 +47,36 @@ const ShowsPage: React.FC = observer(() => {
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
   const [useDayFilter] = useState<boolean>(true); // Always enabled for compact design
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(!isMobile); // Default open on desktop, closed on mobile
-  
+
   // Debounce timer for map movement (500ms as requested)
-  const [mapUpdateTimer, setMapUpdateTimer] = useState<NodeJS.Timeout | null>(null);
-  
+  const [mapUpdateTimer, setMapUpdateTimer] = useState<number | null>(null);
+
+  // Clustering state
+  const [currentZoom, setCurrentZoom] = useState<number>(10);
+  const [clusteredMarkers, setClusteredMarkers] = useState<MapMarker[]>([]);
+  const [selectedCluster, setSelectedCluster] = useState<MapMarker | null>(null);
+
   // Custom debounced function for map updates with 500ms delay
   const debouncedMapUpdate = (center: { lat: number; lng: number }, zoom: number) => {
     // Clear existing timer
     if (mapUpdateTimer) {
-      clearTimeout(mapUpdateTimer);
+      window.clearTimeout(mapUpdateTimer);
     }
-    
+
     // Set new timer for 500ms delay
-    const timer = setTimeout(() => {
+    const timer = window.setTimeout(() => {
       console.log('Map update after 500ms delay:', center, 'zoom:', zoom);
       mapStore.updateMapPosition(center, zoom);
     }, 500);
-    
+
     setMapUpdateTimer(timer);
   };
-  
+
   // Cleanup timer on unmount
   useEffect(() => {
     return () => {
       if (mapUpdateTimer) {
-        clearTimeout(mapUpdateTimer);
+        window.clearTimeout(mapUpdateTimer);
       }
     };
   }, [mapUpdateTimer]);
@@ -128,6 +123,12 @@ const ShowsPage: React.FC = observer(() => {
 
     return true;
   });
+
+  // Update clustered markers when shows or zoom changes
+  useEffect(() => {
+    const markers = clusterShows(filteredShows, currentZoom);
+    setClusteredMarkers(markers);
+  }, [filteredShows, currentZoom]);
 
   // Load shows when filters change
   useEffect(() => {
@@ -236,6 +237,21 @@ const ShowsPage: React.FC = observer(() => {
 
   const handleMarkerClick = (showId: string) => {
     setSelectedMarkerId(selectedMarkerId === showId ? null : showId);
+    setSelectedCluster(null); // Clear cluster selection when selecting individual show
+  };
+
+  const handleClusterClick = (cluster: MapMarker, map: google.maps.Map) => {
+    if (cluster.isCluster) {
+      if (currentZoom >= 15) {
+        // At max zoom, show cluster info
+        setSelectedCluster(cluster);
+        setSelectedMarkerId(null); // Clear individual show selection
+      } else {
+        // Zoom in to expand cluster
+        map.setZoom(currentZoom + 3);
+        map.panTo({ lat: cluster.lat, lng: cluster.lng });
+      }
+    }
   };
 
   const selectedShow = selectedMarkerId
@@ -270,7 +286,7 @@ const ShowsPage: React.FC = observer(() => {
       }
     }, [map]);
 
-    // Handle map center changes with debouncing
+    // Handle map center and zoom changes with debouncing
     useEffect(() => {
       if (map) {
         const handleCenterChanged = () => {
@@ -280,19 +296,34 @@ const ShowsPage: React.FC = observer(() => {
             const centerLat = center.lat();
             const centerLng = center.lng();
             console.log('Map center changed:', { lat: centerLat, lng: centerLng }, 'zoom:', zoom);
-            
+
+            // Update zoom state for clustering
+            setCurrentZoom(zoom);
+
             // Use our custom 500ms debounced update
             debouncedMapUpdate({ lat: centerLat, lng: centerLng }, zoom);
           }
         };
 
-        // Add the event listener
-        const listener = map.addListener('center_changed', handleCenterChanged);
+        const handleZoomChanged = () => {
+          const zoom = map.getZoom();
+          if (zoom) {
+            console.log('Map zoom changed:', zoom);
+            setCurrentZoom(zoom);
+          }
+        };
 
-        // Cleanup listener on unmount
+        // Add the event listeners
+        const centerListener = map.addListener('center_changed', handleCenterChanged);
+        const zoomListener = map.addListener('zoom_changed', handleZoomChanged);
+
+        // Cleanup listeners on unmount
         return () => {
-          if (listener) {
-            google.maps.event.removeListener(listener);
+          if (centerListener) {
+            google.maps.event.removeListener(centerListener);
+          }
+          if (zoomListener) {
+            google.maps.event.removeListener(zoomListener);
           }
         };
       }
@@ -300,45 +331,98 @@ const ShowsPage: React.FC = observer(() => {
 
     return (
       <>
-        {/* Show markers */}
-        {(() => {
-          const showsWithCoords = filteredShows.filter((show) => {
-            const lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
-            const lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
-            return lat && lng && !isNaN(lat) && !isNaN(lng);
-          });
-          console.log('ShowsPage - Filtered shows with coordinates:', showsWithCoords.length);
-          console.log(
-            'ShowsPage - Sample shows:',
-            showsWithCoords.slice(0, 3).map((s) => ({
-              id: s.id,
-              venue: s.venue,
-              lat: s.lat,
-              lng: s.lng,
-              latType: typeof s.lat,
-              lngType: typeof s.lng,
-            })),
-          );
-
-          return showsWithCoords.map((show) => {
-            const lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat!;
-            const lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng!;
-
+        {/* Clustered markers */}
+        {clusteredMarkers.map((marker) => {
+          if (marker.isCluster) {
+            // Cluster marker
             return (
               <Marker
-                key={show.id}
-                position={{ lat, lng }}
-                onClick={() => handleMarkerClick(show.id)}
+                key={marker.id}
+                position={{ lat: marker.lat, lng: marker.lng }}
+                onClick={() => handleClusterClick(marker, map!)}
                 icon={{
-                  url: createMicrophoneIcon(selectedMarkerId === show.id),
+                  url: createClusterIcon(marker.showCount, selectedCluster?.id === marker.id),
+                  scaledSize: new window.google.maps.Size(50, 50),
+                  anchor: new window.google.maps.Point(25, 25),
+                }}
+                title={`${marker.showCount} shows in this area`}
+              />
+            );
+          } else {
+            // Individual show marker
+            const singleMarker = marker as any; // Type assertion for single marker
+            return (
+              <Marker
+                key={marker.id}
+                position={{ lat: marker.lat, lng: marker.lng }}
+                onClick={() => handleMarkerClick(marker.id)}
+                icon={{
+                  url: createShowIcon(selectedMarkerId === marker.id),
                   scaledSize: new window.google.maps.Size(32, 32),
                   anchor: new window.google.maps.Point(16, 16),
                 }}
-                title={show.venue}
+                title={singleMarker.show?.venue || 'Karaoke Show'}
               />
             );
-          });
-        })()}
+          }
+        })}
+
+        {/* Info Window for selected cluster */}
+        {selectedCluster && selectedCluster.isCluster && (
+          <InfoWindow
+            position={{ lat: selectedCluster.lat, lng: selectedCluster.lng }}
+            onCloseClick={() => setSelectedCluster(null)}
+          >
+            <Box
+              sx={{
+                p: 2,
+                maxWidth: 320,
+                backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
+                borderRadius: 2,
+                border: `1px solid ${theme.palette.mode === 'dark' ? '#00bcd4' : '#e0e0e0'}`,
+                boxShadow:
+                  theme.palette.mode === 'dark'
+                    ? '0 4px 20px rgba(0, 188, 212, 0.3)'
+                    : '0 2px 8px rgba(0, 0, 0, 0.1)',
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{
+                  color: theme.palette.text.primary,
+                  fontWeight: 600,
+                  mb: 1.5,
+                }}
+              >
+                {selectedCluster.showCount} Karaoke Shows in this Area
+              </Typography>
+
+              <List sx={{ p: 0, maxHeight: 200, overflow: 'auto' }}>
+                {selectedCluster.shows.slice(0, 5).map((show) => (
+                  <ListItem key={show.id} sx={{ px: 0, py: 0.5 }}>
+                    <Box sx={{ width: '100%' }}>
+                      <Typography variant="body2" fontWeight={500}>
+                        {show.venue}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatTime(show.startTime)} • {show.dj?.name || 'Unknown Host'}
+                      </Typography>
+                    </Box>
+                  </ListItem>
+                ))}
+                {selectedCluster.showCount > 5 && (
+                  <Typography variant="caption" color="text.secondary" sx={{ px: 0, pt: 1 }}>
+                    ... and {selectedCluster.showCount - 5} more shows
+                  </Typography>
+                )}
+              </List>
+
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                Zoom in to see individual shows
+              </Typography>
+            </Box>
+          </InfoWindow>
+        )}
 
         {/* Info Window for selected show */}
         {selectedShow && selectedShow.lat && selectedShow.lng && (
@@ -355,16 +439,17 @@ const ShowsPage: React.FC = observer(() => {
             }}
             onCloseClick={() => setSelectedMarkerId(null)}
           >
-            <Box 
-              sx={{ 
-                p: 2, 
+            <Box
+              sx={{
+                p: 2,
                 maxWidth: 280,
                 backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
                 borderRadius: 2,
                 border: `1px solid ${theme.palette.mode === 'dark' ? '#00bcd4' : '#e0e0e0'}`,
-                boxShadow: theme.palette.mode === 'dark' 
-                  ? '0 4px 20px rgba(0, 188, 212, 0.3)' 
-                  : '0 2px 8px rgba(0, 0, 0, 0.1)',
+                boxShadow:
+                  theme.palette.mode === 'dark'
+                    ? '0 4px 20px rgba(0, 188, 212, 0.3)'
+                    : '0 2px 8px rgba(0, 0, 0, 0.1)',
               }}
             >
               {/* Close button in top right corner */}
@@ -394,9 +479,9 @@ const ShowsPage: React.FC = observer(() => {
 
               {/* Title and heart in same row */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, pr: 3 }}>
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
+                <Typography
+                  variant="h6"
+                  sx={{
                     color: theme.palette.text.primary,
                     fontWeight: 600,
                     fontSize: { xs: '1rem', sm: '1.25rem' },
@@ -412,9 +497,11 @@ const ShowsPage: React.FC = observer(() => {
                   size="small"
                   onClick={() => handleFavoriteToggle(selectedShow)}
                   sx={{
-                    color: authStore.isAuthenticated && selectedShow.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
-                      ? theme.palette.error.main
-                      : theme.palette.text.secondary,
+                    color:
+                      authStore.isAuthenticated &&
+                      selectedShow.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
+                        ? theme.palette.error.main
+                        : theme.palette.text.secondary,
                     '&:hover': {
                       color: theme.palette.error.main,
                       backgroundColor: theme.palette.error.main + '10',
@@ -424,7 +511,12 @@ const ShowsPage: React.FC = observer(() => {
                   }}
                 >
                   <FontAwesomeIcon
-                    icon={authStore.isAuthenticated && selectedShow.favorites?.some((fav: any) => fav.userId === authStore.user?.id) ? faHeart : faHeartRegular}
+                    icon={
+                      authStore.isAuthenticated &&
+                      selectedShow.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
+                        ? faHeart
+                        : faHeartRegular
+                    }
                     style={{ fontSize: '14px' }}
                   />
                 </IconButton>
@@ -464,16 +556,16 @@ const ShowsPage: React.FC = observer(() => {
 
               {/* Time */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <FontAwesomeIcon 
-                  icon={faClock} 
-                  style={{ 
-                    fontSize: '12px', 
+                <FontAwesomeIcon
+                  icon={faClock}
+                  style={{
+                    fontSize: '12px',
                     color: theme.palette.primary.main,
-                  }} 
+                  }}
                 />
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
+                <Typography
+                  variant="body2"
+                  sx={{
                     color: theme.palette.text.primary,
                     fontSize: { xs: '0.8rem', sm: '0.875rem' },
                     fontWeight: 500,
@@ -486,16 +578,16 @@ const ShowsPage: React.FC = observer(() => {
               {/* DJ */}
               {selectedShow.dj?.name && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <FontAwesomeIcon 
-                    icon={faMicrophone} 
-                    style={{ 
-                      fontSize: '12px', 
+                  <FontAwesomeIcon
+                    icon={faMicrophone}
+                    style={{
+                      fontSize: '12px',
                       color: theme.palette.primary.main,
-                    }} 
+                    }}
                   />
-                  <Typography 
+                  <Typography
                     variant="body2"
-                    sx={{ 
+                    sx={{
                       color: theme.palette.text.primary,
                       fontSize: { xs: '0.8rem', sm: '0.875rem' },
                       fontWeight: 500,
@@ -618,442 +710,451 @@ const ShowsPage: React.FC = observer(() => {
             snapPoints={[0.3, 0.6, 0.9]}
             initialSnap={0}
           >
-          {/* Filters Section */}
-          <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Filters
-            </Typography>
-
-            {/* Day Picker - Compact */}
-            <Box sx={{ mb: 2 }}>
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(4, 1fr)',
-                  gap: 1,
-                  mb: 1,
-                }}
-              >
-                {Object.values(DayOfWeek)
-                  .slice(0, 4)
-                  .map((day) => {
-                    const isSelected = selectedDay === day;
-                    const dayLabels = {
-                      [DayOfWeek.MONDAY]: 'Mon',
-                      [DayOfWeek.TUESDAY]: 'Tue',
-                      [DayOfWeek.WEDNESDAY]: 'Wed',
-                      [DayOfWeek.THURSDAY]: 'Thu',
-                      [DayOfWeek.FRIDAY]: 'Fri',
-                      [DayOfWeek.SATURDAY]: 'Sat',
-                      [DayOfWeek.SUNDAY]: 'Sun',
-                    };
-                    return (
-                      <Box
-                        key={day}
-                        onClick={() => setSelectedDay(day)}
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          py: 1,
-                          px: 0.5,
-                          borderRadius: 1,
-                          cursor: 'pointer',
-                          fontSize: '0.75rem',
-                          fontWeight: isSelected ? 600 : 400,
-                          color: isSelected ? 'primary.contrastText' : 'text.primary',
-                          bgcolor: isSelected ? 'primary.main' : 'action.hover',
-                          border: `1px solid ${
-                            isSelected ? theme.palette.primary.main : theme.palette.divider
-                          }`,
-                          '&:hover': {
-                            bgcolor: isSelected ? 'primary.dark' : 'action.selected',
-                          },
-                        }}
-                      >
-                        {dayLabels[day]}
-                      </Box>
-                    );
-                  })}
-              </Box>
-
-              {/* Second row for remaining days */}
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: 1,
-                }}
-              >
-                {Object.values(DayOfWeek)
-                  .slice(4)
-                  .map((day) => {
-                    const isSelected = selectedDay === day;
-                    const dayLabels = {
-                      [DayOfWeek.MONDAY]: 'Mon',
-                      [DayOfWeek.TUESDAY]: 'Tue',
-                      [DayOfWeek.WEDNESDAY]: 'Wed',
-                      [DayOfWeek.THURSDAY]: 'Thu',
-                      [DayOfWeek.FRIDAY]: 'Fri',
-                      [DayOfWeek.SATURDAY]: 'Sat',
-                      [DayOfWeek.SUNDAY]: 'Sun',
-                    };
-                    return (
-                      <Box
-                        key={day}
-                        onClick={() => setSelectedDay(day)}
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          py: 1,
-                          px: 0.5,
-                          borderRadius: 1,
-                          cursor: 'pointer',
-                          fontSize: '0.75rem',
-                          fontWeight: isSelected ? 600 : 400,
-                          color: isSelected ? 'primary.contrastText' : 'text.primary',
-                          bgcolor: isSelected ? 'primary.main' : 'action.hover',
-                          border: `1px solid ${
-                            isSelected ? theme.palette.primary.main : theme.palette.divider
-                          }`,
-                          '&:hover': {
-                            bgcolor: isSelected ? 'primary.dark' : 'action.selected',
-                          },
-                        }}
-                      >
-                        {dayLabels[day]}
-                      </Box>
-                    );
-                  })}
-              </Box>
-            </Box>
-
-            {/* Radius Filter */}
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-                Radius: {radiusFilter} miles
+            {/* Filters Section */}
+            <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Filters
               </Typography>
-              <Slider
-                value={radiusFilter}
-                onChange={(_, value) => setRadiusFilter(value as number)}
-                min={5}
-                max={100}
-                step={5}
-                size="small"
-                sx={{
-                  '& .MuiSlider-thumb': {
-                    width: 16,
-                    height: 16,
-                  },
-                }}
-              />
-            </Box>
 
-            {/* Vendor Filter */}
-            <Box sx={{ mb: 2 }}>
-              <Autocomplete
-                size="small"
-                options={uniqueVendors}
-                value={vendorFilter}
-                onChange={(_, value) => setVendorFilter(value || null)}
-                renderInput={(params) => (
-                  <TextField {...params} label="Filter by vendor" variant="outlined" />
-                )}
-                clearOnEscape
-              />
-            </Box>
-          </Box>
-
-          {/* Shows List */}
-          <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                p: 2,
-                borderBottom: `1px solid ${theme.palette.divider}`,
-              }}
-            >
-              <Typography variant="h6" sx={{ fontSize: '1rem' }}>
-                Shows ({filteredShows.length})
-              </Typography>
-            </Box>
-
-            <Box sx={{ flex: 1, overflow: 'auto' }}>
-              {showStore.isLoading ? (
+              {/* Day Picker - Compact */}
+              <Box sx={{ mb: 2 }}>
                 <Box
                   sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    p: 4,
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: 1,
+                    mb: 1,
                   }}
                 >
-                  <CircularProgress size={24} />
+                  {Object.values(DayOfWeek)
+                    .slice(0, 4)
+                    .map((day) => {
+                      const isSelected = selectedDay === day;
+                      const dayLabels = {
+                        [DayOfWeek.MONDAY]: 'Mon',
+                        [DayOfWeek.TUESDAY]: 'Tue',
+                        [DayOfWeek.WEDNESDAY]: 'Wed',
+                        [DayOfWeek.THURSDAY]: 'Thu',
+                        [DayOfWeek.FRIDAY]: 'Fri',
+                        [DayOfWeek.SATURDAY]: 'Sat',
+                        [DayOfWeek.SUNDAY]: 'Sun',
+                      };
+                      return (
+                        <Box
+                          key={day}
+                          onClick={() => setSelectedDay(day)}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            py: 1,
+                            px: 0.5,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: isSelected ? 600 : 400,
+                            color: isSelected ? 'primary.contrastText' : 'text.primary',
+                            bgcolor: isSelected ? 'primary.main' : 'action.hover',
+                            border: `1px solid ${
+                              isSelected ? theme.palette.primary.main : theme.palette.divider
+                            }`,
+                            '&:hover': {
+                              bgcolor: isSelected ? 'primary.dark' : 'action.selected',
+                            },
+                          }}
+                        >
+                          {dayLabels[day]}
+                        </Box>
+                      );
+                    })}
                 </Box>
-              ) : filteredShows.length === 0 ? (
-                <Box sx={{ p: 3, textAlign: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    No shows found for the selected filters.
-                  </Typography>
-                </Box>
-              ) : (
-                <List sx={{ p: 0, pb: { xs: 4, md: 1 } }}>
-                  {filteredShows.map((show: Show) => {
-                    const isFavorited = authStore.isAuthenticated
-                      ? show.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
-                      : false;
 
-                    return (
-                      <React.Fragment key={show.id}>
-                        <ListItem disablePadding>
-                          <ListItemButton
-                            onClick={() => handleMarkerClick(show.id)}
-                            selected={selectedMarkerId === show.id}
-                            sx={{
-                              p: { xs: 1.5, md: 2.5 },
-                              borderRadius: 2,
-                              transition: 'all 0.2s ease',
-                              border: `1px solid ${theme.palette.divider}`,
-                              backgroundColor: theme.palette.mode === 'dark' ? '#1E1E1E' : theme.palette.background.paper,
-                              minHeight: { xs: '105px', md: '130px' },
-                              '&:hover': {
-                                backgroundColor: theme.palette.action.hover,
-                                border: `1px solid ${theme.palette.mode === 'dark' ? '#00E5FF' : theme.palette.primary.main}`,
-                                transform: 'translateY(-2px)',
-                                boxShadow: theme.shadows[4],
-                              },
-                              '&.Mui-selected': {
-                                backgroundColor: theme.palette.mode === 'dark' 
-                                  ? '#00E5FF15' 
-                                  : theme.palette.primary.main + '15',
-                                border: `2px solid ${theme.palette.mode === 'dark' ? '#00E5FF' : theme.palette.primary.main}`,
+                {/* Second row for remaining days */}
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: 1,
+                  }}
+                >
+                  {Object.values(DayOfWeek)
+                    .slice(4)
+                    .map((day) => {
+                      const isSelected = selectedDay === day;
+                      const dayLabels = {
+                        [DayOfWeek.MONDAY]: 'Mon',
+                        [DayOfWeek.TUESDAY]: 'Tue',
+                        [DayOfWeek.WEDNESDAY]: 'Wed',
+                        [DayOfWeek.THURSDAY]: 'Thu',
+                        [DayOfWeek.FRIDAY]: 'Fri',
+                        [DayOfWeek.SATURDAY]: 'Sat',
+                        [DayOfWeek.SUNDAY]: 'Sun',
+                      };
+                      return (
+                        <Box
+                          key={day}
+                          onClick={() => setSelectedDay(day)}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            py: 1,
+                            px: 0.5,
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: isSelected ? 600 : 400,
+                            color: isSelected ? 'primary.contrastText' : 'text.primary',
+                            bgcolor: isSelected ? 'primary.main' : 'action.hover',
+                            border: `1px solid ${
+                              isSelected ? theme.palette.primary.main : theme.palette.divider
+                            }`,
+                            '&:hover': {
+                              bgcolor: isSelected ? 'primary.dark' : 'action.selected',
+                            },
+                          }}
+                        >
+                          {dayLabels[day]}
+                        </Box>
+                      );
+                    })}
+                </Box>
+              </Box>
+
+              {/* Radius Filter */}
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                  Radius: {radiusFilter} miles
+                </Typography>
+                <Slider
+                  value={radiusFilter}
+                  onChange={(_, value) => setRadiusFilter(value as number)}
+                  min={5}
+                  max={100}
+                  step={5}
+                  size="small"
+                  sx={{
+                    '& .MuiSlider-thumb': {
+                      width: 16,
+                      height: 16,
+                    },
+                  }}
+                />
+              </Box>
+
+              {/* Vendor Filter */}
+              <Box sx={{ mb: 2 }}>
+                <Autocomplete
+                  size="small"
+                  options={uniqueVendors}
+                  value={vendorFilter}
+                  onChange={(_, value) => setVendorFilter(value || null)}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Filter by vendor" variant="outlined" />
+                  )}
+                  clearOnEscape
+                />
+              </Box>
+            </Box>
+
+            {/* Shows List */}
+            <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  p: 2,
+                  borderBottom: `1px solid ${theme.palette.divider}`,
+                }}
+              >
+                <Typography variant="h6" sx={{ fontSize: '1rem' }}>
+                  Shows ({filteredShows.length})
+                </Typography>
+              </Box>
+
+              <Box sx={{ flex: 1, overflow: 'auto' }}>
+                {showStore.isLoading ? (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      p: 4,
+                    }}
+                  >
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : filteredShows.length === 0 ? (
+                  <Box sx={{ p: 3, textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No shows found for the selected filters.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <List sx={{ p: 0, pb: { xs: 4, md: 1 } }}>
+                    {filteredShows.map((show: Show) => {
+                      const isFavorited = authStore.isAuthenticated
+                        ? show.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
+                        : false;
+
+                      return (
+                        <React.Fragment key={show.id}>
+                          <ListItem disablePadding>
+                            <ListItemButton
+                              onClick={() => handleMarkerClick(show.id)}
+                              selected={selectedMarkerId === show.id}
+                              sx={{
+                                p: { xs: 1.5, md: 2.5 },
+                                borderRadius: 2,
+                                transition: 'all 0.2s ease',
+                                border: `1px solid ${theme.palette.divider}`,
+                                backgroundColor:
+                                  theme.palette.mode === 'dark'
+                                    ? '#1E1E1E'
+                                    : theme.palette.background.paper,
+                                minHeight: { xs: '105px', md: '130px' },
                                 '&:hover': {
-                                  backgroundColor: theme.palette.mode === 'dark' 
-                                    ? '#00E5FF20' 
-                                    : theme.palette.primary.main + '20',
+                                  backgroundColor: theme.palette.action.hover,
+                                  border: `1px solid ${theme.palette.mode === 'dark' ? '#00E5FF' : theme.palette.primary.main}`,
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: theme.shadows[4],
                                 },
-                              },
-                            }}
-                          >
-                            <Box sx={{ py: { xs: 0.5, md: 1 }, px: 0, width: '100%' }}>
-                              {/* Primary content - Compact mobile layout */}
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  alignItems: 'flex-start',
-                                  gap: { xs: 1.5, md: 2 },
-                                  mb: { xs: 0.5, md: 0.5 },
-                                }}
-                              >
-                                {/* Icon column */}
+                                '&.Mui-selected': {
+                                  backgroundColor:
+                                    theme.palette.mode === 'dark'
+                                      ? '#00E5FF15'
+                                      : theme.palette.primary.main + '15',
+                                  border: `2px solid ${theme.palette.mode === 'dark' ? '#00E5FF' : theme.palette.primary.main}`,
+                                  '&:hover': {
+                                    backgroundColor:
+                                      theme.palette.mode === 'dark'
+                                        ? '#00E5FF20'
+                                        : theme.palette.primary.main + '20',
+                                  },
+                                },
+                              }}
+                            >
+                              <Box sx={{ py: { xs: 0.5, md: 1 }, px: 0, width: '100%' }}>
+                                {/* Primary content - Compact mobile layout */}
                                 <Box
                                   sx={{
                                     display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    gap: 0.5,
-                                    minWidth: { xs: '24px', md: '28px' },
+                                    alignItems: 'flex-start',
+                                    gap: { xs: 1.5, md: 2 },
+                                    mb: { xs: 0.5, md: 0.5 },
                                   }}
                                 >
-                                  <FontAwesomeIcon
-                                    icon={faMicrophone}
-                                    style={{
-                                      fontSize: '16px',
-                                      color: theme.palette.primary.main,
-                                    }}
-                                  />
-                                  <Box
-                                    sx={{
-                                      width: '2px',
-                                      height: { xs: '20px', md: '30px' },
-                                      backgroundColor: theme.palette.primary.main,
-                                      opacity: 0.3,
-                                      borderRadius: '1px',
-                                    }}
-                                  />
-                                </Box>
-
-                                {/* Main content */}
-                                <Box sx={{ flex: 1, minWidth: 0 }}>
-                                  {/* Venue name */}
-                                  <Typography
-                                    variant="subtitle1"
-                                    fontWeight={600}
-                                    sx={{
-                                      fontSize: { xs: '0.95rem', md: '1.1rem' },
-                                      lineHeight: 1.2,
-                                      mb: 0.5,
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap',
-                                    }}
-                                  >
-                                    {show.venue || show.vendor?.name || 'Unknown Venue'}
-                                  </Typography>
-
-                                  {/* Time badge */}
+                                  {/* Icon column */}
                                   <Box
                                     sx={{
                                       display: 'flex',
+                                      flexDirection: 'column',
                                       alignItems: 'center',
                                       gap: 0.5,
-                                      mb: 0.5,
+                                      minWidth: { xs: '24px', md: '28px' },
                                     }}
                                   >
                                     <FontAwesomeIcon
-                                      icon={faClock}
+                                      icon={faMicrophone}
                                       style={{
-                                        fontSize: '10px',
+                                        fontSize: '16px',
                                         color: theme.palette.primary.main,
                                       }}
                                     />
-                                    <Typography
-                                      variant="caption"
+                                    <Box
                                       sx={{
-                                        fontWeight: 600,
-                                        fontSize: { xs: '0.7rem', md: '0.75rem' },
-                                        color: theme.palette.primary.main,
+                                        width: '2px',
+                                        height: { xs: '20px', md: '30px' },
+                                        backgroundColor: theme.palette.primary.main,
+                                        opacity: 0.3,
+                                        borderRadius: '1px',
+                                      }}
+                                    />
+                                  </Box>
+
+                                  {/* Main content */}
+                                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                                    {/* Venue name */}
+                                    <Typography
+                                      variant="subtitle1"
+                                      fontWeight={600}
+                                      sx={{
+                                        fontSize: { xs: '0.95rem', md: '1.1rem' },
+                                        lineHeight: 1.2,
+                                        mb: 0.5,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
                                       }}
                                     >
-                                      {formatTime(show.startTime)} - {formatTime(show.endTime)}
+                                      {show.venue || show.vendor?.name || 'Unknown Venue'}
                                     </Typography>
-                                  </Box>
 
-                                  {/* Compact info rows */}
-                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                    {/* DJ/Host info */}
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                      <FontAwesomeIcon
-                                        icon={faUser}
-                                        style={{
-                                          fontSize: '11px',
-                                          color: theme.palette.text.secondary,
-                                        }}
-                                      />
-                                      <Typography
-                                        variant="body2"
-                                        color="text.secondary"
-                                        sx={{
-                                          fontSize: { xs: '0.75rem', md: '0.8rem' },
-                                          fontWeight: 500,
-                                        }}
-                                      >
-                                        {show.dj?.name || 'Unknown Host'}
-                                      </Typography>
-                                    </Box>
-
-                                    {/* Location info on separate line */}
-                                    <Box
-                                      sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}
-                                    >
-                                      <FontAwesomeIcon
-                                        icon={faMapMarkerAlt}
-                                        style={{
-                                          fontSize: '11px',
-                                          color: theme.palette.text.secondary,
-                                          marginTop: '2px',
-                                        }}
-                                      />
-                                      <Typography
-                                        variant="body2"
-                                        color="text.secondary"
-                                        sx={{
-                                          fontSize: { xs: '0.75rem', md: '0.8rem' },
-                                          lineHeight: 1.3,
-                                          wordBreak: 'break-word',
-                                        }}
-                                      >
-                                        {show.address}
-                                      </Typography>
-                                    </Box>
-                                  </Box>
-
-                                  {/* Badges section */}
-                                  <Box
-                                    sx={{ mt: 0.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}
-                                  >
-                                    {/* Vendor chip */}
-                                    {show.vendor?.name && (
-                                      <Chip
-                                        label={show.vendor.name}
-                                        size="small"
-                                        sx={{
-                                          height: '22px',
-                                          fontSize: { xs: '0.65rem', md: '0.7rem' },
-                                          fontWeight: 500,
-                                          backgroundColor: theme.palette.info.main + '15',
-                                          color: theme.palette.info.main,
-                                          border: `1px solid ${theme.palette.info.main + '30'}`,
-                                          '& .MuiChip-label': {
-                                            px: 0.75,
-                                          },
-                                        }}
-                                      />
-                                    )}
-
-                                    {/* Show type badge */}
+                                    {/* Time badge */}
                                     <Box
                                       sx={{
-                                        display: 'inline-flex',
+                                        display: 'flex',
                                         alignItems: 'center',
                                         gap: 0.5,
-                                        backgroundColor: theme.palette.secondary.main + '15',
-                                        color: theme.palette.secondary.main,
-                                        px: 1,
-                                        py: 0.25,
-                                        borderRadius: 0.75,
-                                        fontSize: { xs: '0.7rem', md: '0.75rem' },
-                                        fontWeight: 500,
+                                        mb: 0.5,
                                       }}
                                     >
                                       <FontAwesomeIcon
-                                        icon={faMusic}
+                                        icon={faClock}
                                         style={{
                                           fontSize: '10px',
+                                          color: theme.palette.primary.main,
                                         }}
                                       />
-                                      Karaoke
+                                      <Typography
+                                        variant="caption"
+                                        sx={{
+                                          fontWeight: 600,
+                                          fontSize: { xs: '0.7rem', md: '0.75rem' },
+                                          color: theme.palette.primary.main,
+                                        }}
+                                      >
+                                        {formatTime(show.startTime)} - {formatTime(show.endTime)}
+                                      </Typography>
+                                    </Box>
+
+                                    {/* Compact info rows */}
+                                    <Box
+                                      sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}
+                                    >
+                                      {/* DJ/Host info */}
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <FontAwesomeIcon
+                                          icon={faUser}
+                                          style={{
+                                            fontSize: '11px',
+                                            color: theme.palette.text.secondary,
+                                          }}
+                                        />
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                          sx={{
+                                            fontSize: { xs: '0.75rem', md: '0.8rem' },
+                                            fontWeight: 500,
+                                          }}
+                                        >
+                                          {show.dj?.name || 'Unknown Host'}
+                                        </Typography>
+                                      </Box>
+
+                                      {/* Location info on separate line */}
+                                      <Box
+                                        sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}
+                                      >
+                                        <FontAwesomeIcon
+                                          icon={faMapMarkerAlt}
+                                          style={{
+                                            fontSize: '11px',
+                                            color: theme.palette.text.secondary,
+                                            marginTop: '2px',
+                                          }}
+                                        />
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                          sx={{
+                                            fontSize: { xs: '0.75rem', md: '0.8rem' },
+                                            lineHeight: 1.3,
+                                            wordBreak: 'break-word',
+                                          }}
+                                        >
+                                          {show.address}
+                                        </Typography>
+                                      </Box>
+                                    </Box>
+
+                                    {/* Badges section */}
+                                    <Box
+                                      sx={{ mt: 0.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}
+                                    >
+                                      {/* Vendor chip */}
+                                      {show.vendor?.name && (
+                                        <Chip
+                                          label={show.vendor.name}
+                                          size="small"
+                                          sx={{
+                                            height: '22px',
+                                            fontSize: { xs: '0.65rem', md: '0.7rem' },
+                                            fontWeight: 500,
+                                            backgroundColor: theme.palette.info.main + '15',
+                                            color: theme.palette.info.main,
+                                            border: `1px solid ${theme.palette.info.main + '30'}`,
+                                            '& .MuiChip-label': {
+                                              px: 0.75,
+                                            },
+                                          }}
+                                        />
+                                      )}
+
+                                      {/* Show type badge */}
+                                      <Box
+                                        sx={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 0.5,
+                                          backgroundColor: theme.palette.secondary.main + '15',
+                                          color: theme.palette.secondary.main,
+                                          px: 1,
+                                          py: 0.25,
+                                          borderRadius: 0.75,
+                                          fontSize: { xs: '0.7rem', md: '0.75rem' },
+                                          fontWeight: 500,
+                                        }}
+                                      >
+                                        <FontAwesomeIcon
+                                          icon={faMusic}
+                                          style={{
+                                            fontSize: '10px',
+                                          }}
+                                        />
+                                        Karaoke
+                                      </Box>
                                     </Box>
                                   </Box>
-                                </Box>
 
-                                {/* Favorite button */}
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleFavoriteToggle(show);
-                                  }}
-                                  sx={{
-                                    color: isFavorited ? theme.palette.error.main : theme.palette.text.disabled,
-                                    width: { xs: '36px', md: '40px' },
-                                    height: { xs: '36px', md: '40px' },
-                                    opacity: authStore.isAuthenticated ? 1 : 0.6,
-                                    '&:hover': {
-                                      color: theme.palette.error.main,
-                                      backgroundColor: theme.palette.error.main + '10',
-                                    },
-                                  }}
-                                >
-                                  <FontAwesomeIcon
-                                    icon={isFavorited ? faHeart : faHeartRegular}
-                                    style={{ fontSize: '16px' }}
-                                  />
-                                </IconButton>
+                                  {/* Favorite button */}
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleFavoriteToggle(show);
+                                    }}
+                                    sx={{
+                                      color: isFavorited
+                                        ? theme.palette.error.main
+                                        : theme.palette.text.disabled,
+                                      width: { xs: '36px', md: '40px' },
+                                      height: { xs: '36px', md: '40px' },
+                                      opacity: authStore.isAuthenticated ? 1 : 0.6,
+                                      '&:hover': {
+                                        color: theme.palette.error.main,
+                                        backgroundColor: theme.palette.error.main + '10',
+                                      },
+                                    }}
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={isFavorited ? faHeart : faHeartRegular}
+                                      style={{ fontSize: '16px' }}
+                                    />
+                                  </IconButton>
+                                </Box>
                               </Box>
-                            </Box>
-                          </ListItemButton>
-                        </ListItem>
-                      </React.Fragment>
-                    );
-                  })}
-                </List>
-              )}
+                            </ListItemButton>
+                          </ListItem>
+                        </React.Fragment>
+                      );
+                    })}
+                  </List>
+                )}
+              </Box>
             </Box>
-          </Box>
           </BottomSheet>
         ) : (
           /* Desktop Sidebar */
@@ -1239,9 +1340,7 @@ const ShowsPage: React.FC = observer(() => {
                   borderBottom: `1px solid ${theme.palette.divider}`,
                 }}
               >
-                <Typography variant="h6">
-                  Shows ({filteredShows.length})
-                </Typography>
+                <Typography variant="h6">Shows ({filteredShows.length})</Typography>
               </Box>
 
               {showStore.isLoading ? (
@@ -1487,7 +1586,8 @@ const ShowsPage: React.FC = observer(() => {
                                     }}
                                     sx={{
                                       color:
-                                        authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
+                                        authStore.isAuthenticated &&
+                                        favoriteStore.isFavorite(show.id)
                                           ? theme.palette.error.main
                                           : theme.palette.text.disabled,
                                       width: { xs: '28px', md: '32px' },
@@ -1503,7 +1603,8 @@ const ShowsPage: React.FC = observer(() => {
                                   >
                                     <FontAwesomeIcon
                                       icon={
-                                        authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
+                                        authStore.isAuthenticated &&
+                                        favoriteStore.isFavorite(show.id)
                                           ? faHeart
                                           : faHeartRegular
                                       }
