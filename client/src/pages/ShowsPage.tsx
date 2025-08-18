@@ -1,3 +1,4 @@
+import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
   faBars,
   faClock,
@@ -10,7 +11,6 @@ import {
   faUser,
   faXmark,
 } from '@fortawesome/free-solid-svg-icons';
-import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
@@ -256,19 +256,22 @@ const ShowsPage: React.FC = observer(() => {
             return lat && lng && !isNaN(lat) && !isNaN(lng);
           });
           console.log('ShowsPage - Filtered shows with coordinates:', showsWithCoords.length);
-          console.log('ShowsPage - Sample shows:', showsWithCoords.slice(0, 3).map(s => ({
-            id: s.id,
-            venue: s.venue,
-            lat: s.lat,
-            lng: s.lng,
-            latType: typeof s.lat,
-            lngType: typeof s.lng
-          })));
-          
+          console.log(
+            'ShowsPage - Sample shows:',
+            showsWithCoords.slice(0, 3).map((s) => ({
+              id: s.id,
+              venue: s.venue,
+              lat: s.lat,
+              lng: s.lng,
+              latType: typeof s.lat,
+              lngType: typeof s.lng,
+            })),
+          );
+
           return showsWithCoords.map((show) => {
             const lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat!;
             const lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng!;
-            
+
             return (
               <Marker
                 key={show.id}
@@ -284,9 +287,15 @@ const ShowsPage: React.FC = observer(() => {
         {/* Info window for selected marker */}
         {selectedShow && selectedShow.lat && selectedShow.lng && (
           <InfoWindow
-            position={{ 
-              lat: typeof selectedShow.lat === 'string' ? parseFloat(selectedShow.lat) : selectedShow.lat,
-              lng: typeof selectedShow.lng === 'string' ? parseFloat(selectedShow.lng) : selectedShow.lng
+            position={{
+              lat:
+                typeof selectedShow.lat === 'string'
+                  ? parseFloat(selectedShow.lat)
+                  : selectedShow.lat,
+              lng:
+                typeof selectedShow.lng === 'string'
+                  ? parseFloat(selectedShow.lng)
+                  : selectedShow.lng,
             }}
             pixelOffset={[0, -40]}
             onCloseClick={() => setSelectedMarkerId(null)}
@@ -362,7 +371,9 @@ const ShowsPage: React.FC = observer(() => {
                     size="small"
                     onClick={() => handleFavoriteToggle(selectedShow)}
                     sx={{
-                      color: selectedShow.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
+                      color: selectedShow.favorites?.some(
+                        (fav: any) => fav.userId === authStore.user?.id,
+                      )
                         ? theme.palette.error.main
                         : theme.palette.text.secondary,
                       '&:hover': {
@@ -374,7 +385,9 @@ const ShowsPage: React.FC = observer(() => {
                   >
                     <FontAwesomeIcon
                       icon={
-                        selectedShow.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
+                        selectedShow.favorites?.some(
+                          (fav: any) => fav.userId === authStore.user?.id,
+                        )
                           ? faHeart
                           : faHeartRegular
                       }
@@ -441,9 +454,9 @@ const ShowsPage: React.FC = observer(() => {
                     color: theme.palette.secondary.main,
                   }}
                 />
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
+                <Typography
+                  variant="body2"
+                  sx={{
                     color: theme.palette.text.primary,
                     fontSize: { xs: '0.8rem', sm: '0.875rem' },
                   }}
@@ -514,14 +527,14 @@ const ShowsPage: React.FC = observer(() => {
               )}
 
               {selectedShow.vendor && (
-                <Chip 
-                  label={selectedShow.vendor.name} 
-                  size="small" 
-                  sx={{ 
+                <Chip
+                  label={selectedShow.vendor.name}
+                  size="small"
+                  sx={{
                     mt: 1,
                     backgroundColor: theme.palette.primary.main + '20',
                     color: theme.palette.primary.main,
-                  }} 
+                  }}
                 />
               )}
 
@@ -552,12 +565,12 @@ const ShowsPage: React.FC = observer(() => {
         description="Find karaoke shows near you with our interactive map and advanced filtering options."
       />
 
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          height: { xs: 'calc(100vh - 60px)', md: 'calc(100vh - 80px)' }, 
-          overflow: 'hidden' 
-        }} 
+      <Box
+        sx={{
+          display: 'flex',
+          height: { xs: 'calc(100vh - 60px)', md: 'calc(100vh - 80px)' },
+          overflow: 'hidden',
+        }}
         data-showspage
       >
         {/* Map Section - Full width */}
@@ -576,7 +589,9 @@ const ShowsPage: React.FC = observer(() => {
               defaultCenter={
                 mapStore.userCityCenter || mapStore.userLocation || mapStore.currentCenter
               }
-              defaultZoom={mapStore.userCityCenter || mapStore.userLocation ? 12 : mapStore.initialZoom}
+              defaultZoom={
+                mapStore.userCityCenter || mapStore.userLocation ? 12 : mapStore.initialZoom
+              }
               gestureHandling="auto"
               disableDefaultUI={false}
               zoomControl={true}
@@ -593,7 +608,6 @@ const ShowsPage: React.FC = observer(() => {
               }}
             >
               <MapContent />
-
             </Map>
           </APIProvider>
 
@@ -1049,7 +1063,6 @@ const ShowsPage: React.FC = observer(() => {
                                         )}
                                       </Box>
                                     )}
-
                                   </Box>
                                   {/* Badges section */}
                                   <Box

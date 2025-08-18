@@ -1555,7 +1555,8 @@ ${htmlContent}`;
         if (showData.address || city) {
           try {
             const addressForGeocoding = showData.address || `${city}, ${state}`;
-            const geocodeResult = await this.geocodingService.geocodeAddressHybrid(addressForGeocoding);
+            const geocodeResult =
+              await this.geocodingService.geocodeAddressHybrid(addressForGeocoding);
             if (geocodeResult) {
               // Only fill in missing coordinates and missing location data
               lat = geocodeResult.lat;
@@ -1836,7 +1837,7 @@ ${htmlContent}`;
       });
 
       page = await browser.newPage();
-      
+
       // Set page timeout
       page.setDefaultTimeout(30000);
       page.setDefaultNavigationTimeout(30000);
@@ -1863,7 +1864,7 @@ ${htmlContent}`;
           if (retryCount >= maxRetries) {
             throw navError;
           }
-          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retry
+          await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait before retry
         }
       }
 
@@ -1908,17 +1909,17 @@ ${htmlContent}`;
       const htmlContent = await page.content();
 
       // Take a high-quality screenshot with timeout protection
-      const screenshot = await Promise.race([
+      const screenshot = (await Promise.race([
         page.screenshot({
           fullPage: true,
           type: 'jpeg',
           quality: 85, // Balanced quality for faster processing
           optimizeForSpeed: false, // Keep false for better quality
         }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Screenshot timeout after 30 seconds')), 30000)
-        )
-      ]) as Buffer;
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Screenshot timeout after 30 seconds')), 30000),
+        ),
+      ])) as Buffer;
 
       this.logAndBroadcast(
         `Successfully captured full-page screenshot from ${url} (${screenshot.length} bytes, ${htmlContent.length} characters HTML)`,
@@ -1937,7 +1938,7 @@ ${htmlContent}`;
       } catch (closeError) {
         this.logger.warn(`Error closing page: ${closeError.message}`);
       }
-      
+
       try {
         if (browser && browser.isConnected()) {
           await browser.close();

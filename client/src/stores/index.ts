@@ -36,7 +36,7 @@ export class RootStore {
   musicStore: MusicStore;
   subscriptionStore: SubscriptionStore;
   apiStore: typeof apiStoreInstance;
-  
+
   private webSocketInitialized = false;
 
   constructor() {
@@ -78,13 +78,13 @@ export class RootStore {
       console.log('🔄 WebSocket already initialized, skipping...');
       return;
     }
-    
+
     console.log('🔌 Initializing WebSocket connection...');
     this.webSocketInitialized = true;
-    
+
     // Connect to WebSocket server
     this.webSocketStore.connect();
-    
+
     // Setup parser-specific events when WebSocket connects
     autorun(() => {
       if (this.webSocketStore.isConnected && this.webSocketStore.socket) {

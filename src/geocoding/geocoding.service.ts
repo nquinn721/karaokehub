@@ -1,6 +1,6 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface GeocodeResult {
   lat: number;
@@ -439,7 +439,9 @@ If you cannot determine the location with confidence, return:
         return null;
       }
 
-      this.logger.log(`Successfully geocoded "${address}" with Gemini: ${parsedResponse.lat}, ${parsedResponse.lng}`);
+      this.logger.log(
+        `Successfully geocoded "${address}" with Gemini: ${parsedResponse.lat}, ${parsedResponse.lng}`,
+      );
 
       return {
         lat: parsedResponse.lat,
@@ -450,7 +452,6 @@ If you cannot determine the location with confidence, return:
         formatted_address: parsedResponse.formatted_address || address,
         country: 'US', // Assume US for now
       };
-
     } catch (error) {
       this.logger.error(`Gemini geocoding failed for "${address}":`, error);
       return null;

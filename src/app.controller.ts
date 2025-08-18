@@ -19,10 +19,10 @@ export class AppController {
   }
 
   @Get('health')
-  async getHealth(): Promise<{ 
-    status: string; 
-    timestamp: string; 
-    parser?: { status: string; details?: string } 
+  async getHealth(): Promise<{
+    status: string;
+    timestamp: string;
+    parser?: { status: string; details?: string };
   }> {
     const health: any = {
       status: 'ok',
@@ -33,7 +33,7 @@ export class AppController {
     try {
       const puppeteer = require('puppeteer');
       const fs = require('fs');
-      
+
       const parserChecks = {
         puppeteer: !!puppeteer,
         geminiApiKey: !!process.env.GEMINI_API_KEY,
@@ -50,15 +50,13 @@ export class AppController {
         // Ignore file system errors
       }
 
-      const parserHealthy = parserChecks.puppeteer && 
-                           parserChecks.geminiApiKey && 
-                           parserChecks.chromiumExists;
+      const parserHealthy =
+        parserChecks.puppeteer && parserChecks.geminiApiKey && parserChecks.chromiumExists;
 
       health.parser = {
         status: parserHealthy ? 'healthy' : 'unhealthy',
         details: JSON.stringify(parserChecks),
       };
-
     } catch (error) {
       health.parser = {
         status: 'error',
