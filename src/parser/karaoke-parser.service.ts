@@ -1791,6 +1791,7 @@ ${htmlContent}`;
     htmlContent: string;
   }> {
     let browser;
+    let page;
     try {
       this.logAndBroadcast(`Capturing full-page screenshot from: ${url}`);
 
@@ -1803,6 +1804,8 @@ ${htmlContent}`;
         '--disable-background-timer-throttling',
         '--disable-backgrounding-occluded-windows',
         '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection',
       ];
 
       // Additional Linux-specific arguments for production
@@ -1812,6 +1815,8 @@ ${htmlContent}`;
           '--no-zygote',
           '--single-process', // Important for Docker containers
           '--disable-extensions',
+          '--disable-default-apps',
+          '--disable-background-networking',
         );
       }
 
@@ -1820,18 +1825,47 @@ ${htmlContent}`;
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
         args: puppeteerArgs,
         timeout: 60000, // 60 second timeout
+        handleSIGINT: false,
+        handleSIGTERM: false,
+        handleSIGHUP: false,
       });
 
-      const page = await browser.newPage();
+      // Add error listeners to browser
+      browser.on('disconnected', () => {
+        this.logAndBroadcast('Browser disconnected unexpectedly');
+      });
+
+      page = await browser.newPage();
+      
+      // Set page timeout
+      page.setDefaultTimeout(30000);
+      page.setDefaultNavigationTimeout(30000);
+
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
       // Use larger viewport for better content capture
       await page.setViewport({ width: 1280, height: 1024 });
 
-      // Navigate and wait for full page load
-      await page.goto(url, {
-        waitUntil: 'domcontentloaded', // Changed from 'networkidle2' to be faster
-        timeout: 20000, // Reduced from 30000
-      });
+      // Navigate and wait for full page load with retry logic
+      let navigationSuccess = false;
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (!navigationSuccess && retryCount < maxRetries) {
+        try {
+          await page.goto(url, {
+            waitUntil: 'domcontentloaded',
+            timeout: 20000,
+          });
+          navigationSuccess = true;
+        } catch (navError) {
+          retryCount++;
+          this.logAndBroadcast(`Navigation attempt ${retryCount} failed: ${navError.message}`);
+          if (retryCount >= maxRetries) {
+            throw navError;
+          }
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retry
+        }
+      }
 
       // Reduced wait time for dynamic content
       await new Promise((resolve) => setTimeout(resolve, 1500)); // Reduced from 3000
@@ -1873,13 +1907,18 @@ ${htmlContent}`;
       // Get the HTML content for backup parsing
       const htmlContent = await page.content();
 
-      // Take a high-quality screenshot
-      const screenshot = await page.screenshot({
-        fullPage: true,
-        type: 'jpeg',
-        quality: 85, // Balanced quality for faster processing
-        optimizeForSpeed: false, // Keep false for better quality
-      });
+      // Take a high-quality screenshot with timeout protection
+      const screenshot = await Promise.race([
+        page.screenshot({
+          fullPage: true,
+          type: 'jpeg',
+          quality: 85, // Balanced quality for faster processing
+          optimizeForSpeed: false, // Keep false for better quality
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Screenshot timeout after 30 seconds')), 30000)
+        )
+      ]) as Buffer;
 
       this.logAndBroadcast(
         `Successfully captured full-page screenshot from ${url} (${screenshot.length} bytes, ${htmlContent.length} characters HTML)`,
@@ -1890,8 +1929,21 @@ ${htmlContent}`;
       this.logAndBroadcast(`Error capturing screenshot from ${url}: ${error.message}`);
       throw error;
     } finally {
-      if (browser) {
-        await browser.close();
+      // Properly close resources
+      try {
+        if (page && !page.isClosed()) {
+          await page.close();
+        }
+      } catch (closeError) {
+        this.logger.warn(`Error closing page: ${closeError.message}`);
+      }
+      
+      try {
+        if (browser && browser.isConnected()) {
+          await browser.close();
+        }
+      } catch (closeError) {
+        this.logger.warn(`Error closing browser: ${closeError.message}`);
       }
     }
   }
