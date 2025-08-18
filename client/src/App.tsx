@@ -65,6 +65,10 @@ const AppContent: React.FC = observer(() => {
             p: 0,
             paddingTop: 0,
           },
+          '&:has([data-showspage])': {
+            p: 0,
+            paddingTop: 0,
+          },
         }}
       >
         <Box sx={{ flex: 1 }}>

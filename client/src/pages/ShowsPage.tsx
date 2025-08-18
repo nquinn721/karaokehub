@@ -553,7 +553,7 @@ const ShowsPage: React.FC = observer(() => {
         description="Find karaoke shows near you with our interactive map and advanced filtering options."
       />
 
-      <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }} data-showspage>
         {/* Map Section - Full width */}
         <Box
           sx={{
@@ -588,19 +588,6 @@ const ShowsPage: React.FC = observer(() => {
             >
               <MapContent />
 
-              {/* User Location Marker */}
-              {mapStore.userLocation && (
-                <Marker
-                  position={mapStore.userLocation}
-                  icon={`data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
-                    <circle cx="12" cy="12" r="8" fill="${theme.palette.info.main}" stroke="#fff" stroke-width="2"/>
-                    <circle cx="12" cy="12" r="3" fill="#fff"/>
-                  </svg>
-                  `)}`}
-                  title="Your current location"
-                />
-              )}
             </Map>
           </APIProvider>
 
