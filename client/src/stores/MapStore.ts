@@ -82,7 +82,7 @@ export class MapStore {
   };
 
   // Debounced data fetching to avoid too many API calls
-  private debounceTimer: NodeJS.Timeout | null = null;
+  private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private debouncedFetchData = (): void => {
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
