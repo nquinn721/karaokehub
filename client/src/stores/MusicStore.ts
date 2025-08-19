@@ -512,6 +512,7 @@ export class MusicStore {
 
       runInAction(() => {
         if (response && Array.isArray(response) && response.length > 0) {
+          console.log('✅ Processing non-empty response with', response.length, 'songs');
           let newSongs = response;
 
           if (loadMore) {
@@ -540,11 +541,19 @@ export class MusicStore {
           // Check if we have more songs to load
           this.hasMoreSongs = response.length === limit;
         } else {
+          console.log('❌ Empty or invalid response, clearing songs list');
           if (!loadMore) {
             this.songs = [];
           }
           this.hasMoreSongs = false;
         }
+
+        console.log('🔄 Final store state:', {
+          songsCount: this.songs.length,
+          isLoading: loadMore ? this.isLoadingMore : this.isLoading,
+          hasMoreSongs: this.hasMoreSongs,
+          selectedCategory: this.selectedCategory,
+        });
 
         if (loadMore) {
           this.isLoadingMore = false;

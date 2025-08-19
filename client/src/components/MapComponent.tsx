@@ -269,7 +269,7 @@ const MapComponent: React.FC = observer(() => {
 
         markers.push(marker);
       });
-
+      console.log('🗂️ Created', markers.length, 'markers for clustering', filteredShows);
       if (markers.length > 0) {
         const newClusterer = new MarkerClusterer({
           map,
@@ -321,7 +321,7 @@ const MapComponent: React.FC = observer(() => {
       const lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
 
       const isSelected = mapStore.selectedShow?.id === show.id;
-      const iconColor = isSelected ? theme.palette.secondary.main : theme.palette.primary.main;
+      const iconColor = isSelected ? '#ff5722' : '#f44336'; // Red colors
 
       return (
         <Marker
@@ -332,7 +332,13 @@ const MapComponent: React.FC = observer(() => {
             url: `data:image/svg+xml,${encodeURIComponent(`
               <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="16" cy="16" r="14" fill="${iconColor}" stroke="white" stroke-width="2"/>
-                <path d="M12 8v16l8-4V12l-8-4z" fill="white"/>
+                <!-- Microphone body -->
+                <rect x="14" y="8" width="4" height="10" rx="2" fill="white"/>
+                <!-- Microphone base -->
+                <path d="M12 16c0 2.2 1.8 4 4 4s4-1.8 4-4" stroke="white" stroke-width="1.5" fill="none"/>
+                <!-- Microphone stand -->
+                <line x1="16" y1="20" x2="16" y2="24" stroke="white" stroke-width="1.5"/>
+                <line x1="12" y1="24" x2="20" y2="24" stroke="white" stroke-width="1.5"/>
               </svg>
             `)}`,
             scaledSize: new google.maps.Size(isSelected ? 36 : 32, isSelected ? 36 : 32),

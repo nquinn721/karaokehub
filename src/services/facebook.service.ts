@@ -33,18 +33,30 @@ export interface FacebookEventData {
 @Injectable()
 export class FacebookService {
   private readonly logger = new Logger(FacebookService.name);
-  private readonly appId = process.env.FACEBOOK_APP_ID || '646464114624794';
-  private readonly appSecret =
+  
+  // Main Facebook App (for user authentication/login)
+  private readonly authAppId = process.env.FACEBOOK_APP_ID || '646464114624794';
+  private readonly authAppSecret =
     process.env.FACEBOOK_APP_SECRET || '3ce6645105081d6f3a5442a30bd6b1ae';
+  
+  // Facebook Parser App (for content parsing/scraping)
+  private readonly parserAppId = process.env.FACEBOOK_PARSER_APP_ID || '1160707802576346';
+  private readonly parserAppSecret =
+    process.env.FACEBOOK_PARSER_APP_SECRET || '47f729de53981816dcce9b8776449b4b';
+  
   private readonly graphApiUrl = 'https://graph.facebook.com/v18.0';
 
   /**
    * Get app access token for Facebook Graph API
+   * @param useParser - Whether to use parser app credentials (default: true for parsing operations)
    */
-  private async getAppAccessToken(): Promise<string> {
+  private async getAppAccessToken(useParser: boolean = true): Promise<string> {
     try {
+      const appId = useParser ? this.parserAppId : this.authAppId;
+      const appSecret = useParser ? this.parserAppSecret : this.authAppSecret;
+      
       const response = await axios.get(
-        `${this.graphApiUrl}/oauth/access_token?client_id=${this.appId}&client_secret=${this.appSecret}&grant_type=client_credentials`,
+        `${this.graphApiUrl}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&grant_type=client_credentials`,
       );
       return response.data.access_token;
     } catch (error) {

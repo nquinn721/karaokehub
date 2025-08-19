@@ -87,6 +87,16 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_FACEBOOK_APP_SECRET
                   key: latest
+            - name: FACEBOOK_PARSER_APP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_FACEBOOK_PARSER_APP_ID
+                  key: latest
+            - name: FACEBOOK_PARSER_APP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_FACEBOOK_PARSER_APP_SECRET
+                  key: latest
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:

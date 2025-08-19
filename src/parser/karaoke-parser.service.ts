@@ -1385,6 +1385,49 @@ ${htmlContent}`;
   }
 
   /**
+   * Extract DJs from individual show djName fields
+   */
+  private extractDJsFromShows(shows: any[]): any[] {
+    const djSet = new Set<string>();
+    const extractedDJs: any[] = [];
+
+    for (const show of shows) {
+      if (show.djName && typeof show.djName === 'string') {
+        const djName = show.djName.trim();
+        if (djName && !djSet.has(djName.toLowerCase())) {
+          djSet.add(djName.toLowerCase());
+          extractedDJs.push({
+            name: djName,
+            confidence: 0.85,
+            context: `Host at ${show.venue || 'venue'}`,
+            aliases: []
+          });
+        }
+      }
+    }
+
+    return extractedDJs;
+  }
+
+  /**
+   * Merge two DJ arrays, avoiding duplicates
+   */
+  private mergeDJArrays(existingDJs: any[], newDJs: any[]): any[] {
+    const merged = [...existingDJs];
+    const existingNames = new Set(existingDJs.map(dj => dj.name?.toLowerCase().trim()));
+
+    for (const newDJ of newDJs) {
+      const normalizedName = newDJ.name?.toLowerCase().trim();
+      if (normalizedName && !existingNames.has(normalizedName)) {
+        merged.push(newDJ);
+        existingNames.add(normalizedName);
+      }
+    }
+
+    return merged;
+  }
+
+  /**
    * Pre-validate and fix JSON structure before parsing
    */
   private preValidateAndFixJson(jsonString: string): string {
@@ -2487,6 +2530,13 @@ Extract from the ENTIRE image:
 - ALL DJ/host names mentioned anywhere on the page
 - The vendor/company information
 
+🎤 DJ/HOST EXTRACTION - CRITICAL:
+- Look for "hosted by" text patterns near each venue
+- Extract ALL DJ/host names like "Mattallica", "Dr Rockso", "Frankie the Intern", "Rini the Riot", etc.
+- Each show typically has a host name mentioned - extract these as djName for each show
+- DJ names often appear as links or special formatting near venue information
+- Examples: "hosted by Mattallica", "hosted by Dr Rockso", "hosted by Frankie the Intern"
+
 EXPECTED: There should be 35-40+ shows total across all days of the week.
 
 CRITICAL: SEPARATE ADDRESS COMPONENTS PROPERLY
@@ -2574,7 +2624,7 @@ Return ONLY valid JSON with no extra text:
   },
   "djs": [
     {
-      "name": "DJ Name",
+      "name": "DJ Name (like Mattallica, Dr Rockso, Frankie the Intern, etc.)",
       "confidence": 0.8,
       "context": "Where they perform",
       "aliases": []
@@ -2595,7 +2645,7 @@ Return ONLY valid JSON with no extra text:
       "startTime": "24-hour format like '19:00'",
       "endTime": "close",
       "day": "day_of_week",
-      "djName": "DJ name if mentioned",
+      "djName": "DJ/host name from 'hosted by' text (REQUIRED if visible)",
       "confidence": 0.9
     }
   ]
@@ -2903,6 +2953,15 @@ Return ONLY valid JSON with no extra text:
           parsedAt: new Date(),
         },
       };
+
+      // Extract DJs from individual shows and add to main DJs array
+      const extractedDJs = this.extractDJsFromShows(finalData.shows);
+      finalData.djs = this.mergeDJArrays(finalData.djs, extractedDJs);
+
+      this.logAndBroadcast(
+        `Final DJ extraction: ${finalData.djs.length} total DJs (including ${extractedDJs.length} from individual shows)`,
+        'info',
+      );
 
       return finalData;
     } catch (error) {

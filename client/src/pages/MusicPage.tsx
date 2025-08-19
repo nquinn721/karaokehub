@@ -109,8 +109,6 @@ export const MusicPage: React.FC = observer(() => {
   }, [authStore.isAuthenticated]);
 
   useEffect(() => {
-    // Clear any previous results when component mounts
-    musicStore.clearResults();
     // Fetch subscription status if user is logged in
     subscriptionStore.fetchSubscriptionStatus();
 
@@ -126,13 +124,19 @@ export const MusicPage: React.FC = observer(() => {
     // Handle initial load based on route
     if (currentView === 'search' && urlSearchQuery) {
       console.log('🔍 Loading search results for:', urlSearchQuery);
+      // Clear previous results for search
+      musicStore.clearResults();
       setSearchQuery(urlSearchQuery);
       musicStore.searchSongs(urlSearchQuery);
     } else if (currentView === 'category' && params.categoryId) {
       console.log('📂 Loading category music for:', params.categoryId);
+      // Clear previous results for category
+      musicStore.clearResults();
       musicStore.loadCategoryMusic(params.categoryId);
     } else {
       console.log('🏠 Showing home view - Featured Categories');
+      // Only clear results when showing home view
+      musicStore.clearResults();
     }
   }, [currentView, urlSearchQuery, params.categoryId]);
 
@@ -254,9 +258,9 @@ export const MusicPage: React.FC = observer(() => {
     }
   };
 
-  const handleCategoryClick = async (categoryId: string) => {
+  const handleCategoryClick = (categoryId: string) => {
+    console.log('🔗 Category clicked:', categoryId);
     navigate(`/music/category/${categoryId}`);
-    await musicStore.loadCategoryMusic(categoryId);
   };
 
   const handleClearSearch = () => {
@@ -520,7 +524,8 @@ export const MusicPage: React.FC = observer(() => {
 
         {/* Featured Categories */}
         {(() => {
-          const shouldShowFeatured = musicStore.songs.length === 0 && !musicStore.isLoading;
+          const shouldShowFeatured =
+            currentView === 'home' && musicStore.songs.length === 0 && !musicStore.isLoading;
           console.log('🏠 Featured Categories condition check:', {
             songsLength: musicStore.songs.length,
             isLoading: musicStore.isLoading,
@@ -943,21 +948,25 @@ export const MusicPage: React.FC = observer(() => {
               </Box>
             )}
 
-            {musicStore.songs.length === 0 && musicStore.searchQuery && !musicStore.isLoading && (
-              <Box sx={{ textAlign: 'center', py: 8 }}>
-                <FontAwesomeIcon
-                  icon={faMusic}
-                  size="4x"
-                  style={{ color: theme.palette.text.disabled, marginBottom: '16px' }}
-                />
-                <Typography variant="h5" gutterBottom color="text.secondary">
-                  No songs found
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  Try adjusting your search terms or browse our featured categories above.
-                </Typography>
-              </Box>
-            )}
+            {musicStore.songs.length === 0 &&
+              (musicStore.searchQuery || currentView === 'category') &&
+              !musicStore.isLoading && (
+                <Box sx={{ textAlign: 'center', py: 8 }}>
+                  <FontAwesomeIcon
+                    icon={faMusic}
+                    size="4x"
+                    style={{ color: theme.palette.text.disabled, marginBottom: '16px' }}
+                  />
+                  <Typography variant="h5" gutterBottom color="text.secondary">
+                    No songs found
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    {currentView === 'category'
+                      ? 'No songs found for this category. Please try another category or search for specific songs.'
+                      : 'Try adjusting your search terms or browse our featured categories above.'}
+                  </Typography>
+                </Box>
+              )}
           </Box>
         )}
 
