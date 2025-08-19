@@ -396,10 +396,686 @@ export class KaraokeParserService {
   }
 
   /**
+   * Simplified Facebook parsing - handles all Facebook URLs with Puppeteer
+   */
+  private async parseFacebookPage(url: string): Promise<ParsedKaraokeData> {
+    let browser;
+    let extractedData;
+
+    try {
+      this.logAndBroadcast('Launching Puppeteer for Facebook parsing...', 'info');
+
+      const puppeteer = await import('puppeteer');
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+        ],
+      });
+
+      const page = await browser.newPage();
+
+      // Set user agent to avoid bot detection
+      await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      );
+
+      this.logAndBroadcast(`Navigating to Facebook URL: ${url}`, 'info');
+      await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
+
+      this.logAndBroadcast('Extracting page content...', 'info');
+
+      // Get all text content from the page
+      const pageContent = await page.evaluate(() => {
+        // Remove script and style elements
+        const scripts = document.querySelectorAll('script, style');
+        scripts.forEach((el) => el.remove());
+
+        return {
+          title: document.title,
+          content: document.body.innerText,
+          html: document.body.innerHTML,
+        };
+      });
+
+      this.logAndBroadcast(`Extracted ${pageContent.content.length} characters of content`, 'info');
+
+      extractedData = {
+        title: pageContent.title,
+        content: pageContent.content,
+        html: pageContent.html,
+        url: url,
+      };
+    } catch (error) {
+      this.logAndBroadcast(`Facebook parsing error: ${error.message}`, 'error');
+      throw error;
+    } finally {
+      if (browser) {
+        await browser.close();
+      }
+    }
+
+    // Convert extracted data to ParsedKaraokeData using Gemini
+    this.logAndBroadcast('Converting Facebook data to karaoke format with Gemini...', 'info');
+    return await this.convertFacebookToKaraokeData(extractedData);
+  }
+
+  /**
+   * Convert Facebook extracted data to ParsedKaraokeData format using Gemini
+   */
+  private async convertFacebookToKaraokeData(facebookData: any): Promise<ParsedKaraokeData> {
+    try {
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-1.5-flash',
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 4000,
+        },
+      });
+
+      const prompt = `
+Analyze this Facebook page content and extract karaoke-related information. Return a JSON object with the following structure:
+
+{
+  "shows": [
+    {
+      "dayOfWeek": "monday|tuesday|wednesday|thursday|friday|saturday|sunday",
+      "startTime": "7:00 PM",
+      "endTime": "11:00 PM",
+      "venue": {
+        "name": "Venue Name",
+        "address": "Full Address",
+        "phone": "phone number if found",
+        "website": "website if found"
+      },
+      "dj": {
+        "name": "DJ Name",
+        "phone": "phone if found",
+        "email": "email if found"
+      },
+      "description": "Show description",
+      "confidence": 0.8
+    }
+  ],
+  "venues": [
+    {
+      "name": "Venue Name",
+      "address": "Full Address", 
+      "phone": "phone number",
+      "website": "website URL",
+      "confidence": 0.9
+    }
+  ],
+  "djs": [
+    {
+      "name": "DJ Name",
+      "phone": "phone number",
+      "email": "email address",
+      "confidence": 0.85
+    }
+  ]
+}
+
+Facebook Page Title: ${facebookData.title}
+Facebook Page URL: ${facebookData.url}
+Facebook Page Content:
+${facebookData.content.substring(0, 8000)}
+
+Extract all karaoke shows, venues, and DJ information. Look for:
+- Weekly schedules and recurring events
+- Venue names and addresses  
+- DJ names and contact information
+- Show times and descriptions
+- Any karaoke-related events or posts
+
+Return ONLY the JSON object, no other text.
+`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      this.logAndBroadcast(`Gemini response: ${text.substring(0, 200)}...`, 'info');
+
+      // Parse the JSON response
+      const cleanedResponse = text.replace(/```json|```/g, '').trim();
+      const parsedData = JSON.parse(cleanedResponse);
+
+      // Convert to ParsedKaraokeData format
+      const karaokeData: ParsedKaraokeData = {
+        vendor: {
+          name: parsedData.venues?.[0]?.name || 'Facebook Page',
+          website: facebookData.url,
+          description: parsedData.venues?.[0]?.description || 'Parsed from Facebook',
+          confidence: parsedData.venues?.[0]?.confidence || 0.7,
+        },
+        shows: parsedData.shows || [],
+        djs: parsedData.djs || [],
+        rawData: {
+          url: facebookData.url,
+          title: facebookData.title,
+          content: facebookData.content,
+          parsedAt: new Date(),
+        },
+      };
+
+      this.logAndBroadcast(
+        `Facebook parsing complete: ${karaokeData.shows.length} shows, ${karaokeData.djs.length} DJs`,
+        'success',
+      );
+
+      return karaokeData;
+    } catch (error) {
+      this.logAndBroadcast(`Error converting Facebook data: ${error.message}`, 'error');
+
+      // Return empty data structure on error
+      return {
+        vendor: {
+          name: 'Facebook Page',
+          website: facebookData.url,
+          description: 'Failed to parse Facebook page',
+          confidence: 0.1,
+        },
+        shows: [],
+        djs: [],
+        rawData: {
+          url: facebookData.url,
+          title: facebookData.title,
+          content: facebookData.content,
+          parsedAt: new Date(),
+        },
+      };
+    }
+  }
+
+  /**
+   * Detect if URL is a Facebook URL and determine the type
+   */
+  private detectFacebookUrlType(url: string): {
+    isFacebook: boolean;
+    type: 'profile' | 'group' | 'page' | 'event' | 'post' | 'unknown';
+    id?: string;
+  } {
+    if (!url.includes('facebook.com') && !url.includes('fb.com')) {
+      return { isFacebook: false, type: 'unknown' };
+    }
+
+    // Normalize URL
+    const normalizedUrl = url.toLowerCase();
+
+    // Event URL patterns
+    if (normalizedUrl.includes('/events/')) {
+      const eventMatch = url.match(/\/events\/(\d+)/);
+      return {
+        isFacebook: true,
+        type: 'event',
+        id: eventMatch?.[1],
+      };
+    }
+
+    // Group URL patterns
+    if (normalizedUrl.includes('/groups/')) {
+      const groupMatch = url.match(/\/groups\/(\d+|[a-zA-Z0-9.-]+)/);
+      return {
+        isFacebook: true,
+        type: 'group',
+        id: groupMatch?.[1],
+      };
+    }
+
+    // Page URL patterns (business pages)
+    if (normalizedUrl.match(/\/pages\/|\/pg\//)) {
+      return {
+        isFacebook: true,
+        type: 'page',
+      };
+    }
+
+    // Post URL patterns
+    if (normalizedUrl.includes('/posts/') || normalizedUrl.includes('/permalink/')) {
+      return {
+        isFacebook: true,
+        type: 'post',
+      };
+    }
+
+    // Profile URL patterns (personal profiles)
+    if (
+      normalizedUrl.match(/facebook\.com\/[a-zA-Z0-9.-]+/) &&
+      !normalizedUrl.includes('/pages/') &&
+      !normalizedUrl.includes('/groups/')
+    ) {
+      const profileMatch = url.match(/facebook\.com\/([a-zA-Z0-9.-]+)/);
+      return {
+        isFacebook: true,
+        type: 'profile',
+        id: profileMatch?.[1],
+      };
+    }
+
+    return { isFacebook: true, type: 'unknown' };
+  }
+
+  /**
+   * Enhanced Facebook parsing using Puppeteer for comprehensive data extraction
+   */
+  private async parseFacebookWithPuppeteer(url: string, urlType: any): Promise<ParsedKaraokeData> {
+    let browser;
+    let page;
+
+    try {
+      this.logAndBroadcast(`Starting Facebook parsing for ${urlType.type}: ${url}`, 'info');
+
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+        ],
+      });
+
+      page = await browser.newPage();
+
+      // Set mobile user agent for better access to Facebook content
+      await page.setUserAgent(
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
+      );
+      await page.setViewport({ width: 375, height: 667 });
+
+      await page.goto(url, {
+        waitUntil: 'networkidle2',
+        timeout: 30000,
+      });
+
+      // Wait for content to load
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Handle any popups or overlays
+      try {
+        const popup = await page.$('[role="dialog"]');
+        if (popup) {
+          await page.keyboard.press('Escape');
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      } catch (e) {
+        // Ignore popup handling errors
+      }
+
+      let extractedData;
+
+      switch (urlType.type) {
+        case 'profile':
+          extractedData = await this.extractProfileData(page, url);
+          break;
+        case 'group':
+          extractedData = await this.extractGroupData(page, url);
+          break;
+        case 'page':
+          extractedData = await this.extractPageData(page, url);
+          break;
+        case 'event':
+          extractedData = await this.extractEventData(page, url);
+          break;
+        case 'post':
+          extractedData = await this.extractPostData(page, url);
+          break;
+        default:
+          extractedData = await this.extractGenericFacebookData(page, url);
+      }
+
+      await browser.close();
+
+      // Convert extracted data to ParsedKaraokeData format
+      return await this.convertToKaraokeData(extractedData, url);
+    } catch (error) {
+      this.logAndBroadcast(`Facebook parsing error: ${error.message}`, 'error');
+
+      if (browser) {
+        await browser.close();
+      }
+
+      // Fallback to regular HTML parsing
+      return this.parseWebsite(url);
+    }
+  }
+
+  /**
+   * Extract data from Facebook profile pages (like Max Denney)
+   */
+  private async extractProfileData(page: any, url: string): Promise<any> {
+    this.logAndBroadcast('Extracting profile data...', 'info');
+
+    return await page.evaluate(() => {
+      const data = {
+        type: 'profile',
+        name: null,
+        shows: [],
+        about: null,
+        location: null,
+      };
+
+      // Get profile name
+      const nameSelectors = ['h1', '[data-testid*="name"]', 'title'];
+      for (const selector of nameSelectors) {
+        const elements = document.querySelectorAll(selector);
+        for (const element of elements) {
+          if (element && element.textContent.trim()) {
+            data.name = element.textContent.trim();
+            break;
+          }
+        }
+        if (data.name) break;
+      }
+
+      // Extract show schedule from intro section
+      const fullText = document.body.textContent;
+
+      // Pattern for show format: "WED Venue Name 8-12am"
+      const showPattern =
+        /(MON|TUE|WED|THU|FRI|SAT|SUN|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+([A-Za-z\s'&-]+(?:Pub|Lounge|Bar|Club|Restaurant|Grill|Tavern|Brewery|Casino|Hall|Center))\s+(\d{1,2}[-:]\d{1,2}[ap]m|\d{1,2}[ap]m)/gi;
+
+      const matches = [...fullText.matchAll(showPattern)];
+
+      matches.forEach((match) => {
+        const show = {
+          day: match[1],
+          venue: match[2].trim(),
+          time: match[3],
+          source: 'profile_intro',
+        };
+        data.shows.push(show);
+      });
+
+      // Look for location info
+      const locationKeywords = ['columbus', 'ohio', 'central ohio', 'dublin', 'cleveland'];
+      const foundLocation = locationKeywords.find((loc) => fullText.toLowerCase().includes(loc));
+      if (foundLocation) {
+        data.location = foundLocation;
+      }
+
+      return data;
+    });
+  }
+
+  /**
+   * Extract data from Facebook group pages (like Central Ohio Karaoke)
+   */
+  private async extractGroupData(page: any, url: string): Promise<any> {
+    this.logAndBroadcast('Extracting group data...', 'info');
+
+    // Scroll to load more posts
+    for (let i = 0; i < 3; i++) {
+      await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+
+    return await page.evaluate(() => {
+      const data = {
+        type: 'group',
+        name: null,
+        description: null,
+        posts: [],
+        events: [],
+      };
+
+      // Get group name
+      const nameSelectors = ['h1[data-testid="group-name"]', 'h1', '[data-testid="group-name"]'];
+      for (const selector of nameSelectors) {
+        const element = document.querySelector(selector);
+        if (element && element.textContent.trim()) {
+          data.name = element.textContent.trim();
+          break;
+        }
+      }
+
+      // Extract posts with karaoke content
+      const postElements = document.querySelectorAll(
+        '[data-testid="story-body"], [role="article"]',
+      );
+
+      postElements.forEach((postElement) => {
+        const post = {
+          author: null,
+          content: null,
+          timestamp: null,
+          venue: null,
+          location: null,
+        };
+
+        // Get post content
+        const contentEl = postElement.querySelector('[data-testid="post_message"], .userContent');
+        if (contentEl) {
+          post.content = contentEl.textContent.trim();
+        }
+
+        // Get author
+        const authorEl = postElement.querySelector('[data-testid="post_author_name"], strong a');
+        if (authorEl) {
+          post.author = authorEl.textContent.trim();
+        }
+
+        // Check for karaoke relevance
+        const karaokeKeywords = [
+          'karaoke',
+          'sing',
+          'singing',
+          'dj',
+          'host',
+          'venue',
+          'tonight',
+          'tomorrow',
+        ];
+        const content = post.content?.toLowerCase() || '';
+        const isRelevant = karaokeKeywords.some((keyword) => content.includes(keyword));
+
+        if (isRelevant && post.content && post.content.length > 20) {
+          // Try to extract venue and location
+          const venuePattern = /at\s+([A-Z][a-zA-Z\s'&-]+)/;
+          const venueMatch = post.content.match(venuePattern);
+          if (venueMatch) {
+            post.venue = venueMatch[1].trim();
+          }
+
+          data.posts.push(post);
+        }
+      });
+
+      return data;
+    });
+  }
+
+  /**
+   * Extract data from Facebook page (business pages)
+   */
+  private async extractPageData(page: any, url: string): Promise<any> {
+    this.logAndBroadcast('Extracting page data...', 'info');
+
+    return await page.evaluate(() => {
+      const data = {
+        type: 'page',
+        name: null,
+        about: null,
+        events: [],
+        posts: [],
+      };
+
+      // Similar extraction logic for business pages
+      const fullText = document.body.textContent;
+
+      // Look for business name
+      const nameEl = document.querySelector('h1');
+      if (nameEl) {
+        data.name = nameEl.textContent.trim();
+      }
+
+      return data;
+    });
+  }
+
+  /**
+   * Extract data from Facebook events
+   */
+  private async extractEventData(page: any, url: string): Promise<any> {
+    this.logAndBroadcast('Extracting event data...', 'info');
+
+    return await page.evaluate(() => {
+      const data = {
+        type: 'event',
+        name: null,
+        description: null,
+        location: null,
+        startTime: null,
+        endTime: null,
+      };
+
+      // Extract event details
+      const fullText = document.body.textContent;
+
+      // Look for event name
+      const nameEl = document.querySelector('h1');
+      if (nameEl) {
+        data.name = nameEl.textContent.trim();
+      }
+
+      return data;
+    });
+  }
+
+  /**
+   * Extract data from Facebook posts
+   */
+  private async extractPostData(page: any, url: string): Promise<any> {
+    this.logAndBroadcast('Extracting post data...', 'info');
+
+    return await page.evaluate(() => {
+      const data = {
+        type: 'post',
+        content: null,
+        author: null,
+        timestamp: null,
+      };
+
+      const fullText = document.body.textContent;
+      data.content = fullText;
+
+      return data;
+    });
+  }
+
+  /**
+   * Generic Facebook data extraction
+   */
+  private async extractGenericFacebookData(page: any, url: string): Promise<any> {
+    this.logAndBroadcast('Extracting generic Facebook data...', 'info');
+
+    return await page.evaluate(() => {
+      return {
+        type: 'generic',
+        content: document.body.textContent,
+        title: document.title,
+      };
+    });
+  }
+
+  /**
+   * Convert extracted Facebook data to ParsedKaraokeData format
+   */
+  private async convertToKaraokeData(extractedData: any, url: string): Promise<ParsedKaraokeData> {
+    this.logAndBroadcast('Converting Facebook data to karaoke format...', 'info');
+
+    const result: ParsedKaraokeData = {
+      vendor: {
+        name: extractedData.name || 'Facebook Profile/Page',
+        website: url,
+        confidence: 0.8,
+      },
+      djs: [],
+      shows: [],
+      rawData: {
+        url,
+        title: extractedData.name || 'Facebook Content',
+        content: JSON.stringify(extractedData),
+        parsedAt: new Date(),
+      },
+    };
+
+    // Convert profile shows to karaoke shows
+    if (extractedData.shows && extractedData.shows.length > 0) {
+      extractedData.shows.forEach((show) => {
+        result.shows.push({
+          venue: show.venue,
+          time: show.time,
+          day: show.day,
+          djName: extractedData.name,
+          city: extractedData.location || 'Columbus',
+          state: 'OH',
+          confidence: 0.9,
+        });
+      });
+
+      // Add the profile owner as a DJ
+      if (extractedData.name) {
+        result.djs.push({
+          name: extractedData.name,
+          confidence: 0.9,
+          context: 'Facebook profile owner',
+        });
+      }
+    }
+
+    // Convert group posts to shows
+    if (extractedData.posts && extractedData.posts.length > 0) {
+      extractedData.posts.forEach((post) => {
+        if (post.venue) {
+          result.shows.push({
+            venue: post.venue,
+            djName: post.author,
+            time: 'Check post for details',
+            description: post.content?.substring(0, 200),
+            confidence: 0.7,
+          });
+
+          // Add post author as DJ
+          if (post.author) {
+            result.djs.push({
+              name: post.author,
+              confidence: 0.8,
+              context: 'Facebook group post author',
+            });
+          }
+        }
+      });
+    }
+
+    this.logAndBroadcast(
+      `Converted to ${result.shows.length} shows and ${result.djs.length} DJs`,
+      'info',
+    );
+    return result;
+  }
+
+  /**
    * Main parsing method - takes a URL and returns parsed karaoke data
    */
   async parseWebsite(url: string): Promise<ParsedKaraokeData> {
     try {
+      // Check if this is a Facebook URL and use unified Facebook parsing
+      if (url.includes('facebook.com') || url.includes('fb.com')) {
+        this.logAndBroadcast(`Detected Facebook URL - using Facebook parsing`, 'info');
+        return await this.parseFacebookPage(url);
+      }
+
       // Log memory usage before parsing
       const memUsage = process.memoryUsage();
       this.logAndBroadcast(
@@ -1400,7 +2076,7 @@ ${htmlContent}`;
             name: djName,
             confidence: 0.85,
             context: `Host at ${show.venue || 'venue'}`,
-            aliases: []
+            aliases: [],
           });
         }
       }
@@ -1414,7 +2090,7 @@ ${htmlContent}`;
    */
   private mergeDJArrays(existingDJs: any[], newDJs: any[]): any[] {
     const merged = [...existingDJs];
-    const existingNames = new Set(existingDJs.map(dj => dj.name?.toLowerCase().trim()));
+    const existingNames = new Set(existingDJs.map((dj) => dj.name?.toLowerCase().trim()));
 
     for (const newDJ of newDJs) {
       const normalizedName = newDJ.name?.toLowerCase().trim();
@@ -2967,6 +3643,771 @@ Return ONLY valid JSON with no extra text:
     } catch (error) {
       this.logAndBroadcast('Error parsing screenshot with Gemini Vision:', 'error');
       throw new Error(`Gemini Vision parsing failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Analyze multiple screenshots with Gemini Vision for Instagram parsing
+   */
+  async analyzeScreenshotsWithGemini(
+    screenshots: string[], // base64 encoded images
+    url: string,
+    description?: string,
+  ): Promise<ParsedKaraokeData> {
+    try {
+      this.logAndBroadcast(
+        `Starting Instagram screenshot analysis with ${screenshots.length} screenshots`,
+        'info',
+      );
+
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash-exp',
+        generationConfig: {
+          temperature: 0.1,
+          topP: 0.8,
+          topK: 40,
+          maxOutputTokens: 8192,
+        },
+      });
+
+      const prompt = `Analyze these Instagram profile screenshots and extract ALL karaoke shows with complete venue addresses and show times.
+
+🎯 CRITICAL FOCUS: This Instagram profile contains a weekly karaoke schedule - you MUST extract ALL venues, COMPLETE addresses, and EXACT show times.
+
+CRITICAL RESPONSE REQUIREMENTS:
+- Return ONLY valid JSON, no other text
+- Extract EVERY venue mentioned across all screenshots
+- Get COMPLETE addresses with street, city, state
+- Extract EXACT show times (not approximations)
+- Look at BOTH the profile description/bio area AND individual posts
+
+Instagram Profile: ${url}
+${description ? `Description: ${description}` : ''}
+
+📸 SCREENSHOT ANALYSIS INSTRUCTIONS:
+Screenshot 1 (Top): Contains profile bio/description with weekly schedule summary
+Screenshot 2 (Middle): May contain detailed posts with venue information  
+Screenshot 3 (Bottom): Additional posts with venue details and addresses
+
+🏢 VENUE & ADDRESS EXTRACTION - CRITICAL:
+- Look for complete address patterns like "1234 Main St, Columbus, OH" 
+- Extract phone numbers that appear near venue names
+- Look for venue websites or social media handles
+- Each venue should have a complete address, not just a name
+- If you see "Oneilly's Sports Pub" - find its complete address in the posts
+- Look for patterns like "Tonight at [Venue] - [Address] - [Time]"
+
+🕒 TIME EXTRACTION - MANDATORY:
+- Look for specific times like "7pm", "8pm", "9pm", "10pm"
+- Convert to both human format ("7 pm") AND 24-hour format ("19:00")
+- If you see a venue but no time, default to common karaoke hours
+- Look for phrases like "starts at", "begins at", "showtime"
+- NEVER leave time fields empty
+
+🎤 DJ NAME EXTRACTION:
+- Extract the profile owner's name as the primary DJ
+- Look for @username in the profile
+- Check profile description for DJ name or business name
+
+🗓️ DAY EXTRACTION:
+- Look for weekly schedule patterns: "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"
+- Or full day names: "Monday", "Tuesday", etc.
+- Each venue + day combination = separate show entry
+- If schedule shows "Monday: Venue A, Tuesday: Venue B" - create 2 separate shows
+
+🚨 CRITICAL ADDRESS COMPONENT SEPARATION:
+NEVER MIX ADDRESS COMPONENTS - SEPARATE THEM CLEANLY:
+
+✅ CORRECT address parsing examples:
+"1930 Lewis Turner Blvd Fort Walton Beach, FL 32647"
+→ address: "1930 Lewis Turner Blvd"
+→ city: "Fort Walton Beach"  
+→ state: "FL"
+→ zip: "32647"
+
+"630 North High Street Columbus, Ohio 43215"
+→ address: "630 North High Street"
+→ city: "Columbus"
+→ state: "OH" 
+→ zip: "43215"
+
+❌ WRONG - DON'T DO THIS:
+address: "1930 Lewis Turner Blvd Fort Walton Beach, FL 32647" ← CONTAINS CITY/STATE/ZIP
+
+🌍 COORDINATE REQUIREMENTS - MANDATORY:
+For EVERY venue, provide precise lat/lng coordinates:
+- Use venue name + complete address to determine exact location
+- Provide coordinates as decimal numbers with 6+ decimal places
+- Validate coordinates are in the correct city/state
+- Example: "Oneilly's Sports Pub" in Columbus, OH → lat: 39.961176, lng: -82.998794
+
+📝 EXAMPLE EXTRACTION:
+If you see: "Friday nights at Oneilly's Sports Pub - 123 Main St, Columbus, OH - 9pm karaoke with djmax614"
+
+Extract as:
+{
+  "venue": "Oneilly's Sports Pub",
+  "address": "123 Main St",
+  "city": "Columbus", 
+  "state": "OH",
+  "day": "friday",
+  "time": "9 pm",
+  "startTime": "21:00",
+  "djName": "djmax614",
+  "lat": 39.961176,
+  "lng": -82.998794
+}
+
+Return ONLY valid JSON:
+{
+  "vendor": {
+    "name": "DJ or business name from profile",
+    "website": "${url}",
+    "description": "Profile bio/description text",
+    "confidence": 0.9
+  },
+  "djs": [
+    {
+      "name": "DJ Name from profile",
+      "confidence": 0.9,
+      "context": "Instagram profile owner"
+    }
+  ],
+  "shows": [
+    {
+      "venue": "COMPLETE Venue Name",
+      "address": "COMPLETE street address ONLY (no city/state/zip)",
+      "city": "City name ONLY",
+      "state": "2-letter state code ONLY", 
+      "zip": "ZIP code ONLY",
+      "lat": "REQUIRED precise latitude",
+      "lng": "REQUIRED precise longitude",
+      "venuePhone": "Phone number if found",
+      "venueWebsite": "Website if found",
+      "time": "EXACT time like '9 pm'",
+      "startTime": "REQUIRED 24-hour format like '21:00'",
+      "endTime": "End time or 'close'",
+      "day": "EXACT day_of_week",
+      "djName": "DJ/host name",
+      "description": "Additional show details",
+      "confidence": 0.8
+    }
+  ]
+}`;
+
+      // Convert base64 strings to image parts
+      const imageParts = screenshots.map((screenshot) => ({
+        inlineData: {
+          data: screenshot,
+          mimeType: 'image/jpeg',
+        },
+      }));
+
+      this.logAndBroadcast(`Making Gemini Vision API request with ${screenshots.length} images`);
+
+      const result = (await Promise.race([
+        model.generateContent([prompt, ...imageParts]),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Gemini Vision API timeout after 120 seconds')),
+            120000,
+          ),
+        ),
+      ])) as any;
+
+      const response = await result.response;
+      const text = response.text();
+
+      this.logAndBroadcast('Gemini Vision response received for Instagram analysis');
+      this.logAndBroadcast(`Response length: ${text.length} characters`);
+
+      // Clean and parse JSON response
+      let parsedData;
+      try {
+        const cleanJsonString = this.cleanGeminiResponse(text);
+        parsedData = JSON.parse(cleanJsonString);
+        this.logAndBroadcast('✅ Instagram JSON parsing successful', 'success');
+      } catch (jsonError) {
+        this.logAndBroadcast('❌ Instagram JSON parsing failed:', 'error');
+        this.logAndBroadcast(`JSON Error: ${jsonError.message}`, 'error');
+        throw new Error(`Invalid JSON response from Gemini: ${jsonError.message}`);
+      }
+
+      // Log results
+      const showCount = parsedData.shows?.length || 0;
+      const djCount = parsedData.djs?.length || 0;
+      const vendorName = parsedData.vendor?.name || 'Instagram Profile';
+
+      this.logAndBroadcast(
+        `Instagram analysis results: ${showCount} shows, ${djCount} DJs, profile: ${vendorName}`,
+        'success',
+      );
+
+      // Ensure required structure
+      const finalData: ParsedKaraokeData = {
+        vendor: parsedData.vendor || {
+          name: 'Instagram Profile',
+          website: url,
+          description: 'Parsed from Instagram screenshots',
+          confidence: 0.7,
+        },
+        djs: Array.isArray(parsedData.djs) ? parsedData.djs : [],
+        shows: Array.isArray(parsedData.shows) ? this.normalizeShowTimes(parsedData.shows) : [],
+        rawData: {
+          url,
+          title: 'Instagram Screenshots',
+          content: 'Parsed from Instagram profile screenshots',
+          parsedAt: new Date(),
+        },
+      };
+
+      return finalData;
+    } catch (error) {
+      this.logAndBroadcast('Error analyzing Instagram screenshots:', 'error');
+      throw new Error(`Instagram screenshot analysis failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Parse Instagram profile with screenshots and save for admin review
+   */
+  async parseInstagramWithScreenshots(url: string): Promise<{
+    parsedScheduleId: string;
+    data: ParsedKaraokeData;
+    stats: {
+      showsFound: number;
+      djsFound: number;
+      vendorName: string;
+      htmlLength: number;
+      processingTime: number;
+    };
+  }> {
+    const startTime = Date.now();
+
+    try {
+      // Set parsing status to active
+      this.setParsingStatus(true, url);
+
+      this.logAndBroadcast(`Starting Instagram visual parsing for URL: ${url}`, 'info');
+
+      // Use the Instagram visual parser
+      const parsedData = await this.parseInstagramVisually(url);
+
+      const processingTime = Date.now() - startTime;
+
+      // Add final success logs before saving
+      this.logAndBroadcast(
+        `Instagram processing completed in ${processingTime}ms - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}`,
+        'success',
+      );
+
+      // Debug: Log how many parsing logs we captured
+      this.logAndBroadcast(
+        `Captured ${this.currentParsingLogs.length} parsing logs for database storage`,
+        'info',
+      );
+
+      // Save to parsed_schedules table for admin review
+      const parsedSchedule = this.parsedScheduleRepository.create({
+        url: url,
+        rawData: {
+          url: url,
+          title: 'Instagram Profile',
+          content: 'Parsed from Instagram visual content',
+          parsedAt: new Date(),
+        },
+        aiAnalysis: parsedData,
+        status: ParseStatus.PENDING_REVIEW,
+        parsingLogs: [...this.currentParsingLogs], // Include captured logs
+      });
+
+      const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
+
+      this.logAndBroadcast(
+        `Successfully saved Instagram parsed data for admin review. ID: ${savedSchedule.id}`,
+        'success',
+      );
+
+      return {
+        parsedScheduleId: savedSchedule.id,
+        data: parsedData,
+        stats: {
+          showsFound: parsedData.shows?.length || 0,
+          djsFound: parsedData.djs?.length || 0,
+          vendorName: parsedData.vendor?.name || 'Instagram Profile',
+          htmlLength: 0, // No HTML for Instagram
+          processingTime,
+        },
+      };
+    } catch (error) {
+      this.logAndBroadcast(`Error parsing Instagram profile ${url}: ${error.message}`, 'error');
+      this.logAndBroadcast(`Error stack: ${error.stack}`, 'error');
+
+      throw new Error(`Failed to parse Instagram profile: ${error.message}`);
+    } finally {
+      // Clear parsing status
+      this.setParsingStatus(false);
+    }
+  }
+
+  /**
+   * Parse Instagram profile using visual analysis with individual post clicking
+   */
+  private async parseInstagramVisually(url: string): Promise<ParsedKaraokeData> {
+    let browser;
+    try {
+      this.logAndBroadcast('Launching Puppeteer for enhanced Instagram parsing...', 'info');
+
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--disable-default-apps',
+          '--disable-extensions',
+        ],
+      });
+
+      const page = await browser.newPage();
+
+      // Set a realistic user agent
+      await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      );
+
+      this.logAndBroadcast(`Navigating to Instagram profile: ${url}`, 'info');
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+
+      // Wait for page to fully load
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+
+      const allContent = [];
+
+      // First, capture the profile bio and click "See more" if present
+      this.logAndBroadcast('Extracting profile bio and expanding full description...', 'info');
+      const bioData = await page.evaluate(async () => {
+        // Try to click "See more" button to expand full bio
+        const seeMoreButtons = document.querySelectorAll('button, span, div');
+        let seeMoreClicked = false;
+
+        for (const element of seeMoreButtons) {
+          const text = element.textContent?.toLowerCase() || '';
+          if (text.includes('see more') || text.includes('more') || text.includes('...more')) {
+            try {
+              (element as HTMLElement).click();
+              seeMoreClicked = true;
+              break;
+            } catch (e) {
+              // Continue trying other elements
+            }
+          }
+        }
+
+        // Wait a moment for expansion if clicked
+        if (seeMoreClicked) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+
+        // Get bio text after potential expansion
+        const bioElements = document.querySelectorAll('[data-testid="user-biography"]');
+        let bioText = '';
+        bioElements.forEach((el) => {
+          bioText += el.textContent + ' ';
+        });
+
+        // If bio is still short, try alternative selectors
+        if (bioText.length < 50) {
+          const altBioElements = document.querySelectorAll('div[dir="auto"]');
+          altBioElements.forEach((el) => {
+            const text = el.textContent || '';
+            if (text.length > 50 && text.toLowerCase().includes('karaoke')) {
+              bioText += text + ' ';
+            }
+          });
+        }
+
+        // Get profile name
+        const nameElements = document.querySelectorAll('h2');
+        let profileName = '';
+        nameElements.forEach((el) => {
+          if (el.textContent && el.textContent.trim() && !profileName) {
+            profileName = el.textContent.trim();
+          }
+        });
+
+        return {
+          bio: bioText.trim(),
+          profileName: profileName,
+          seeMoreClicked: seeMoreClicked,
+        };
+      });
+
+      // Log the expanded bio
+      this.logAndBroadcast(
+        `Profile bio extracted (${bioData.bio.length} chars): ${bioData.bio.substring(0, 200)}...`,
+        'info',
+      );
+      if (bioData.seeMoreClicked) {
+        this.logAndBroadcast('✅ Successfully expanded "See more" to get full bio', 'success');
+      } else {
+        this.logAndBroadcast('⚠️ No "See more" button found or clicked', 'warning');
+      }
+
+      // Wait a moment after potential bio expansion
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Take profile bio screenshot
+      const bioScreenshot = await page.screenshot({
+        fullPage: false,
+        type: 'jpeg',
+        quality: 85,
+        clip: { x: 0, y: 0, width: 1280, height: 800 },
+      });
+
+      allContent.push({
+        type: 'profile_bio',
+        screenshot: bioScreenshot.toString('base64'),
+        text: bioData.bio,
+        profileName: bioData.profileName,
+      });
+
+      // Find all post links on the profile
+      this.logAndBroadcast('Finding Instagram post links...', 'info');
+      const postLinks = await page.evaluate(() => {
+        // Look for post links - Instagram uses specific patterns
+        const links = Array.from(document.querySelectorAll('a[href*="/p/"]'));
+        return links.slice(0, 10).map((link) => (link as HTMLAnchorElement).href); // Limit to first 10 posts
+      });
+
+      this.logAndBroadcast(`Found ${postLinks.length} post links to analyze`, 'info');
+
+      // Click on each post and extract content
+      for (let i = 0; i < Math.min(postLinks.length, 8); i++) {
+        // Limit to 8 posts to avoid timeout
+        try {
+          this.logAndBroadcast(
+            `Processing post ${i + 1}/${Math.min(postLinks.length, 8)}...`,
+            'info',
+          );
+
+          // Navigate to the post
+          await page.goto(postLinks[i], { waitUntil: 'networkidle2', timeout: 20000 });
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+
+          // Extract post content
+          const postData = await page.evaluate(() => {
+            // Get post caption/description
+            const captionElements = document.querySelectorAll(
+              '[data-testid="post-caption"] span, article span',
+            );
+            let caption = '';
+            captionElements.forEach((el) => {
+              if (el.textContent && el.textContent.length > 10) {
+                caption += el.textContent + ' ';
+              }
+            });
+
+            // Get any other text content
+            const allText = document.body.innerText;
+
+            // Get post date if available
+            const timeElements = document.querySelectorAll('time');
+            let postDate = '';
+            timeElements.forEach((el) => {
+              if (el.dateTime) {
+                postDate = el.dateTime;
+              }
+            });
+
+            return {
+              caption: caption.trim(),
+              postDate: postDate,
+              fullText: allText.length > 2000 ? allText.substring(0, 2000) : allText,
+            };
+          });
+
+          // Take screenshot of the full post
+          const postScreenshot = await page.screenshot({
+            fullPage: false,
+            type: 'jpeg',
+            quality: 85,
+          });
+
+          allContent.push({
+            type: 'individual_post',
+            screenshot: postScreenshot.toString('base64'),
+            text: postData.caption,
+            postDate: postData.postDate,
+            fullText: postData.fullText,
+            url: postLinks[i],
+          });
+
+          this.logAndBroadcast(
+            `Post ${i + 1} content: ${postData.caption.substring(0, 100)}...`,
+            'info',
+          );
+        } catch (postError) {
+          this.logAndBroadcast(`Error processing post ${i + 1}: ${postError.message}`, 'warning');
+          // Continue with other posts even if one fails
+        }
+      }
+
+      await browser.close();
+
+      this.logAndBroadcast(
+        `Captured ${allContent.length} pieces of content from Instagram`,
+        'success',
+      );
+
+      // Analyze all content with Gemini Vision
+      return await this.analyzeInstagramContentWithGemini(allContent, url);
+    } catch (error) {
+      this.logAndBroadcast(`Instagram visual parsing error: ${error.message}`, 'error');
+      if (browser) {
+        await browser.close();
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Analyze Instagram content (bio + individual posts) with Gemini Vision
+   */
+  private async analyzeInstagramContentWithGemini(
+    content: any[],
+    url: string,
+  ): Promise<ParsedKaraokeData> {
+    try {
+      this.logAndBroadcast(
+        `Analyzing ${content.length} pieces of Instagram content with Gemini...`,
+        'info',
+      );
+
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash-exp',
+        generationConfig: {
+          temperature: 0.1,
+          topP: 0.8,
+          topK: 40,
+          maxOutputTokens: 8192,
+        },
+      });
+
+      // Build comprehensive prompt with all content
+      const bioContent = content.find((c) => c.type === 'profile_bio');
+      const postContents = content.filter((c) => c.type === 'individual_post');
+
+      let textContent = '';
+      if (bioContent) {
+        textContent += `PROFILE BIO: ${bioContent.text}\n\n`;
+      }
+
+      postContents.forEach((post, index) => {
+        textContent += `POST ${index + 1} CONTENT: ${post.text}\n`;
+        if (post.postDate) {
+          textContent += `POST DATE: ${post.postDate}\n`;
+        }
+        textContent += `\n`;
+      });
+
+      const prompt = `Analyze this Instagram DJ profile and extract ALL karaoke shows with COMPLETE venue addresses and EXACT show times.
+
+🎯 CRITICAL FOCUS: This is a professional DJ's Instagram profile containing a weekly karaoke schedule. You have access to:
+1. Profile bio/description with weekly schedule summary (NOW FULLY EXPANDED - no truncation)
+2. Individual post images and descriptions with detailed venue information
+
+PROFILE: ${url}
+DJ HANDLE: djmax614
+
+TEXT CONTENT EXTRACTED:
+${textContent}
+
+🚨 CRITICAL REQUIREMENTS - READ CAREFULLY:
+
+🎤 DJ vs VENDOR DISTINCTION - MANDATORY:
+- VENDOR: Should be the DJ service/business name (like "Max Denney Karaoke" or "djmax614 Entertainment")
+- DJ: Should be the person hosting (look for "Hosted by @djmax614" or similar)
+- NEVER use the same name for both vendor and DJ
+- If you see "Hosted by @djmax614", the DJ name should be "djmax614"
+
+� SUNDAY SHOW - CRITICAL:
+- Look specifically for "KARAOKE IN THE LOUNGE SUNDAYS 6-9 PM NORTH HIGH DUBLIN"
+- This should be extracted as a separate show for "North High Dublin" venue
+- Time: 6 PM - 9 PM on Sunday
+- Look for this in BOTH the profile bio AND the first image
+
+🗓️ EXPECTED SHOWS (extract ALL of these):
+Based on typical schedule pattern, you should find:
+1. Wednesday @ Kelley's Pub and Patio (7PM-11PM)
+2. Thursday @ The Crescent Lounge (8PM-12AM) 
+3. Friday @ Oneilly's Sports Pub (9PM-late)
+4. Saturday @ The Crescent Lounge (8PM-12AM)
+5. Sunday @ North High Dublin (6PM-9PM) ← MAKE SURE TO FIND THIS ONE
+
+🎤 VENUE MATCHING:
+Based on the bio and posts, extract shows for these SPECIFIC venues:
+- Kelley's Pub and Patio (Wednesday)
+- The Crescent Lounge (Thursday + Saturday) 
+- Oneilly's Sports Pub (Friday)
+- North High Dublin (Sunday) - THIS IS A SEPARATE VENUE from The Crescent Lounge
+- Any other venues mentioned
+
+🚨 CRITICAL VENUE DISTINCTION:
+- "North High Dublin" is a DIFFERENT venue than "The Crescent Lounge"
+- If you see "@northighdublin" or "NORTH HIGH DUBLIN" - this is a separate venue
+- Sunday show is at "North High Dublin", NOT "The Crescent Lounge"
+
+📍 ADDRESS EXTRACTION - MANDATORY:
+- Look for COMPLETE addresses in the post descriptions
+- Extract street addresses, city, state, ZIP codes
+- Common patterns: "123 Main St, Columbus, OH 43215"
+- If you see venue names like "Kelley's Pub" or "Oneilly's Sports Pub", find their addresses in the posts
+- NEVER submit a venue without attempting to find its address
+
+🕘 TIME EXTRACTION - MANDATORY:
+- Look for EXACT times mentioned in the bio or posts
+- Pay special attention to the bio text which likely contains the schedule
+- If bio says "FRI @oneilyssportspub 9PM" then Friday at Oneilly's is 9 PM, NOT 8 PM
+- If bio says "SUN @northighdublin 6PM-9PM" then Sunday is 6 PM - 9 PM
+- Convert times to both formats: "9 pm" and "21:00"
+- Look for patterns like "7PM-11PM", "8PM-12AM", "9PM-2AM", "6PM-9PM"
+
+🗓️ DAY EXTRACTION:
+- Extract the exact day of week for each venue
+- Bio typically contains format like "WED @venue1 7PM" "THU @venue2 8PM" "SUN @northighdublin 6PM"
+- Create separate show entries for each day+venue combination
+- MUST include Sunday show at North High Dublin
+
+🌍 COORDINATES - REQUIRED:
+For every venue, provide precise lat/lng coordinates:
+- Use venue name + complete address for exact location
+- Example: "North High Dublin" in Dublin, OH → lat: 40.098919, lng: -83.118568
+
+🚨 ADDRESS COMPONENT SEPARATION - CRITICAL:
+NEVER MIX COMPONENTS:
+✅ CORRECT:
+address: "440 West Henderson Road" (street only)
+city: "Columbus" (city only)  
+state: "OH" (state only)
+zip: "43214" (zip only)
+
+❌ WRONG:
+address: "440 West Henderson Road Columbus, OH 43214" (mixed components)
+
+Return ONLY valid JSON:
+{
+  "vendor": {
+    "name": "DJ Service/Business Name (NOT same as DJ name)",
+    "website": "${url}",
+    "description": "Profile bio text",
+    "confidence": 0.9
+  },
+  "djs": [
+    {
+      "name": "djmax614 (from 'Hosted by' text)",
+      "confidence": 0.9,
+      "context": "Instagram karaoke host"
+    }
+  ],
+  "shows": [
+    {
+      "venue": "Complete Venue Name",
+      "address": "COMPLETE street address (no city/state/zip)",
+      "city": "City name only",
+      "state": "2-letter state code only",
+      "zip": "ZIP code only",
+      "lat": "REQUIRED precise latitude",
+      "lng": "REQUIRED precise longitude", 
+      "venuePhone": "Phone if found in posts",
+      "venueWebsite": "Website if found",
+      "time": "EXACT time from bio/posts like '6 pm' or '9 pm'",
+      "startTime": "24-hour format like '18:00' or '21:00'",
+      "endTime": "End time or 'close'",
+      "day": "exact_day_of_week",
+      "djName": "djmax614 (from 'Hosted by' text)",
+      "description": "Show details",
+      "confidence": 0.9
+    }
+  ]
+}`;
+
+      // Prepare image parts from all content
+      const imageParts = content.map((item) => ({
+        inlineData: {
+          data: item.screenshot,
+          mimeType: 'image/jpeg',
+        },
+      }));
+
+      this.logAndBroadcast(
+        `Making Gemini Vision API request with ${imageParts.length} images and extracted text`,
+        'info',
+      );
+
+      const result = (await Promise.race([
+        model.generateContent([prompt, ...imageParts]),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Gemini Vision API timeout after 120 seconds')),
+            120000,
+          ),
+        ),
+      ])) as any;
+
+      const response = await result.response;
+      const text = response.text();
+
+      this.logAndBroadcast('Gemini Vision response received for Instagram content', 'success');
+      this.logAndBroadcast(`Response length: ${text.length} characters`, 'info');
+
+      // Parse and return the result using existing JSON parsing logic
+      const cleanJsonString = this.cleanGeminiResponse(text);
+      let parsedData;
+
+      try {
+        parsedData = JSON.parse(cleanJsonString);
+        this.logAndBroadcast('✅ Instagram content JSON parsing successful', 'success');
+      } catch (jsonError) {
+        this.logAndBroadcast(
+          `❌ Instagram content JSON parsing failed: ${jsonError.message}`,
+          'error',
+        );
+
+        // Try emergency extraction
+        const emergencyData = this.extractPartialDataFromMalformedJson(text, url);
+        if (emergencyData) {
+          this.logAndBroadcast('🚨 Using emergency extraction for Instagram content', 'warning');
+          parsedData = emergencyData;
+        } else {
+          throw new Error(`Instagram content JSON parsing failed: ${jsonError.message}`);
+        }
+      }
+
+      // Ensure required structure
+      const finalData: ParsedKaraokeData = {
+        vendor: parsedData.vendor || this.generateVendorFromUrl(url),
+        djs: Array.isArray(parsedData.djs) ? parsedData.djs : [],
+        shows: Array.isArray(parsedData.shows) ? this.normalizeShowTimes(parsedData.shows) : [],
+        rawData: {
+          url,
+          title: 'Instagram Individual Posts Analysis',
+          content: textContent.substring(0, 1000),
+          parsedAt: new Date(),
+        },
+      };
+
+      this.logAndBroadcast(
+        `Instagram analysis complete: ${finalData.shows.length} shows, ${finalData.djs.length} DJs`,
+        'success',
+      );
+
+      return finalData;
+    } catch (error) {
+      this.logAndBroadcast(`Error analyzing Instagram content: ${error.message}`, 'error');
+      throw error;
     }
   }
 

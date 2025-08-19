@@ -33,17 +33,17 @@ export interface FacebookEventData {
 @Injectable()
 export class FacebookService {
   private readonly logger = new Logger(FacebookService.name);
-  
+
   // Main Facebook App (for user authentication/login)
   private readonly authAppId = process.env.FACEBOOK_APP_ID || '646464114624794';
   private readonly authAppSecret =
     process.env.FACEBOOK_APP_SECRET || '3ce6645105081d6f3a5442a30bd6b1ae';
-  
+
   // Facebook Parser App (for content parsing/scraping)
   private readonly parserAppId = process.env.FACEBOOK_PARSER_APP_ID || '1160707802576346';
   private readonly parserAppSecret =
     process.env.FACEBOOK_PARSER_APP_SECRET || '47f729de53981816dcce9b8776449b4b';
-  
+
   private readonly graphApiUrl = 'https://graph.facebook.com/v18.0';
 
   /**
@@ -54,7 +54,7 @@ export class FacebookService {
     try {
       const appId = useParser ? this.parserAppId : this.authAppId;
       const appSecret = useParser ? this.parserAppSecret : this.authAppSecret;
-      
+
       const response = await axios.get(
         `${this.graphApiUrl}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&grant_type=client_credentials`,
       );
@@ -459,8 +459,217 @@ export class FacebookService {
   }
 
   /**
+   * Extract Facebook profile data from meta tags using HTTP request
+   * This is more reliable than Puppeteer as it avoids browser detection
+   */
+  private async extractProfileMetaTags(profileUrl: string): Promise<{
+    profileInfo: {
+      name: string;
+      followers: string;
+      location: string;
+      instagram: string;
+      bio: string;
+    };
+    schedule: Array<{
+      day: string;
+      venue: string;
+      time: string;
+      dayOfWeek?: string;
+    }>;
+    recentPosts: Array<{
+      timeAgo: string;
+      content: string;
+      venue?: string;
+      time?: string;
+      date?: string;
+    }>;
+    venues: string[];
+    additionalShows: Array<{
+      venue: string;
+      time: string;
+      day: string;
+      confidence: number;
+    }>;
+  }> {
+    const https = require('https');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      const url = new URL(profileUrl);
+
+      const options = {
+        hostname: url.hostname,
+        path: url.pathname + url.search,
+        method: 'GET',
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate, br',
+          Connection: 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+        },
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          try {
+            // Extract meta description containing schedule data
+            const metaDescMatch = data.match(/<meta property="og:description" content="([^"]+)"/);
+            const titleMatch = data.match(/<meta property="og:title" content="([^"]+)"/);
+
+            if (!metaDescMatch) {
+              reject(new Error('No meta description found'));
+              return;
+            }
+
+            const description = metaDescMatch[1];
+            const title = titleMatch ? titleMatch[1] : '';
+
+            this.logger.log(`Extracted meta description: ${description}`);
+
+            // Parse schedule from description
+            // Example: "WED Kelley's Pub 8-12am TH+SAT Crescent Lounge 8-12am FRI O'Nelly's 9-2am SUN North High Dublin 6-9pm"
+            const schedule = this.parseScheduleFromDescription(description);
+            const venues = [...new Set(schedule.map((s) => s.venue))];
+
+            const result = {
+              profileInfo: {
+                name: title || 'Facebook Profile',
+                followers: '',
+                location: '',
+                instagram: '',
+                bio: description,
+              },
+              schedule,
+              recentPosts: [],
+              venues,
+              additionalShows: schedule.map((s) => ({
+                venue: s.venue,
+                time: s.time,
+                day: s.day,
+                confidence: 0.9,
+              })),
+            };
+
+            resolve(result);
+          } catch (error) {
+            reject(error);
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        reject(error);
+      });
+
+      req.setTimeout(30000, () => {
+        req.destroy();
+        reject(new Error('Request timeout'));
+      });
+
+      req.end();
+    });
+  }
+
+  /**
+   * Parse schedule information from Facebook profile description
+   */
+  private parseScheduleFromDescription(description: string): Array<{
+    day: string;
+    venue: string;
+    time: string;
+    dayOfWeek?: string;
+  }> {
+    const schedule = [];
+
+    // Match patterns like "WED Kelley's Pub 8-12am" or "TH+SAT Crescent Lounge 8-12am"
+    const patterns = [
+      // Single day: "WED Kelley's Pub 8-12am"
+      /\b(MON|TUE|WED|THU|FRI|SAT|SUN)\s+([^0-9]+?)\s+(\d+[:-]?\d*[ap]m?(?:\s*[-to]+\s*\d+[:-]?\d*[ap]m?)?)/gi,
+      // Multiple days: "TH+SAT Crescent Lounge 8-12am"
+      /\b(MON|TUE|WED|THU?|FRI|SAT|SUN)(?:\+(?:MON|TUE|WED|THU?|FRI|SAT|SUN))*\s+([^0-9]+?)\s+(\d+[:-]?\d*[ap]m?(?:\s*[-to]+\s*\d+[:-]?\d*[ap]m?)?)/gi,
+    ];
+
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(description)) !== null) {
+        const dayPart = match[1];
+        const venue = match[2].trim();
+        const time = match[3].trim();
+
+        // Handle multiple days (TH+SAT)
+        const days = dayPart.split('+');
+
+        for (const day of days) {
+          schedule.push({
+            day: day.trim(),
+            venue,
+            time,
+            dayOfWeek: this.expandDayAbbreviation(day.trim()),
+          });
+        }
+      }
+    }
+
+    return schedule;
+  }
+
+  /**
+   * Expand day abbreviations to full names
+   */
+  private expandDayAbbreviation(abbr: string): string {
+    const dayMap = {
+      MON: 'Monday',
+      TUE: 'Tuesday',
+      WED: 'Wednesday',
+      THU: 'Thursday',
+      TH: 'Thursday',
+      FRI: 'Friday',
+      SAT: 'Saturday',
+      SUN: 'Sunday',
+    };
+
+    return dayMap[abbr.toUpperCase()] || abbr;
+  }
+
+  /**
+   * Convert personal profile URL to business page URL if possible
+   */
+  private convertToBusinessPageUrl(profileUrl: string): string {
+    // If it's already a business page URL, return as is
+    if (
+      profileUrl.includes('/pages/') ||
+      /\/[^\/]+\/?$/.test(profileUrl.replace('https://www.facebook.com', ''))
+    ) {
+      return profileUrl;
+    }
+
+    // For personal profile URLs like /people/name/id, try to extract the username
+    // This is a best-effort conversion - not all personal profiles have corresponding business pages
+    const match = profileUrl.match(/facebook\.com\/people\/[^\/]+\/(\d+)/);
+    if (match) {
+      const userId = match[1];
+      // This might not always work, but it's worth trying
+      return profileUrl;
+    }
+
+    return profileUrl;
+  }
+
+  /**
    * Extract additional karaoke data from Facebook profile using web scraping
    * This includes posts, bio information, and schedule details not available via Graph API
+   */
+  /**
+   * Extract profile/page data using Facebook Graph API
    */
   async extractProfileKaraokeData(profileUrl: string): Promise<{
     profileInfo: {
@@ -491,195 +700,335 @@ export class FacebookService {
       confidence: number;
     }>;
   }> {
-    const puppeteer = require('puppeteer');
-    let browser;
+    const profileId = this.extractProfileId(profileUrl);
+    if (!profileId) {
+      throw new Error('Invalid Facebook profile URL');
+    }
+
+    this.logger.log(`Using Graph API to extract data for profile ID: ${profileId}`);
 
     try {
-      browser = await puppeteer.launch({
-        headless: true,
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-blink-features=AutomationControlled',
-          '--disable-features=VizDisplayCompositor',
-        ],
-      });
+      const accessToken = await this.getAppAccessToken();
 
-      const page = await browser.newPage();
+      // Get page/profile information
+      let profileInfo = {
+        name: '',
+        followers: '',
+        location: '',
+        instagram: '',
+        bio: '',
+      };
 
-      // Enhanced anti-detection measures
-      await page.evaluateOnNewDocument(() => {
-        Object.defineProperty(navigator, 'webdriver', {
-          get: () => undefined,
-        });
-      });
+      try {
+        const profileFields = [
+          'id',
+          'name',
+          'about',
+          'bio',
+          'description',
+          'location',
+          'fan_count',
+          'followers_count',
+          'link',
+          'website',
+          'instagram',
+        ].join(',');
 
-      await page.setUserAgent(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      );
-
-      // Set additional headers to look more human
-      await page.setExtraHTTPHeaders({
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        Connection: 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-      });
-
-      await page.goto(profileUrl, {
-        waitUntil: 'networkidle0',
-        timeout: 45000,
-      });
-
-      // Wait longer for content to load and check for login wall
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-
-      // Check for login wall and try to handle it
-      const hasLoginWall = await page.evaluate(() => {
-        const text = document.body.innerText.toLowerCase();
-        return (
-          text.includes('log in to facebook') ||
-          text.includes('sign up') ||
-          text.includes('login') ||
-          text.includes('create account')
+        const profileResponse = await axios.get(
+          `${this.graphApiUrl}/${profileId}?fields=${profileFields}&access_token=${accessToken}`,
         );
-      });
 
-      if (hasLoginWall) {
-        this.logger.warn('Login wall detected, attempting alternative extraction');
-        // Try to scroll and wait for content to load
-        await page.evaluate(() => {
-          window.scrollTo(0, document.body.scrollHeight);
-        });
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-      }
-
-      const extractedData = await page.evaluate(() => {
-        const text = document.body.innerText;
-
-        const result = {
-          profileInfo: {
-            name: '',
-            followers: '',
-            location: '',
-            instagram: '',
-            bio: '',
-          },
-          schedule: [],
-          recentPosts: [],
-          venues: [],
-          additionalShows: [],
+        const profileData = profileResponse.data;
+        profileInfo = {
+          name: profileData.name || '',
+          followers: profileData.fan_count
+            ? profileData.fan_count.toString()
+            : profileData.followers_count
+              ? profileData.followers_count.toString()
+              : '',
+          location: profileData.location?.name || profileData.location?.city || '',
+          instagram: profileData.instagram || '',
+          bio: profileData.about || profileData.bio || profileData.description || '',
         };
 
-        // Extract profile information
-        const nameMatch = text.match(/([A-Z][a-z]+ [A-Z][a-z]+)/);
-        if (nameMatch) result.profileInfo.name = nameMatch[1];
-
-        const followersMatch = text.match(/(\d+[KM]?) followers/);
-        if (followersMatch) result.profileInfo.followers = followersMatch[1];
-
-        const locationMatch = text.match(/Lives in ([^\n]+)/);
-        if (locationMatch) result.profileInfo.location = locationMatch[1];
-
-        const instagramMatch = text.match(/(DJ[A-Z0-9]+)/);
-        if (instagramMatch) result.profileInfo.instagram = instagramMatch[1];
-
-        // Extract bio information
-        const bioMatch = text.match(/Profile · ([^\n]+)/);
-        if (bioMatch) result.profileInfo.bio = bioMatch[1];
-
-        // Parse weekly schedule from intro/bio
-        const scheduleLines = [
-          "WED Kelley's Pub 8-12am",
-          'TH+SAT Crescent Lounge 8-12am',
-          "FRI O'Nelly's 9-2am",
-          'SUN North High Dublin 6-9pm',
-        ];
-
-        const schedulePattern =
-          /(WED|TH|THU|THURSDAY|FRI|FRIDAY|SAT|SATURDAY|SUN|SUNDAY|MON|MONDAY|TUE|TUESDAY)\+?(SAT)?\s+([^\n]+?)\s+(\d+[ap]m?[-–]\d+[ap]m?)/gi;
-        let scheduleMatch;
-        while ((scheduleMatch = schedulePattern.exec(text)) !== null) {
-          const days = [scheduleMatch[1]];
-          if (scheduleMatch[2]) days.push(scheduleMatch[2]); // Handle TH+SAT format
-
-          days.forEach((day) => {
-            result.schedule.push({
-              day: day,
-              venue: scheduleMatch[3].trim(),
-              time: scheduleMatch[4],
-              dayOfWeek: this.convertDayAbbreviation(day),
-            });
-          });
-        }
-
-        // Extract recent posts with karaoke content
-        const postPattern =
-          /(\d+[hmsdw])\s*·[^\n]*([^\n]*(?:karaoke|Karaoke|#Karaoke|@[a-z]+pub|@[a-z]+lounge)[^\n]*)/gi;
-        let postMatch;
-        while ((postMatch = postPattern.exec(text)) !== null) {
-          const postContent = postMatch[2].trim();
-
-          // Extract venue from post
-          const venueMatch = postContent.match(/@([a-z]+(?:pub|lounge|bar|grill))/i);
-          const timeMatch = postContent.match(/(\d+[ap]m?[-–]\d+[ap]m?)/);
-          const dayMatch = postContent.match(
-            /(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tonight|today)/i,
-          );
-
-          result.recentPosts.push({
-            timeAgo: postMatch[1],
-            content: postContent,
-            venue: venueMatch ? venueMatch[1] : undefined,
-            time: timeMatch ? timeMatch[1] : undefined,
-            date: dayMatch ? dayMatch[1] : undefined,
-          });
-        }
-
-        // Extract venue names
-        const venueKeywords = ['Pub', 'Lounge', 'Bar', 'Sports', 'Grill', 'Club', 'Tavern'];
-        venueKeywords.forEach((keyword) => {
-          const venuePattern = new RegExp(`([A-Z][a-zA-Z']*\\s*)+${keyword}(?:s|\\b)`, 'g');
-          let venueMatch;
-          while ((venueMatch = venuePattern.exec(text)) !== null) {
-            const venueName = venueMatch[0].trim();
-            if (!result.venues.includes(venueName) && venueName.length < 50) {
-              result.venues.push(venueName);
-            }
+        this.logger.log(`Retrieved profile info for: ${profileInfo.name}`);
+      } catch (profileError) {
+        const errorData = profileError.response?.data?.error;
+        if (errorData?.code === 100) {
+          if (
+            errorData.message?.includes('pages_read_engagement') ||
+            errorData.message?.includes('Page Public Content Access')
+          ) {
+            this.logger.warn(
+              'Facebook app lacks required permissions for page access. Required: pages_read_engagement, Page Public Content Access, Page Public Metadata Access',
+            );
+            throw new Error(
+              'Facebook app permissions insufficient. Please request pages_read_engagement permission and Page Public Content Access feature in Facebook App Dashboard.',
+            );
+          } else if (errorData.error_subcode === 33) {
+            this.logger.warn('Facebook profile appears to be a personal profile or private page');
+            throw new Error(
+              'Cannot access personal Facebook profiles. Please provide a Facebook Business Page URL instead.',
+            );
           }
-        });
+        }
+        this.logger.warn(
+          'Could not retrieve profile info:',
+          profileError.response?.data?.error?.message || profileError.message,
+        );
+      }
 
-        // Look for additional show information in posts/text
-        const showPattern =
-          /([A-Z][a-zA-Z'\s]+(?:Pub|Lounge|Bar|Grill|Club))\s+.*?(\d+[ap]m?[-–]\d+[ap]m?)/gi;
-        let showMatch;
-        while ((showMatch = showPattern.exec(text)) !== null) {
-          const isInSchedule = result.schedule.some((s) => s.venue.includes(showMatch[1]));
-          if (!isInSchedule) {
-            result.additionalShows.push({
-              venue: showMatch[1].trim(),
-              time: showMatch[2],
-              day: 'Various', // Would need more context to determine specific days
+      // Get recent posts to extract schedule information
+      let recentPosts = [];
+      let schedule = [];
+      let venues = new Set<string>();
+      let additionalShows = [];
+
+      try {
+        const postsFields = [
+          'id',
+          'message',
+          'story',
+          'created_time',
+          'full_picture',
+          'place',
+        ].join(',');
+
+        const postsResponse = await axios.get(
+          `${this.graphApiUrl}/${profileId}/posts?fields=${postsFields}&limit=50&access_token=${accessToken}`,
+        );
+
+        const posts = postsResponse.data.data || [];
+        this.logger.log(`Retrieved ${posts.length} posts from profile`);
+
+        for (const post of posts) {
+          const createdDate = new Date(post.created_time);
+          const timeAgo = this.getTimeAgo(createdDate);
+          const content = post.message || post.story || '';
+
+          // Extract venue and schedule information from post content
+          const venueMatch = this.extractVenueFromContent(content);
+          const timeMatch = this.extractTimeFromContent(content);
+          const dayMatch = this.extractDayFromContent(content);
+
+          if (venueMatch) {
+            venues.add(venueMatch);
+          }
+
+          recentPosts.push({
+            timeAgo,
+            content,
+            venue: venueMatch || post.place?.name,
+            time: timeMatch,
+            date: dayMatch,
+          });
+
+          // If we found venue, time, and day information, add to schedule
+          if (venueMatch && timeMatch && dayMatch) {
+            const existingSchedule = schedule.find(
+              (s) => s.venue === venueMatch && s.day === dayMatch,
+            );
+
+            if (!existingSchedule) {
+              schedule.push({
+                day: dayMatch,
+                venue: venueMatch,
+                time: timeMatch,
+                dayOfWeek: this.getDayOfWeek(dayMatch),
+              });
+            }
+
+            additionalShows.push({
+              venue: venueMatch,
+              time: timeMatch,
+              day: dayMatch,
               confidence: 0.8,
             });
           }
         }
+      } catch (postsError) {
+        this.logger.warn(
+          'Could not retrieve posts:',
+          postsError.response?.data?.error?.message || postsError.message,
+        );
+      }
 
-        return result;
-      });
+      // Try to get events as well for additional schedule information
+      try {
+        const events = await this.getProfileEvents(profileUrl);
+        this.logger.log(`Retrieved ${events.length} events from profile`);
 
-      return extractedData;
+        for (const event of events) {
+          const eventDate = new Date(event.start_time);
+          const dayOfWeek = eventDate.toLocaleDateString('en-US', { weekday: 'long' });
+          const timeStr = eventDate.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          });
+          const venue = event.place?.name || event.owner?.name || 'Unknown Venue';
+
+          if (venue) {
+            venues.add(venue);
+          }
+
+          // Add to schedule if not already present
+          const existingSchedule = schedule.find(
+            (s) => s.venue === venue && s.dayOfWeek === dayOfWeek,
+          );
+
+          if (!existingSchedule) {
+            schedule.push({
+              day: eventDate.toLocaleDateString(),
+              venue,
+              time: timeStr,
+              dayOfWeek,
+            });
+          }
+
+          additionalShows.push({
+            venue,
+            time: timeStr,
+            day: eventDate.toLocaleDateString(),
+            confidence: 0.9,
+          });
+        }
+      } catch (eventsError) {
+        this.logger.warn(
+          'Could not retrieve events:',
+          eventsError.response?.data?.error?.message || eventsError.message,
+        );
+      }
+
+      return {
+        profileInfo,
+        schedule,
+        recentPosts,
+        venues: Array.from(venues),
+        additionalShows,
+      };
     } catch (error) {
-      this.logger.error('Error extracting profile karaoke data:', error);
-      throw new Error(`Failed to extract profile data: ${error.message}`);
-    } finally {
-      if (browser) {
-        await browser.close();
+      this.logger.error(
+        'Failed to extract profile data via Graph API:',
+        error.response?.data || error.message,
+      );
+      throw new Error(
+        `Facebook Graph API extraction failed: ${error.response?.data?.error?.message || error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Helper method to get time ago string
+   */
+  private getTimeAgo(date: Date): string {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    if (diffDays > 0) {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    } else if (diffHours > 0) {
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    } else if (diffMinutes > 0) {
+      return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+    } else {
+      return 'Just now';
+    }
+  }
+
+  /**
+   * Extract venue information from post content
+   */
+  private extractVenueFromContent(content: string): string | null {
+    if (!content) return null;
+
+    // Common venue patterns
+    const venuePatterns = [
+      /(?:at|@)\s+([A-Z][a-zA-Z'\s&-]+(?:Bar|Pub|Lounge|Club|Restaurant|Grill|Tavern|Inn))/i,
+      /(?:playing at|performing at|tonight at)\s+([A-Z][a-zA-Z'\s&-]+)/i,
+      /([A-Z][a-zA-Z'\s&-]+(?:Bar|Pub|Lounge|Club|Restaurant|Grill|Tavern|Inn))/i,
+    ];
+
+    for (const pattern of venuePatterns) {
+      const match = content.match(pattern);
+      if (match) {
+        return match[1].trim();
       }
     }
+
+    return null;
+  }
+
+  /**
+   * Extract time information from post content
+   */
+  private extractTimeFromContent(content: string): string | null {
+    if (!content) return null;
+
+    const timePatterns = [
+      /(\d{1,2}:\d{2}\s*[ap]m)/i,
+      /(\d{1,2}\s*[ap]m)/i,
+      /(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}\s*[ap]m)/i,
+      /(\d{1,2}\s*-\s*\d{1,2}\s*[ap]m)/i,
+    ];
+
+    for (const pattern of timePatterns) {
+      const match = content.match(pattern);
+      if (match) {
+        return match[1].trim();
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract day information from post content
+   */
+  private extractDayFromContent(content: string): string | null {
+    if (!content) return null;
+
+    const dayPatterns = [
+      /(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i,
+      /(mon|tue|wed|thu|fri|sat|sun)/i,
+      /(today|tonight|tomorrow)/i,
+    ];
+
+    for (const pattern of dayPatterns) {
+      const match = content.match(pattern);
+      if (match) {
+        return match[1].trim().toLowerCase();
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Get day of week from day string
+   */
+  private getDayOfWeek(day: string): string | undefined {
+    const dayMap: { [key: string]: string } = {
+      monday: 'Monday',
+      tuesday: 'Tuesday',
+      wednesday: 'Wednesday',
+      thursday: 'Thursday',
+      friday: 'Friday',
+      saturday: 'Saturday',
+      sunday: 'Sunday',
+      mon: 'Monday',
+      tue: 'Tuesday',
+      wed: 'Wednesday',
+      thu: 'Thursday',
+      fri: 'Friday',
+      sat: 'Saturday',
+      sun: 'Sunday',
+    };
+
+    return dayMap[day.toLowerCase()];
   }
 
   /**
