@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Vendor } from '../vendor/vendor.entity';
 import { DJ } from '../dj/dj.entity';
 import { Show } from '../show/show.entity';
+import { Vendor } from '../vendor/vendor.entity';
 import { UploadDataDto } from './dto/upload.dto';
 
 @Injectable()
@@ -29,19 +29,18 @@ export class UploadService {
       const shows = await this.showRepository.find({ relations: ['dj', 'dj.vendor'] });
 
       // Transform entities to DTOs
-      const vendorDtos = vendors.map(vendor => ({
+      const vendorDtos = vendors.map((vendor) => ({
         name: vendor.name,
-        owner: vendor.owner || '',
         website: vendor.website || '',
         description: vendor.description,
       }));
 
-      const djDtos = djs.map(dj => ({
+      const djDtos = djs.map((dj) => ({
         name: dj.name,
         vendorName: dj.vendor?.name || '',
       }));
 
-      const showDtos = shows.map(show => ({
+      const showDtos = shows.map((show) => ({
         venue: show.venue,
         address: show.address,
         city: show.city,
@@ -59,7 +58,9 @@ export class UploadService {
         lng: show.lng?.toString(),
       }));
 
-      this.logger.log(`Fetched ${vendorDtos.length} vendors, ${djDtos.length} DJs, ${showDtos.length} shows`);
+      this.logger.log(
+        `Fetched ${vendorDtos.length} vendors, ${djDtos.length} DJs, ${showDtos.length} shows`,
+      );
 
       return {
         vendors: vendorDtos,

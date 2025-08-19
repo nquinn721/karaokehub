@@ -5,7 +5,6 @@ import { Vendor } from './vendor.entity';
 
 export interface CreateVendorDto {
   name: string;
-  owner: string;
   website?: string;
   instagram?: string;
   facebook?: string;
@@ -13,7 +12,6 @@ export interface CreateVendorDto {
 
 export interface UpdateVendorDto {
   name?: string;
-  owner?: string;
   website?: string;
   instagram?: string;
   facebook?: string;
@@ -35,14 +33,14 @@ export class VendorService {
   async findAll(): Promise<Vendor[]> {
     return await this.vendorRepository.find({
       where: { isActive: true },
-      relations: ['kjs', 'djs', 'shows'],
+      relations: ['djs', 'shows'],
     });
   }
 
   async findOne(id: string): Promise<Vendor> {
     return await this.vendorRepository.findOne({
       where: { id, isActive: true },
-      relations: ['kjs', 'djs', 'shows'],
+      relations: ['djs', 'shows'],
     });
   }
 

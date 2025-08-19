@@ -18,7 +18,7 @@ export class Vendor {
   @Column()
   name: string;
 
-  @Column()
+  @Column({ nullable: true })
   owner: string;
 
   @Column({ nullable: true })

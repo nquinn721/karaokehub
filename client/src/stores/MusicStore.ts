@@ -54,49 +54,49 @@ export class MusicStore {
   isLoadingSuggestions = false;
   showSuggestions = false;
 
-  // Featured categories - now using dynamic Spotify playlists
+  // Featured categories - using simple search queries
   featuredCategories = [
     {
       id: 'karaoke-classics',
       title: 'Karaoke Classics',
       image: '/images/music/karaoke-classics.png',
-      spotifyQuery: 'karaoke classics hits most popular sing along',
-      description: 'Top 100 karaoke classics that everyone loves to sing',
+      spotifyQuery: 'karaoke classics',
+      description: 'Top karaoke classics that everyone loves to sing',
     },
     {
       id: 'best-of-80s',
       title: 'Best of 80s',
       image: '/images/music/best-of-80s.png',
-      spotifyQuery: '80s hits decade classics top songs 1980s',
-      description: 'Top 100 best songs from the 1980s decade',
+      spotifyQuery: '80s hits',
+      description: 'Best songs from the 1980s decade',
     },
     {
       id: 'best-of-90s',
       title: 'Best of 90s',
       image: '/images/music/best-of-90s.png',
-      spotifyQuery: '90s hits decade classics top songs 1990s',
-      description: 'Top 100 best songs from the 1990s decade',
+      spotifyQuery: '90s hits',
+      description: 'Best songs from the 1990s decade',
     },
     {
       id: 'rock-hits',
       title: 'Rock Hits',
       image: '/images/music/rock-hits.png',
-      spotifyQuery: 'rock hits classics greatest rock songs all time',
-      description: 'Top 100 greatest rock hits of all time',
+      spotifyQuery: 'rock classics',
+      description: 'Greatest rock hits of all time',
     },
     {
       id: 'pop-hits',
       title: 'Pop Hits',
       image: '/images/music/pop-hits.png',
-      spotifyQuery: 'pop hits top 40 mainstream popular songs',
-      description: 'Top 100 pop hits and chart toppers',
+      spotifyQuery: 'pop hits',
+      description: 'Top pop hits and chart toppers',
     },
     {
       id: 'country-favorites',
       title: 'Country Favorites',
       image: '/images/music/country-favorites.png',
-      spotifyQuery: 'country hits favorites classics top country songs',
-      description: 'Top 100 country favorites and classics',
+      spotifyQuery: 'country classics',
+      description: 'Country favorites and classics',
     },
   ];
 
@@ -494,9 +494,9 @@ export class MusicStore {
         this.resetPagination();
       }
 
-      // Use Spotify query for dynamic playlist generation
-      const limit = loadMore ? 50 : 100; // Get more songs for initial load
-      const offset = loadMore ? this.currentPage * 50 : 0;
+      // Use simple search endpoint with the category's spotifyQuery
+      const limit = loadMore ? 20 : 50;
+      const offset = loadMore ? this.featuredSongs.length : 0;
 
       const apiUrl = `/music/search?q=${encodeURIComponent(category.spotifyQuery)}&limit=${limit}&offset=${offset}`;
       console.log('🌐 Making API request to:', apiUrl);

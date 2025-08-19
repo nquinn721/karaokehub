@@ -5,6 +5,7 @@ import * as puppeteer from 'puppeteer';
 import { Repository } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
 import { GeocodingService } from '../geocoding/geocoding.service';
+import { FacebookService } from '../services/facebook.service';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
 import { KaraokeWebSocketGateway } from '../websocket/websocket.gateway';
@@ -79,6 +80,7 @@ export class KaraokeParserService {
     private showRepository: Repository<Show>,
     private geocodingService: GeocodingService,
     private webSocketGateway: KaraokeWebSocketGateway,
+    private facebookService: FacebookService,
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -396,158 +398,240 @@ export class KaraokeParserService {
   }
 
   /**
-   * Simplified Facebook parsing - handles all Facebook URLs with Puppeteer
+   * Facebook parsing using Graph API - handles all Facebook URLs through official API
    */
-  private async parseFacebookPage(url: string): Promise<ParsedKaraokeData> {
-    let browser;
-    let extractedData;
-    let retryCount = 0;
-    const maxRetries = 3;
+  private async parseFacebookPage(
+    url: string,
+    userAccessToken?: string,
+  ): Promise<ParsedKaraokeData> {
+    try {
+      this.logAndBroadcast(`Starting Facebook Graph API parsing for: ${url}`, 'info');
 
-    while (retryCount < maxRetries) {
-      try {
-        this.logAndBroadcast(
-          `Launching Puppeteer for Facebook parsing (attempt ${retryCount + 1}/${maxRetries})...`,
-          'info',
-        );
+      // Check if this is a Facebook group URL and we have user authentication
+      if (url.includes('/groups/') && userAccessToken) {
+        return await this.parseFacebookPage(url, userAccessToken);
+      }
 
-        const puppeteer = await import('puppeteer');
-        browser = await puppeteer.launch({
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
-            '--disable-web-security',
-            '--disable-features=VizDisplayCompositor',
-          ],
-        });
+      // Check if this is a Facebook event URL
+      if (this.facebookService.isFacebookEventUrl(url)) {
+        this.logAndBroadcast('Detected Facebook event URL, parsing with Graph API...', 'info');
 
-        const page = await browser.newPage();
-
-        // Set user agent to avoid bot detection
-        await page.setUserAgent(
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        );
-
-        // Add error handlers to detect navigation issues early
-        page.on('error', (error) => {
-          this.logAndBroadcast(`Page error detected: ${error.message}`, 'warning');
-        });
-
-        page.on('pageerror', (error) => {
-          this.logAndBroadcast(`Page script error: ${error.message}`, 'warning');
-        });
-
-        this.logAndBroadcast(`Navigating to Facebook URL: ${url}`, 'info');
-
-        // Use more aggressive timeout and retry navigation if needed
-        try {
-          await page.goto(url, {
-            waitUntil: 'domcontentloaded', // Less strict than networkidle0
-            timeout: 20000, // Reduced timeout for faster failure
-          });
-        } catch (navError) {
-          if (
-            navError.message.includes('detached') ||
-            navError.message.includes('Navigation timeout')
-          ) {
-            this.logAndBroadcast(`Navigation error: ${navError.message}, will retry...`, 'warning');
-            throw navError; // Let the retry logic handle this
-          }
-          throw navError;
-        }
-
-        // Wait a bit for content to load
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        this.logAndBroadcast('Extracting page content...', 'info');
-
-        // Get all text content from the page with error handling
-        const pageContent = await page.evaluate(() => {
-          try {
-            // Remove script and style elements
-            const scripts = document.querySelectorAll('script, style');
-            scripts.forEach((el) => el.remove());
-
-            return {
-              title: document.title,
-              content: document.body.innerText,
-              html: document.body.innerHTML,
-            };
-          } catch (error) {
-            return {
-              title: 'Facebook Page',
-              content: 'Error extracting content',
-              html: '<html>Error</html>',
-            };
-          }
-        });
-
-        this.logAndBroadcast(
-          `Extracted ${pageContent.content.length} characters of content`,
-          'info',
-        );
-
-        extractedData = {
-          title: pageContent.title,
-          content: pageContent.content,
-          html: pageContent.html,
-          url: url,
-        };
-
-        // If we got here, parsing was successful
-        break;
-      } catch (error) {
-        retryCount++;
-        this.logAndBroadcast(
-          `Facebook parsing attempt ${retryCount} failed: ${error.message}`,
-          'warning',
-        );
-
-        // Check if this is a retryable error
-        const isRetryableError =
-          error.message.includes('detached') ||
-          error.message.includes('Navigation timeout') ||
-          error.message.includes('Page crashed') ||
-          error.message.includes('Target closed') ||
-          error.message.includes('Protocol error');
-
-        if (!isRetryableError || retryCount >= maxRetries) {
+        // Extract event data using Graph API
+        const eventData = await this.facebookService.getEventData(url);
+        if (eventData) {
+          // Convert to karaoke data format
+          const karaokeData = this.facebookService.convertToKaraokeData(eventData, url);
           this.logAndBroadcast(
-            `Facebook parsing failed after ${retryCount} attempts: ${error.message}`,
-            'error',
+            `Facebook event parsing complete: ${karaokeData.shows.length} shows, ${karaokeData.djs.length} DJs`,
+            'success',
           );
-          throw error;
-        }
-
-        // Wait before retry
-        await new Promise((resolve) => setTimeout(resolve, 2000 * retryCount));
-
-        this.logAndBroadcast(`Retrying Facebook parsing in ${2 * retryCount} seconds...`, 'info');
-      } finally {
-        if (browser) {
-          try {
-            await browser.close();
-          } catch (closeError) {
-            this.logAndBroadcast(`Error closing browser: ${closeError.message}`, 'warning');
-          }
-          browser = null;
+          return karaokeData;
         }
       }
-    }
 
-    if (!extractedData) {
-      throw new Error('Failed to extract Facebook data after all retry attempts');
-    }
+      // For profile/page URLs, get profile events
+      this.logAndBroadcast('Detected Facebook profile/page URL, fetching events...', 'info');
+      const profileEvents = await this.facebookService.getProfileEvents(url);
+      if (profileEvents && profileEvents.length > 0) {
+        // Convert multiple events to combined karaoke data
+        let combinedData: ParsedKaraokeData = {
+          vendor: {
+            name: 'Facebook Page',
+            website: url,
+            description: 'Parsed from Facebook Graph API',
+            confidence: 0.8,
+          },
+          shows: [],
+          djs: [],
+          rawData: {
+            url: url,
+            title: 'Facebook Events',
+            content: `Found ${profileEvents.length} events`,
+            parsedAt: new Date(),
+          },
+        };
 
-    // Convert extracted data to ParsedKaraokeData using Gemini
-    this.logAndBroadcast('Converting Facebook data to karaoke format with Gemini...', 'info');
-    return await this.convertFacebookToKaraokeData(extractedData);
+        // Process each event and combine the results
+        for (const event of profileEvents) {
+          const eventKaraokeData = this.facebookService.convertToKaraokeData(event, url);
+          combinedData.shows.push(...eventKaraokeData.shows);
+          combinedData.djs.push(...eventKaraokeData.djs);
+        }
+
+        // Update vendor info if we have venue details
+        if (combinedData.shows.length > 0 && combinedData.shows[0].venue) {
+          combinedData.vendor.name = combinedData.shows[0].venue || 'Facebook Page';
+        }
+
+        this.logAndBroadcast(
+          `Facebook profile parsing complete: ${combinedData.shows.length} shows, ${combinedData.djs.length} DJs from ${profileEvents.length} events`,
+          'success',
+        );
+        return combinedData;
+      }
+
+      // If no events found, return empty structure
+      this.logAndBroadcast('No Facebook events found for this URL', 'warning');
+      return {
+        vendor: {
+          name: 'Facebook Page',
+          website: url,
+          description: 'No karaoke events found',
+          confidence: 0.3,
+        },
+        shows: [],
+        djs: [],
+        rawData: {
+          url: url,
+          title: 'Facebook Page',
+          content: 'No events found',
+          parsedAt: new Date(),
+        },
+      };
+    } catch (error) {
+      this.logAndBroadcast(`Facebook Graph API parsing failed: ${error.message}`, 'error');
+
+      // Return empty data structure on error
+      return {
+        vendor: {
+          name: 'Facebook Page',
+          website: url,
+          description: `Failed to parse Facebook page: ${error.message}`,
+          confidence: 0.1,
+        },
+        shows: [],
+        djs: [],
+        rawData: {
+          url: url,
+          title: 'Facebook Error',
+          content: `Failed to parse: ${error.message}`,
+          parsedAt: new Date(),
+        },
+      };
+    }
+  }
+
+  /**
+   * Parse Facebook Group using user authentication
+   * Requires user to be a member of the group and have granted permissions
+   */
+  private async parseFacebookGroup(
+    url: string,
+    userAccessToken: string,
+  ): Promise<ParsedKaraokeData> {
+    try {
+      this.logAndBroadcast(`Parsing Facebook Group with user authentication: ${url}`, 'info');
+
+      // Extract group ID from URL
+      const groupId = this.extractGroupIdFromUrl(url);
+      if (!groupId) {
+        throw new Error('Could not extract group ID from URL');
+      }
+
+      this.logAndBroadcast(`Extracted group ID: ${groupId}`, 'info');
+
+      // Get group events and posts
+      const [events, posts] = await Promise.all([
+        this.facebookService.getGroupEvents(groupId, userAccessToken),
+        this.facebookService.getGroupPosts(groupId, userAccessToken),
+      ]);
+
+      this.logAndBroadcast(
+        `Found ${events.length} events and ${posts.length} posts in group`,
+        'info',
+      );
+
+      // Filter for karaoke-related content
+      const karaokeEvents = events.filter(
+        (event) =>
+          event.name?.toLowerCase().includes('karaoke') ||
+          event.description?.toLowerCase().includes('karaoke'),
+      );
+
+      const karaokePosts = posts.filter((post) => post.message?.toLowerCase().includes('karaoke'));
+
+      this.logAndBroadcast(
+        `Found ${karaokeEvents.length} karaoke events and ${karaokePosts.length} karaoke posts`,
+        'info',
+      );
+
+      // Convert events to karaoke data format
+      let combinedData: ParsedKaraokeData = {
+        vendor: {
+          name: 'Facebook Group',
+          website: url,
+          description: 'Parsed from Facebook Group with user authentication',
+          confidence: 0.8,
+        },
+        shows: [],
+        djs: [],
+        rawData: {
+          url: url,
+          title: 'Facebook Group',
+          content: `Found ${karaokeEvents.length} karaoke events, ${karaokePosts.length} karaoke posts`,
+          parsedAt: new Date(),
+        },
+      };
+
+      // Process karaoke events
+      for (const event of karaokeEvents) {
+        const eventKaraokeData = this.facebookService.convertToKaraokeData(event, url);
+        combinedData.shows.push(...eventKaraokeData.shows);
+        combinedData.djs.push(...eventKaraokeData.djs);
+      }
+
+      // Update vendor info if we have venue details
+      if (combinedData.shows.length > 0 && combinedData.shows[0].venue) {
+        combinedData.vendor.name = combinedData.shows[0].venue || 'Facebook Group';
+      }
+
+      this.logAndBroadcast(
+        `Facebook group parsing complete: ${combinedData.shows.length} shows, ${combinedData.djs.length} DJs`,
+        'success',
+      );
+
+      return combinedData;
+    } catch (error) {
+      this.logAndBroadcast(`Facebook group parsing failed: ${error.message}`, 'error');
+
+      // Return error data structure
+      return {
+        vendor: {
+          name: 'Facebook Group',
+          website: url,
+          description: `Failed to parse Facebook group: ${error.message}`,
+          confidence: 0.1,
+        },
+        shows: [],
+        djs: [],
+        rawData: {
+          url: url,
+          title: 'Facebook Group Error',
+          content: `Failed to parse: ${error.message}`,
+          parsedAt: new Date(),
+        },
+      };
+    }
+  }
+
+  /**
+   * Extract group ID from Facebook group URL
+   */
+  private extractGroupIdFromUrl(url: string): string | null {
+    const patterns = [
+      /facebook\.com\/groups\/(\d+)/,
+      /facebook\.com\/groups\/([^\/\?&]+)/,
+      /fb\.com\/groups\/(\d+)/,
+      /m\.facebook\.com\/groups\/(\d+)/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) {
+        return match[1];
+      }
+    }
+    return null;
   }
 
   /**
@@ -1152,14 +1236,14 @@ Return ONLY the JSON object, no other text.
   /**
    * Main parsing method - takes a URL and returns parsed karaoke data
    */
-  async parseWebsite(url: string): Promise<ParsedKaraokeData> {
+  async parseWebsite(url: string, userAccessToken?: string): Promise<ParsedKaraokeData> {
     try {
       // Check if this is a Facebook URL and use unified Facebook parsing
       if (url.includes('facebook.com') || url.includes('fb.com')) {
         this.logAndBroadcast(`Detected Facebook URL - using Facebook parsing`, 'info');
 
         try {
-          return await this.parseFacebookPage(url);
+          return await this.parseFacebookPage(url, userAccessToken);
         } catch (facebookError) {
           this.logAndBroadcast(`Facebook parsing failed: ${facebookError.message}`, 'error');
           this.logAndBroadcast(`Falling back to generic HTML parsing for Facebook URL`, 'warning');

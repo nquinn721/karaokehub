@@ -60,6 +60,7 @@ export interface ParsedScheduleItem {
 export interface UrlToParse {
   id: number;
   url: string;
+  isApproved: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -636,6 +637,63 @@ export class ParserStore {
       return { success: true };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to delete URL';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async getUnapprovedUrls(): Promise<{ success: boolean; data?: UrlToParse[]; error?: string }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      const response = await apiStore.get('/parser/urls/unapproved');
+
+      return { success: true, data: response };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to fetch unapproved URLs';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async approveUrl(id: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await apiStore.post(`/parser/urls/${id}/approve`);
+
+      // Refresh the list after approving
+      await this.fetchUrlsToParse();
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to approve URL';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async unapproveUrl(id: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await apiStore.post(`/parser/urls/${id}/unapprove`);
+
+      // Refresh the list after unapproving
+      await this.fetchUrlsToParse();
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to unapprove URL';
       this.setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {

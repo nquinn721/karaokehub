@@ -38,10 +38,16 @@ echo -n "sk_test_your_secret_key_here" | gcloud secrets create KARAOKE_HUB_STRIP
 echo -n "pk_test_your_publishable_key_here" | gcloud secrets create KARAOKE_HUB_STRIPE_PUBLISHABLE_KEY --data-file=-
 echo -n "whsec_your_webhook_secret_here" | gcloud secrets create KARAOKE_HUB_STRIPE_WEBHOOK_SECRET --data-file=-
 
+# Spotify secrets (for music integration)
+echo "Creating Spotify secrets (empty - set these manually)..."
+echo -n "YOUR_SPOTIFY_CLIENT_ID" | gcloud secrets create KARAOKE_HUB_SPOTIFY_CLIENT_ID --data-file=-
+echo -n "YOUR_SPOTIFY_CLIENT_SECRET" | gcloud secrets create KARAOKE_HUB_SPOTIFY_CLIENT_SECRET --data-file=-
+
 echo "✅ Secrets created successfully!"
 echo "🔗 Remember to:"
 echo "   1. Update Google OAuth secrets with your actual credentials"
 echo "   2. Update Gemini API key secret with your actual key"  
 echo "   3. Update OpenAI API key secret with your actual key"
 echo "   4. Update Stripe secrets with your actual Stripe keys"
-echo "   5. Grant Cloud Run service account access to secrets"
+echo "   5. Update Spotify secrets with your actual Spotify credentials"
+echo "   6. Grant Cloud Run service account access to secrets"

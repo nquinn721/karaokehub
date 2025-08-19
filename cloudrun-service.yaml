@@ -107,6 +107,16 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_GOOGLE_MAPS_API_KEY
                   key: latest
+            - name: SPOTIFY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_SPOTIFY_CLIENT_ID
+                  key: latest
+            - name: SPOTIFY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_SPOTIFY_CLIENT_SECRET
+                  key: latest
             - name: STRIPE_SECRET_KEY
               valueFrom:
                 secretKeyRef:

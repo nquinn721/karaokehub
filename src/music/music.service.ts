@@ -290,10 +290,12 @@ export class MusicService {
 
     // Check if current token is still valid (with 5 minute buffer)
     if (this.spotifyAccessToken && Date.now() < this.spotifyTokenExpiry - 300000) {
+      console.log('🎵 🔄 Using cached Spotify token');
       return this.spotifyAccessToken;
     }
 
     try {
+      console.log('🎵 🔑 Requesting new Spotify access token...');
       const credentials = Buffer.from(
         `${this.spotifyClientId}:${this.spotifyClientSecret}`,
       ).toString('base64');
@@ -308,6 +310,8 @@ export class MusicService {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`🎵 ❌ Spotify auth failed: ${response.status} - ${errorText}`);
         throw new HttpException(`Spotify auth error: ${response.status}`, HttpStatus.BAD_GATEWAY);
       }
 
@@ -315,8 +319,10 @@ export class MusicService {
       this.spotifyAccessToken = data.access_token;
       this.spotifyTokenExpiry = Date.now() + data.expires_in * 1000;
 
+      console.log(`🎵 ✅ Spotify token obtained, expires in ${data.expires_in} seconds`);
       return this.spotifyAccessToken;
     } catch (error) {
+      console.error('🎵 ❌ Failed to get Spotify access token:', error.message);
       throw new HttpException('Failed to get Spotify access token', HttpStatus.SERVICE_UNAVAILABLE);
     }
   }
@@ -333,6 +339,7 @@ export class MusicService {
       const encodedQuery = encodeURIComponent(term);
       const url = `https://api.spotify.com/v1/search?q=${encodedQuery}&type=${type}&limit=${limit}&market=US`;
 
+      console.log(`🎵 🔍 Spotify API call: ${url.substring(0, 100)}...`);
       const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -340,13 +347,21 @@ export class MusicService {
       });
 
       if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`🎵 ❌ Spotify API error: ${res.status} - ${errorText}`);
         this.rateLimiter.recordFailure('spotify');
         throw new HttpException(`Spotify API error: ${res.status}`, HttpStatus.BAD_GATEWAY);
       }
 
+      const jsonResponse = await res.json();
+      console.log(
+        `🎵 📊 Spotify response: ${jsonResponse?.tracks?.items?.length || 0} tracks found`,
+      );
+
       this.rateLimiter.recordSuccess('spotify');
-      return res.json();
+      return jsonResponse;
     } catch (error) {
+      console.error(`🎵 ❌ Spotify fetch error: ${error.message}`);
       this.rateLimiter.recordFailure('spotify');
       throw error;
     }
@@ -491,12 +506,64 @@ export class MusicService {
     console.log(`🎵 Searching for: "${query}" with limit: ${limit}, offset: ${offset}`);
     console.log(`🎵 Query variants generated:`, variants);
 
-    // Use iTunes for local development, Spotify for production
-    if (isLocalDevelopment || !isProduction) {
-      // In development, prioritize iTunes which is more reliable without auth
-      console.log('🎵 [DEV] Using iTunes as primary source for local development');
+    // Check if Spotify credentials are available
+    const hasSpotifyCredentials = this.spotifyClientId && this.spotifyClientSecret;
+    console.log(`🎵 Spotify credentials available: ${hasSpotifyCredentials}`);
+    if (hasSpotifyCredentials) {
+      console.log(`🎵 Spotify Client ID: ${this.spotifyClientId?.substring(0, 8)}...`);
+    }
 
-      // 1) Try iTunes first in development (good coverage, no auth required)
+    // Use Spotify if in production OR if credentials are available in development
+    if (isProduction || hasSpotifyCredentials) {
+      // Try Spotify first - highest quality metadata and best coverage
+      try {
+        console.log(
+          `🎵 [${isProduction ? 'PROD' : 'DEV'}] Attempting Spotify search for: "${query}"`,
+        );
+        if (!hasSpotifyCredentials) {
+          console.log('🎵 ❌ Spotify credentials not available, skipping Spotify');
+          throw new Error('Spotify credentials not configured');
+        }
+
+        console.log('🎵 🔐 Getting Spotify access token...');
+        const spotifyResults = await this.fetchSpotify(query, 'track', limit);
+        const mappedSpotifyResults = this.mapSpotifySongs(spotifyResults);
+        console.log(
+          `🎵 ✅ [${isProduction ? 'PROD' : 'DEV'}] Spotify returned ${mappedSpotifyResults.length} results`,
+        );
+
+        if (mappedSpotifyResults.length > 0) {
+          console.log(
+            `🎵 🎶 First Spotify result: "${mappedSpotifyResults[0].title}" by ${mappedSpotifyResults[0].artist}`,
+          );
+          return mappedSpotifyResults.slice(0, limit);
+        }
+      } catch (error) {
+        console.warn(
+          `🎵 ⚠️ [${isProduction ? 'PROD' : 'DEV'}] Spotify search failed, falling back to other providers:`,
+          error.message,
+        );
+        // Log more details for production debugging
+        if (isProduction) {
+          console.warn(`🎵 Spotify error details:`, {
+            hasCredentials: hasSpotifyCredentials,
+            errorType: error.constructor.name,
+            errorMessage: error.message,
+          });
+        }
+      }
+    } else {
+      console.log(
+        `🎵 📝 Skipping Spotify: ${!isProduction ? 'Development mode' : 'No credentials'}`,
+      );
+    }
+
+    // Use iTunes for local development when Spotify is not available
+    if (isLocalDevelopment || !isProduction) {
+      // In development, use iTunes as backup when Spotify fails or isn't available
+      console.log('🎵 [DEV] Using iTunes as fallback source');
+
+      // 1) Try iTunes in development (good coverage, no auth required)
       for (const v of variants) {
         try {
           console.log(`🎵 [DEV] iTunes search variant: "${v}"`);
@@ -510,24 +577,6 @@ export class MusicService {
         } catch (error) {
           console.warn(`🎵 [DEV] iTunes search failed for "${v}":`, error.message);
         }
-      }
-    } else {
-      // 1) Try Spotify first in production - highest quality metadata and best coverage
-      try {
-        console.log('🎵 [PROD] Trying Spotify search...');
-        if (!this.spotifyClientId || !this.spotifyClientSecret) {
-          console.log('🎵 [PROD] Spotify credentials not available, skipping Spotify');
-          throw new Error('Spotify credentials not configured');
-        }
-        const spotifyResults = await this.fetchSpotify(query, 'track', limit);
-        const mappedSpotifyResults = this.mapSpotifySongs(spotifyResults);
-        console.log(`🎵 [PROD] Spotify returned ${mappedSpotifyResults.length} results`);
-        if (mappedSpotifyResults.length > 0) return mappedSpotifyResults.slice(0, limit);
-      } catch (error) {
-        console.warn(
-          '🎵 [PROD] Spotify search failed, falling back to other providers:',
-          error.message,
-        );
       }
     }
 
@@ -583,99 +632,15 @@ export class MusicService {
           year: recording.releases?.[0]?.date?.split('-')[0],
         })) || [];
 
-      // If MusicBrainz also returned no results, use fallback data for testing
+      // If MusicBrainz also returned no results, return empty array
       if (musicbrainzResults.length === 0) {
-        console.log(
-          '🎵 All providers returned empty results, using fallback sample data for testing',
-        );
-        if (query.toLowerCase().includes('karaoke') || query.toLowerCase().includes('classics')) {
-          return [
-            {
-              id: 'sample-1',
-              title: "Don't Stop Believin'",
-              artist: 'Journey',
-              album: 'Escape',
-              year: '1981',
-              albumArt: {
-                small: 'https://via.placeholder.com/100x100?text=Album',
-                medium: 'https://via.placeholder.com/300x300?text=Album',
-                large: 'https://via.placeholder.com/600x600?text=Album',
-              },
-            },
-            {
-              id: 'sample-2',
-              title: 'Sweet Caroline',
-              artist: 'Neil Diamond',
-              album: "Brother Love's Travelling Salvation Show",
-              year: '1969',
-              albumArt: {
-                small: 'https://via.placeholder.com/100x100?text=Album',
-                medium: 'https://via.placeholder.com/300x300?text=Album',
-                large: 'https://via.placeholder.com/600x600?text=Album',
-              },
-            },
-            {
-              id: 'sample-3',
-              title: 'Bohemian Rhapsody',
-              artist: 'Queen',
-              album: 'A Night at the Opera',
-              year: '1975',
-              albumArt: {
-                small: 'https://via.placeholder.com/100x100?text=Album',
-                medium: 'https://via.placeholder.com/300x300?text=Album',
-                large: 'https://via.placeholder.com/600x600?text=Album',
-              },
-            },
-          ].slice(0, limit);
-        }
+        console.log('🎵 All providers returned empty results');
+        return [];
       }
 
       return musicbrainzResults;
     } catch (error) {
       console.error('Music search error - all providers failed:', error);
-
-      // Temporary fallback with sample data for testing
-      console.log('🎵 Using fallback sample data for testing');
-      if (query.toLowerCase().includes('karaoke') || query.toLowerCase().includes('classics')) {
-        return [
-          {
-            id: 'sample-1',
-            title: "Don't Stop Believin'",
-            artist: 'Journey',
-            album: 'Escape',
-            year: '1981',
-            albumArt: {
-              small: 'https://via.placeholder.com/100x100?text=Album',
-              medium: 'https://via.placeholder.com/300x300?text=Album',
-              large: 'https://via.placeholder.com/600x600?text=Album',
-            },
-          },
-          {
-            id: 'sample-2',
-            title: 'Sweet Caroline',
-            artist: 'Neil Diamond',
-            album: "Brother Love's Travelling Salvation Show",
-            year: '1969',
-            albumArt: {
-              small: 'https://via.placeholder.com/100x100?text=Album',
-              medium: 'https://via.placeholder.com/300x300?text=Album',
-              large: 'https://via.placeholder.com/600x600?text=Album',
-            },
-          },
-          {
-            id: 'sample-3',
-            title: 'Bohemian Rhapsody',
-            artist: 'Queen',
-            album: 'A Night at the Opera',
-            year: '1975',
-            albumArt: {
-              small: 'https://via.placeholder.com/100x100?text=Album',
-              medium: 'https://via.placeholder.com/300x300?text=Album',
-              large: 'https://via.placeholder.com/600x600?text=Album',
-            },
-          },
-        ].slice(0, limit);
-      }
 
       if (error instanceof HttpException) {
         throw error;

@@ -69,6 +69,115 @@ export class FacebookService {
   }
 
   /**
+   * Exchange Facebook code for user access token
+   * This is used after user logs in with Facebook Login
+   */
+  async exchangeCodeForUserToken(code: string, redirectUri: string): Promise<string> {
+    try {
+      const response = await axios.get(
+        `${this.graphApiUrl}/oauth/access_token?client_id=${this.authAppId}&client_secret=${this.authAppSecret}&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}`,
+      );
+      return response.data.access_token;
+    } catch (error) {
+      this.logger.error(
+        'Failed to exchange code for user token:',
+        error.response?.data || error.message,
+      );
+      throw new Error('Unable to authenticate user with Facebook');
+    }
+  }
+
+  /**
+   * Get user's groups they are a member of
+   * Requires user access token with groups_access_member_info permission
+   */
+  async getUserGroups(userAccessToken: string): Promise<any[]> {
+    try {
+      const response = await axios.get(
+        `${this.graphApiUrl}/me/groups?access_token=${userAccessToken}&fields=id,name,description,member_count,privacy`,
+      );
+      return response.data.data || [];
+    } catch (error) {
+      this.logger.error('Failed to get user groups:', error.response?.data || error.message);
+      throw new Error('Unable to fetch user groups from Facebook');
+    }
+  }
+
+  /**
+   * Get posts from a specific group (user must be a member)
+   * Requires user access token with groups_access_member_info permission
+   */
+  async getGroupPosts(groupId: string, userAccessToken: string): Promise<any[]> {
+    try {
+      const response = await axios.get(
+        `${this.graphApiUrl}/${groupId}/feed?access_token=${userAccessToken}&fields=id,message,created_time,from,attachments,event`,
+      );
+      return response.data.data || [];
+    } catch (error) {
+      this.logger.error(
+        `Failed to get group ${groupId} posts:`,
+        error.response?.data || error.message,
+      );
+      throw new Error(`Unable to fetch posts from group ${groupId}`);
+    }
+  }
+
+  /**
+   * Get events from a specific group (user must be a member)
+   * Requires user access token with groups_access_member_info permission
+   */
+  async getGroupEvents(groupId: string, userAccessToken: string): Promise<any[]> {
+    try {
+      const response = await axios.get(
+        `${this.graphApiUrl}/${groupId}/events?access_token=${userAccessToken}&fields=id,name,description,start_time,end_time,place,owner,attending_count,interested_count`,
+      );
+      return response.data.data || [];
+    } catch (error) {
+      this.logger.error(
+        `Failed to get group ${groupId} events:`,
+        error.response?.data || error.message,
+      );
+      throw new Error(`Unable to fetch events from group ${groupId}`);
+    }
+  }
+
+  /**
+   * Search for karaoke-related posts in user's groups
+   */
+  async searchKaraokeInUserGroups(userAccessToken: string): Promise<any[]> {
+    try {
+      const groups = await this.getUserGroups(userAccessToken);
+      const karaokeResults = [];
+
+      for (const group of groups) {
+        try {
+          const posts = await this.getGroupPosts(group.id, userAccessToken);
+          const karaokePosts = posts.filter(
+            (post) => post.message && post.message.toLowerCase().includes('karaoke'),
+          );
+
+          if (karaokePosts.length > 0) {
+            karaokeResults.push({
+              group: group,
+              posts: karaokePosts,
+            });
+          }
+        } catch (groupError) {
+          this.logger.warn(`Skipping group ${group.name}: ${groupError.message}`);
+        }
+      }
+
+      return karaokeResults;
+    } catch (error) {
+      this.logger.error(
+        'Failed to search karaoke in user groups:',
+        error.response?.data || error.message,
+      );
+      throw new Error('Unable to search for karaoke content in user groups');
+    }
+  }
+
+  /**
    * Extract Facebook event ID from URL
    */
   private extractEventId(url: string): string | null {

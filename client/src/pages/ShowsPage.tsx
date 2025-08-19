@@ -105,7 +105,7 @@ const ShowsPage: React.FC = observer(() => {
           <BottomSheet
             isOpen={true} // Always considered "open" when alwaysVisible
             onToggle={() => showStore.toggleSidebar()}
-            snapPoints={[0.08, 0.5, 0.9]} // Minimum 8% visible, 50% middle, 90% full
+            snapPoints={[0.12, 0.5, 0.9]} // Minimum 12% visible (ensures at least 20px), 50% middle, 90% full
             initialSnap={0} // Start minimized
             alwaysVisible={true}
             closeOnOutsideClick={true}

@@ -47,7 +47,12 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       const windowHeight = window.innerHeight;
       const sheetHeight = getSheetHeight(snapIndex);
       const baseTransform = windowHeight - sheetHeight;
-      return baseTransform + offset;
+      
+      // Ensure minimum 20px is always visible
+      const minVisibleHeight = 20;
+      const maxTransform = windowHeight - minVisibleHeight;
+      
+      return Math.min(baseTransform + offset, maxTransform);
     },
     [getSheetHeight],
   );
@@ -116,7 +121,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 
       // Limit dragging beyond boundaries
       const minTransform = getTransform(snapPoints.length - 1);
-      const maxTransform = window.innerHeight;
+      const minVisibleHeight = 20;
+      const maxTransform = window.innerHeight - minVisibleHeight;
 
       let constrainedTransform = Math.max(minTransform, Math.min(maxTransform, newTransform));
 
@@ -168,13 +174,17 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         targetSnapIndex = middleIndex;
       }
       // Never allow full closure - minimum is first snap point
-      if (targetSnapIndex < 0 || (velocity > 100 && currentTransform > window.innerHeight * 0.6)) {
+      const minVisibleHeight = 20;
+      const maxAllowedTransform = window.innerHeight - minVisibleHeight;
+      if (targetSnapIndex < 0 || (velocity > 100 && currentTransform > maxAllowedTransform * 0.8)) {
         targetSnapIndex = 0; // Stay at minimum visible state
         return;
       }
     } else {
       // Original behavior: Check if should close (dragging down past threshold)
-      if (velocity > 100 && currentTransform > window.innerHeight * 0.6) {
+      const minVisibleHeight = 20;
+      const maxAllowedTransform = window.innerHeight - minVisibleHeight;
+      if (velocity > 100 && currentTransform > maxAllowedTransform * 0.8) {
         onToggle();
         return;
       }
@@ -214,7 +224,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       const newTransform = baseTransform + deltaY;
 
       const minTransform = getTransform(snapPoints.length - 1);
-      const maxTransform = window.innerHeight;
+      const minVisibleHeight = 20;
+      const maxTransform = window.innerHeight - minVisibleHeight;
 
       let constrainedTransform = Math.max(minTransform, Math.min(maxTransform, newTransform));
 
@@ -251,7 +262,9 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       }
     }
 
-    if (velocity > 100 && currentTransform > window.innerHeight * 0.6) {
+    const minVisibleHeight = 20;
+    const maxAllowedTransform = window.innerHeight - minVisibleHeight;
+    if (velocity > 100 && currentTransform > maxAllowedTransform * 0.8) {
       onToggle();
       return;
     }

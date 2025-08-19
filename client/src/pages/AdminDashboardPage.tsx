@@ -26,6 +26,7 @@ import { adminStore, authStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import UrlApprovalComponent from '../components/UrlApprovalComponent';
 
 // Simple stat card component
 const StatCard = ({
@@ -190,6 +191,11 @@ const AdminDashboardPage = observer(() => {
           </Grid>
         </Grid>
       )}
+
+      {/* URL Approval Queue */}
+      <Box sx={{ mb: 4 }}>
+        <UrlApprovalComponent />
+      </Box>
 
       {/* Data Management */}
       <AdminDataTables />

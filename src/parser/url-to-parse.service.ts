@@ -16,6 +16,20 @@ export class UrlToParseService {
     });
   }
 
+  async findUnapproved(): Promise<UrlToParse[]> {
+    return await this.urlToParseRepository.find({
+      where: { isApproved: false },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async findApproved(): Promise<UrlToParse[]> {
+    return await this.urlToParseRepository.find({
+      where: { isApproved: true },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
   async create(url: string): Promise<UrlToParse> {
     const urlToParse = this.urlToParseRepository.create({ url });
     return await this.urlToParseRepository.save(urlToParse);
@@ -32,5 +46,23 @@ export class UrlToParseService {
   async exists(url: string): Promise<boolean> {
     const count = await this.urlToParseRepository.count({ where: { url } });
     return count > 0;
+  }
+
+  async approve(id: number): Promise<UrlToParse | null> {
+    const urlToParse = await this.findById(id);
+    if (!urlToParse) {
+      return null;
+    }
+    urlToParse.isApproved = true;
+    return await this.urlToParseRepository.save(urlToParse);
+  }
+
+  async unapprove(id: number): Promise<UrlToParse | null> {
+    const urlToParse = await this.findById(id);
+    if (!urlToParse) {
+      return null;
+    }
+    urlToParse.isApproved = false;
+    return await this.urlToParseRepository.save(urlToParse);
   }
 }

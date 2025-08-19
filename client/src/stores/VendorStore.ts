@@ -23,7 +23,6 @@ export interface Vendor {
 
 export interface CreateVendorData {
   name: string;
-  owner: string;
   website?: string;
   instagram?: string;
   facebook?: string;
@@ -45,8 +44,10 @@ export class VendorStore {
   async fetchVendors() {
     try {
       this.setLoading(true);
+      console.log('VendorStore: Fetching vendors...');
 
       const response = await apiStore.get(apiStore.endpoints.vendors.base);
+      console.log('VendorStore: Vendors fetched:', response);
 
       runInAction(() => {
         this.vendors = response;
@@ -55,6 +56,7 @@ export class VendorStore {
 
       return { success: true };
     } catch (error: any) {
+      console.error('VendorStore: Error fetching vendors:', error);
       runInAction(() => {
         this.isLoading = false;
       });

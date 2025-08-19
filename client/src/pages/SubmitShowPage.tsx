@@ -1,4 +1,14 @@
-import { Add, Cancel, CheckCircle, Event, Link, MusicNote } from '@mui/icons-material';
+import {
+  Add,
+  Cancel,
+  CheckCircle,
+  Event,
+  Facebook,
+  Instagram,
+  Language,
+  Link,
+  MusicNote,
+} from '@mui/icons-material';
 import {
   Alert,
   Autocomplete,
@@ -65,12 +75,17 @@ const SubmitShowPage: React.FC = observer(() => {
   const [url, setUrl] = useState('');
   const [parsedData, setParsedData] = useState<ParsedScheduleItem | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [parsingPlatform, setParsingPlatform] = useState<
+    'instagram' | 'facebook' | 'website' | null
+  >(null);
+  const [detectedPlatform, setDetectedPlatform] = useState<
+    'instagram' | 'facebook' | 'website' | null
+  >(null);
 
   // Manual show entry state
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [newVendorData, setNewVendorData] = useState({
     name: '',
-    owner: '',
     website: '',
     instagram: '',
     facebook: '',
@@ -89,10 +104,8 @@ const SubmitShowPage: React.FC = observer(() => {
   const [isCreatingVendor, setIsCreatingVendor] = useState(!authStore.isAuthenticated);
 
   useEffect(() => {
-    // Load vendors when component mounts, but only if user is authenticated
-    if (authStore.isAuthenticated) {
-      vendorStore.fetchVendors();
-    }
+    // Load vendors when component mounts (now that endpoint is public)
+    vendorStore.fetchVendors();
   }, []);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -101,12 +114,54 @@ const SubmitShowPage: React.FC = observer(() => {
     setSuccess('');
   };
 
+  const detectPlatform = (url: string): 'instagram' | 'facebook' | 'website' | null => {
+    if (!url.trim()) return null;
+    const urlLower = url.toLowerCase();
+    if (urlLower.includes('instagram.com')) {
+      return 'instagram';
+    } else if (urlLower.includes('facebook.com') || urlLower.includes('fb.com')) {
+      return 'facebook';
+    } else {
+      return 'website';
+    }
+  };
+
+  const handleUrlChange = (newUrl: string) => {
+    setUrl(newUrl);
+    const platform = detectPlatform(newUrl);
+    setDetectedPlatform(platform);
+  };
+
+  const getPlatformIcon = (platform: 'instagram' | 'facebook' | 'website') => {
+    switch (platform) {
+      case 'instagram':
+        return <Instagram sx={{ mr: 1 }} />;
+      case 'facebook':
+        return <Facebook sx={{ mr: 1 }} />;
+      case 'website':
+        return <Language sx={{ mr: 1 }} />;
+    }
+  };
+
+  const getPlatformDisplayName = (platform: 'instagram' | 'facebook' | 'website'): string => {
+    switch (platform) {
+      case 'instagram':
+        return 'Instagram';
+      case 'facebook':
+        return 'Facebook';
+      case 'website':
+        return 'Website';
+    }
+  };
+
   const handleUrlSubmit = async () => {
     if (!url.trim()) {
       setError('Please enter a valid URL');
       return;
     }
 
+    const platform = detectPlatform(url);
+    setParsingPlatform(platform);
     setLoading(true);
     setError('');
 
@@ -123,6 +178,7 @@ const SubmitShowPage: React.FC = observer(() => {
       console.error('Parse error:', err);
     } finally {
       setLoading(false);
+      setParsingPlatform(null);
     }
   };
 
@@ -171,8 +227,8 @@ const SubmitShowPage: React.FC = observer(() => {
   };
 
   const handleCreateVendor = async () => {
-    if (!newVendorData.name.trim() || !newVendorData.owner.trim()) {
-      setError('Vendor name and owner are required');
+    if (!newVendorData.name.trim()) {
+      setError('Vendor name is required');
       return;
     }
 
@@ -182,7 +238,7 @@ const SubmitShowPage: React.FC = observer(() => {
       if (result.success) {
         setSelectedVendor(result.vendor);
         setIsCreatingVendor(false);
-        setNewVendorData({ name: '', owner: '', website: '', instagram: '', facebook: '' });
+        setNewVendorData({ name: '', website: '', instagram: '', facebook: '' });
         setSuccess('Vendor created successfully!');
       } else {
         setError(result.error || 'Failed to create vendor.');
@@ -426,7 +482,7 @@ const SubmitShowPage: React.FC = observer(() => {
               label="Website URL"
               placeholder="https://example.com/karaoke-schedule"
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={(e) => handleUrlChange(e.target.value)}
               sx={{ mb: 3 }}
               disabled={loading}
               variant="outlined"
@@ -441,7 +497,20 @@ const SubmitShowPage: React.FC = observer(() => {
               size="large"
               onClick={handleUrlSubmit}
               disabled={loading || !url.trim()}
-              startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Link />}
+              startIcon={
+                loading && parsingPlatform ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <CircularProgress size={20} color="inherit" />
+                    {getPlatformIcon(parsingPlatform)}
+                  </Box>
+                ) : loading ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : detectedPlatform ? (
+                  getPlatformIcon(detectedPlatform)
+                ) : (
+                  <Link />
+                )
+              }
               fullWidth
               sx={{
                 px: 4,
@@ -451,9 +520,25 @@ const SubmitShowPage: React.FC = observer(() => {
                 fontWeight: 600,
                 fontSize: { xs: '1rem', sm: '1.1rem' },
                 minHeight: { xs: 48, sm: 'auto' },
+                ...((loading && parsingPlatform) || detectedPlatform
+                  ? {
+                      background:
+                        (loading ? parsingPlatform : detectedPlatform) === 'instagram'
+                          ? 'linear-gradient(45deg, #E4405F, #833AB4)'
+                          : (loading ? parsingPlatform : detectedPlatform) === 'facebook'
+                            ? 'linear-gradient(45deg, #1877F2, #42A5F5)'
+                            : 'linear-gradient(45deg, #2196F3, #21CBF3)',
+                    }
+                  : {}),
               }}
             >
-              {loading ? 'Parsing Website...' : 'Parse URL'}
+              {loading && parsingPlatform
+                ? `Parsing ${getPlatformDisplayName(parsingPlatform)}...`
+                : loading
+                  ? 'Parsing Website...'
+                  : detectedPlatform
+                    ? `Parse ${getPlatformDisplayName(detectedPlatform)}`
+                    : 'Parse URL'}
             </Button>
           </Card>
 
@@ -705,12 +790,19 @@ const SubmitShowPage: React.FC = observer(() => {
                       getOptionLabel={(option) => option.name}
                       value={selectedVendor}
                       onChange={(_event, newValue) => setSelectedVendor(newValue)}
+                      loading={vendorStore.isLoading}
                       renderInput={(params) => (
                         <TextField
                           {...params}
                           label="Select Existing Vendor"
                           variant="outlined"
-                          helperText="Choose from existing vendors in our database"
+                          helperText={
+                            vendorStore.isLoading
+                              ? 'Loading vendors...'
+                              : vendorStore.vendors.length === 0
+                                ? 'No vendors found. Create a new vendor below.'
+                                : 'Choose from existing vendors in our database'
+                          }
                           InputProps={{
                             ...params.InputProps,
                             sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
@@ -772,21 +864,6 @@ const SubmitShowPage: React.FC = observer(() => {
                           value={newVendorData.name}
                           onChange={(e) =>
                             setNewVendorData({ ...newVendorData, name: e.target.value })
-                          }
-                          required
-                          InputProps={{
-                            sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Owner Name *"
-                          placeholder="e.g., Mike Johnson"
-                          value={newVendorData.owner}
-                          onChange={(e) =>
-                            setNewVendorData({ ...newVendorData, owner: e.target.value })
                           }
                           required
                           InputProps={{
@@ -955,65 +1032,41 @@ const SubmitShowPage: React.FC = observer(() => {
                           value={showData.day}
                           onChange={(e) => setShowData({ ...showData, day: e.target.value })}
                           label="Day *"
-                          size="small"
                           sx={{
                             '& .MuiSelect-select': {
-                              fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                              padding: { xs: '6px 8px', sm: '8.5px 14px' },
-                            },
-                            '& .MuiOutlinedInput-notchedOutline': {
-                              fontSize: { xs: '0.75rem', sm: '1rem' },
+                              fontSize: { xs: '0.9rem', sm: '1rem' },
                             },
                           }}
                         >
-                          <MenuItem
-                            value="Monday"
-                            sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                          >
-                            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Monday</Box>
-                            <Box sx={{ display: { xs: 'block', sm: 'none' } }}>Mon</Box>
+                          <MenuItem value="Monday" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+                            Monday
                           </MenuItem>
-                          <MenuItem
-                            value="Tuesday"
-                            sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                          >
-                            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Tuesday</Box>
-                            <Box sx={{ display: { xs: 'block', sm: 'none' } }}>Tue</Box>
+                          <MenuItem value="Tuesday" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+                            Tuesday
                           </MenuItem>
                           <MenuItem
                             value="Wednesday"
-                            sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                            sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
                           >
-                            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Wednesday</Box>
-                            <Box sx={{ display: { xs: 'block', sm: 'none' } }}>Wed</Box>
+                            Wednesday
                           </MenuItem>
                           <MenuItem
                             value="Thursday"
-                            sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                            sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
                           >
-                            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Thursday</Box>
-                            <Box sx={{ display: { xs: 'block', sm: 'none' } }}>Thu</Box>
+                            Thursday
                           </MenuItem>
-                          <MenuItem
-                            value="Friday"
-                            sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                          >
-                            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Friday</Box>
-                            <Box sx={{ display: { xs: 'block', sm: 'none' } }}>Fri</Box>
+                          <MenuItem value="Friday" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+                            Friday
                           </MenuItem>
                           <MenuItem
                             value="Saturday"
-                            sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                            sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
                           >
-                            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Saturday</Box>
-                            <Box sx={{ display: { xs: 'block', sm: 'none' } }}>Sat</Box>
+                            Saturday
                           </MenuItem>
-                          <MenuItem
-                            value="Sunday"
-                            sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                          >
-                            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>Sunday</Box>
-                            <Box sx={{ display: { xs: 'block', sm: 'none' } }}>Sun</Box>
+                          <MenuItem value="Sunday" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+                            Sunday
                           </MenuItem>
                         </Select>
                       </FormControl>

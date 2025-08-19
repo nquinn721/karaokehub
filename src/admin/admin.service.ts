@@ -277,7 +277,7 @@ export class AdminService {
       .groupBy('vendor.id');
 
     if (search) {
-      query.where('vendor.name LIKE :search OR vendor.owner LIKE :search', {
+      query.where('vendor.name LIKE :search', {
         search: `%${search}%`,
       });
     }
@@ -298,7 +298,7 @@ export class AdminService {
     // Get total count separately for pagination
     const totalQuery = this.vendorRepository.createQueryBuilder('vendor');
     if (search) {
-      totalQuery.where('vendor.name LIKE :search OR vendor.owner LIKE :search', {
+      totalQuery.where('vendor.name LIKE :search', {
         search: `%${search}%`,
       });
     }
@@ -550,7 +550,6 @@ export class AdminService {
 
     await this.vendorRepository.update(id, {
       name: updateData.name,
-      owner: updateData.location || venue.owner, // Use location as owner if provided
     });
 
     return { message: 'Venue updated successfully' };
