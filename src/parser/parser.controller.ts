@@ -55,20 +55,35 @@ export class ParserController {
         }
       }
 
-      // Parse using the specified method (default to HTML parsing for backward compatibility)
-      const parseMethod = body.parseMethod || 'html';
+      // Detect URL type and route accordingly
+      const url = body.url;
       let result;
 
-      if (parseMethod === 'screenshot') {
-        result = await this.karaokeParserService.parseWebsiteWithScreenshot(body.url);
-      } else {
+      if (url.includes('instagram.com')) {
+        // Instagram URL - use visual parsing with screenshots
+        console.log('Detected Instagram URL, using visual parsing');
+        result = await this.karaokeParserService.parseInstagramWithScreenshots(body.url);
+      } else if (url.includes('facebook.com') || url.includes('fb.com')) {
+        // Facebook URL - use existing Facebook parsing
+        console.log('Detected Facebook URL, using Facebook parsing');
         result = await this.karaokeParserService.parseAndSaveWebsite(body.url);
+      } else {
+        // Regular website - use specified method
+        const parseMethod = body.parseMethod || 'html';
+        console.log(`Detected regular website, using ${parseMethod} parsing`);
+
+        if (parseMethod === 'screenshot') {
+          result = await this.karaokeParserService.parseWebsiteWithScreenshot(body.url);
+        } else {
+          result = await this.karaokeParserService.parseAndSaveWebsite(body.url);
+        }
       }
 
       return {
         message: 'Website parsed and saved for admin review',
         parsedScheduleId: result.parsedScheduleId,
         data: result.data,
+        stats: result.stats,
         urlToParseId: urlToParse?.id,
       };
     } catch (error) {
@@ -354,6 +369,34 @@ export class ParserController {
     } catch (error) {
       console.error('Error getting parsing status:', error);
       throw new HttpException('Failed to get parsing status', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('analyze-screenshots')
+  async analyzeScreenshots(
+    @Body()
+    body: {
+      screenshots: string[]; // base64 encoded screenshot data
+      url: string;
+      description?: string;
+    },
+  ) {
+    try {
+      const result = await this.karaokeParserService.analyzeScreenshotsWithGemini(
+        body.screenshots,
+        body.url,
+        body.description,
+      );
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      console.error('Error analyzing screenshots:', error);
+      throw new HttpException(
+        `Failed to analyze screenshots: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

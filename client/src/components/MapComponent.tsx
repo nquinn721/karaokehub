@@ -243,8 +243,8 @@ const MapComponent: React.FC = observer(() => {
       setClusterer(null);
     }
 
-    // Only cluster at zoom 10 or less
-    if (zoom <= 10 && filteredShows.length > 0) {
+    // Only cluster at zoom 9 or less
+    if (zoom <= 9 && filteredShows.length > 0) {
       console.log('🎯 Setting up clustering for zoom', zoom, 'with', filteredShows.length, 'shows');
 
       // Create markers for clustering using filtered shows
@@ -307,9 +307,9 @@ const MapComponent: React.FC = observer(() => {
     }
   }, [map, mapStore?.currentZoom, showStore.filteredShows]);
 
-  // Render individual show markers (for zoom > 10)
+  // Render individual show markers (for zoom > 9)
   const renderShowMarkers = () => {
-    if (!mapStore || mapStore.currentZoom <= 10) return null;
+    if (!mapStore || mapStore.currentZoom <= 9) return null;
 
     const shows = showStore.shows;
     console.log(`📍 Rendering ${shows.length} show markers`);
@@ -421,8 +421,8 @@ const MapComponent: React.FC = observer(() => {
         >
           <Typography variant="caption" color="textSecondary">
             Zoom: {mapStore?.currentZoom}
-            {mapStore?.currentZoom <= 10 && ' (Clustering)'}
-            {mapStore?.currentZoom > 10 && mapStore?.currentZoom <= 15 && ' (All Shows)'}
+            {mapStore?.currentZoom <= 9 && ' (Clustering)'}
+            {mapStore?.currentZoom > 9 && mapStore?.currentZoom <= 15 && ' (All Shows)'}
             {mapStore?.currentZoom > 15 && ' (Nearby)'}
           </Typography>
         </Box>

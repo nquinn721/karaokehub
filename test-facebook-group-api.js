@@ -19,7 +19,7 @@ async function getAppAccessToken() {
   try {
     console.log('🔑 Getting app access token...');
     const response = await axios.get(
-      `${GRAPH_API_URL}/oauth/access_token?client_id=${FACEBOOK_APP_ID}&client_secret=${FACEBOOK_APP_SECRET}&grant_type=client_credentials`
+      `${GRAPH_API_URL}/oauth/access_token?client_id=${FACEBOOK_APP_ID}&client_secret=${FACEBOOK_APP_SECRET}&grant_type=client_credentials`,
     );
     console.log('✅ App access token obtained');
     return response.data.access_token;
@@ -35,20 +35,20 @@ async function testGroupAccess() {
 
   try {
     const accessToken = await getAppAccessToken();
-    
+
     // Test 1: Basic group info
     console.log('📋 Test 1: Basic Group Information');
     try {
       const basicFields = 'id,name,description,privacy,member_count';
       const groupResponse = await axios.get(
-        `${GRAPH_API_URL}/${GROUP_ID}?fields=${basicFields}&access_token=${accessToken}`
+        `${GRAPH_API_URL}/${GROUP_ID}?fields=${basicFields}&access_token=${accessToken}`,
       );
-      
+
       console.log('✅ Group basic info accessible!');
       console.log('Group data:', JSON.stringify(groupResponse.data, null, 2));
     } catch (error) {
       console.log('❌ Group basic info failed:', error.response?.data || error.message);
-      
+
       if (error.response?.status === 403) {
         console.log('🔒 This likely means the group is private or requires special permissions');
       }
@@ -58,18 +58,18 @@ async function testGroupAccess() {
     try {
       // Try to get posts from the group
       const postsResponse = await axios.get(
-        `${GRAPH_API_URL}/${GROUP_ID}/feed?access_token=${accessToken}`
+        `${GRAPH_API_URL}/${GROUP_ID}/feed?access_token=${accessToken}`,
       );
-      
+
       console.log('✅ Group posts accessible!');
       console.log(`Found ${postsResponse.data.data?.length || 0} posts`);
-      
+
       if (postsResponse.data.data?.length > 0) {
         console.log('Sample post:', postsResponse.data.data[0]);
       }
     } catch (error) {
       console.log('❌ Group posts failed:', error.response?.data || error.message);
-      
+
       if (error.response?.data?.error?.code === 10) {
         console.log('🔒 Group feed requires user access token or special permissions');
       }
@@ -78,12 +78,12 @@ async function testGroupAccess() {
     console.log('\n🎭 Test 3: Group Events');
     try {
       const eventsResponse = await axios.get(
-        `${GRAPH_API_URL}/${GROUP_ID}/events?access_token=${accessToken}`
+        `${GRAPH_API_URL}/${GROUP_ID}/events?access_token=${accessToken}`,
       );
-      
+
       console.log('✅ Group events accessible!');
       console.log(`Found ${eventsResponse.data.data?.length || 0} events`);
-      
+
       if (eventsResponse.data.data?.length > 0) {
         console.log('Sample event:', eventsResponse.data.data[0]);
       }
@@ -96,15 +96,14 @@ async function testGroupAccess() {
       // Try different approaches
       const publicFields = 'id,name,cover,privacy';
       const limitedResponse = await axios.get(
-        `${GRAPH_API_URL}/${GROUP_ID}?fields=${publicFields}&access_token=${accessToken}`
+        `${GRAPH_API_URL}/${GROUP_ID}?fields=${publicFields}&access_token=${accessToken}`,
       );
-      
+
       console.log('✅ Limited group info accessible:');
       console.log(JSON.stringify(limitedResponse.data, null, 2));
     } catch (error) {
       console.log('❌ Even limited access failed:', error.response?.data || error.message);
     }
-
   } catch (error) {
     console.error('💥 Test failed completely:', error.message);
   }
@@ -123,25 +122,25 @@ async function testWithoutToken() {
 
 async function analyzePermissions() {
   console.log('\n📊 Facebook Group API Analysis\n');
-  
+
   console.log('🔐 Permission Requirements for Groups:');
   console.log('• Basic group info (name, id): Usually accessible with app token');
   console.log('• Group posts/feed: Requires user token + groups_access_member_info permission');
   console.log('• Group events: May require user token or special permissions');
   console.log('• Private groups: Require membership + appropriate permissions');
-  
+
   console.log('\n🎯 What We Can Potentially Extract:');
   console.log('• Group name and basic metadata');
   console.log('• Public group information');
   console.log('• Cover photo and description (if public)');
   console.log('• Member count (if accessible)');
-  
+
   console.log('\n⚠️  Limitations:');
   console.log('• Posts require user authentication');
   console.log('• Private groups block most API access');
   console.log('• Rate limits apply to all requests');
   console.log('• Some data requires app review from Facebook');
-  
+
   console.log('\n🔄 Alternative Approaches:');
   console.log('• Web scraping (limited by anti-bot measures)');
   console.log('• User authentication flow for member access');
@@ -153,10 +152,12 @@ async function main() {
   await testGroupAccess();
   await testWithoutToken();
   await analyzePermissions();
-  
+
   console.log('\n✨ Test Complete!');
   console.log('\nTo see more detailed error messages, check the Facebook Graph API Explorer:');
-  console.log(`https://developers.facebook.com/tools/explorer/?method=GET&path=${GROUP_ID}&version=v18.0`);
+  console.log(
+    `https://developers.facebook.com/tools/explorer/?method=GET&path=${GROUP_ID}&version=v18.0`,
+  );
 }
 
 main().catch(console.error);

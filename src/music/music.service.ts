@@ -467,13 +467,13 @@ export class MusicService {
 
     // Determine if we're in production environment
     // Check multiple indicators for production vs local development
-    const isProduction = 
-      process.env.NODE_ENV === 'production' || 
+    const isProduction =
+      process.env.NODE_ENV === 'production' ||
       process.env.ENVIRONMENT === 'production' ||
       process.env.VERCEL === '1' ||
       process.env.RAILWAY_ENVIRONMENT === 'production';
-    
-    const isLocalDevelopment = 
+
+    const isLocalDevelopment =
       process.env.NODE_ENV === 'development' ||
       (!process.env.NODE_ENV && (process.env.PORT === '8000' || !process.env.PORT)) ||
       process.cwd().includes('localhost') ||

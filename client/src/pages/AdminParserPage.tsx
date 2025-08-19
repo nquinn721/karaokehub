@@ -74,6 +74,21 @@ const AdminParserPage: React.FC = observer(() => {
 
   const logContainerRef = useRef<HTMLDivElement>(null);
 
+  // Helper function to detect Facebook URLs
+  const isFacebookUrl = (url: string): boolean => {
+    return url.includes('facebook.com') || url.includes('fb.com');
+  };
+
+  // Helper function to detect Instagram URLs
+  const isInstagramUrl = (url: string): boolean => {
+    return url.includes('instagram.com');
+  };
+
+  // Get current URL to check if it's Facebook or Instagram
+  const currentUrl = selectedUrl || customUrl;
+  const isCurrentUrlFacebook = currentUrl ? isFacebookUrl(currentUrl) : false;
+  const isCurrentUrlInstagram = currentUrl ? isInstagramUrl(currentUrl) : false;
+
   // Redirect non-admin users
   if (!authStore.isAdmin) {
     return <Navigate to="/dashboard" replace />;
@@ -388,23 +403,62 @@ const AdminParserPage: React.FC = observer(() => {
                 <Typography variant="subtitle2" gutterBottom>
                   Parsing Method
                 </Typography>
-                <RadioGroup
-                  row
-                  value={parseMethod}
-                  onChange={(e) => setParseMethod(e.target.value as 'html' | 'screenshot')}
-                >
-                  <FormControlLabel
-                    value="screenshot"
-                    control={<Radio />}
-                    label="Screenshot Parsing (Recommended)"
-                  />
-                  <FormControlLabel value="html" control={<Radio />} label="HTML Parsing" />
-                </RadioGroup>
-                <Typography variant="caption" color="text.secondary">
-                  {parseMethod === 'screenshot'
-                    ? 'Take a full-page screenshot and parse visually (recommended - finds all shows)'
-                    : 'Parse the HTML content with data attributes (may miss complex layouts)'}
-                </Typography>
+                {isCurrentUrlFacebook ? (
+                  // Facebook URL - show only Facebook parsing option
+                  <Box
+                    sx={{
+                      p: 2,
+                      bgcolor: 'primary.main',
+                      color: 'primary.contrastText',
+                      borderRadius: 1,
+                    }}
+                  >
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      🔵 Facebook Parsing
+                    </Typography>
+                    <Typography variant="caption">
+                      Specialized Facebook parsing using Puppeteer and AI analysis
+                    </Typography>
+                  </Box>
+                ) : isCurrentUrlInstagram ? (
+                  // Instagram URL - show only Instagram parsing option
+                  <Box
+                    sx={{
+                      p: 2,
+                      bgcolor: 'secondary.main',
+                      color: 'secondary.contrastText',
+                      borderRadius: 1,
+                    }}
+                  >
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      📷 Instagram Parsing
+                    </Typography>
+                    <Typography variant="caption">
+                      Visual Instagram parsing using screenshots and AI analysis
+                    </Typography>
+                  </Box>
+                ) : (
+                  // Non-Facebook/Instagram URL - show normal parsing options
+                  <>
+                    <RadioGroup
+                      row
+                      value={parseMethod}
+                      onChange={(e) => setParseMethod(e.target.value as 'html' | 'screenshot')}
+                    >
+                      <FormControlLabel
+                        value="screenshot"
+                        control={<Radio />}
+                        label="Screenshot Parsing (Recommended)"
+                      />
+                      <FormControlLabel value="html" control={<Radio />} label="HTML Parsing" />
+                    </RadioGroup>
+                    <Typography variant="caption" color="text.secondary">
+                      {parseMethod === 'screenshot'
+                        ? 'Take a full-page screenshot and parse visually (recommended - finds all shows)'
+                        : 'Parse the HTML content with data attributes (may miss complex layouts)'}
+                    </Typography>
+                  </>
+                )}
               </FormControl>
 
               <Button
@@ -419,7 +473,11 @@ const AdminParserPage: React.FC = observer(() => {
               >
                 {isParsingUrl
                   ? `Parsing... (${parserStore.getFormattedElapsedTime()})`
-                  : 'Parse Website'}
+                  : isCurrentUrlFacebook
+                    ? 'Parse Facebook'
+                    : isCurrentUrlInstagram
+                      ? 'Parse Instagram'
+                      : 'Parse Website'}
               </Button>
             </Box>
 
