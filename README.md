@@ -2,6 +2,8 @@
 
 A full-stack karaoke application built with React, NestJS, and real-time WebSocket communication.
 
+<!-- Force deployment trigger -->
+
 ## 🎤 Features
 
 - **Frontend**: React + Vite + TypeScript + Material-UI
