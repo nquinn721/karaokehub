@@ -369,7 +369,7 @@ const SimpleMap: React.FC = observer(() => {
       console.log('🚫 Not creating clusterer:', {
         noMap: !map,
         notZoomedOut: !isZoomedOut,
-        noCitySummaries: citySummaries.length === 0
+        noCitySummaries: citySummaries.length === 0,
       });
       if (markerClusterer) {
         console.log('🧹 Clearing existing clusterer');
@@ -455,7 +455,7 @@ const SimpleMap: React.FC = observer(() => {
           marker.addListener('click', () => {
             // Clear any selected show to prevent auto-zoom interference
             mapStore.clearSelectedShow();
-            
+
             map.setZoom(11);
             map.setCenter(position);
 

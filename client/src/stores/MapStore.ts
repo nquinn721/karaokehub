@@ -1003,11 +1003,11 @@ export class MapStore {
       (error) => {
         console.warn('❌ Failed to get user location:', error);
         console.log('🔄 Location denied/failed, ensuring proper zoom level');
-        
+
         runInAction(() => {
           this.locationError = `Failed to get location: ${error.message}`;
         });
-        
+
         // Even if location fails, ensure we're at the right zoom level
         if (this.mapInstance) {
           console.log('🎯 Setting zoom to 11 despite location failure');
@@ -1017,7 +1017,7 @@ export class MapStore {
             this.hasSetInitialBounds = true;
           });
         }
-        
+
         // Fallback to default data fetching
         this.fetchInitialData();
       },

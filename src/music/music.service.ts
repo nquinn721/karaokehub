@@ -466,8 +466,9 @@ export class MusicService {
     const musicbrainzOffset = Math.floor(offset / 2); // Since we mix different sources
 
     // Determine if we're in production environment
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.ENVIRONMENT === 'production';
-    
+    const isProduction =
+      process.env.NODE_ENV === 'production' || process.env.ENVIRONMENT === 'production';
+
     console.log(`🎵 Music search environment: ${isProduction ? 'production' : 'development'}`);
 
     // Use Spotify only in production (karaoke-hub.com has the redirect URI)
@@ -544,7 +545,8 @@ export class MusicService {
     const musicbrainzOffset = Math.floor(offset / 2);
 
     // Determine if we're in production environment
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.ENVIRONMENT === 'production';
+    const isProduction =
+      process.env.NODE_ENV === 'production' || process.env.ENVIRONMENT === 'production';
 
     // Use Spotify only in production (karaoke-hub.com has the redirect URI)
     if (isProduction) {
@@ -554,7 +556,10 @@ export class MusicService {
         const mappedSpotifyResults = this.mapSpotifyArtists(spotifyResults);
         if (mappedSpotifyResults.length > 0) return mappedSpotifyResults.slice(0, limit);
       } catch (error) {
-        console.warn('Spotify artist search failed, falling back to other providers:', error.message);
+        console.warn(
+          'Spotify artist search failed, falling back to other providers:',
+          error.message,
+        );
       }
     }
 
@@ -610,7 +615,8 @@ export class MusicService {
     const musicbrainzOffset = Math.floor(offset / 2);
 
     // Determine if we're in production environment
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.ENVIRONMENT === 'production';
+    const isProduction =
+      process.env.NODE_ENV === 'production' || process.env.ENVIRONMENT === 'production';
 
     // Use Spotify only in production (karaoke-hub.com has the redirect URI)
     if (isProduction) {
