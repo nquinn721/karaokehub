@@ -21,6 +21,7 @@ export class MapStore {
   public userCityCenter: UserLocation | null = null; // City center of user's location
   public searchCenter: UserLocation | null = null; // Current search center (can be map center)
   public selectedMarkerId: string | null = null;
+  public selectedShow: any = null; // Currently selected show for InfoWindow
   public mapInstance: google.maps.Map | null = null;
   public initialCenter = { lat: 40.7128, lng: -74.006 }; // Default to NYC
   public initialZoom = 10;
@@ -48,6 +49,12 @@ export class MapStore {
 
   constructor() {
     makeAutoObservable(this);
+  }
+
+  // Initialize store references
+  public setStoreReferences(apiStore: any, showStore: any) {
+    this.apiStore = apiStore;
+    this.showStore = showStore;
   }
 
   // Calculate radius based on current zoom level
@@ -574,6 +581,17 @@ export class MapStore {
           }
         });
 
+        // Center map on user location when first obtained
+        if (this.mapInstance && !this.hasSetInitialBounds) {
+          console.log('🎯 Centering map on user location:', location);
+          this.mapInstance.setCenter(location);
+          this.mapInstance.setZoom(11); // Set appropriate zoom for user location
+
+          runInAction(() => {
+            this.hasSetInitialBounds = true;
+          });
+        }
+
         // Get city center for better map initialization
         try {
           const cityCenter = await this.getCityCenterFromLocation(location.lat, location.lng);
@@ -581,33 +599,13 @@ export class MapStore {
             runInAction(() => {
               this.userCityCenter = cityCenter;
             });
-
-            // Pan to city center when explicitly requested (preserve current zoom)
-            if (this.mapInstance) {
-              console.log('Panning to city center (user requested):', cityCenter);
-              this.mapInstance.panTo(cityCenter);
-              // Remove automatic zoom change - preserve user's current zoom level
-            }
-          } else {
-            // Pan to user location if no city center found (preserve current zoom)
-            if (this.mapInstance) {
-              console.log('Panning to user location (no city center, user requested):', location);
-              this.mapInstance.panTo(location);
-              // Remove automatic zoom change - preserve user's current zoom level
-            }
           }
         } catch (error) {
           console.warn('Failed to get city center:', error);
-          // Pan to user location as fallback (preserve current zoom)
-          if (this.mapInstance) {
-            console.log('Panning to user location (city center failed):', location);
-            this.mapInstance.panTo(location);
-            // Remove automatic zoom change - preserve user's current zoom level
-          }
         }
 
-        // Re-update map markers with new user location
-        this.updateMapMarkers();
+        // Fetch shows for user location
+        this.fetchShowsAndSummariesForLocation(location);
       },
       (error) => {
         let errorMessage = 'Error getting user location';
@@ -926,6 +924,252 @@ export class MapStore {
   }
 
   // ============ END CLUSTERING METHODS ============
+
+  // ============ NEW BUSINESS LOGIC METHODS TO REPLACE COMPONENT useEffects ============
+
+  // Map initialization and setup (replaces useEffect #1 in SimpleMap)
+  public initializeMapInstance(map: google.maps.Map) {
+    console.log('🚀 Initializing map instance');
+    runInAction(() => {
+      this.mapInstance = map;
+      this.isInitialized = true;
+      // Set initial zoom from map
+      const initialZoom = map.getZoom();
+      if (initialZoom !== undefined) {
+        this._mapZoom = initialZoom;
+      }
+    });
+
+    // Set up map event listeners
+    this.setupMapEventListeners();
+
+    // Get user location and center map immediately
+    this.requestUserLocationAndCenter();
+
+    // Also fetch initial data for the default map center
+    this.fetchInitialData();
+  }
+
+  // Get user location and immediately center map on it
+  public requestUserLocationAndCenter() {
+    if (!navigator.geolocation) {
+      console.log('⚠️ Geolocation not supported, using default location');
+      this.fetchInitialData();
+      return;
+    }
+
+    console.log('📍 Requesting user location...');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const userLoc = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        console.log('✅ Got user location:', userLoc);
+
+        runInAction(() => {
+          this.userLocation = userLoc;
+          this.searchCenter = userLoc;
+          this.locationError = null;
+        });
+
+        // Center map on user location with zoom 11
+        if (this.mapInstance) {
+          console.log('🎯 Centering map on user location with zoom 11');
+          this.mapInstance.setCenter(userLoc);
+          this.mapInstance.setZoom(11);
+
+          runInAction(() => {
+            this._mapZoom = 11;
+            this.hasSetInitialBounds = true;
+          });
+
+          // Fetch shows and city summaries for user location
+          this.fetchShowsAndSummariesForLocation(userLoc);
+        }
+      },
+      (error) => {
+        console.warn('❌ Failed to get user location:', error);
+        runInAction(() => {
+          this.locationError = `Failed to get location: ${error.message}`;
+        });
+        // Fallback to default data fetching
+        this.fetchInitialData();
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000, // 5 minutes
+      },
+    );
+  }
+
+  // Fetch shows and city summaries for a specific location
+  private async fetchShowsAndSummariesForLocation(location: { lat: number; lng: number }) {
+    if (!this.showStore) {
+      console.log('⚠️ No showStore available for location fetch');
+      return;
+    }
+
+    console.log('📊 Fetching shows and summaries for location:', location);
+
+    try {
+      // Fetch shows for the specific location
+      console.log('🎯 Calling showStore.fetchShows with location...');
+      await this.showStore.fetchShows(this.showStore.selectedDay, location);
+
+      // Fetch city summaries (global, not location-specific)
+      console.log('🏙️ Calling showStore.fetchCitySummaries...');
+      await this.showStore.fetchCitySummaries(this.showStore.selectedDay);
+
+      console.log('✅ Location data fetch completed');
+    } catch (error) {
+      console.error('❌ Failed to fetch location data:', error);
+    }
+  }
+
+  // Fetch initial data when map loads
+  private async fetchInitialData() {
+    if (!this.showStore) {
+      console.log('⚠️ No showStore available for initial data fetch');
+      return;
+    }
+
+    console.log('📊 Fetching initial data for map center');
+    const center = this.mapInstance?.getCenter();
+    if (center) {
+      const mapCenter = {
+        lat: center.lat(),
+        lng: center.lng(),
+      };
+
+      console.log('📍 Map center for initial fetch:', mapCenter);
+
+      runInAction(() => {
+        this.searchCenter = mapCenter;
+      });
+
+      try {
+        console.log('🎯 Calling showStore.fetchShows with initial location...');
+        await this.showStore.fetchShows(this.showStore.selectedDay, mapCenter);
+        console.log('🏙️ Calling showStore.fetchCitySummaries...');
+        await this.showStore.fetchCitySummaries(this.showStore.selectedDay);
+        console.log('✅ Initial data fetch completed');
+      } catch (error) {
+        console.error('❌ Failed to fetch initial data:', error);
+      }
+    }
+  }
+
+  private setupMapEventListeners() {
+    if (!this.mapInstance) return;
+
+    // Listen for zoom changes
+    this.mapInstance.addListener('zoom_changed', () => {
+      this.handleZoomChange();
+    });
+
+    // Listen for center changes with debouncing
+    this.mapInstance.addListener('center_changed', () => {
+      this.handleCenterChange();
+    });
+
+    // Listen for idle events (after all panning/zooming is complete)
+    this.mapInstance.addListener('idle', () => {
+      this.handleMapIdle();
+    });
+  }
+
+  // Zoom change handler (replaces useEffect #2 in SimpleMap)
+  private handleZoomChange() {
+    if (!this.mapInstance) return;
+
+    const zoom = this.mapInstance.getZoom();
+    if (zoom !== undefined) {
+      runInAction(() => {
+        this._mapZoom = zoom;
+      });
+    }
+  }
+
+  // Center change handler with debouncing (replaces useEffect #3 in SimpleMap)
+  private handleCenterChange() {
+    if (!this.mapInstance) return;
+
+    // Debounce center change updates
+    if (this.mapUpdateTimeout) {
+      clearTimeout(this.mapUpdateTimeout);
+    }
+
+    this.mapUpdateTimeout = window.setTimeout(() => {
+      this.updateCurrentMapCenter();
+    }, 300);
+  }
+
+  private updateCurrentMapCenter() {
+    if (!this.mapInstance) return;
+
+    const center = this.mapInstance.getCenter();
+    if (center) {
+      runInAction(() => {
+        this._mapCenter = {
+          lat: center.lat(),
+          lng: center.lng(),
+        };
+      });
+    }
+  }
+
+  // Map idle handler - triggers data fetching when user stops moving map
+  private handleMapIdle() {
+    // Update search center when map becomes idle (user has finished moving)
+    if (this._mapCenter && this._mapCenter.lat !== undefined && this._mapCenter.lng !== undefined) {
+      const newCenter = { lat: this._mapCenter.lat, lng: this._mapCenter.lng };
+
+      runInAction(() => {
+        this.searchCenter = newCenter;
+      });
+
+      console.log('🗺️ Map idle, fetching data for new center:', newCenter);
+
+      // Fetch both shows and city summaries for new location
+      this.fetchShowsAndSummariesForLocation(newCenter);
+    }
+  }
+
+  // Show selection methods (replaces useEffect #5 in SimpleMap)
+  public selectShow(show: any) {
+    runInAction(() => {
+      this.selectedShow = show;
+      this.selectedMarkerId = show?.id || null;
+    });
+
+    // Center map on selected show
+    if (show?.venue?.coordinates && this.mapInstance) {
+      const showLocation = {
+        lat: show.venue.coordinates.lat,
+        lng: show.venue.coordinates.lng + 0.0008, // Slight offset for InfoWindow
+      };
+
+      this.mapInstance.panTo(showLocation);
+
+      // Ensure appropriate zoom level
+      const currentZoom = this.mapInstance.getZoom();
+      if (currentZoom !== undefined && currentZoom < 14) {
+        this.mapInstance.setZoom(15);
+      }
+    }
+  }
+
+  public clearSelectedShow() {
+    runInAction(() => {
+      this.selectedShow = null;
+      this.selectedMarkerId = null;
+    });
+  }
+
+  // ============ END NEW BUSINESS LOGIC METHODS ============
 
   // Cleanup method for when component unmounts
   cleanup(): void {

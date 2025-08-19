@@ -1,0 +1,414 @@
+{
+  "metropolitan_areas": {
+    "Columbus, OH": {
+      "center": { "lat": 39.9612, "lng": -82.9988 },
+      "radius_miles": 30,
+      "major_city": "Columbus",
+      "state": "OH",
+      "suburbs": [
+        "Dublin",
+        "Westerville",
+        "Upper Arlington",
+        "Gahanna",
+        "Reynoldsburg",
+        "Grove City",
+        "Pickerington",
+        "Delaware",
+        "Worthington",
+        "Hilliard",
+        "Powell",
+        "Lewis Center",
+        "Sunbury",
+        "Lancaster",
+        "Newark"
+      ]
+    },
+    "New York, NY": {
+      "center": { "lat": 40.7128, "lng": -74.006 },
+      "radius_miles": 40,
+      "major_city": "New York",
+      "state": "NY",
+      "suburbs": [
+        "Brooklyn",
+        "Queens",
+        "Bronx",
+        "Staten Island",
+        "Jersey City",
+        "Newark",
+        "Hoboken",
+        "Yonkers",
+        "White Plains",
+        "New Rochelle",
+        "Mount Vernon",
+        "Stamford",
+        "Norwalk",
+        "Bridgeport"
+      ]
+    },
+    "Los Angeles, CA": {
+      "center": { "lat": 34.0522, "lng": -118.2437 },
+      "radius_miles": 50,
+      "major_city": "Los Angeles",
+      "state": "CA",
+      "suburbs": [
+        "Hollywood",
+        "Santa Monica",
+        "Beverly Hills",
+        "West Hollywood",
+        "Culver City",
+        "Manhattan Beach",
+        "Redondo Beach",
+        "Torrance",
+        "El Segundo",
+        "Inglewood",
+        "Burbank",
+        "Glendale",
+        "Pasadena",
+        "Alhambra",
+        "Monterey Park"
+      ]
+    },
+    "Chicago, IL": {
+      "center": { "lat": 41.8781, "lng": -87.6298 },
+      "radius_miles": 35,
+      "major_city": "Chicago",
+      "state": "IL",
+      "suburbs": [
+        "Evanston",
+        "Skokie",
+        "Oak Park",
+        "Cicero",
+        "Berwyn",
+        "Naperville",
+        "Aurora",
+        "Joliet",
+        "Elgin",
+        "Schaumburg",
+        "Arlington Heights",
+        "Des Plaines"
+      ]
+    },
+    "Houston, TX": {
+      "center": { "lat": 29.7604, "lng": -95.3698 },
+      "radius_miles": 40,
+      "major_city": "Houston",
+      "state": "TX",
+      "suburbs": [
+        "Katy",
+        "Sugar Land",
+        "Pearland",
+        "The Woodlands",
+        "Pasadena",
+        "Baytown",
+        "Missouri City",
+        "Stafford",
+        "Humble",
+        "Spring",
+        "Cypress",
+        "Tomball"
+      ]
+    },
+    "Phoenix, AZ": {
+      "center": { "lat": 33.4484, "lng": -112.074 },
+      "radius_miles": 35,
+      "major_city": "Phoenix",
+      "state": "AZ",
+      "suburbs": [
+        "Scottsdale",
+        "Tempe",
+        "Mesa",
+        "Chandler",
+        "Glendale",
+        "Peoria",
+        "Gilbert",
+        "Surprise",
+        "Avondale",
+        "Goodyear",
+        "Buckeye",
+        "Cave Creek"
+      ]
+    },
+    "Philadelphia, PA": {
+      "center": { "lat": 39.9526, "lng": -75.1652 },
+      "radius_miles": 30,
+      "major_city": "Philadelphia",
+      "state": "PA",
+      "suburbs": [
+        "Camden",
+        "Cherry Hill",
+        "King of Prussia",
+        "Norristown",
+        "Chester",
+        "Wilmington",
+        "Bensalem",
+        "Upper Darby",
+        "Levittown",
+        "Bristol"
+      ]
+    },
+    "San Antonio, TX": {
+      "center": { "lat": 29.4241, "lng": -98.4936 },
+      "radius_miles": 25,
+      "major_city": "San Antonio",
+      "state": "TX",
+      "suburbs": [
+        "New Braunfels",
+        "Schertz",
+        "Seguin",
+        "Boerne",
+        "Helotes",
+        "Leon Valley",
+        "Alamo Heights",
+        "Terrell Hills",
+        "Olmos Park",
+        "Balcones Heights"
+      ]
+    },
+    "San Diego, CA": {
+      "center": { "lat": 32.7157, "lng": -117.1611 },
+      "radius_miles": 30,
+      "major_city": "San Diego",
+      "state": "CA",
+      "suburbs": [
+        "Chula Vista",
+        "Oceanside",
+        "Escondido",
+        "Carlsbad",
+        "El Cajon",
+        "Vista",
+        "San Marcos",
+        "Encinitas",
+        "National City",
+        "La Mesa",
+        "Santee",
+        "Poway"
+      ]
+    },
+    "Dallas, TX": {
+      "center": { "lat": 32.7767, "lng": -96.797 },
+      "radius_miles": 40,
+      "major_city": "Dallas",
+      "state": "TX",
+      "suburbs": [
+        "Fort Worth",
+        "Arlington",
+        "Plano",
+        "Garland",
+        "Irving",
+        "Grand Prairie",
+        "McKinney",
+        "Frisco",
+        "Carrollton",
+        "Richardson",
+        "Lewisville",
+        "Allen"
+      ]
+    },
+    "San Jose, CA": {
+      "center": { "lat": 37.3382, "lng": -121.8863 },
+      "radius_miles": 25,
+      "major_city": "San Jose",
+      "state": "CA",
+      "suburbs": [
+        "Santa Clara",
+        "Sunnyvale",
+        "Mountain View",
+        "Palo Alto",
+        "Fremont",
+        "Milpitas",
+        "Campbell",
+        "Cupertino",
+        "Los Gatos",
+        "Saratoga",
+        "Los Altos"
+      ]
+    },
+    "Austin, TX": {
+      "center": { "lat": 30.2672, "lng": -97.7431 },
+      "radius_miles": 25,
+      "major_city": "Austin",
+      "state": "TX",
+      "suburbs": [
+        "Round Rock",
+        "Cedar Park",
+        "Pflugerville",
+        "Georgetown",
+        "Leander",
+        "Lakeway",
+        "Bee Cave",
+        "West Lake Hills",
+        "Rollingwood",
+        "Sunset Valley"
+      ]
+    },
+    "Jacksonville, FL": {
+      "center": { "lat": 30.3322, "lng": -81.6557 },
+      "radius_miles": 25,
+      "major_city": "Jacksonville",
+      "state": "FL",
+      "suburbs": [
+        "Orange Park",
+        "Fernandina Beach",
+        "Ponte Vedra Beach",
+        "St. Augustine",
+        "Middleburg",
+        "Green Cove Springs",
+        "Callahan",
+        "Yulee",
+        "Hilliard"
+      ]
+    },
+    "Fort Worth, TX": {
+      "center": { "lat": 32.7555, "lng": -97.3308 },
+      "radius_miles": 30,
+      "major_city": "Fort Worth",
+      "state": "TX",
+      "suburbs": [
+        "Arlington",
+        "Grand Prairie",
+        "Irving",
+        "Grapevine",
+        "Southlake",
+        "Colleyville",
+        "Bedford",
+        "Euless",
+        "Hurst",
+        "North Richland Hills"
+      ]
+    },
+    "Charlotte, NC": {
+      "center": { "lat": 35.2271, "lng": -80.8431 },
+      "radius_miles": 25,
+      "major_city": "Charlotte",
+      "state": "NC",
+      "suburbs": [
+        "Gastonia",
+        "Concord",
+        "Rock Hill",
+        "Huntersville",
+        "Matthews",
+        "Mint Hill",
+        "Pineville",
+        "Cornelius",
+        "Davidson",
+        "Stallings",
+        "Weddington",
+        "Waxhaw"
+      ]
+    },
+    "Seattle, WA": {
+      "center": { "lat": 47.6062, "lng": -122.3321 },
+      "radius_miles": 30,
+      "major_city": "Seattle",
+      "state": "WA",
+      "suburbs": [
+        "Bellevue",
+        "Tacoma",
+        "Spokane",
+        "Vancouver",
+        "Kent",
+        "Everett",
+        "Renton",
+        "Spokane Valley",
+        "Federal Way",
+        "Yakima",
+        "Bellingham"
+      ]
+    },
+    "Denver, CO": {
+      "center": { "lat": 39.7392, "lng": -104.9903 },
+      "radius_miles": 30,
+      "major_city": "Denver",
+      "state": "CO",
+      "suburbs": [
+        "Aurora",
+        "Lakewood",
+        "Thornton",
+        "Arvada",
+        "Westminster",
+        "Centennial",
+        "Boulder",
+        "Greeley",
+        "Longmont",
+        "Loveland",
+        "Broomfield",
+        "Commerce City"
+      ]
+    },
+    "Boston, MA": {
+      "center": { "lat": 42.3601, "lng": -71.0589 },
+      "radius_miles": 25,
+      "major_city": "Boston",
+      "state": "MA",
+      "suburbs": [
+        "Cambridge",
+        "Somerville",
+        "Quincy",
+        "Lynn",
+        "Newton",
+        "Brookline",
+        "Waltham",
+        "Malden",
+        "Medford",
+        "Revere",
+        "Everett",
+        "Chelsea"
+      ]
+    },
+    "El Paso, TX": {
+      "center": { "lat": 31.7619, "lng": -106.485 },
+      "radius_miles": 20,
+      "major_city": "El Paso",
+      "state": "TX",
+      "suburbs": [
+        "Socorro",
+        "San Elizario",
+        "Clint",
+        "Horizon City",
+        "Anthony",
+        "Sunland Park",
+        "Canutillo",
+        "Westway",
+        "Sparks",
+        "Vinton"
+      ]
+    },
+    "Detroit, MI": {
+      "center": { "lat": 42.3314, "lng": -83.0458 },
+      "radius_miles": 30,
+      "major_city": "Detroit",
+      "state": "MI",
+      "suburbs": [
+        "Warren",
+        "Sterling Heights",
+        "Livonia",
+        "Dearborn",
+        "Westland",
+        "Troy",
+        "Farmington Hills",
+        "Southfield",
+        "Rochester Hills",
+        "Taylor",
+        "Pontiac"
+      ]
+    },
+    "Nashville, TN": {
+      "center": { "lat": 36.1627, "lng": -86.7816 },
+      "radius_miles": 25,
+      "major_city": "Nashville",
+      "state": "TN",
+      "suburbs": [
+        "Murfreesboro",
+        "Franklin",
+        "Hendersonville",
+        "Smyrna",
+        "Gallatin",
+        "Lebanon",
+        "Mount Juliet",
+        "Goodlettsville",
+        "White House",
+        "Spring Hill"
+      ]
+    }
+  }
+}

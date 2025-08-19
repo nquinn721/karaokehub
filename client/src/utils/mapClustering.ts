@@ -37,28 +37,25 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 
 // Get clustering distance based on zoom level
 function getClusteringDistance(zoom: number): number {
-  // Aggressive clustering that breaks apart at reasonable zoom levels:
-  // 1-6: Country/state level (1000+ km clustering)
-  // 7-8: Large region (500 km clustering)
-  // 9-10: Metro area (200 km clustering)
-  // 11-12: City level (50 km clustering)
-  // 13-14: Local area (10 km clustering)
-  // 15+: Individual markers (no clustering)
+  // More aggressive clustering that groups all US shows at low zoom levels:
+  // 1-5: Continental level (2000+ km clustering - groups entire continents)
+  // 6-7: Country level (1200 km clustering - groups entire countries)
+  // 8: Large region (600 km clustering)
+  // 9: City-wide clustering (100 km clustering)
+  // 10+: Individual markers (no clustering)
 
   console.log(`Getting clustering distance for zoom level: ${zoom}`);
 
-  if (zoom <= 6) {
-    return 1000; // 1000km for country/state level
+  if (zoom <= 5) {
+    return 2000; // 2000km for continental level - should group all North America
+  } else if (zoom <= 7) {
+    return 1200; // 1200km for country level - should group most of US
   } else if (zoom <= 8) {
-    return 500; // 500km for large region
-  } else if (zoom <= 10) {
-    return 200; // 200km for metro area
-  } else if (zoom <= 12) {
-    return 50; // 50km for city level
-  } else if (zoom <= 14) {
-    return 10; // 10km for local area
+    return 600; // 600km for large region
+  } else if (zoom <= 9) {
+    return 100; // 100km for city-wide clustering
   } else {
-    return 0; // No clustering - show individual markers
+    return 0; // No clustering - show individual markers at zoom 10+
   }
 }
 
@@ -112,6 +109,16 @@ export function clusterShows(shows: Show[], zoom: number): MapMarker[] {
       return distance <= clusteringDistance;
     });
 
+    // Debug logging for clustering
+    console.log(
+      `📍 Show "${show.venue}" (${showLat.toFixed(2)}, ${showLng.toFixed(2)}) found ${nearbyShows.length} nearby shows within ${clusteringDistance}km`,
+    );
+    if (nearbyShows.length > 0) {
+      console.log(
+        `   Nearby: ${nearbyShows.map((s) => `${s.venue} (${typeof s.lat === 'string' ? parseFloat(s.lat) : s.lat}, ${typeof s.lng === 'string' ? parseFloat(s.lng) : s.lng})`).join(', ')}`,
+      );
+    }
+
     // Mark all shows in this cluster as processed
     processedShows.add(show.id);
     nearbyShows.forEach((nearbyShow) => processedShows.add(nearbyShow.id));
@@ -162,10 +169,10 @@ export function clusterShows(shows: Show[], zoom: number): MapMarker[] {
 
 // Create cluster marker icon with count
 export function createClusterIcon(count: number, isSelected = false): string {
-  const size = Math.min(50, Math.max(30, 20 + count * 2)); // Scale icon size based on count
+  const size = Math.min(35, Math.max(20, 15 + count * 1.5)); // Scale icon size based on count (smaller)
   const backgroundColor = isSelected ? '#d32f2f' : '#f44336';
   const textColor = '#ffffff';
-  const fontSize = Math.min(16, Math.max(10, 8 + count * 0.5));
+  const fontSize = Math.min(12, Math.max(8, 6 + count * 0.3));
 
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">

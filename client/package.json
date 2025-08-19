@@ -17,6 +17,7 @@
     "@fortawesome/free-regular-svg-icons": "^7.0.0",
     "@fortawesome/free-solid-svg-icons": "^7.0.0",
     "@fortawesome/react-fontawesome": "^0.2.3",
+    "@googlemaps/markerclusterer": "^2.6.2",
     "@mui/icons-material": "^5.15.3",
     "@mui/material": "^5.15.3",
     "@mui/system": "^5.15.3",

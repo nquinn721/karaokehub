@@ -43,7 +43,13 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { authStore, musicStore, songFavoriteStore, subscriptionStore } from '@stores/index';
+import {
+  audioStore,
+  authStore,
+  musicStore,
+  songFavoriteStore,
+  subscriptionStore,
+} from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import {
@@ -65,8 +71,6 @@ export const MusicPage: React.FC = observer(() => {
   const urlSearchQuery = searchParams.get('q') || '';
   const [searchQuery, setSearchQuery] = useState(urlSearchQuery);
 
-  const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
-  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState<
     'favorites' | 'ad_removal' | 'music_preview'
@@ -88,23 +92,13 @@ export const MusicPage: React.FC = observer(() => {
   // Clean up audio when component unmounts
   useEffect(() => {
     return () => {
-      if (audioElement) {
-        audioElement.pause();
-        audioElement.src = '';
-        setCurrentlyPlaying(null);
-        setAudioElement(null);
-      }
+      audioStore.stopAudio();
     };
-  }, [audioElement]);
+  }, []);
 
   // Stop music when navigating within the music section
   useEffect(() => {
-    if (audioElement) {
-      audioElement.pause();
-      audioElement.src = '';
-      setCurrentlyPlaying(null);
-      setAudioElement(null);
-    }
+    audioStore.stopAudio();
   }, [location.pathname, location.search]); // React to route changes
 
   // Load user's song favorites when authenticated
@@ -141,7 +135,7 @@ export const MusicPage: React.FC = observer(() => {
       }
 
       const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
-      
+
       // Only trigger when scrolling down
       if (currentScrollY <= lastScrollY) {
         lastScrollY = currentScrollY;
@@ -152,8 +146,8 @@ export const MusicPage: React.FC = observer(() => {
       scrollTimeout = window.setTimeout(() => {
         // More robust checks
         if (
-          musicStore.songs.length === 0 || 
-          !musicStore.hasMoreSongs || 
+          musicStore.songs.length === 0 ||
+          !musicStore.hasMoreSongs ||
           musicStore.isLoadingMore ||
           musicStore.isLoading
         ) {
@@ -170,7 +164,7 @@ export const MusicPage: React.FC = observer(() => {
           console.log('🔄 Triggering loadMore - scroll at 85%');
           musicStore.loadMore();
         }
-        
+
         scrollTimeout = null;
       }, 250); // Longer throttle to prevent rapid firing
     };
@@ -182,7 +176,12 @@ export const MusicPage: React.FC = observer(() => {
         clearTimeout(scrollTimeout);
       }
     };
-  }, [musicStore.songs.length, musicStore.hasMoreSongs, musicStore.isLoadingMore, musicStore.isLoading]);
+  }, [
+    musicStore.songs.length,
+    musicStore.hasMoreSongs,
+    musicStore.isLoadingMore,
+    musicStore.isLoading,
+  ]);
 
   const handleSearch = async (query?: string) => {
     const searchTerm = query || searchQuery;
@@ -335,35 +334,8 @@ export const MusicPage: React.FC = observer(() => {
   const handlePreviewPlay = async (song: any) => {
     if (!song.previewUrl) return;
 
-    // Stop current audio if playing
-    if (audioElement) {
-      audioElement.pause();
-      audioElement.src = '';
-    }
-
-    // If clicking the same song that's playing, stop it
-    if (currentlyPlaying === song.id) {
-      setCurrentlyPlaying(null);
-      setAudioElement(null);
-      return;
-    }
-
-    // Play new preview
-    try {
-      const audio = new Audio(song.previewUrl);
-      audio.volume = 0.7; // Set volume to 70%
-
-      audio.addEventListener('ended', () => {
-        setCurrentlyPlaying(null);
-        setAudioElement(null);
-      });
-
-      await audio.play();
-      setCurrentlyPlaying(song.id);
-      setAudioElement(audio);
-    } catch (error) {
-      console.error('Error playing preview:', error);
-    }
+    // Use the global audio store
+    await audioStore.playPreview(song);
   };
 
   return (
@@ -602,7 +574,16 @@ export const MusicPage: React.FC = observer(() => {
         {musicStore.songs.length > 0 && (
           <Box>
             {/* Information about music features */}
-            <Box sx={{ mb: 3, p: 2, bgcolor: 'background.paper', borderRadius: 2 }}>
+            <Box
+              sx={{
+                mb: 3,
+                p: 2.5,
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+                border: `1px solid ${theme.palette.divider}`,
+                boxShadow: theme.shadows[1],
+              }}
+            >
               <Typography
                 variant="body2"
                 color="text.secondary"
@@ -633,7 +614,19 @@ export const MusicPage: React.FC = observer(() => {
               )}
             </Box>
 
-            <List sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
+            <List
+              sx={{
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+                p: 1,
+                '& .MuiListItem-root': {
+                  mb: 1,
+                  '&:last-child': {
+                    mb: 0,
+                  },
+                },
+              }}
+            >
               {musicStore.songs.map((song, index) => (
                 <React.Fragment key={`${song.id}-${index}`}>
                   <ListItem disablePadding>
@@ -641,43 +634,55 @@ export const MusicPage: React.FC = observer(() => {
                       onClick={() => musicStore.setSelectedSong(song)}
                       selected={musicStore.selectedSong?.id === song.id}
                       sx={{
-                        py: 2,
-                        borderRadius: 1,
-                        mb: 1,
+                        py: 2.5,
+                        px: 2,
+                        borderRadius: 2,
+                        border: `1px solid ${theme.palette.divider}`,
+                        backgroundColor: theme.palette.background.default,
                         '&.Mui-selected': {
-                          backgroundColor: theme.palette.primary.light + '20',
+                          backgroundColor: theme.palette.primary.light + '15',
+                          borderColor: theme.palette.primary.light,
                         },
+                        '&:hover': {
+                          backgroundColor: theme.palette.action.hover,
+                          borderColor: theme.palette.primary.light,
+                          transform: 'translateY(-1px)',
+                          boxShadow: theme.shadows[2],
+                        },
+                        transition: 'all 0.2s ease-in-out',
                       }}
                     >
-                      <ListItemIcon>
+                      <ListItemIcon sx={{ mr: 2 }}>
                         {song.albumArt?.small ? (
                           <img
                             src={song.albumArt.small}
                             alt={`${song.album} cover`}
                             style={{
-                              width: '48px',
-                              height: '48px',
-                              borderRadius: '4px',
+                              width: '56px',
+                              height: '56px',
+                              borderRadius: '8px',
                               objectFit: 'cover',
+                              boxShadow: theme.shadows[2],
                             }}
                           />
                         ) : (
                           <Box
                             sx={{
-                              width: '48px',
-                              height: '48px',
-                              borderRadius: '4px',
-                              bgcolor: theme.palette.grey[300],
+                              width: '56px',
+                              height: '56px',
+                              borderRadius: '8px',
+                              bgcolor: theme.palette.grey[200],
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
+                              boxShadow: theme.shadows[1],
                             }}
                           >
                             <FontAwesomeIcon
                               icon={faMusic}
                               style={{
-                                fontSize: '24px',
-                                color: theme.palette.grey[600],
+                                fontSize: '28px',
+                                color: theme.palette.grey[500],
                               }}
                             />
                           </Box>
@@ -687,8 +692,16 @@ export const MusicPage: React.FC = observer(() => {
                       {/* Custom layout instead of ListItemText to avoid div-in-p nesting */}
                       <Box sx={{ py: 1, px: 0, flex: 1 }}>
                         {/* Primary content */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="h6" component="span" fontWeight={600}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+                          <Typography
+                            variant="h6"
+                            component="span"
+                            fontWeight={600}
+                            sx={{
+                              fontSize: '1.1rem',
+                              lineHeight: 1.3,
+                            }}
+                          >
                             {song.title}
                           </Typography>
                           {song.year && (
@@ -696,14 +709,27 @@ export const MusicPage: React.FC = observer(() => {
                               label={song.year}
                               size="small"
                               variant="outlined"
-                              sx={{ fontSize: '0.75rem' }}
+                              sx={{
+                                fontSize: '0.75rem',
+                                height: '22px',
+                                '& .MuiChip-label': {
+                                  px: 1,
+                                },
+                              }}
                             />
                           )}
                         </Box>
 
                         {/* Secondary content */}
                         <Box sx={{ mt: 0.5 }}>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                              fontSize: '0.9rem',
+                              lineHeight: 1.4,
+                            }}
+                          >
                             {[
                               song.artist,
                               song.album,
@@ -715,14 +741,25 @@ export const MusicPage: React.FC = observer(() => {
                               .join(' • ')}
                           </Typography>
                           {song.tags && song.tags.length > 0 && (
-                            <Box sx={{ mt: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            <Box sx={{ mt: 1.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                               {song.tags.slice(0, 3).map((tag) => (
                                 <Chip
                                   key={tag}
                                   label={tag}
                                   size="small"
                                   variant="outlined"
-                                  sx={{ fontSize: '0.7rem', height: '20px' }}
+                                  sx={{
+                                    fontSize: '0.7rem',
+                                    height: '22px',
+                                    '& .MuiChip-label': {
+                                      px: 1,
+                                    },
+                                    borderColor: theme.palette.primary.light,
+                                    color: theme.palette.primary.main,
+                                    '&:hover': {
+                                      backgroundColor: theme.palette.primary.light + '10',
+                                    },
+                                  }}
                                 />
                               ))}
                             </Box>
@@ -731,7 +768,15 @@ export const MusicPage: React.FC = observer(() => {
                       </Box>
 
                       {/* Action buttons - Play button (left) and Favorite button (right) */}
-                      <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box
+                        sx={{
+                          ml: 'auto',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5,
+                          pr: 1,
+                        }}
+                      >
                         {/* Play button - gated for premium subscribers with account */}
                         {authStore.isAuthenticated ? (
                           subscriptionStore.shouldShowPaywall('music_preview') ? (
@@ -763,22 +808,28 @@ export const MusicPage: React.FC = observer(() => {
                               disabled={!song.previewUrl}
                               sx={{
                                 bgcolor: song.previewUrl
-                                  ? theme.palette.primary.main
+                                  ? audioStore.currentlyPlaying === song.id && audioStore.isPlaying
+                                    ? theme.palette.success.main // Green for pause
+                                    : theme.palette.info.main // Cyan/Blue for play
                                   : theme.palette.grey[400],
                                 color: 'white',
                                 '&:hover': {
                                   bgcolor: song.previewUrl
-                                    ? theme.palette.primary.dark
+                                    ? audioStore.currentlyPlaying === song.id &&
+                                      audioStore.isPlaying
+                                      ? theme.palette.success.dark // Darker green for pause hover
+                                      : theme.palette.info.dark // Darker cyan for play hover
                                     : theme.palette.grey[500],
                                 },
                                 '&:disabled': {
                                   bgcolor: theme.palette.grey[300],
                                   color: theme.palette.grey[500],
                                 },
+                                transition: 'all 0.2s ease-in-out',
                               }}
                             >
                               <FontAwesomeIcon
-                                icon={currentlyPlaying === song.id ? faPause : faPlay}
+                                icon={audioStore.currentlyPlaying === song.id ? faPause : faPlay}
                                 size="sm"
                               />
                             </IconButton>
@@ -810,10 +861,18 @@ export const MusicPage: React.FC = observer(() => {
                             handleFavorite(song);
                           }}
                           sx={{
-                            color: theme.palette.error.main,
+                            color: isSongFavorited(song.id)
+                              ? theme.palette.secondary.main // Purple/Pink for favorited
+                              : theme.palette.grey[400], // Grey for not favorited
                             '&:hover': {
-                              backgroundColor: theme.palette.error.main + '20',
+                              backgroundColor: isSongFavorited(song.id)
+                                ? theme.palette.secondary.main + '20'
+                                : theme.palette.grey[400] + '20',
+                              color: isSongFavorited(song.id)
+                                ? theme.palette.secondary.dark
+                                : theme.palette.grey[600],
                             },
+                            transition: 'all 0.2s ease-in-out',
                           }}
                         >
                           <FontAwesomeIcon

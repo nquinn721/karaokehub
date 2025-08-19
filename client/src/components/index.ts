@@ -1,6 +1,7 @@
 // Export all components
 export * from './CustomCard';
 export * from './DayPicker';
+export { default as FloatingVolumeControl } from './FloatingVolumeControl';
 export * from './HeaderComponent';
 export * from './LoadingButton';
 export * from './LocalSubscriptionModal';

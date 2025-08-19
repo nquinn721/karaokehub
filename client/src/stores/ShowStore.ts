@@ -16,6 +16,9 @@ export interface Show {
   vendorId: string;
   djId: string;
   address: string;
+  city?: string; // City component of address
+  state?: string; // State component of address
+  zip?: string; // ZIP code component of address
   venue?: string; // The bar/restaurant name
   venuePhone?: string; // Venue contact phone number
   venueWebsite?: string; // Venue website URL
@@ -40,6 +43,15 @@ export interface Show {
   }>;
 }
 
+export interface CitySummary {
+  city: string;
+  state: string;
+  showCount: number;
+  lat: number;
+  lng: number;
+  vendors: string[]; // Array of vendor names in this city
+}
+
 export interface CreateShowData {
   vendorId: string;
   djId: string;
@@ -56,6 +68,11 @@ export class ShowStore {
   selectedDay: DayOfWeek = DayOfWeek.MONDAY;
   selectedShow: Show | null = null;
   isLoading = false;
+
+  // City summary data for zoom levels 9 and below
+  citySummaries: CitySummary[] = [];
+  isLoadingCitySummaries = false;
+  isUsingCityView = false; // Track whether we're showing city view or individual shows
 
   // UI State (moved from ShowsPageStore)
   public sidebarOpen: boolean = false;
@@ -203,13 +220,20 @@ export class ShowStore {
     try {
       // Dynamic import to avoid circular dependency
       const { mapStore } = await import('./MapStore');
-      if (mapStore && mapStore.isInitialized && mapStore.searchCenter) {
-        // Fetch shows based on current search center and new selected day
-        await this.fetchShows(this.selectedDay, {
-          lat: mapStore.searchCenter.lat,
-          lng: mapStore.searchCenter.lng,
-          radius: mapStore.getDynamicRadius(),
-        });
+      if (mapStore && mapStore.isInitialized) {
+        if (this.isUsingCityView) {
+          // Refresh city summaries for the new day
+          console.log('🏙️ Refreshing city summaries for day change:', this.selectedDay);
+          await this.fetchCitySummaries(this.selectedDay);
+        } else if (mapStore.searchCenter) {
+          // Fetch individual shows based on current search center and new selected day
+          console.log('🎯 Refreshing individual shows for day change:', this.selectedDay);
+          await this.fetchShows(this.selectedDay, {
+            lat: mapStore.searchCenter.lat,
+            lng: mapStore.searchCenter.lng,
+            radius: mapStore.getDynamicRadius(),
+          });
+        }
       }
     } catch (error) {
       console.warn('Could not refresh shows for day change:', error);
@@ -261,6 +285,47 @@ export class ShowStore {
         error: error.response?.data?.message || 'Failed to fetch shows',
       };
     }
+  }
+
+  // Fetch city summaries for zoom levels 9 and below
+  async fetchCitySummaries(day?: DayOfWeek): Promise<{ success: boolean; error?: string }> {
+    try {
+      runInAction(() => {
+        this.isLoadingCitySummaries = true;
+        this.isUsingCityView = true;
+      });
+
+      console.log(`🏙️ Fetching city summaries for ${day || 'all days'}`);
+
+      const endpoint = apiStore.endpoints.shows.citySummary(day);
+      const response = await apiStore.get(endpoint);
+
+      runInAction(() => {
+        this.citySummaries = response || [];
+        this.isLoadingCitySummaries = false;
+      });
+
+      console.log(`📊 Received ${this.citySummaries.length} city summaries`);
+      return { success: true };
+    } catch (error: any) {
+      runInAction(() => {
+        this.isLoadingCitySummaries = false;
+        this.isUsingCityView = false;
+      });
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch city summaries',
+      };
+    }
+  }
+
+  // Switch back to individual show view (for zoom 10+)
+  switchToShowView() {
+    runInAction(() => {
+      this.isUsingCityView = false;
+      this.citySummaries = [];
+    });
+    console.log('🎯 Switched to individual show view');
   }
 
   async fetchShow(id: string) {

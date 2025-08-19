@@ -555,6 +555,7 @@ class ApiStore {
       byDay: (day: string) => `/shows?day=${day}`,
       nearby: (centerLat: number, centerLng: number, radius: number = 35, day?: string) =>
         `/shows/nearby?centerLat=${centerLat}&centerLng=${centerLng}&radius=${radius}${day ? `&day=${day}` : ''}`,
+      citySummary: (day?: string) => `/shows/city-summary${day ? `?day=${day}` : ''}`,
     },
 
     // Favorite endpoints

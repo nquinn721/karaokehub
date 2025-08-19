@@ -6,6 +6,7 @@ import { observer } from 'mobx-react-lite';
 import React from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
 import FeedbackButton from './components/FeedbackButton';
+import FloatingVolumeControl from './components/FloatingVolumeControl';
 import FooterComponent from './components/FooterComponent';
 import GlobalNotifications from './components/GlobalNotifications';
 import PostLoginModal from './components/PostLoginModalNew';
@@ -184,6 +185,9 @@ const App: React.FC = observer(() => {
 
         {/* Global Feedback Button */}
         <FeedbackButton />
+
+        {/* Floating Volume Control */}
+        <FloatingVolumeControl />
 
         {/* Global Notifications */}
         <GlobalNotifications />

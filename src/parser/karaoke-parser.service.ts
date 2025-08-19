@@ -402,7 +402,7 @@ export class KaraokeParserService {
         'info',
       );
 
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
       // Parse HTML content with enhanced prompt
       const parsedData = await this.parseSingleHtmlContent(trimmedHtml, url, model);
@@ -794,7 +794,7 @@ export class KaraokeParserService {
         'info',
       );
 
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
       // If content is still too large, split into chunks and process separately
       const maxSingleProcessSize = 1000000; // 1MB - try processing much larger content as single chunk first
@@ -1705,12 +1705,12 @@ ${htmlContent}`;
         if (coordFields.length > 0) {
           this.logAndBroadcast(
             `Gemini coordinate fields for ${showData.venue}: ${coordFields.join(', ')}`,
-            'debug',
+            'info',
           );
         } else {
           this.logAndBroadcast(
             `No coordinate fields found in Gemini response for ${showData.venue}`,
-            'debug',
+            'info',
           );
         }
 
@@ -2221,7 +2221,7 @@ ${htmlContent}`;
       this.logAndBroadcast('Starting Gemini Vision parsing with screenshot');
 
       const model = this.genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash', // Faster model for vision tasks
+        model: 'gemini-2.0-flash-exp', // Latest model for vision tasks
         generationConfig: {
           temperature: 0.1, // Lower temperature for more consistent parsing
           topP: 0.8,

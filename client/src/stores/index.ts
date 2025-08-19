@@ -1,6 +1,7 @@
 import { autorun } from 'mobx';
 import { adminStore as adminStoreInstance } from './AdminStore';
 import { apiStore as apiStoreInstance } from './ApiStore';
+import { audioStore as audioStoreInstance } from './AudioStore';
 import { AuthStore } from './AuthStore';
 import { FavoriteStore } from './FavoriteStore';
 import { FeedbackStore, feedbackStore as feedbackStoreInstance } from './FeedbackStore';
@@ -36,6 +37,7 @@ export class RootStore {
   musicStore: MusicStore;
   subscriptionStore: SubscriptionStore;
   apiStore: typeof apiStoreInstance;
+  audioStore: typeof audioStoreInstance;
 
   private webSocketInitialized = false;
 
@@ -55,6 +57,7 @@ export class RootStore {
     this.musicStore = musicStoreInstance; // Use the singleton instance
     this.subscriptionStore = subscriptionStoreInstance; // Use the singleton instance
     this.apiStore = apiStoreInstance;
+    this.audioStore = audioStoreInstance; // Use the singleton instance
 
     // Setup WebSocket connection and parser events
     this.setupWebSocket();
@@ -114,6 +117,7 @@ export const {
   mapStore,
   musicStore,
   subscriptionStore,
+  audioStore,
   apiStore: api,
 } = rootStore;
 

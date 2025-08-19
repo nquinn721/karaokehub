@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as fs from 'fs';
+import * as path from 'path';
 import { Repository } from 'typeorm';
 import { GeocodingService } from '../geocoding/geocoding.service';
 import { DayOfWeek, Show } from './show.entity';
@@ -31,6 +33,15 @@ export interface GeocodedShow extends Show {
   distance: number;
 }
 
+export interface CitySummary {
+  city: string;
+  state: string;
+  showCount: number;
+  lat: number;
+  lng: number;
+  vendors: string[];
+}
+
 @Injectable()
 export class ShowService {
   private readonly logger = new Logger(ShowService.name);
@@ -40,6 +51,100 @@ export class ShowService {
     private showRepository: Repository<Show>,
     private geocodingService: GeocodingService,
   ) {}
+
+  /**
+   * Calculate distance between two coordinates in miles
+   */
+  private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 3959; // Earth's radius in miles
+    const dLat = this.toRadians(lat2 - lat1);
+    const dLng = this.toRadians(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(lat1)) *
+        Math.cos(this.toRadians(lat2)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  /**
+   * Convert degrees to radians
+   */
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
+
+  /**
+   * Find which metropolitan area a city belongs to
+   */
+  private findMetropolitanArea(
+    cityName: string,
+    stateName: string,
+    lat?: number,
+    lng?: number,
+  ): {
+    metro: string;
+    center: { lat: number; lng: number };
+  } | null {
+    try {
+      const metroAreasPath = path.join(process.cwd(), 'data', 'metropolitan-areas.json');
+      let metroData: any = {};
+
+      try {
+        const metroFile = fs.readFileSync(metroAreasPath, 'utf8');
+        metroData = JSON.parse(metroFile);
+      } catch (error) {
+        this.logger.warn('Could not read metropolitan-areas.json');
+        return null;
+      }
+
+      // First, check if city is explicitly listed as a suburb
+      for (const [metroName, metroInfo] of Object.entries(metroData.metropolitan_areas)) {
+        const metro = metroInfo as any;
+
+        // Check if it's the major city
+        if (metro.major_city === cityName && metro.state === stateName) {
+          return {
+            metro: metroName,
+            center: metro.center,
+          };
+        }
+
+        // Check if it's in the suburbs list
+        if (metro.suburbs && metro.suburbs.includes(cityName)) {
+          return {
+            metro: metroName,
+            center: metro.center,
+          };
+        }
+      }
+
+      // If we have coordinates, check distance-based clustering
+      if (lat && lng) {
+        for (const [metroName, metroInfo] of Object.entries(metroData.metropolitan_areas)) {
+          const metro = metroInfo as any;
+          const distance = this.calculateDistance(lat, lng, metro.center.lat, metro.center.lng);
+
+          if (distance <= metro.radius_miles) {
+            this.logger.log(
+              `Found ${cityName}, ${stateName} within ${metroName} (${distance.toFixed(1)} miles from center)`,
+            );
+            return {
+              metro: metroName,
+              center: metro.center,
+            };
+          }
+        }
+      }
+
+      return null;
+    } catch (error) {
+      this.logger.warn('Error checking metropolitan areas:', error);
+      return null;
+    }
+  }
 
   async create(createShowDto: CreateShowDto): Promise<Show> {
     const show = this.showRepository.create(createShowDto);
@@ -284,6 +389,154 @@ export class ShowService {
       return stats;
     } catch (error) {
       this.logger.error('Error during re-geocoding:', error);
+      throw error;
+    }
+  }
+
+  async getCitySummary(day?: DayOfWeek): Promise<CitySummary[]> {
+    this.logger.log(`Getting city summary${day ? ` for ${day}` : ''}`);
+
+    try {
+      // Read locations data
+      const locationsPath = path.join(process.cwd(), 'data', 'locations.json');
+      let locationsData: any = {};
+
+      try {
+        const locationsFile = fs.readFileSync(locationsPath, 'utf8');
+        locationsData = JSON.parse(locationsFile);
+      } catch (error) {
+        this.logger.warn('Could not read locations.json, falling back to database only');
+      }
+
+      // Get show counts from database
+      const queryBuilder = this.showRepository
+        .createQueryBuilder('show')
+        .leftJoinAndSelect('show.vendor', 'vendor')
+        .where('show.isActive = :isActive', { isActive: true })
+        .andWhere('show.city IS NOT NULL')
+        .andWhere('show.state IS NOT NULL');
+
+      if (day) {
+        queryBuilder.andWhere('show.day = :day', { day });
+      }
+
+      const shows = await queryBuilder.getMany();
+
+      // Group shows by city and state
+      const cityShowCounts = new Map<
+        string,
+        {
+          city: string;
+          state: string;
+          showCount: number;
+          vendors: Set<string>;
+        }
+      >();
+
+      shows.forEach((show) => {
+        const key = `${show.city}-${show.state}`;
+
+        if (!cityShowCounts.has(key)) {
+          cityShowCounts.set(key, {
+            city: show.city,
+            state: show.state,
+            showCount: 0,
+            vendors: new Set(),
+          });
+        }
+
+        const cityData = cityShowCounts.get(key);
+        if (cityData) {
+          cityData.showCount++;
+          cityData.vendors.add(show.vendor?.name || 'Unknown');
+        }
+      });
+
+      // Combine with locations data
+      const citySummaries: CitySummary[] = [];
+
+      for (const [stateName, cities] of Object.entries(locationsData)) {
+        if (Array.isArray(cities)) {
+          for (const cityInfo of cities) {
+            if (typeof cityInfo === 'object' && cityInfo.city) {
+              const key = `${cityInfo.city}-${stateName}`;
+              const showData = cityShowCounts.get(key);
+
+              // Only include cities that have shows
+              if (showData && showData.showCount > 0) {
+                citySummaries.push({
+                  city: cityInfo.city,
+                  state: stateName,
+                  showCount: showData.showCount,
+                  lat: cityInfo.lat,
+                  lng: cityInfo.lng,
+                  vendors: Array.from(showData.vendors),
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // Add any cities from database that aren't in locations.json
+      for (const [key, cityData] of cityShowCounts.entries()) {
+        const existingCity = citySummaries.find(
+          (c) => c.city === cityData.city && c.state === cityData.state,
+        );
+
+        if (!existingCity) {
+          // Try to get lat/lng from any show in this city that has coordinates
+          const cityShows = shows.filter(
+            (s) => s.city === cityData.city && s.state === cityData.state,
+          );
+          const showWithCoords = cityShows.find((s) => s.lat && s.lng);
+
+          if (showWithCoords && showWithCoords.lat && showWithCoords.lng) {
+            citySummaries.push({
+              city: cityData.city,
+              state: cityData.state,
+              showCount: cityData.showCount,
+              lat: Number(showWithCoords.lat),
+              lng: Number(showWithCoords.lng),
+              vendors: Array.from(cityData.vendors),
+            });
+            this.logger.log(
+              `Added missing city to summary: ${cityData.city}, ${cityData.state} (${cityData.showCount} shows)`,
+            );
+          } else {
+            // Fallback: Use Google Geocoding API to get city coordinates
+            try {
+              const geocodeResult = await this.geocodingService.geocodeAddress(
+                `${cityData.city}, ${cityData.state}`,
+              );
+              if (geocodeResult) {
+                citySummaries.push({
+                  city: cityData.city,
+                  state: cityData.state,
+                  showCount: cityData.showCount,
+                  lat: geocodeResult.lat,
+                  lng: geocodeResult.lng,
+                  vendors: Array.from(cityData.vendors),
+                });
+                this.logger.log(
+                  `Geocoded and added missing city: ${cityData.city}, ${cityData.state} (${cityData.showCount} shows)`,
+                );
+              } else {
+                this.logger.warn(
+                  `Could not geocode city: ${cityData.city}, ${cityData.state} - skipping`,
+                );
+              }
+            } catch (error) {
+              this.logger.warn(`Geocoding failed for ${cityData.city}, ${cityData.state}:`, error);
+            }
+          }
+        }
+      }
+
+      this.logger.log(`Found ${citySummaries.length} cities with shows`);
+      return citySummaries;
+    } catch (error) {
+      this.logger.error('Error getting city summary:', error);
       throw error;
     }
   }

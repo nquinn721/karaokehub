@@ -9,6 +9,7 @@ export interface BottomSheetProps {
   initialSnap?: number; // Index of initial snap point
   onSnapChange?: (snapIndex: number) => void;
   closeOnOutsideClick?: boolean;
+  alwaysVisible?: boolean; // Never fully close, always show handle
 }
 
 export const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -19,6 +20,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   initialSnap = 0,
   onSnapChange,
   closeOnOutsideClick = true,
+  alwaysVisible = false,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -157,10 +159,25 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       }
     }
 
-    // Check if should close (dragging down past threshold)
-    if (velocity > 100 && currentTransform > window.innerHeight * 0.6) {
-      onToggle();
-      return;
+    // Special behavior for alwaysVisible mode
+    if (alwaysVisible) {
+      // If at maximum snap (fully expanded) and dragging down significantly,
+      // drop to 50% (middle snap point)
+      if (currentSnapIndex === snapPoints.length - 1 && velocity > 100) {
+        const middleIndex = Math.floor(snapPoints.length / 2);
+        targetSnapIndex = middleIndex;
+      }
+      // Never allow full closure - minimum is first snap point
+      if (targetSnapIndex < 0 || (velocity > 100 && currentTransform > window.innerHeight * 0.6)) {
+        targetSnapIndex = 0; // Stay at minimum visible state
+        return;
+      }
+    } else {
+      // Original behavior: Check if should close (dragging down past threshold)
+      if (velocity > 100 && currentTransform > window.innerHeight * 0.6) {
+        onToggle();
+        return;
+      }
     }
 
     snapToPoint(targetSnapIndex);
@@ -283,17 +300,17 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     handleMouseUp,
   ]);
 
-  // Initialize position when opened
+  // Initialize position when opened or when always visible
   useEffect(() => {
-    if (isOpen && isMobile) {
+    if ((isOpen || alwaysVisible) && isMobile) {
       snapToPoint(initialSnap);
     }
-  }, [isOpen, isMobile, snapToPoint, initialSnap]);
+  }, [isOpen, isMobile, snapToPoint, initialSnap, alwaysVisible]);
 
   // Handle resize
   useEffect(() => {
     const handleResize = () => {
-      if (isOpen && isMobile) {
+      if ((isOpen || alwaysVisible) && isMobile) {
         snapToPoint(currentSnapIndex);
       }
     };
@@ -306,13 +323,20 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent) => {
       if (closeOnOutsideClick && e.target === e.currentTarget) {
-        onToggle();
+        if (alwaysVisible) {
+          // In always visible mode, clicking backdrop just minimizes to smallest snap
+          snapToPoint(0);
+        } else {
+          // Original behavior: close completely
+          onToggle();
+        }
       }
     },
-    [closeOnOutsideClick, onToggle],
+    [closeOnOutsideClick, onToggle, alwaysVisible, snapToPoint],
   );
 
-  if (!isOpen) return null;
+  // Show if open OR if always visible (even when "closed")
+  if (!isOpen && !alwaysVisible) return null;
 
   // On desktop, show as sidebar
   if (!isMobile) {
@@ -338,21 +362,24 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   // On mobile, show as bottom sheet
   return (
     <>
-      {/* Backdrop */}
-      <Box
-        onClick={handleBackdropClick}
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          bgcolor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 1300,
-          opacity: isOpen ? 1 : 0,
-          transition: 'opacity 0.3s',
-        }}
-      />
+      {/* Backdrop - only show when not in alwaysVisible mode or when expanded */}
+      {!alwaysVisible && (
+        <Box
+          onClick={handleBackdropClick}
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 1300,
+            opacity: isOpen ? 1 : 0,
+            transition: 'opacity 0.3s',
+            pointerEvents: isOpen ? 'auto' : 'none',
+          }}
+        />
+      )}
 
       {/* Bottom Sheet */}
       <Paper

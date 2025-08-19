@@ -14,6 +14,7 @@ class ApiRateLimiter {
     deezer: { delay: 100, maxPerMinute: 200 }, // More generous
     itunes: { delay: 50, maxPerMinute: 300 }, // Most generous
     lastfm: { delay: 200, maxPerMinute: 150 }, // Moderate
+    spotify: { delay: 100, maxPerMinute: 500 }, // Generous - 32k per hour = ~533 per minute
   };
 
   // Circuit breaker config
@@ -153,6 +154,12 @@ export class MusicService {
   private readonly userAgent = 'KaraokeRatingsApp/1.0.0';
   private readonly rateLimiter = new ApiRateLimiter();
 
+  // Spotify configuration
+  private readonly spotifyClientId = process.env.SPOTIFY_CLIENT_ID;
+  private readonly spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  private spotifyAccessToken: string | null = null;
+  private spotifyTokenExpiry: number = 0;
+
   // Legacy support - will be removed
   private lastRequestTime = 0;
 
@@ -275,6 +282,113 @@ export class MusicService {
     }
   }
 
+  // ---------- Spotify helpers (requires client credentials) ----------
+  private async getSpotifyAccessToken(): Promise<string> {
+    if (!this.spotifyClientId || !this.spotifyClientSecret) {
+      throw new HttpException('Spotify credentials not configured', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    // Check if current token is still valid (with 5 minute buffer)
+    if (this.spotifyAccessToken && Date.now() < this.spotifyTokenExpiry - 300000) {
+      return this.spotifyAccessToken;
+    }
+
+    try {
+      const credentials = Buffer.from(
+        `${this.spotifyClientId}:${this.spotifyClientSecret}`,
+      ).toString('base64');
+
+      const response = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${credentials}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'grant_type=client_credentials',
+      });
+
+      if (!response.ok) {
+        throw new HttpException(`Spotify auth error: ${response.status}`, HttpStatus.BAD_GATEWAY);
+      }
+
+      const data = await response.json();
+      this.spotifyAccessToken = data.access_token;
+      this.spotifyTokenExpiry = Date.now() + data.expires_in * 1000;
+
+      return this.spotifyAccessToken;
+    } catch (error) {
+      throw new HttpException('Failed to get Spotify access token', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+  }
+
+  private async fetchSpotify(
+    term: string,
+    type: 'track' | 'artist' = 'track',
+    limit: number = 10,
+  ): Promise<any> {
+    await this.rateLimiter.waitForRateLimit('spotify');
+
+    try {
+      const accessToken = await this.getSpotifyAccessToken();
+      const encodedQuery = encodeURIComponent(term);
+      const url = `https://api.spotify.com/v1/search?q=${encodedQuery}&type=${type}&limit=${limit}&market=US`;
+
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!res.ok) {
+        this.rateLimiter.recordFailure('spotify');
+        throw new HttpException(`Spotify API error: ${res.status}`, HttpStatus.BAD_GATEWAY);
+      }
+
+      this.rateLimiter.recordSuccess('spotify');
+      return res.json();
+    } catch (error) {
+      this.rateLimiter.recordFailure('spotify');
+      throw error;
+    }
+  }
+
+  private mapSpotifySongs(json: any): MusicSearchResult[] {
+    const tracks = json?.tracks?.items || [];
+    return tracks.map((track: any) => ({
+      id: track.id,
+      title: track.name,
+      artist: track.artists?.[0]?.name,
+      album: track.album?.name,
+      year: track.album?.release_date
+        ? String(new Date(track.album.release_date).getFullYear())
+        : undefined,
+      albumArt:
+        track.album?.images?.length > 0
+          ? {
+              small: track.album.images[track.album.images.length - 1]?.url, // Smallest image
+              medium: track.album.images[Math.floor(track.album.images.length / 2)]?.url, // Medium image
+              large: track.album.images[0]?.url, // Largest image
+            }
+          : undefined,
+      previewUrl: track.preview_url || undefined,
+      popularity: track.popularity, // Spotify popularity score (0-100)
+      spotifyUrl: track.external_urls?.spotify,
+    }));
+  }
+
+  private mapSpotifyArtists(json: any): ArtistSearchResult[] {
+    const artists = json?.artists?.items || [];
+    return artists.map((artist: any) => ({
+      id: artist.id,
+      name: artist.name,
+      disambiguation: undefined,
+      country: undefined,
+      popularity: artist.popularity,
+      spotifyUrl: artist.external_urls?.spotify,
+      genres: artist.genres,
+    }));
+  }
+
   private mapItunesSongs(json: any): MusicSearchResult[] {
     const items = Array.isArray(json?.results) ? json.results : [];
     return items
@@ -340,7 +454,7 @@ export class MusicService {
     }
   }
 
-  // ---------- Public search methods (Deezer -> iTunes -> MusicBrainz) ----------
+  // ---------- Public search methods (Spotify -> Deezer -> iTunes -> MusicBrainz) ----------
   async searchSongs(query: string, limit = 10, offset = 0): Promise<MusicSearchResult[]> {
     if (query.length < 3) {
       return [];
@@ -351,7 +465,16 @@ export class MusicService {
     // For pagination, we'll use the MusicBrainz offset parameter
     const musicbrainzOffset = Math.floor(offset / 2); // Since we mix different sources
 
-    // 1) Try Deezer first for popularity-ranked songs
+    // 1) Try Spotify first - highest quality metadata and best coverage
+    try {
+      const spotifyResults = await this.fetchSpotify(query, 'track', limit);
+      const mappedSpotifyResults = this.mapSpotifySongs(spotifyResults);
+      if (mappedSpotifyResults.length > 0) return mappedSpotifyResults.slice(0, limit);
+    } catch (error) {
+      console.warn('Spotify search failed, falling back to other providers:', error.message);
+    }
+
+    // 2) Try Deezer for popularity-ranked songs
     for (const v of variants) {
       try {
         const deezerJson = await this.fetchDeezer(v, limit);
@@ -362,7 +485,7 @@ export class MusicService {
       }
     }
 
-    // 2) Try iTunes next (good coverage)
+    // 3) Try iTunes (good coverage)
     for (const v of variants) {
       try {
         const itunesJson = await this.fetchItunes(v, {
@@ -376,7 +499,7 @@ export class MusicService {
       }
     }
 
-    // 3) Fallback: MusicBrainz fuzzy query with offset
+    // 4) Fallback: MusicBrainz fuzzy query with offset
     try {
       const norm = this.normalizeQuery(query);
       const tokens = norm.split(' ').filter(Boolean);
@@ -412,7 +535,16 @@ export class MusicService {
     // For pagination, we'll use the MusicBrainz offset parameter
     const musicbrainzOffset = Math.floor(offset / 2);
 
-    // iTunes artists across variants (Deezer artist search exists but iTunes is fine for this path)
+    // 1) Try Spotify first - best artist metadata and coverage
+    try {
+      const spotifyResults = await this.fetchSpotify(query, 'artist', limit);
+      const mappedSpotifyResults = this.mapSpotifyArtists(spotifyResults);
+      if (mappedSpotifyResults.length > 0) return mappedSpotifyResults.slice(0, limit);
+    } catch (error) {
+      console.warn('Spotify artist search failed, falling back to other providers:', error.message);
+    }
+
+    // 2) iTunes artists across variants (Deezer artist search exists but iTunes is fine for this path)
     for (const v of variants) {
       try {
         const itunesJson = await this.fetchItunes(v, {
@@ -426,7 +558,7 @@ export class MusicService {
       }
     }
 
-    // Fallback: MusicBrainz artists fuzzy with offset
+    // 3) Fallback: MusicBrainz artists fuzzy with offset
     try {
       const norm = this.normalizeQuery(query);
       const tokens = norm.split(' ').filter(Boolean);
@@ -463,7 +595,18 @@ export class MusicService {
     // For pagination, we'll use the MusicBrainz offset parameter
     const musicbrainzOffset = Math.floor(offset / 2);
 
-    // 1) Deezer ranked songs across variants
+    // 1) Spotify ranked songs across variants (prioritized for better catalog)
+    for (const v of variants) {
+      try {
+        const spotifyJson = await this.fetchSpotify(v, 'track', limit);
+        const spotifyResults = this.mapSpotifySongs(spotifyJson);
+        if (spotifyResults.length > 0) return spotifyResults.slice(0, limit);
+      } catch {
+        // continue to fallback
+      }
+    }
+
+    // 2) Deezer ranked songs across variants
     for (const v of variants) {
       try {
         const deezerJson = await this.fetchDeezer(v, limit);
@@ -474,7 +617,7 @@ export class MusicService {
       }
     }
 
-    // 2) iTunes across variants
+    // 3) iTunes across variants
     for (const v of variants) {
       try {
         const itunesJson = await this.fetchItunes(v, {
@@ -488,7 +631,7 @@ export class MusicService {
       }
     }
 
-    // 3) Fallback: MusicBrainz combined fuzzy with offset
+    // 4) Fallback: MusicBrainz combined fuzzy with offset
     try {
       const norm = this.normalizeQuery(query);
       const tokens = norm.split(' ').filter(Boolean);

@@ -1,13 +1,11 @@
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
-  faBars,
   faClock,
   faHeart,
   faMapMarkerAlt,
   faMicrophone,
   faMusic,
   faUser,
-  faXmark,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -15,7 +13,6 @@ import {
   Box,
   Chip,
   CircularProgress,
-  Fab,
   IconButton,
   List,
   ListItem,
@@ -31,7 +28,7 @@ import React, { useEffect } from 'react';
 import { BottomSheet } from '../components/BottomSheet';
 import { DayOfWeek } from '../components/DayPicker/DayPicker';
 import { SEO } from '../components/SEO';
-import { SimpleMap } from '../components/SimpleMap';
+import SimpleMap from '../components/SimpleMap';
 import { Show } from '../stores/ShowStore';
 import { authStore, favoriteStore, mapStore, showStore } from '../stores/index';
 
@@ -67,7 +64,9 @@ const ShowsPage: React.FC = observer(() => {
       if (showStore.useDayFilter) {
         await showStore.fetchShows(showStore.selectedDay);
       } else {
-        await showStore.fetchShows();
+        // Always filter by selected day, even when day filter is "off"
+        // This ensures consistency with the map clustering
+        await showStore.fetchShows(showStore.selectedDay);
       }
 
       console.log('Shows loaded (filter change):', showStore.shows.length);
@@ -83,12 +82,29 @@ const ShowsPage: React.FC = observer(() => {
         selectedDay: showStore.selectedDay,
         useDayFilter: showStore.useDayFilter,
         searchCenter: mapStore.searchCenter,
+        radiusFilter: showStore.radiusFilter,
       });
 
-      if (showStore.useDayFilter) {
-        await showStore.fetchShows(showStore.selectedDay);
+      if (mapStore.searchCenter) {
+        // Use location-based search with map center and radius
+        const mapCenter = {
+          lat: mapStore.searchCenter.lat,
+          lng: mapStore.searchCenter.lng,
+          radius: showStore.radiusFilter,
+        };
+
+        if (showStore.useDayFilter) {
+          await showStore.fetchShows(showStore.selectedDay, mapCenter);
+        } else {
+          await showStore.fetchShows(showStore.selectedDay, mapCenter);
+        }
       } else {
-        await showStore.fetchShows();
+        // Fallback to non-location based search
+        if (showStore.useDayFilter) {
+          await showStore.fetchShows(showStore.selectedDay);
+        } else {
+          await showStore.fetchShows(showStore.selectedDay);
+        }
       }
 
       console.log('Shows loaded (map position):', showStore.shows.length);
@@ -98,7 +114,12 @@ const ShowsPage: React.FC = observer(() => {
     if (mapStore.searchCenter) {
       loadShowsForMapPosition();
     }
-  }, [mapStore.searchCenter, showStore.selectedDay, showStore.useDayFilter]);
+  }, [
+    mapStore.searchCenter,
+    showStore.selectedDay,
+    showStore.useDayFilter,
+    showStore.radiusFilter,
+  ]);
 
   // Format time helper
   const formatTime = (time: string): string => {
@@ -146,44 +167,17 @@ const ShowsPage: React.FC = observer(() => {
           }}
         >
           <SimpleMap />
-
-          {/* Toggle Button - Mobile Only */}
-          {isMobile && (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 16,
-                right: 16,
-                zIndex: 1000,
-              }}
-            >
-              <Fab
-                color="secondary"
-                size="small"
-                onClick={() => showStore.toggleSidebar()}
-                sx={{
-                  backgroundColor: 'background.paper',
-                  border: `1px solid ${theme.palette.divider}`,
-                  color: 'text.primary',
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                  },
-                }}
-                title={showStore.sidebarOpen ? 'Hide filters and shows' : 'Show filters and shows'}
-              >
-                <FontAwesomeIcon icon={showStore.sidebarOpen ? faXmark : faBars} />
-              </Fab>
-            </Box>
-          )}
         </Box>
 
         {/* Bottom Sheet / Sidebar for Shows and Filters */}
         {isMobile ? (
           <BottomSheet
-            isOpen={showStore.sidebarOpen}
+            isOpen={true} // Always considered "open" when alwaysVisible
             onToggle={() => showStore.toggleSidebar()}
-            snapPoints={[0.3, 0.6, 0.9]}
-            initialSnap={0}
+            snapPoints={[0.08, 0.5, 0.9]} // Minimum 8% visible, 50% middle, 90% full
+            initialSnap={0} // Start minimized
+            alwaysVisible={true}
+            closeOnOutsideClick={true}
           >
             {/* Filters Section */}
             <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
@@ -344,8 +338,7 @@ const ShowsPage: React.FC = observer(() => {
                 }}
               >
                 <Typography variant="h6" sx={{ fontSize: '1rem' }}>
-                  Shows ({showStore.filteredShows.length}) | Markers (
-                  {showStore.filteredShows.length}) | Zoom ({8})
+                  Shows {showStore.filteredShows.length}
                 </Typography>
               </Box>
 
@@ -368,7 +361,7 @@ const ShowsPage: React.FC = observer(() => {
                     </Typography>
                   </Box>
                 ) : (
-                  <List sx={{ p: 0, pb: { xs: 4, md: 1 } }}>
+                  <List sx={{ p: 0, pb: { xs: 4, md: 1 }, mr: '15px', mt: '5px' }}>
                     {showStore.filteredShows.map((show: Show) => {
                       const isFavorited = authStore.isAuthenticated
                         ? show.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
@@ -532,17 +525,32 @@ const ShowsPage: React.FC = observer(() => {
                                             marginTop: '2px',
                                           }}
                                         />
-                                        <Typography
-                                          variant="body2"
-                                          color="text.secondary"
-                                          sx={{
-                                            fontSize: { xs: '0.75rem', md: '0.8rem' },
-                                            lineHeight: 1.3,
-                                            wordBreak: 'break-word',
-                                          }}
-                                        >
-                                          {show.address}
-                                        </Typography>
+                                        <Box sx={{ flex: 1 }}>
+                                          <Typography
+                                            variant="body2"
+                                            color="text.secondary"
+                                            sx={{
+                                              fontSize: { xs: '0.75rem', md: '0.8rem' },
+                                              lineHeight: 1.3,
+                                              wordBreak: 'break-word',
+                                            }}
+                                          >
+                                            {show.address}
+                                          </Typography>
+                                          {(show.city || show.state) && (
+                                            <Typography
+                                              variant="body2"
+                                              color="text.secondary"
+                                              sx={{
+                                                fontSize: { xs: '0.7rem', md: '0.75rem' },
+                                                lineHeight: 1.2,
+                                                opacity: 0.8,
+                                              }}
+                                            >
+                                              {[show.city, show.state].filter(Boolean).join(', ')}
+                                            </Typography>
+                                          )}
+                                        </Box>
                                       </Box>
                                     </Box>
 
@@ -816,10 +824,7 @@ const ShowsPage: React.FC = observer(() => {
                   borderBottom: `1px solid ${theme.palette.divider}`,
                 }}
               >
-                <Typography variant="h6">
-                  Shows ({showStore.filteredShows.length}) | Markers (
-                  {showStore.filteredShows.length}) | Zoom ({8})
-                </Typography>
+                <Typography variant="h6">Shows {showStore.filteredShows.length}</Typography>
               </Box>
 
               {showStore.isLoading ? (
@@ -834,7 +839,7 @@ const ShowsPage: React.FC = observer(() => {
                   No shows found for the selected filters.
                 </Typography>
               ) : (
-                <List sx={{ p: 0, pb: 2 }}>
+                <List sx={{ p: 0, pb: 2, mr: '15px', mt: '5px' }}>
                   {showStore.filteredShows.map((show: Show) => {
                     return (
                       <React.Fragment key={show.id}>
@@ -986,17 +991,32 @@ const ShowsPage: React.FC = observer(() => {
                                           marginTop: '2px', // Align with first line of text
                                         }}
                                       />
-                                      <Typography
-                                        variant="body2"
-                                        color="text.secondary"
-                                        sx={{
-                                          fontSize: { xs: '0.75rem', md: '0.8rem' },
-                                          lineHeight: 1.3,
-                                          wordBreak: 'break-word',
-                                        }}
-                                      >
-                                        {show.address}
-                                      </Typography>
+                                      <Box sx={{ flex: 1 }}>
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                          sx={{
+                                            fontSize: { xs: '0.75rem', md: '0.8rem' },
+                                            lineHeight: 1.3,
+                                            wordBreak: 'break-word',
+                                          }}
+                                        >
+                                          {show.address}
+                                        </Typography>
+                                        {(show.city || show.state) && (
+                                          <Typography
+                                            variant="body2"
+                                            color="text.secondary"
+                                            sx={{
+                                              fontSize: { xs: '0.7rem', md: '0.75rem' },
+                                              lineHeight: 1.2,
+                                              opacity: 0.8,
+                                            }}
+                                          >
+                                            {[show.city, show.state].filter(Boolean).join(', ')}
+                                          </Typography>
+                                        )}
+                                      </Box>
                                     </Box>
                                   </Box>
 

@@ -38,6 +38,11 @@ export class ShowController {
     return this.showService.findNearby(mapCenterLat, mapCenterLng, radiusMiles, day);
   }
 
+  @Get('city-summary')
+  getCitySummary(@Query('day') day?: DayOfWeek) {
+    return this.showService.getCitySummary(day);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.showService.findOne(id);
