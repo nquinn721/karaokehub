@@ -117,12 +117,12 @@ export class MapStore {
     });
 
     try {
-      if (zoom <= 10) {
-        // Low zoom (10 or less): Show clustered city summaries
+      if (zoom <= 9) {
+        // Low zoom (9 or less): Show clustered city summaries
         console.log('🏙️ MapStore: Low zoom - fetching city summaries for clustering');
         await this.showStore.fetchCitySummaries(day, vendor);
-      } else if (zoom >= 11 && zoom <= 15) {
-        // Medium zoom (11-15): Show all shows with filters but no distance limit
+      } else if (zoom >= 10 && zoom <= 15) {
+        // Medium zoom (10-15): Show all shows with filters but no distance limit
         console.log('🗺️ MapStore: Medium zoom - fetching all shows with filters');
         await this.showStore.fetchAllShows(day, vendor);
       } else {
@@ -184,7 +184,7 @@ export class MapStore {
       this.mapInstance.setCenter({ lat, lng });
 
       // Zoom in if we're too far out to see individual shows
-      if (this.currentZoom <= 10) {
+      if (this.currentZoom <= 9) {
         this.mapInstance.setZoom(14);
       }
     }

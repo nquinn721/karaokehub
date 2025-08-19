@@ -401,64 +401,148 @@ export class KaraokeParserService {
   private async parseFacebookPage(url: string): Promise<ParsedKaraokeData> {
     let browser;
     let extractedData;
+    let retryCount = 0;
+    const maxRetries = 3;
 
-    try {
-      this.logAndBroadcast('Launching Puppeteer for Facebook parsing...', 'info');
+    while (retryCount < maxRetries) {
+      try {
+        this.logAndBroadcast(
+          `Launching Puppeteer for Facebook parsing (attempt ${retryCount + 1}/${maxRetries})...`,
+          'info',
+        );
 
-      const puppeteer = await import('puppeteer');
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--no-first-run',
-          '--no-zygote',
-          '--single-process',
-        ],
-      });
+        const puppeteer = await import('puppeteer');
+        browser = await puppeteer.launch({
+          headless: true,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor',
+          ],
+        });
 
-      const page = await browser.newPage();
+        const page = await browser.newPage();
 
-      // Set user agent to avoid bot detection
-      await page.setUserAgent(
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      );
+        // Set user agent to avoid bot detection
+        await page.setUserAgent(
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        );
 
-      this.logAndBroadcast(`Navigating to Facebook URL: ${url}`, 'info');
-      await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
+        // Add error handlers to detect navigation issues early
+        page.on('error', (error) => {
+          this.logAndBroadcast(`Page error detected: ${error.message}`, 'warning');
+        });
 
-      this.logAndBroadcast('Extracting page content...', 'info');
+        page.on('pageerror', (error) => {
+          this.logAndBroadcast(`Page script error: ${error.message}`, 'warning');
+        });
 
-      // Get all text content from the page
-      const pageContent = await page.evaluate(() => {
-        // Remove script and style elements
-        const scripts = document.querySelectorAll('script, style');
-        scripts.forEach((el) => el.remove());
+        this.logAndBroadcast(`Navigating to Facebook URL: ${url}`, 'info');
 
-        return {
-          title: document.title,
-          content: document.body.innerText,
-          html: document.body.innerHTML,
+        // Use more aggressive timeout and retry navigation if needed
+        try {
+          await page.goto(url, {
+            waitUntil: 'domcontentloaded', // Less strict than networkidle0
+            timeout: 20000, // Reduced timeout for faster failure
+          });
+        } catch (navError) {
+          if (
+            navError.message.includes('detached') ||
+            navError.message.includes('Navigation timeout')
+          ) {
+            this.logAndBroadcast(`Navigation error: ${navError.message}, will retry...`, 'warning');
+            throw navError; // Let the retry logic handle this
+          }
+          throw navError;
+        }
+
+        // Wait a bit for content to load
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        this.logAndBroadcast('Extracting page content...', 'info');
+
+        // Get all text content from the page with error handling
+        const pageContent = await page.evaluate(() => {
+          try {
+            // Remove script and style elements
+            const scripts = document.querySelectorAll('script, style');
+            scripts.forEach((el) => el.remove());
+
+            return {
+              title: document.title,
+              content: document.body.innerText,
+              html: document.body.innerHTML,
+            };
+          } catch (error) {
+            return {
+              title: 'Facebook Page',
+              content: 'Error extracting content',
+              html: '<html>Error</html>',
+            };
+          }
+        });
+
+        this.logAndBroadcast(
+          `Extracted ${pageContent.content.length} characters of content`,
+          'info',
+        );
+
+        extractedData = {
+          title: pageContent.title,
+          content: pageContent.content,
+          html: pageContent.html,
+          url: url,
         };
-      });
 
-      this.logAndBroadcast(`Extracted ${pageContent.content.length} characters of content`, 'info');
+        // If we got here, parsing was successful
+        break;
+      } catch (error) {
+        retryCount++;
+        this.logAndBroadcast(
+          `Facebook parsing attempt ${retryCount} failed: ${error.message}`,
+          'warning',
+        );
 
-      extractedData = {
-        title: pageContent.title,
-        content: pageContent.content,
-        html: pageContent.html,
-        url: url,
-      };
-    } catch (error) {
-      this.logAndBroadcast(`Facebook parsing error: ${error.message}`, 'error');
-      throw error;
-    } finally {
-      if (browser) {
-        await browser.close();
+        // Check if this is a retryable error
+        const isRetryableError =
+          error.message.includes('detached') ||
+          error.message.includes('Navigation timeout') ||
+          error.message.includes('Page crashed') ||
+          error.message.includes('Target closed') ||
+          error.message.includes('Protocol error');
+
+        if (!isRetryableError || retryCount >= maxRetries) {
+          this.logAndBroadcast(
+            `Facebook parsing failed after ${retryCount} attempts: ${error.message}`,
+            'error',
+          );
+          throw error;
+        }
+
+        // Wait before retry
+        await new Promise((resolve) => setTimeout(resolve, 2000 * retryCount));
+
+        this.logAndBroadcast(`Retrying Facebook parsing in ${2 * retryCount} seconds...`, 'info');
+      } finally {
+        if (browser) {
+          try {
+            await browser.close();
+          } catch (closeError) {
+            this.logAndBroadcast(`Error closing browser: ${closeError.message}`, 'warning');
+          }
+          browser = null;
+        }
       }
+    }
+
+    if (!extractedData) {
+      throw new Error('Failed to extract Facebook data after all retry attempts');
     }
 
     // Convert extracted data to ParsedKaraokeData using Gemini
@@ -1073,7 +1157,16 @@ Return ONLY the JSON object, no other text.
       // Check if this is a Facebook URL and use unified Facebook parsing
       if (url.includes('facebook.com') || url.includes('fb.com')) {
         this.logAndBroadcast(`Detected Facebook URL - using Facebook parsing`, 'info');
-        return await this.parseFacebookPage(url);
+
+        try {
+          return await this.parseFacebookPage(url);
+        } catch (facebookError) {
+          this.logAndBroadcast(`Facebook parsing failed: ${facebookError.message}`, 'error');
+          this.logAndBroadcast(`Falling back to generic HTML parsing for Facebook URL`, 'warning');
+
+          // Fall back to generic HTML parsing if Facebook-specific parsing fails
+          // This will help with Facebook URLs that don't load properly
+        }
       }
 
       // Log memory usage before parsing

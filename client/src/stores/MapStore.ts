@@ -117,12 +117,12 @@ export class MapStore {
     });
 
     try {
-      if (zoom <= 10) {
-        // Low zoom (10 or less): Get ALL shows with current filters (no radius limit)
+      if (zoom <= 9) {
+        // Low zoom (9 or less): Get ALL shows with current filters (no radius limit)
         console.log('🌍 MapStore: Low zoom - fetching ALL shows with filters (no radius)');
         await this.showStore.fetchAllShows(day, vendor);
       } else {
-        // High zoom (11+): Get shows within 100 miles of map center
+        // High zoom (10+): Get shows within 100 miles of map center
         console.log('📍 MapStore: High zoom - fetching nearby shows within 100 miles');
         await this.showStore.fetchNearbyShows(center.lat, center.lng, 100, day, vendor);
       }
@@ -180,7 +180,7 @@ export class MapStore {
       this.mapInstance.setCenter({ lat, lng });
 
       // Zoom in if we're too far out to see individual shows
-      if (this.currentZoom <= 10) {
+      if (this.currentZoom <= 9) {
         this.mapInstance.setZoom(14);
       }
     }
