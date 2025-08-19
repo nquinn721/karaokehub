@@ -354,50 +354,23 @@ const SimpleMap: React.FC = observer(() => {
     }
   }, [map]);
 
-  // Create fake markers for clustering - one marker per show in each city
-  const createFakeMarkersForClustering = (citySummaries: any[]): google.maps.Marker[] => {
-    const markers: google.maps.Marker[] = [];
-
-    citySummaries.forEach((cityData) => {
-      console.log('🏙️ Processing city:', cityData.city, 'with', cityData.showCount, 'shows');
-
-      // Create multiple markers for each show in the city
-      for (let i = 0; i < cityData.showCount; i++) {
-        // Add small random offset to spread markers slightly for clustering
-        const offsetLat = cityData.lat + (Math.random() - 0.5) * 0.001;
-        const offsetLng = cityData.lng + (Math.random() - 0.5) * 0.001;
-
-        const marker = new google.maps.Marker({
-          position: { lat: offsetLat, lng: offsetLng },
-          map: null, // Don't add to map yet - clusterer will handle this
-          // Make markers very small and transparent so they're effectively invisible
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 1,
-            fillColor: 'transparent',
-            fillOpacity: 0,
-            strokeWeight: 0,
-          },
-        });
-
-        markers.push(marker);
-      }
-    });
-
-    console.log(`✅ Created ${markers.length} fake markers for ${citySummaries.length} cities`);
-    return markers;
-  };
-
-  // Set up marker clusterer for city view (only UI logic remaining in component)
+  // Set up marker clusterer for city view using real markers
   useEffect(() => {
     console.log('🎯 Clusterer setup effect:', {
       hasMap: !!map,
       isZoomedOut,
+      currentZoom,
       citySummariesLength: citySummaries.length,
       citySummaries: citySummaries.slice(0, 3), // Log first 3 for debugging
     });
 
+    // Clear existing clusterer when not needed
     if (!map || !isZoomedOut || citySummaries.length === 0) {
+      console.log('🚫 Not creating clusterer:', {
+        noMap: !map,
+        notZoomedOut: !isZoomedOut,
+        noCitySummaries: citySummaries.length === 0
+      });
       if (markerClusterer) {
         console.log('🧹 Clearing existing clusterer');
         markerClusterer.clearMarkers();
@@ -406,17 +379,59 @@ const SimpleMap: React.FC = observer(() => {
       return;
     }
 
-    const fakeMarkers = createFakeMarkersForClustering(citySummaries);
+    // Create real markers for clustering - one marker per show in each city
+    const realMarkers: google.maps.Marker[] = [];
 
-    if (fakeMarkers.length === 0) {
-      console.log('⚠️ No fake markers created');
+    citySummaries.forEach((cityData) => {
+      console.log('🏙️ Processing city for clustering:', {
+        city: cityData.city,
+        state: cityData.state,
+        showCount: cityData.showCount,
+        lat: cityData.lat,
+        lng: cityData.lng,
+      });
+
+      // Skip if missing coordinates
+      if (!cityData.lat || !cityData.lng) {
+        console.warn('⚠️ Skipping city due to missing coordinates:', cityData);
+        return;
+      }
+
+      // Create one real marker for each show in the city
+      // Example: 15 shows in Columbus = create 15 markers at Columbus location
+      for (let i = 0; i < cityData.showCount; i++) {
+        // Add tiny random offset to spread markers slightly for better clustering visualization
+        const offsetLat = cityData.lat + (Math.random() - 0.5) * 0.0005;
+        const offsetLng = cityData.lng + (Math.random() - 0.5) * 0.0005;
+
+        const marker = new google.maps.Marker({
+          position: { lat: offsetLat, lng: offsetLng },
+          map: null, // Don't add to map yet - clusterer will handle this
+          // Use invisible markers - clusterer will replace with cluster icons
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 0.1,
+            fillColor: 'transparent',
+            fillOpacity: 0,
+            strokeWeight: 0,
+          },
+        });
+
+        realMarkers.push(marker);
+      }
+    });
+
+    if (realMarkers.length === 0) {
+      console.log('⚠️ No real markers created');
       return;
     }
 
-    // Create new clusterer with custom renderer
+    console.log(`✅ Created ${realMarkers.length} real markers for clustering`);
+
+    // Create new clusterer with real markers
     const clusterer = new MarkerClusterer({
       map,
-      markers: fakeMarkers,
+      markers: realMarkers,
       renderer: {
         render: ({ count, position }) => {
           console.log(`📍 Rendering cluster with count: ${count} at position:`, position);
@@ -438,7 +453,10 @@ const SimpleMap: React.FC = observer(() => {
 
           // Add click listener to zoom in when cluster is clicked
           marker.addListener('click', () => {
-            map.setZoom(10);
+            // Clear any selected show to prevent auto-zoom interference
+            mapStore.clearSelectedShow();
+            
+            map.setZoom(11);
             map.setCenter(position);
 
             // Fetch shows for the new location when zooming in
@@ -455,7 +473,7 @@ const SimpleMap: React.FC = observer(() => {
       },
     });
 
-    console.log('✅ Created new MarkerClusterer with', fakeMarkers.length, 'markers');
+    console.log('✅ Created new MarkerClusterer with', realMarkers.length, 'real markers');
     setMarkerClusterer(clusterer);
 
     return () => {
@@ -529,9 +547,8 @@ const SimpleMap: React.FC = observer(() => {
                   }}
                   onClick={() => {
                     console.log('🖱️ Marker clicked for show:', show.id, show.venue);
-                    // Sync with show store selection
+                    // Use showStore to handle the click (it will call mapStore.selectShow)
                     showStore.handleMarkerClick(show.id);
-                    mapStore.selectShow(show);
                   }}
                 />
               ))}
@@ -541,13 +558,15 @@ const SimpleMap: React.FC = observer(() => {
             <InfoWindow
               position={{
                 lat:
+                  selectedShow.venue?.coordinates?.lat ||
                   (typeof selectedShow.lat === 'string'
                     ? parseFloat(selectedShow.lat)
-                    : selectedShow.lat!) + 0.0008, // Offset above the marker
+                    : selectedShow.lat!) + 0.0008,
                 lng:
-                  typeof selectedShow.lng === 'string'
+                  selectedShow.venue?.coordinates?.lng ||
+                  (typeof selectedShow.lng === 'string'
                     ? parseFloat(selectedShow.lng)
-                    : selectedShow.lng!,
+                    : selectedShow.lng!),
               }}
               onCloseClick={() => {
                 mapStore.clearSelectedShow();

@@ -165,11 +165,27 @@ export class ShowStore {
   // ============ MAP INTEGRATION METHODS ============
 
   /**
-   * Handle marker click - toggle selection
+   * Handle marker click - toggle selection and move map
    */
   handleMarkerClick(showId: string) {
     const newId = this.selectedMarkerId === showId ? null : showId;
     this.setSelectedMarkerId(newId);
+
+    // If selecting a show, find the show object and tell MapStore to select it
+    if (newId) {
+      const show = this.shows.find((s) => s.id === showId);
+      if (show) {
+        // Import MapStore dynamically to avoid circular dependencies
+        import('./index').then(({ mapStore }) => {
+          mapStore.selectShow(show);
+        });
+      }
+    } else {
+      // If deselecting, clear the map selection
+      import('./index').then(({ mapStore }) => {
+        mapStore.clearSelectedShow();
+      });
+    }
   }
 
   // TODO: Distance calculation temporarily disabled - will be moved to server-side
@@ -221,18 +237,22 @@ export class ShowStore {
       // Dynamic import to avoid circular dependency
       const { mapStore } = await import('./MapStore');
       if (mapStore && mapStore.isInitialized) {
-        if (this.isUsingCityView) {
-          // Refresh city summaries for the new day
-          console.log('🏙️ Refreshing city summaries for day change:', this.selectedDay);
-          await this.fetchCitySummaries(this.selectedDay);
-        } else if (mapStore.searchCenter) {
+        // Always try to fetch individual shows from map center if available
+        if (mapStore.searchCenter) {
           // Fetch individual shows based on current search center and new selected day
           console.log('🎯 Refreshing individual shows for day change:', this.selectedDay);
+          console.log('🗺️ Using map center:', mapStore.searchCenter);
           await this.fetchShows(this.selectedDay, {
             lat: mapStore.searchCenter.lat,
             lng: mapStore.searchCenter.lng,
             radius: mapStore.getDynamicRadius(),
           });
+        }
+
+        // Also refresh city summaries if we're in city view mode
+        if (this.isUsingCityView) {
+          console.log('🏙️ Also refreshing city summaries for day change:', this.selectedDay);
+          await this.fetchCitySummaries(this.selectedDay);
         }
       }
     } catch (error) {
@@ -271,7 +291,24 @@ export class ShowStore {
       const response = await apiStore.get(endpoint);
 
       runInAction(() => {
-        this.shows = response || [];
+        // Remove duplicates by ID before storing
+        const uniqueShows = response || [];
+        const seenIds = new Set();
+        const deduplicatedShows = uniqueShows.filter((show: any) => {
+          if (seenIds.has(show.id)) {
+            console.warn(
+              `🔍 Duplicate show detected and removed: ${show.id} - ${show.venue?.name}`,
+            );
+            return false;
+          }
+          seenIds.add(show.id);
+          return true;
+        });
+
+        console.log(
+          `📊 Fetched ${uniqueShows.length} shows, after deduplication: ${deduplicatedShows.length}`,
+        );
+        this.shows = deduplicatedShows;
         this.isLoading = false;
       });
 

@@ -465,16 +465,24 @@ export class MusicService {
     // For pagination, we'll use the MusicBrainz offset parameter
     const musicbrainzOffset = Math.floor(offset / 2); // Since we mix different sources
 
-    // 1) Try Spotify first - highest quality metadata and best coverage
-    try {
-      const spotifyResults = await this.fetchSpotify(query, 'track', limit);
-      const mappedSpotifyResults = this.mapSpotifySongs(spotifyResults);
-      if (mappedSpotifyResults.length > 0) return mappedSpotifyResults.slice(0, limit);
-    } catch (error) {
-      console.warn('Spotify search failed, falling back to other providers:', error.message);
+    // Determine if we're in production environment
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.ENVIRONMENT === 'production';
+    
+    console.log(`🎵 Music search environment: ${isProduction ? 'production' : 'development'}`);
+
+    // Use Spotify only in production (karaoke-hub.com has the redirect URI)
+    if (isProduction) {
+      // 1) Try Spotify first - highest quality metadata and best coverage
+      try {
+        const spotifyResults = await this.fetchSpotify(query, 'track', limit);
+        const mappedSpotifyResults = this.mapSpotifySongs(spotifyResults);
+        if (mappedSpotifyResults.length > 0) return mappedSpotifyResults.slice(0, limit);
+      } catch (error) {
+        console.warn('Spotify search failed, falling back to other providers:', error.message);
+      }
     }
 
-    // 2) Try Deezer for popularity-ranked songs
+    // 2) Try Deezer for popularity-ranked songs (works in both dev and prod)
     for (const v of variants) {
       try {
         const deezerJson = await this.fetchDeezer(v, limit);
@@ -485,7 +493,7 @@ export class MusicService {
       }
     }
 
-    // 3) Try iTunes (good coverage)
+    // 3) Try iTunes (good coverage, works in both dev and prod)
     for (const v of variants) {
       try {
         const itunesJson = await this.fetchItunes(v, {
@@ -535,13 +543,19 @@ export class MusicService {
     // For pagination, we'll use the MusicBrainz offset parameter
     const musicbrainzOffset = Math.floor(offset / 2);
 
-    // 1) Try Spotify first - best artist metadata and coverage
-    try {
-      const spotifyResults = await this.fetchSpotify(query, 'artist', limit);
-      const mappedSpotifyResults = this.mapSpotifyArtists(spotifyResults);
-      if (mappedSpotifyResults.length > 0) return mappedSpotifyResults.slice(0, limit);
-    } catch (error) {
-      console.warn('Spotify artist search failed, falling back to other providers:', error.message);
+    // Determine if we're in production environment
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.ENVIRONMENT === 'production';
+
+    // Use Spotify only in production (karaoke-hub.com has the redirect URI)
+    if (isProduction) {
+      // 1) Try Spotify first - best artist metadata and coverage
+      try {
+        const spotifyResults = await this.fetchSpotify(query, 'artist', limit);
+        const mappedSpotifyResults = this.mapSpotifyArtists(spotifyResults);
+        if (mappedSpotifyResults.length > 0) return mappedSpotifyResults.slice(0, limit);
+      } catch (error) {
+        console.warn('Spotify artist search failed, falling back to other providers:', error.message);
+      }
     }
 
     // 2) iTunes artists across variants (Deezer artist search exists but iTunes is fine for this path)
@@ -595,14 +609,20 @@ export class MusicService {
     // For pagination, we'll use the MusicBrainz offset parameter
     const musicbrainzOffset = Math.floor(offset / 2);
 
-    // 1) Spotify ranked songs across variants (prioritized for better catalog)
-    for (const v of variants) {
-      try {
-        const spotifyJson = await this.fetchSpotify(v, 'track', limit);
-        const spotifyResults = this.mapSpotifySongs(spotifyJson);
-        if (spotifyResults.length > 0) return spotifyResults.slice(0, limit);
-      } catch {
-        // continue to fallback
+    // Determine if we're in production environment
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.ENVIRONMENT === 'production';
+
+    // Use Spotify only in production (karaoke-hub.com has the redirect URI)
+    if (isProduction) {
+      // 1) Spotify ranked songs across variants (prioritized for better catalog)
+      for (const v of variants) {
+        try {
+          const spotifyJson = await this.fetchSpotify(v, 'track', limit);
+          const spotifyResults = this.mapSpotifySongs(spotifyJson);
+          if (spotifyResults.length > 0) return spotifyResults.slice(0, limit);
+        } catch {
+          // continue to fallback
+        }
       }
     }
 

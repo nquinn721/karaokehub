@@ -76,9 +76,15 @@ spec:
                   name: KARAOKE_HUB_GEMINI_API_KEY
                   key: latest
             - name: FACEBOOK_APP_ID
-              value: '646464114624794'
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_FACEBOOK_APP_ID
+                  key: latest
             - name: FACEBOOK_APP_SECRET
-              value: '3ce6645105081d6f3a5442a30bd6b1ae'
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_FACEBOOK_APP_SECRET
+                  key: latest
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:

@@ -24,7 +24,7 @@ export class MapStore {
   public selectedShow: any = null; // Currently selected show for InfoWindow
   public mapInstance: google.maps.Map | null = null;
   public initialCenter = { lat: 40.7128, lng: -74.006 }; // Default to NYC
-  public initialZoom = 10;
+  public initialZoom = 11;
   public isInitialized = false;
   public locationError: string | null = null;
   public hasSetInitialBounds = false;
@@ -985,15 +985,39 @@ export class MapStore {
             this.hasSetInitialBounds = true;
           });
 
+          // Force zoom to 11 again after a short delay to ensure it sticks
+          setTimeout(() => {
+            if (this.mapInstance) {
+              this.mapInstance.setZoom(11);
+              runInAction(() => {
+                this._mapZoom = 11;
+              });
+              console.log('🔄 Forced zoom to 11 for user location');
+            }
+          }, 100);
+
           // Fetch shows and city summaries for user location
           this.fetchShowsAndSummariesForLocation(userLoc);
         }
       },
       (error) => {
         console.warn('❌ Failed to get user location:', error);
+        console.log('🔄 Location denied/failed, ensuring proper zoom level');
+        
         runInAction(() => {
           this.locationError = `Failed to get location: ${error.message}`;
         });
+        
+        // Even if location fails, ensure we're at the right zoom level
+        if (this.mapInstance) {
+          console.log('🎯 Setting zoom to 11 despite location failure');
+          this.mapInstance.setZoom(11);
+          runInAction(() => {
+            this._mapZoom = 11;
+            this.hasSetInitialBounds = true;
+          });
+        }
+        
         // Fallback to default data fetching
         this.fetchInitialData();
       },
@@ -1123,6 +1147,13 @@ export class MapStore {
 
   // Map idle handler - triggers data fetching when user stops moving map
   private handleMapIdle() {
+    // Don't fetch data if zoomed out too far (level 9 or less)
+    const currentZoom = this.mapInstance?.getZoom();
+    if (currentZoom !== undefined && currentZoom <= 9) {
+      console.log('🗺️ Map idle but zoom level too low (', currentZoom, '), skipping data fetch');
+      return;
+    }
+
     // Update search center when map becomes idle (user has finished moving)
     if (this._mapCenter && this._mapCenter.lat !== undefined && this._mapCenter.lng !== undefined) {
       const newCenter = { lat: this._mapCenter.lat, lng: this._mapCenter.lng };

@@ -65,7 +65,11 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
     }
 
     this.connectedClients.add(client.id);
-    this.logger.log(`Client connected: ${client.id} (Total: ${this.connectedClients.size})`);
+    
+    // Only log every 10th connection to reduce noise in development
+    if (this.connectedClients.size % 10 === 0 || this.connectedClients.size <= 5) {
+      this.logger.log(`Client connected: ${client.id} (Total: ${this.connectedClients.size})`);
+    }
 
     // Send welcome message
     client.emit('welcome', {
@@ -76,7 +80,11 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
 
   handleDisconnect(client: Socket) {
     this.connectedClients.delete(client.id);
-    this.logger.log(`Client disconnected: ${client.id} (Total: ${this.connectedClients.size})`);
+    
+    // Only log every 10th disconnection or when getting to low numbers
+    if (this.connectedClients.size % 10 === 0 || this.connectedClients.size <= 5) {
+      this.logger.log(`Client disconnected: ${client.id} (Total: ${this.connectedClients.size})`);
+    }
 
     // Remove from user sockets mapping
     for (const [userId, socketId] of this.userSockets.entries()) {
