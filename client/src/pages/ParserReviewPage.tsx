@@ -3,6 +3,7 @@ import { LoadingButton } from '@components/LoadingButton';
 import { ParseResults, ParseResultsDialog } from '@components/ParseResultsDialog';
 import {
   faCheck,
+  faFileLines,
   faGlobe,
   faMicrophone,
   faMusic,
@@ -10,7 +11,11 @@ import {
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -831,6 +836,94 @@ const ParserReviewPage: React.FC = observer(() => {
                       ))}
                     </Stack>
                   </Box>
+
+                  {/* Parsing Logs */}
+                  {editedData?.parsingLogs && editedData.parsingLogs.length > 0 && (
+                    <>
+                      <Divider />
+                      <Box>
+                        <Accordion>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography
+                              variant="h6"
+                              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                            >
+                              <FontAwesomeIcon icon={faFileLines} />
+                              Parsing Logs ({editedData.parsingLogs.length})
+                            </Typography>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
+                              <Stack spacing={1}>
+                                {editedData.parsingLogs.map((log: any, index: number) => (
+                                  <Paper
+                                    key={index}
+                                    variant="outlined"
+                                    sx={{
+                                      p: 1.5,
+                                      borderLeft: `4px solid ${
+                                        log.level === 'error'
+                                          ? '#f44336'
+                                          : log.level === 'warn'
+                                            ? '#ff9800'
+                                            : log.level === 'success'
+                                              ? '#4caf50'
+                                              : '#2196f3'
+                                      }`,
+                                      backgroundColor:
+                                        log.level === 'error'
+                                          ? 'rgba(244, 67, 54, 0.05)'
+                                          : log.level === 'warn'
+                                            ? 'rgba(255, 152, 0, 0.05)'
+                                            : log.level === 'success'
+                                              ? 'rgba(76, 175, 80, 0.05)'
+                                              : 'rgba(33, 150, 243, 0.05)',
+                                    }}
+                                  >
+                                    <Box
+                                      sx={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'flex-start',
+                                        mb: 0.5,
+                                      }}
+                                    >
+                                      <Chip
+                                        size="small"
+                                        label={log.level.toUpperCase()}
+                                        sx={{
+                                          backgroundColor:
+                                            log.level === 'error'
+                                              ? '#f44336'
+                                              : log.level === 'warn'
+                                                ? '#ff9800'
+                                                : log.level === 'success'
+                                                  ? '#4caf50'
+                                                  : '#2196f3',
+                                          color: 'white',
+                                          fontSize: '0.7rem',
+                                          height: 20,
+                                        }}
+                                      />
+                                      <Typography variant="caption" color="text.secondary">
+                                        {new Date(log.timestamp).toLocaleString()}
+                                      </Typography>
+                                    </Box>
+                                    <Typography
+                                      variant="body2"
+                                      sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}
+                                    >
+                                      {log.message}
+                                    </Typography>
+                                  </Paper>
+                                ))}
+                              </Stack>
+                            </Box>
+                          </AccordionDetails>
+                        </Accordion>
+                      </Box>
+                    </>
+                  )}
 
                   {/* Review Comments for AI Rules */}
                   <Divider />

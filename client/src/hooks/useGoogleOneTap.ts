@@ -77,8 +77,8 @@ export const useGoogleOneTap = (options: UseGoogleOneTapOptions = {}) => {
   // Get Google Client ID from environment
   const getGoogleClientId = () => {
     // In production, this should come from your environment variables
-    // For now, we'll use the same client ID as your OAuth
-    return '203453576607-fjkvjl9f2sve5gsm4n94fdsgmphgcs8u.apps.googleusercontent.com';
+    // For now, we'll use the new client ID for development
+    return '203453576607-ha4529p5nc6hs1i0h2jd7sl9601fg8tj.apps.googleusercontent.com';
   };
 
   const handleCredentialResponse = async (response: GoogleCredentialResponse) => {
@@ -89,7 +89,7 @@ export const useGoogleOneTap = (options: UseGoogleOneTapOptions = {}) => {
       // This should go to the same endpoint as your OAuth callback
       // but handle JWT token instead of authorization code
       const result = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/google/verify`,
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/auth/google/verify`,
         {
           method: 'POST',
           headers: {
@@ -158,6 +158,7 @@ export const useGoogleOneTap = (options: UseGoogleOneTapOptions = {}) => {
         cancel_on_tap_outside,
         context,
         itp_support: true,
+        use_fedcm_for_prompt: true, // Enable FedCM to fix potential compatibility issues
       });
 
       isInitialized.current = true;

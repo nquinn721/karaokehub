@@ -17,7 +17,6 @@ import {
   List,
   ListItem,
   ListItemButton,
-  Slider,
   TextField,
   Typography,
   useMediaQuery,
@@ -27,99 +26,31 @@ import { observer } from 'mobx-react-lite';
 import React, { useEffect } from 'react';
 import { BottomSheet } from '../components/BottomSheet';
 import { DayOfWeek } from '../components/DayPicker/DayPicker';
+import MapComponent from '../components/MapComponent';
 import { SEO } from '../components/SEO';
-import SimpleMap from '../components/SimpleMap';
+import { authStore, favoriteStore, showStore } from '../stores/index';
+import { mapStore } from '../stores/MapStore';
 import { Show } from '../stores/ShowStore';
-import { authStore, favoriteStore, mapStore, showStore } from '../stores/index';
 
 const ShowsPage: React.FC = observer(() => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // Initialize stores
+  // Initialize stores only (no duplicate API calls)
   useEffect(() => {
-    // Initialize MapStore if needed and request user location
-    const initializeMap = async () => {
+    const initializeStores = async () => {
       if (!mapStore.isInitialized) {
         await mapStore.initialize();
       }
       // Request user location for centering map
-      await mapStore.requestUserLocation();
+      await mapStore.goToCurrentLocation();
     };
 
-    initializeMap();
+    initializeStores();
 
     // Set initial sidebar state based on device
     showStore.setSidebarOpen(!isMobile);
   }, [isMobile]);
-
-  // Load shows when filters change
-  useEffect(() => {
-    const loadShows = async () => {
-      console.log('Loading shows (filter change):', {
-        selectedDay: showStore.selectedDay,
-        useDayFilter: showStore.useDayFilter,
-      });
-
-      if (showStore.useDayFilter) {
-        await showStore.fetchShows(showStore.selectedDay);
-      } else {
-        // Always filter by selected day, even when day filter is "off"
-        // This ensures consistency with the map clustering
-        await showStore.fetchShows(showStore.selectedDay);
-      }
-
-      console.log('Shows loaded (filter change):', showStore.shows.length);
-    };
-
-    loadShows();
-  }, [showStore.selectedDay, showStore.useDayFilter]);
-
-  // Watch for map position changes and refetch shows
-  useEffect(() => {
-    const loadShowsForMapPosition = async () => {
-      console.log('Loading shows (map position):', {
-        selectedDay: showStore.selectedDay,
-        useDayFilter: showStore.useDayFilter,
-        searchCenter: mapStore.searchCenter,
-        radiusFilter: showStore.radiusFilter,
-      });
-
-      if (mapStore.searchCenter) {
-        // Use location-based search with map center and radius
-        const mapCenter = {
-          lat: mapStore.searchCenter.lat,
-          lng: mapStore.searchCenter.lng,
-          radius: showStore.radiusFilter,
-        };
-
-        if (showStore.useDayFilter) {
-          await showStore.fetchShows(showStore.selectedDay, mapCenter);
-        } else {
-          await showStore.fetchShows(showStore.selectedDay, mapCenter);
-        }
-      } else {
-        // Fallback to non-location based search
-        if (showStore.useDayFilter) {
-          await showStore.fetchShows(showStore.selectedDay);
-        } else {
-          await showStore.fetchShows(showStore.selectedDay);
-        }
-      }
-
-      console.log('Shows loaded (map position):', showStore.shows.length);
-    };
-
-    // Only load if we have a search center
-    if (mapStore.searchCenter) {
-      loadShowsForMapPosition();
-    }
-  }, [
-    mapStore.searchCenter,
-    showStore.selectedDay,
-    showStore.useDayFilter,
-    showStore.radiusFilter,
-  ]);
 
   // Format time helper
   const formatTime = (time: string): string => {
@@ -166,7 +97,7 @@ const ShowsPage: React.FC = observer(() => {
             height: { xs: '100%', md: '100%' },
           }}
         >
-          <SimpleMap />
+          <MapComponent />
         </Box>
 
         {/* Bottom Sheet / Sidebar for Shows and Filters */}
@@ -290,27 +221,6 @@ const ShowsPage: React.FC = observer(() => {
                 </Box>
               </Box>
 
-              {/* Radius Filter */}
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-                  Radius: {showStore.radiusFilter} miles
-                </Typography>
-                <Slider
-                  value={showStore.radiusFilter}
-                  onChange={(_, value) => showStore.setRadiusFilter(value as number)}
-                  min={5}
-                  max={100}
-                  step={5}
-                  size="small"
-                  sx={{
-                    '& .MuiSlider-thumb': {
-                      width: 16,
-                      height: 16,
-                    },
-                  }}
-                />
-              </Box>
-
               {/* Vendor Filter */}
               <Box sx={{ mb: 2 }}>
                 <Autocomplete
@@ -371,8 +281,8 @@ const ShowsPage: React.FC = observer(() => {
                         <React.Fragment key={show.id}>
                           <ListItem disablePadding>
                             <ListItemButton
-                              onClick={() => showStore.handleMarkerClick(show.id)}
-                              selected={showStore.selectedMarkerId === show.id}
+                              onClick={() => mapStore.selectShowFromSidebar(show)}
+                              selected={mapStore.selectedShow?.id === show.id}
                               sx={{
                                 p: { xs: 1.5, md: 2.5 },
                                 borderRadius: 2,
@@ -764,27 +674,6 @@ const ShowsPage: React.FC = observer(() => {
                 </Box>
               </Box>
 
-              {/* Radius Filter */}
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-                  Radius: {showStore.radiusFilter} miles
-                </Typography>
-                <Slider
-                  value={showStore.radiusFilter}
-                  onChange={(_, value) => showStore.setRadiusFilter(value as number)}
-                  min={5}
-                  max={100}
-                  step={5}
-                  size="small"
-                  sx={{
-                    '& .MuiSlider-thumb': {
-                      width: 16,
-                      height: 16,
-                    },
-                  }}
-                />
-              </Box>
-
               {/* Vendor Filter */}
               <Box sx={{ mb: 2 }}>
                 <Autocomplete
@@ -847,8 +736,8 @@ const ShowsPage: React.FC = observer(() => {
                           sx={{ p: 0, mb: { xs: 0.25, md: 0.75 }, mx: { xs: 0.25, md: 0.75 } }}
                         >
                           <ListItemButton
-                            onClick={() => showStore.handleMarkerClick(show.id)}
-                            selected={showStore.selectedMarkerId === show.id}
+                            onClick={() => mapStore.selectShowFromSidebar(show)}
+                            selected={mapStore.selectedShow?.id === show.id}
                             sx={{
                               p: { xs: 1.5, md: 2.5 },
                               borderRadius: 0, // Square corners for desktop

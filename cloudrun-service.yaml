@@ -9,14 +9,14 @@ spec:
   template:
     metadata:
       annotations:
-        autoscaling.knative.dev/minScale: '0'
-        autoscaling.knative.dev/maxScale: '10'
+        autoscaling.knative.dev/minScale: '1'
+        autoscaling.knative.dev/maxScale: '5'
         run.googleapis.com/cpu-throttling: 'true'
         run.googleapis.com/execution-environment: gen2
         run.googleapis.com/cloudsql-instances: heroic-footing-460117-k8:us-central1:accountant
     spec:
-      containerConcurrency: 80
-      timeoutSeconds: 300
+      containerConcurrency: 10
+      timeoutSeconds: 900
       serviceAccountName: 203453576607-compute@developer.gserviceaccount.com
       containers:
         - image: gcr.io/heroic-footing-460117-k8/karaokehub:latest
@@ -24,11 +24,13 @@ spec:
             - containerPort: 8080
           resources:
             limits:
-              cpu: 1000m
-              memory: 512Mi
+              cpu: 2000m
+              memory: 2Gi
           env:
             - name: NODE_ENV
               value: 'production'
+            - name: NODE_OPTIONS
+              value: '--max-old-space-size=1536'
             - name: FRONTEND_URL
               value: 'https://karaoke-hub.com'
             - name: BACKEND_URL

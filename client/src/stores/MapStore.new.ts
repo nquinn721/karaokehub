@@ -118,12 +118,16 @@ export class MapStore {
 
     try {
       if (zoom <= 10) {
-        // Low zoom (10 or less): Get ALL shows with current filters (no radius limit)
-        console.log('🌍 MapStore: Low zoom - fetching ALL shows with filters (no radius)');
+        // Low zoom (10 or less): Show clustered city summaries
+        console.log('🏙️ MapStore: Low zoom - fetching city summaries for clustering');
+        await this.showStore.fetchCitySummaries(day, vendor);
+      } else if (zoom >= 11 && zoom <= 15) {
+        // Medium zoom (11-15): Show all shows with filters but no distance limit
+        console.log('🗺️ MapStore: Medium zoom - fetching all shows with filters');
         await this.showStore.fetchAllShows(day, vendor);
       } else {
-        // High zoom (11+): Get shows within 100 miles of map center
-        console.log('📍 MapStore: High zoom - fetching nearby shows within 100 miles');
+        // High zoom (16+): Show nearby shows within 100 miles
+        console.log('📍 MapStore: High zoom - fetching nearby shows');
         await this.showStore.fetchNearbyShows(center.lat, center.lng, 100, day, vendor);
       }
     } catch (error) {

@@ -114,26 +114,34 @@ export const MusicPage: React.FC = observer(() => {
     // Fetch subscription status if user is logged in
     subscriptionStore.fetchSubscriptionStatus();
 
+    console.log('🎵 MusicPage useEffect triggered:', {
+      currentView,
+      urlSearchQuery,
+      categoryId: params.categoryId,
+      path: location.pathname,
+      songsLength: musicStore.songs.length,
+      isLoading: musicStore.isLoading,
+    });
+
     // Handle initial load based on route
     if (currentView === 'search' && urlSearchQuery) {
+      console.log('🔍 Loading search results for:', urlSearchQuery);
       setSearchQuery(urlSearchQuery);
       musicStore.searchSongs(urlSearchQuery);
     } else if (currentView === 'category' && params.categoryId) {
+      console.log('📂 Loading category music for:', params.categoryId);
       musicStore.loadCategoryMusic(params.categoryId);
+    } else {
+      console.log('🏠 Showing home view - Featured Categories');
     }
   }, [currentView, urlSearchQuery, params.categoryId]);
 
-  // Scroll detection for infinite loading
+  // Scroll detection for infinite loading with proper debouncing
   useEffect(() => {
     let scrollTimeout: number | null = null;
     let lastScrollY = 0;
 
     const handleScroll = () => {
-      // Throttle scroll events
-      if (scrollTimeout) {
-        return;
-      }
-
       const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
 
       // Only trigger when scrolling down
@@ -143,6 +151,12 @@ export const MusicPage: React.FC = observer(() => {
       }
       lastScrollY = currentScrollY;
 
+      // Clear any existing timeout
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+
+      // Debounce the scroll event with a longer delay
       scrollTimeout = window.setTimeout(() => {
         // More robust checks
         if (
@@ -151,7 +165,6 @@ export const MusicPage: React.FC = observer(() => {
           musicStore.isLoadingMore ||
           musicStore.isLoading
         ) {
-          scrollTimeout = null;
           return;
         }
 
@@ -164,12 +177,12 @@ export const MusicPage: React.FC = observer(() => {
           console.log('🔄 Triggering loadMore - scroll at 85%');
           musicStore.loadMore();
         }
-
-        scrollTimeout = null;
-      }, 250); // Longer throttle to prevent rapid firing
+      }, 500); // Increased debounce delay to 500ms to prevent rapid firing
     };
 
+    // Use passive listener for better performance
     window.addEventListener('scroll', handleScroll, { passive: true });
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
       if (scrollTimeout) {
@@ -506,7 +519,17 @@ export const MusicPage: React.FC = observer(() => {
         </Box>
 
         {/* Featured Categories */}
-        {musicStore.songs.length === 0 && !musicStore.isLoading && (
+        {(() => {
+          const shouldShowFeatured = musicStore.songs.length === 0 && !musicStore.isLoading;
+          console.log('🏠 Featured Categories condition check:', {
+            songsLength: musicStore.songs.length,
+            isLoading: musicStore.isLoading,
+            shouldShow: shouldShowFeatured,
+            currentView,
+            categoryId: params.categoryId,
+          });
+          return shouldShowFeatured;
+        })() && (
           <Box sx={{ mb: 6 }}>
             <Typography
               variant="h4"

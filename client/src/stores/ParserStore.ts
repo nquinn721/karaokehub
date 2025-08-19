@@ -50,6 +50,11 @@ export interface ParsedScheduleItem {
   reviewComments?: string;
   vendorId?: string;
   vendor?: any; // Vendor entity
+  parsingLogs?: Array<{
+    timestamp: Date;
+    level: 'info' | 'success' | 'warning' | 'error';
+    message: string;
+  }>;
 }
 
 export interface UrlToParse {

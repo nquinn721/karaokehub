@@ -1,5 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { apiStore } from './ApiStore';
+import { songFavoriteStore } from './SongFavoriteStore';
 
 export interface MusicSearchResult {
   id: string;
@@ -53,172 +54,49 @@ export class MusicStore {
   isLoadingSuggestions = false;
   showSuggestions = false;
 
-  // Featured categories
+  // Featured categories - now using dynamic Spotify playlists
   featuredCategories = [
     {
       id: 'karaoke-classics',
       title: 'Karaoke Classics',
       image: '/images/music/karaoke-classics.png',
-      queries: [
-        "Don't Stop Believin'",
-        'Sweet Caroline',
-        'Bohemian Rhapsody',
-        'My Way',
-        'I Want It That Way',
-        'Piano Man',
-        'Total Eclipse of the Heart',
-        'Girls Just Want to Have Fun',
-        'Wonderwall',
-        'Mr. Brightside',
-        "Don't You (Forget About Me)",
-        "Livin' on a Prayer",
-        'We Are the Champions',
-        'Someone Like You',
-        'Rolling in the Deep',
-        'Hey Jude',
-        'Dancing Queen',
-        'Respect',
-        'I Will Survive',
-        'Crazy',
-        'Friends in Low Places',
-        'Love Story',
-        'Shallow',
-        'Perfect',
-        'Imagine',
-        'Hotel California',
-        'Free Bird',
-        'Stairway to Heaven',
-        'Born to Run',
-        'American Pie',
-        // Adding 50+ more unique karaoke classics
-        'Build Me Up Buttercup',
-        'Come on Eileen',
-        'Don\'t Stop Me Now',
-        'Killing Me Softly',
-        'The Way You Look Tonight',
-        'Fly Me to the Moon',
-        'What a Wonderful World',
-        'Can\'t Help Myself',
-        'Mustang Sally',
-        'Proud Mary',
-        'Stand by Me',
-        'La Vida Es Una Fiesta',
-        'Mamma Mia',
-        'Fernando',
-        'Waterloo',
-        'Take Me Home Country Roads',
-        'Rocky Mountain High',
-        'Fire and Rain',
-        'You\'ve Got a Friend',
-        'Bridge Over Troubled Water',
-        'The Sound of Silence',
-        'Mrs. Robinson',
-        'Scarborough Fair',
-        'California Dreamin\'',
-        'Monday Monday',
-        'Good Vibrations',
-        'Surfin\' USA',
-        'Help Me Rhonda',
-        'I Get Around',
-        'Kokomo',
-        'Margaritaville',
-        'Come Monday',
-        'Cheeseburger in Paradise',
-        'Volcano',
-        'Changes in Latitudes',
-        'Sweet Home Alabama',
-        'Free as a Bird',
-        'Simple Man',
-        'Tuesday\'s Gone',
-        'Call Me the Breeze',
-        'Gimme Three Steps',
-        'That Smell',
-        'What\'s Your Name',
-        'You Got That Right',
-        'I Know a Little',
-        'Saturday Love',
-        'Cruise',
-        'Wagon Wheel',
-        'Tennessee Whiskey',
-        'Chicken Fried',
-        'Knee Deep',
-        'Colder Weather',
-        'Tequila Makes Her Clothes Fall Off',
-        'Red High Heels',
-        'American Soldier',
-        'Live Like You Were Dying',
-        'The Dance',
-        'Friends in Low Places',
-        'Achy Breaky Heart',
-        'Mambo No. 5',
-        'Ice Ice Baby',
-        'U Can\'t Touch This',
-        'Jump',
-        '1999',
-        'Purple Rain',
-        'Kiss',
-        'Little Red Corvette',
-        'When Doves Cry',
-        'Raspberry Beret',
-        'Let\'s Go Crazy',
-        'I Would Die 4 U',
-        'Delirious',
-        'Sign O\' the Times',
-      ],
+      spotifyQuery: 'karaoke classics hits most popular sing along',
+      description: 'Top 100 karaoke classics that everyone loves to sing',
     },
     {
       id: 'best-of-80s',
       title: 'Best of 80s',
       image: '/images/music/best-of-80s.png',
-      queries: [
-        'Take On Me',
-        "Don't You (Forget About Me)",
-        'Total Eclipse of Heart',
-        "Livin' on a Prayer",
-        'Girls Just Want to Have Fun',
-      ],
+      spotifyQuery: '80s hits decade classics top songs 1980s',
+      description: 'Top 100 best songs from the 1980s decade',
     },
     {
       id: 'best-of-90s',
       title: 'Best of 90s',
       image: '/images/music/best-of-90s.png',
-      queries: [
-        'I Will Always Love You',
-        'Wonderwall',
-        'Smells Like Teen Spirit',
-        'Black Velvet',
-        'Mr. Brightside',
-      ],
+      spotifyQuery: '90s hits decade classics top songs 1990s',
+      description: 'Top 100 best songs from the 1990s decade',
     },
     {
       id: 'rock-hits',
       title: 'Rock Hits',
       image: '/images/music/rock-hits.png',
-      queries: [
-        "Don't Stop Me Now",
-        'We Will Rock You',
-        'Living After Midnight',
-        'Pour Some Sugar On Me',
-        'Eye of the Tiger',
-      ],
+      spotifyQuery: 'rock hits classics greatest rock songs all time',
+      description: 'Top 100 greatest rock hits of all time',
     },
     {
       id: 'pop-hits',
       title: 'Pop Hits',
       image: '/images/music/pop-hits.png',
-      queries: ['Shape of You', 'Uptown Funk', "Can't Stop the Feeling", 'Shake It Off', 'Happy'],
+      spotifyQuery: 'pop hits top 40 mainstream popular songs',
+      description: 'Top 100 pop hits and chart toppers',
     },
     {
       id: 'country-favorites',
       title: 'Country Favorites',
       image: '/images/music/country-favorites.png',
-      queries: [
-        'Friends in Low Places',
-        'Sweet Home Alabama',
-        'Cruise',
-        'Wagon Wheel',
-        'Tennessee Whiskey',
-      ],
+      spotifyQuery: 'country hits favorites classics top country songs',
+      description: 'Top 100 country favorites and classics',
     },
   ];
 
@@ -287,6 +165,10 @@ export class MusicStore {
   // Debounced autocomplete search
   private autocompleteTimeout: number | null = null;
 
+  // Debounced load more to prevent rapid successive calls
+  private loadMoreTimeout: number | null = null;
+  private lastLoadMoreTime = 0;
+
   async getSuggestions(query: string) {
     if (query.length < 3) {
       this.setSuggestions([]);
@@ -304,130 +186,90 @@ export class MusicStore {
       try {
         this.setLoadingSuggestions(true);
 
-        // Popular karaoke songs for better suggestions (expanded list)
-        const popularKaraokeSongs = [
-          "Don't Stop Believin'",
-          'Sweet Caroline',
-          'Bohemian Rhapsody',
-          'I Want It That Way',
-          'My Way',
-          'Take On Me',
-          'Total Eclipse of the Heart',
-          'Girls Just Want to Have Fun',
-          'Wonderwall',
-          'Mr. Brightside',
-          "Don't You (Forget About Me)",
-          "Livin' on a Prayer",
-          'Piano Man',
-          'I Will Survive',
-          'Love Shack',
-          "Journey - Don't Stop Believin'",
-          'Queen - Bohemian Rhapsody',
-          'The Beatles - Hey Jude',
-          "Elvis Presley - Can't Help Falling in Love",
-          'Whitney Houston - I Will Always Love You',
-          'The Killers - Mr. Brightside',
-          'Oasis - Wonderwall',
-          'Billy Joel - Piano Man',
-          'Gloria Gaynor - I Will Survive',
-          'The B-52s - Love Shack',
-          'Backstreet Boys - I Want It That Way',
-          'Elton John - Your Song',
-          'Adele - Someone Like You',
-          'Ed Sheeran - Perfect',
-          'Bruno Mars - Just The Way You Are',
-          'Lady Gaga - Shallow',
-          'Taylor Swift - Shake It Off',
-          'Imagine Dragons - Radioactive',
-          'OneRepublic - Counting Stars',
-          'Maroon 5 - Sugar',
-          'The Chainsmokers - Closer',
-          'Twenty One Pilots - Heathens',
-          'Post Malone - Circles',
-          'Lewis Capaldi - Someone You Loved',
-          'Billie Eilish - Bad Guy',
-          'Dua Lipa - Levitating',
-          'Olivia Rodrigo - Drivers License',
-          'Harry Styles - As It Was',
-          'The Weeknd - Blinding Lights',
-          'Lizzo - Good As Hell',
-          'Doja Cat - Say So',
-          'Ariana Grande - 7 rings',
-          'Beyoncé - Crazy in Love',
-          'Rihanna - Umbrella',
-          'Katy Perry - Roar',
-        ];
-
         const suggestions: string[] = [];
         const uniqueItems = new Set<string>();
 
-        // First, add matching popular songs (prioritized)
-        const matchingPopularSongs = popularKaraokeSongs.filter((song) =>
-          song.toLowerCase().includes(query.toLowerCase()),
+        // First, check user's favorite songs for matches
+        const favoriteSongs = songFavoriteStore.getFavoriteSongs();
+        const matchingFavorites = favoriteSongs.filter(
+          (song) =>
+            song.title.toLowerCase().includes(query.toLowerCase()) ||
+            (song.artist && song.artist.toLowerCase().includes(query.toLowerCase())),
         );
 
-        matchingPopularSongs.forEach((song) => {
-          if (!uniqueItems.has(song.toLowerCase()) && suggestions.length < 8) {
-            suggestions.push(song);
-            uniqueItems.add(song.toLowerCase());
+        // Add favorite matches first (highest priority)
+        matchingFavorites.forEach((song) => {
+          if (suggestions.length < 4) {
+            const fullTitle = song.artist ? `${song.title} - ${song.artist}` : song.title;
+            if (!uniqueItems.has(fullTitle.toLowerCase())) {
+              suggestions.push(fullTitle);
+              uniqueItems.add(fullTitle.toLowerCase());
+            }
           }
         });
 
-        // Then fetch from API if we need more suggestions
-        if (suggestions.length < 6) {
-          try {
-            const response = await apiStore.get(
-              `/music/search?q=${encodeURIComponent(query)}&limit=12`,
-            );
+        // Then fetch from Spotify API for dynamic suggestions
+        try {
+          const response = await apiStore.get(
+            `/music/search?q=${encodeURIComponent(query)}&limit=12`,
+          );
 
-            // Extract unique song titles and artists from API results
-            if (response && Array.isArray(response)) {
-              // Sort by score (popularity) if available
-              const sortedResponse = response.sort((a: MusicSearchResult, b: MusicSearchResult) => {
-                return (b.score || 0) - (a.score || 0);
-              });
+          // Extract unique song titles and artists from API results
+          if (response && Array.isArray(response)) {
+            // Sort by score (popularity) if available
+            const sortedResponse = response.sort((a: MusicSearchResult, b: MusicSearchResult) => {
+              return (b.score || 0) - (a.score || 0);
+            });
 
-              sortedResponse.forEach((song: MusicSearchResult) => {
-                // Add song title with artist for clarity
-                if (song.title && song.artist && suggestions.length < 8) {
-                  const fullTitle = `${song.title} - ${song.artist}`;
-                  const titleOnly = song.title;
+            sortedResponse.forEach((song: MusicSearchResult) => {
+              // Add song title with artist for clarity
+              if (song.title && song.artist && suggestions.length < 8) {
+                const fullTitle = `${song.title} - ${song.artist}`;
+                const titleOnly = song.title;
 
-                  if (
-                    !uniqueItems.has(fullTitle.toLowerCase()) &&
-                    !uniqueItems.has(titleOnly.toLowerCase())
-                  ) {
-                    suggestions.push(fullTitle);
-                    uniqueItems.add(fullTitle.toLowerCase());
-                    uniqueItems.add(titleOnly.toLowerCase());
-                  }
-                } else if (song.title && suggestions.length < 8) {
-                  if (!uniqueItems.has(song.title.toLowerCase())) {
-                    suggestions.push(song.title);
-                    uniqueItems.add(song.title.toLowerCase());
-                  }
+                if (
+                  !uniqueItems.has(fullTitle.toLowerCase()) &&
+                  !uniqueItems.has(titleOnly.toLowerCase())
+                ) {
+                  suggestions.push(fullTitle);
+                  uniqueItems.add(fullTitle.toLowerCase());
+                  uniqueItems.add(titleOnly.toLowerCase());
                 }
-              });
-            }
-          } catch (apiError: any) {
-            // Server is offline or API failed - that's OK, we have popular songs
-            console.log('Music API unavailable, using popular karaoke songs only');
+              } else if (song.title && suggestions.length < 8) {
+                if (!uniqueItems.has(song.title.toLowerCase())) {
+                  suggestions.push(song.title);
+                  uniqueItems.add(song.title.toLowerCase());
+                }
+              }
+            });
+          }
+        } catch (apiError: any) {
+          // API failed - use basic query-based suggestions
+          console.log('Music API unavailable for suggestions');
 
-            // Add more popular songs if we still need suggestions
-            if (suggestions.length < 4) {
-              const additionalSuggestions = popularKaraokeSongs
-                .filter(
-                  (song) =>
-                    song.toLowerCase().includes(query.toLowerCase()) &&
-                    !uniqueItems.has(song.toLowerCase()),
-                )
-                .slice(0, 8 - suggestions.length);
+          // If we still don't have many suggestions, add some basic karaoke classics
+          if (suggestions.length < 4) {
+            const basicSuggestions = [
+              "Don't Stop Believin'",
+              'Sweet Caroline',
+              'Bohemian Rhapsody',
+              'Piano Man',
+              'I Want It That Way',
+              'Mr. Brightside',
+              'Wonderwall',
+              'Total Eclipse of the Heart',
+            ]
+              .filter(
+                (song) =>
+                  song.toLowerCase().includes(query.toLowerCase()) &&
+                  !uniqueItems.has(song.toLowerCase()),
+              )
+              .slice(0, 8 - suggestions.length);
 
-              additionalSuggestions.forEach((song) => {
-                suggestions.push(song);
-                uniqueItems.add(song.toLowerCase());
-              });
-            }
+            basicSuggestions.forEach((song) => {
+              suggestions.push(song);
+              uniqueItems.add(song.toLowerCase());
+            });
           }
         }
 
@@ -631,7 +473,17 @@ export class MusicStore {
 
   async loadCategoryMusic(categoryId: string, loadMore = false) {
     const category = this.featuredCategories.find((cat) => cat.id === categoryId);
-    if (!category) return;
+    if (!category) {
+      console.error('🚫 Category not found:', categoryId);
+      return;
+    }
+
+    console.log('🎵 Loading category music:', {
+      categoryId,
+      categoryTitle: category.title,
+      spotifyQuery: category.spotifyQuery,
+      loadMore,
+    });
 
     try {
       if (loadMore) {
@@ -642,86 +494,70 @@ export class MusicStore {
         this.resetPagination();
       }
 
-      if (loadMore) {
-        // For pagination, use different queries or search terms
-        const startIdx = this.currentPage * 2;
-        const queriesToUse = category.queries.slice(startIdx, startIdx + 2);
+      // Use Spotify query for dynamic playlist generation
+      const limit = loadMore ? 50 : 100; // Get more songs for initial load
+      const offset = loadMore ? this.currentPage * 50 : 0;
 
-        if (queriesToUse.length > 0) {
-          const queryString = queriesToUse.join(',');
-          const response = await apiStore.get(
-            `/music/category?queries=${encodeURIComponent(queryString)}`,
-          );
+      const apiUrl = `/music/search?q=${encodeURIComponent(category.spotifyQuery)}&limit=${limit}&offset=${offset}`;
+      console.log('🌐 Making API request to:', apiUrl);
 
-          runInAction(() => {
-            if (response && Array.isArray(response) && response.length > 0) {
-              const combinedSongs = [...this.songs, ...response];
-              // Enhanced deduplication by normalized title for featured categories
-              const uniqueSongs = combinedSongs.filter((song, index, arr) => {
-                const normalizeTitle = (title: string) =>
-                  title
-                    ?.toLowerCase()
-                    ?.replace(/\s*\(.*?\)/g, '') // Remove parentheses content
-                    ?.replace(/\s*\[.*?\]/g, '') // Remove brackets content
-                    ?.replace(/[''""`´]/g, '') // Remove quotes
-                    ?.replace(/[^\w\s]/g, ' ') // Replace special chars with spaces
-                    ?.replace(/\s+/g, ' ') // Normalize whitespace
-                    ?.trim() || '';
+      const response = await apiStore.get(apiUrl);
 
-                const currentNormalized = normalizeTitle(song.title);
-                return (
-                  arr.findIndex((s) => normalizeTitle(s.title) === currentNormalized) === index
-                );
-              });
-              this.songs = uniqueSongs;
-              this.currentPage += 1;
-              
-              // Check if we have more queries to load
-              const nextStartIdx = this.currentPage * 2;
-              const hasMoreQueries = nextStartIdx < category.queries.length;
-              this.hasMoreSongs = hasMoreQueries && response.length > 0;
-            } else {
-              // No more results
-              this.hasMoreSongs = false;
-            }
-            this.isLoadingMore = false;
-          });
-        } else {
-          runInAction(() => {
-            this.isLoadingMore = false;
-            this.hasMoreSongs = false;
-          });
-        }
-      } else {
-        // Initial load - use server-side deduplication and expansion
-        const queryString = category.queries.join(',');
-        const response = await apiStore.get(
-          `/music/category?queries=${encodeURIComponent(queryString)}`,
-        );
+      console.log('📦 API response received:', {
+        isArray: Array.isArray(response),
+        length: response?.length,
+        firstItem: response?.[0],
+        fullResponse: response,
+      });
 
-        runInAction(() => {
-          if (response && Array.isArray(response)) {
-            this.songs = response;
-            console.log(
-              `🎵 Server-side processed: ${response.length} unique songs for category "${categoryId}"`,
-            );
-            
-            // Set hasMoreSongs based on whether we got the expected amount and have more queries
-            this.hasMoreSongs = response.length >= 30 && category.queries.length > 2;
-            this.currentPage = 1; // We've loaded the first "page" worth of queries
+      runInAction(() => {
+        if (response && Array.isArray(response) && response.length > 0) {
+          let newSongs = response;
+
+          if (loadMore) {
+            // For pagination, append new songs
+            const combinedSongs = [...this.songs, ...newSongs];
+            this.songs = this.deduplicateSongs(combinedSongs);
+            this.currentPage += 1;
           } else {
-            this.songs = [];
-            this.hasMoreSongs = false;
+            // Initial load - prioritize liked songs at the top
+            const favoriteSongs = songFavoriteStore.getFavoriteSongs();
+            const likedSongIds = new Set(favoriteSongs.map((song) => song.spotifyId || song.id));
+
+            // Separate liked and non-liked songs
+            const likedSongs = newSongs.filter((song) => likedSongIds.has(song.id));
+            const nonLikedSongs = newSongs.filter((song) => !likedSongIds.has(song.id));
+
+            // Combine with liked songs first, then deduplicate
+            this.songs = this.deduplicateSongs([...likedSongs, ...nonLikedSongs]);
+            this.currentPage = 1;
+
+            console.log(
+              `🎵 Loaded ${response.length} songs for "${categoryId}", ${likedSongs.length} are favorited and shown first`,
+            );
           }
+
+          // Check if we have more songs to load
+          this.hasMoreSongs = response.length === limit;
+        } else {
+          if (!loadMore) {
+            this.songs = [];
+          }
+          this.hasMoreSongs = false;
+        }
+
+        if (loadMore) {
+          this.isLoadingMore = false;
+        } else {
           this.isLoading = false;
-        });
-      }
+        }
+      });
     } catch (error) {
       console.error('Error loading category music:', error);
       runInAction(() => {
         this.isLoading = false;
         this.isLoadingMore = false;
-        this.hasMoreSongs = false; // Stop infinite scroll on error
+        this.hasMoreSongs = false;
       });
     }
   }
@@ -739,15 +575,33 @@ export class MusicStore {
     });
   }
 
-  // Load more songs for current search/category
+  // Load more songs for current search/category with debouncing
   async loadMore() {
     if (!this.hasMoreSongs || this.isLoadingMore) return;
 
-    if (this.selectedCategory !== 'all') {
-      return await this.loadCategoryMusic(this.selectedCategory, true);
-    } else if (this.searchQuery) {
-      return await this.searchCombined(this.searchQuery, true);
+    // Debounce rapid loadMore calls
+    const now = Date.now();
+    if (now - this.lastLoadMoreTime < 1000) {
+      console.log('🚫 LoadMore debounced - too rapid');
+      return;
     }
+
+    // Clear any existing timeout
+    if (this.loadMoreTimeout) {
+      clearTimeout(this.loadMoreTimeout);
+    }
+
+    // Set timeout to prevent rapid successive calls
+    this.loadMoreTimeout = window.setTimeout(async () => {
+      this.lastLoadMoreTime = Date.now();
+      console.log('🔄 LoadMore executing after debounce');
+
+      if (this.selectedCategory !== 'all') {
+        return await this.loadCategoryMusic(this.selectedCategory, true);
+      } else if (this.searchQuery) {
+        return await this.searchCombined(this.searchQuery, true);
+      }
+    }, 100); // Small delay to group rapid calls
   }
 
   // Get formatted duration

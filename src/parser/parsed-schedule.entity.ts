@@ -44,6 +44,13 @@ export class ParsedSchedule {
   @Column({ type: 'text', nullable: true })
   reviewComments?: string;
 
+  @Column('json', { nullable: true })
+  parsingLogs?: Array<{
+    timestamp: Date;
+    level: 'info' | 'success' | 'warning' | 'error';
+    message: string;
+  }>;
+
   @Column('uuid', { nullable: true })
   vendorId?: string;
 

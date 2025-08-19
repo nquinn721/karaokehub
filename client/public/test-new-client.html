@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google One Tap - New Client ID Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .test-section {
+        background: white;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+        border-left: 4px solid #4285f4;
+      }
+      .log-entry {
+        padding: 8px;
+        margin: 4px 0;
+        border-radius: 4px;
+        font-family: monospace;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .info {
+        background: #d1ecf1;
+        color: #0c5460;
+      }
+      .warning {
+        background: #fff3cd;
+        color: #856404;
+      }
+      button {
+        background: #4285f4;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 10px 5px;
+      }
+      button:hover {
+        background: #357ae8;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🧪 Google One Tap - New Client ID Test</h1>
+
+    <div class="test-section">
+      <h2>📋 Test Information</h2>
+      <div id="info-log"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>🔧 Controls</h2>
+      <button onclick="testOneTap()">Test One Tap Prompt</button>
+      <button onclick="clearLogs()">Clear Logs</button>
+      <button onclick="showConfig()">Show Config</button>
+    </div>
+
+    <div class="test-section">
+      <h2>📊 Test Results</h2>
+      <div id="test-log"></div>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+      // Your new client ID
+      const NEW_CLIENT_ID =
+        '203453576607-ha4529p5nc6hs1i0h2jd7sl9601fg8tj.apps.googleusercontent.com';
+
+      function log(message, type = 'info') {
+        const logDiv = document.getElementById('test-log');
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        entry.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logDiv.appendChild(entry);
+        console.log(message);
+
+        // Auto-scroll to bottom
+        entry.scrollIntoView({ behavior: 'smooth' });
+      }
+
+      function showInfo() {
+        const infoDiv = document.getElementById('info-log');
+        infoDiv.innerHTML = `
+                <div class="log-entry info"><strong>Client ID:</strong> ${NEW_CLIENT_ID}</div>
+                <div class="log-entry info"><strong>Origin:</strong> ${window.location.origin}</div>
+                <div class="log-entry info"><strong>Domain:</strong> ${window.location.hostname}</div>
+                <div class="log-entry info"><strong>Port:</strong> ${window.location.port}</div>
+                <div class="log-entry info"><strong>Protocol:</strong> ${window.location.protocol}</div>
+                <div class="log-entry info"><strong>User Agent:</strong> ${navigator.userAgent.substring(0, 100)}...</div>
+            `;
+      }
+
+      function showConfig() {
+        log('📋 Current Configuration:', 'info');
+        log(`   Client ID: ${NEW_CLIENT_ID}`, 'info');
+        log(`   Origin: ${window.location.origin}`, 'info');
+        log(`   Google Script Loaded: ${!!window.google?.accounts?.id}`, 'info');
+      }
+
+      function clearLogs() {
+        document.getElementById('test-log').innerHTML = '';
+      }
+
+      function waitForGoogle() {
+        return new Promise((resolve) => {
+          const checkGoogle = () => {
+            if (window.google?.accounts?.id) {
+              resolve(true);
+            } else {
+              setTimeout(checkGoogle, 100);
+            }
+          };
+          checkGoogle();
+        });
+      }
+
+      async function testOneTap() {
+        log('🚀 Starting Google One Tap test with NEW Client ID...', 'info');
+
+        try {
+          await waitForGoogle();
+          log('✅ Google Identity Services loaded', 'success');
+
+          // Initialize Google One Tap
+          window.google.accounts.id.initialize({
+            client_id: NEW_CLIENT_ID,
+            callback: (response) => {
+              log('🎉 SUCCESS! Google One Tap worked!', 'success');
+              log(`   Selected by: ${response.select_by}`, 'success');
+              log(`   Credential received (length: ${response.credential.length})`, 'success');
+              log('✅ Your new Client ID is working correctly!', 'success');
+            },
+            auto_select: false, // Don't auto-select for testing
+            cancel_on_tap_outside: true,
+            use_fedcm_for_prompt: true,
+          });
+
+          log('✅ Google One Tap initialized', 'success');
+
+          // Prompt for One Tap
+          window.google.accounts.id.prompt((notification) => {
+            if (notification.isNotDisplayed()) {
+              const reason = notification.getNotDisplayedReason();
+              log(`❌ One Tap not displayed: ${reason}`, 'error');
+
+              if (reason === 'unregistered_origin') {
+                log('🔧 SOLUTION NEEDED: Add this origin to your NEW Client ID:', 'warning');
+                log(`   Go to: https://console.cloud.google.com/apis/credentials`, 'warning');
+                log(`   Edit Client ID: ${NEW_CLIENT_ID}`, 'warning');
+                log(
+                  `   Add to Authorized JavaScript origins: ${window.location.origin}`,
+                  'warning',
+                );
+              } else if (reason === 'browser_not_supported') {
+                log('ℹ️ Try a different browser or enable third-party cookies', 'warning');
+              } else if (reason === 'invalid_client') {
+                log('🔧 Client ID configuration issue - check Google Cloud Console', 'error');
+              }
+            } else if (notification.isDisplayed()) {
+              log('✅ One Tap prompt displayed successfully!', 'success');
+            } else if (notification.isSkippedMoment()) {
+              log('ℹ️ One Tap prompt was skipped', 'warning');
+            }
+          });
+        } catch (error) {
+          log(`❌ Error: ${error.message}`, 'error');
+          console.error('Full error:', error);
+        }
+      }
+
+      // Auto-run when page loads
+      window.onload = () => {
+        showInfo();
+        log('🔄 Page loaded - Google Script loading...', 'info');
+
+        // Test automatically after a short delay
+        setTimeout(() => {
+          if (window.google?.accounts?.id) {
+            log('✅ Google script loaded automatically', 'success');
+          } else {
+            log('⏳ Waiting for Google script...', 'warning');
+          }
+        }, 2000);
+      };
+    </script>
+  </body>
+</html>

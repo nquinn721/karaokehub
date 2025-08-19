@@ -127,13 +127,24 @@ export class AuthService {
       avatar: photos?.[0]?.value,
     });
 
-    // For Facebook, email might not be available without app review
+    // For non-Facebook providers, email is required
     if (!email && provider !== 'facebook') {
       console.error('🔴 [AUTH_SERVICE] OAuth validation error: No email provided', {
         provider,
         profileId: id,
       });
       throw new Error('No email provided by OAuth provider');
+    }
+
+    // For Facebook, warn if no email but continue
+    if (!email && provider === 'facebook') {
+      console.warn(
+        '⚠️ [AUTH_SERVICE] Facebook login without email - user may not have granted email permission',
+        {
+          provider,
+          profileId: id,
+        },
+      );
     }
 
     let user = null;
@@ -192,15 +203,75 @@ export class AuthService {
         throw error;
       }
     } else {
-      console.log('🟢 [AUTH_SERVICE] User exists, checking for avatar update');
-      // Update existing user's avatar if provider has one and it's different
-      const providerAvatar = photos?.[0]?.value;
-      if (providerAvatar && providerAvatar !== user.avatar) {
-        console.log('🔍 [AUTH_SERVICE] Updating user avatar:', {
-          oldAvatar: user.avatar,
-          newAvatar: providerAvatar,
+      console.log('🟢 [AUTH_SERVICE] User exists, handling provider linking/updates');
+
+      // If this is a Facebook login and user was found by email,
+      // we need to decide how to handle provider linking
+      if (provider === 'facebook' && email && user.provider !== 'facebook') {
+        console.log('🔍 [AUTH_SERVICE] Facebook login for user with different provider:', {
+          existingProvider: user.provider,
+          userEmail: user.email,
+          facebookId: id,
         });
-        user = await this.userService.update(user.id, { avatar: providerAvatar });
+
+        // For existing users logging in with Facebook, we'll:
+        // 1. Keep their original provider (Google/GitHub) for continuity
+        // 2. Update their profile with Facebook data if it's better/newer
+        // 3. Log this as a successful Facebook login
+
+        const updateData: any = {};
+
+        // Update avatar if Facebook has one and it's different/better
+        const providerAvatar = photos?.[0]?.value;
+        if (providerAvatar && providerAvatar !== user.avatar) {
+          updateData.avatar = providerAvatar;
+          console.log('🔍 [AUTH_SERVICE] Updating avatar from Facebook:', {
+            oldAvatar: user.avatar,
+            newAvatar: providerAvatar,
+          });
+        }
+
+        // Update name if Facebook has a better one
+        if (displayName && displayName !== user.name && displayName.length > user.name.length) {
+          updateData.name = displayName;
+          console.log('🔍 [AUTH_SERVICE] Updating name from Facebook:', {
+            oldName: user.name,
+            newName: displayName,
+          });
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          user = await this.userService.update(user.id, updateData);
+          console.log('🟢 [AUTH_SERVICE] User profile updated with Facebook data:', updateData);
+        }
+
+        console.log(
+          '🟢 [AUTH_SERVICE] Facebook login successful for existing user - provider linking complete',
+        );
+      } else if (provider === user.provider) {
+        // Same provider login - update profile data as usual
+        const providerAvatar = photos?.[0]?.value;
+        if (providerAvatar && providerAvatar !== user.avatar) {
+          console.log('🔍 [AUTH_SERVICE] Updating user avatar for same provider:', {
+            provider,
+            oldAvatar: user.avatar,
+            newAvatar: providerAvatar,
+          });
+          user = await this.userService.update(user.id, { avatar: providerAvatar });
+        }
+      } else {
+        console.log('🔍 [AUTH_SERVICE] Different provider login - email match found:', {
+          existingProvider: user.provider,
+          newProvider: provider,
+          userEmail: user.email,
+        });
+
+        // Handle case where user has different provider but same email
+        // For now, we'll just update the avatar and continue with existing provider
+        const providerAvatar = photos?.[0]?.value;
+        if (providerAvatar && providerAvatar !== user.avatar) {
+          user = await this.userService.update(user.id, { avatar: providerAvatar });
+        }
       }
     }
 

@@ -470,41 +470,76 @@ export class MusicService {
       process.env.NODE_ENV === 'production' || process.env.ENVIRONMENT === 'production';
 
     console.log(`🎵 Music search environment: ${isProduction ? 'production' : 'development'}`);
+    console.log(`🎵 Searching for: "${query}" with limit: ${limit}, offset: ${offset}`);
 
-    // Use Spotify only in production (karaoke-hub.com has the redirect URI)
+    // Use Spotify only in production, iTunes first in development
     if (isProduction) {
-      // 1) Try Spotify first - highest quality metadata and best coverage
+      // 1) Try Spotify first in production - highest quality metadata and best coverage
       try {
+        console.log('🎵 [PROD] Trying Spotify search...');
         const spotifyResults = await this.fetchSpotify(query, 'track', limit);
         const mappedSpotifyResults = this.mapSpotifySongs(spotifyResults);
+        console.log(`🎵 [PROD] Spotify returned ${mappedSpotifyResults.length} results`);
         if (mappedSpotifyResults.length > 0) return mappedSpotifyResults.slice(0, limit);
       } catch (error) {
-        console.warn('Spotify search failed, falling back to other providers:', error.message);
+        console.warn(
+          '🎵 [PROD] Spotify search failed, falling back to other providers:',
+          error.message,
+        );
+      }
+    } else {
+      // In development, prioritize iTunes which is more reliable without auth
+      console.log('🎵 [DEV] Using iTunes as primary source for development');
+
+      // 1) Try iTunes first in development (good coverage, no auth required)
+      for (const v of variants) {
+        try {
+          console.log(`🎵 [DEV] iTunes search variant: "${v}"`);
+          const itunesJson = await this.fetchItunes(v, {
+            entity: 'song',
+            limit: String(limit),
+          });
+          const itunesResults = this.mapItunesSongs(itunesJson);
+          console.log(`🎵 [DEV] iTunes returned ${itunesResults.length} results for "${v}"`);
+          if (itunesResults.length > 0) return itunesResults;
+        } catch (error) {
+          console.warn(`🎵 [DEV] iTunes search failed for "${v}":`, error.message);
+        }
       }
     }
 
     // 2) Try Deezer for popularity-ranked songs (works in both dev and prod)
+    console.log('🎵 Trying Deezer search with variants:', variants);
     for (const v of variants) {
       try {
+        console.log(`🎵 Deezer search variant: "${v}"`);
         const deezerJson = await this.fetchDeezer(v, limit);
         const deezerResults = this.mapDeezerSongs(deezerJson);
+        console.log(`🎵 Deezer returned ${deezerResults.length} results for "${v}"`);
         if (deezerResults.length > 0) return deezerResults.slice(0, limit);
-      } catch {
+      } catch (error) {
+        console.warn(`🎵 Deezer search failed for "${v}":`, error.message);
         // continue to next provider/variant
       }
     }
 
-    // 3) Try iTunes (good coverage, works in both dev and prod)
-    for (const v of variants) {
-      try {
-        const itunesJson = await this.fetchItunes(v, {
-          entity: 'song',
-          limit: String(limit),
-        });
-        const itunesResults = this.mapItunesSongs(itunesJson);
-        if (itunesResults.length > 0) return itunesResults;
-      } catch {
-        // continue
+    // 3) Try iTunes if not already tried in development mode
+    if (isProduction) {
+      console.log('🎵 [PROD] Trying iTunes as fallback...');
+      for (const v of variants) {
+        try {
+          console.log(`🎵 [PROD] iTunes search variant: "${v}"`);
+          const itunesJson = await this.fetchItunes(v, {
+            entity: 'song',
+            limit: String(limit),
+          });
+          const itunesResults = this.mapItunesSongs(itunesJson);
+          console.log(`🎵 [PROD] iTunes returned ${itunesResults.length} results for "${v}"`);
+          if (itunesResults.length > 0) return itunesResults;
+        } catch (error) {
+          console.warn(`🎵 [PROD] iTunes search failed for "${v}":`, error.message);
+          // continue
+        }
       }
     }
 

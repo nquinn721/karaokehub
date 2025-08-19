@@ -919,6 +919,74 @@ const AdminParserPage: React.FC = observer(() => {
                         </AccordionDetails>
                       </Accordion>
                     )}
+
+                  {/* Parsing Logs */}
+                  {selectedReview.parsingLogs && selectedReview.parsingLogs.length > 0 && (
+                    <Accordion>
+                      <AccordionSummary expandIcon={<FontAwesomeIcon icon={faChevronDown} />}>
+                        <Typography variant="h6">
+                          Parsing Logs ({selectedReview.parsingLogs.length})
+                        </Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
+                          <List dense>
+                            {selectedReview.parsingLogs.map((log: any, index: number) => (
+                              <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
+                                <Box sx={{ width: '100%' }}>
+                                  <Box
+                                    sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}
+                                  >
+                                    <Chip
+                                      label={log.level.toUpperCase()}
+                                      size="small"
+                                      color={
+                                        log.level === 'error'
+                                          ? 'error'
+                                          : log.level === 'warning'
+                                            ? 'warning'
+                                            : log.level === 'success'
+                                              ? 'success'
+                                              : 'default'
+                                      }
+                                      sx={{
+                                        minWidth: 70,
+                                        fontSize: '0.7rem',
+                                        height: 20,
+                                      }}
+                                    />
+                                    <Typography variant="caption" color="text.secondary">
+                                      {new Date(log.timestamp).toLocaleTimeString()}
+                                    </Typography>
+                                  </Box>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      fontFamily: 'monospace',
+                                      fontSize: '0.85rem',
+                                      backgroundColor:
+                                        log.level === 'error'
+                                          ? 'rgba(244, 67, 54, 0.1)'
+                                          : log.level === 'warning'
+                                            ? 'rgba(255, 152, 0, 0.1)'
+                                            : log.level === 'success'
+                                              ? 'rgba(76, 175, 80, 0.1)'
+                                              : 'rgba(0, 0, 0, 0.05)',
+                                      padding: 1,
+                                      borderRadius: 1,
+                                      wordBreak: 'break-all',
+                                    }}
+                                  >
+                                    {log.message}
+                                  </Typography>
+                                </Box>
+                              </ListItem>
+                            ))}
+                          </List>
+                        </Box>
+                      </AccordionDetails>
+                    </Accordion>
+                  )}
                 </Box>
               )}
 

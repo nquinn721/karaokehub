@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google One Tap Test - Different Client ID</title>
+  </head>
+  <body>
+    <h1>Testing with Google's Demo Client ID</h1>
+    <div id="results"></div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+      function log(msg) {
+        console.log(msg);
+        document.getElementById('results').innerHTML += '<div>' + msg + '</div>';
+      }
+
+      window.onload = () => {
+        const checkGoogle = () => {
+          if (window.google?.accounts?.id) {
+            log('✅ Google script loaded');
+            testWithDemoClientId();
+          } else {
+            setTimeout(checkGoogle, 100);
+          }
+        };
+        checkGoogle();
+      };
+
+      function testWithDemoClientId() {
+        // This is Google's demo client ID that should work on any localhost
+        const demoClientId = '407408718192.apps.googleusercontent.com';
+
+        log('🧪 Testing with Google Demo Client ID: ' + demoClientId);
+        log('📍 Origin: ' + window.location.origin);
+
+        try {
+          window.google.accounts.id.initialize({
+            client_id: demoClientId,
+            callback: (response) => {
+              log('✅ Demo Client Success! One Tap is working.');
+              log('This means the issue is with your specific client ID, not your setup.');
+            },
+            auto_select: false,
+          });
+
+          window.google.accounts.id.prompt((notification) => {
+            if (notification.isNotDisplayed()) {
+              const reason = notification.getNotDisplayedReason();
+              log('❌ Demo Client Failed: ' + reason);
+
+              if (reason === 'unregistered_origin') {
+                log('🔧 Even the demo client fails - this suggests a browser/network issue');
+              } else {
+                log(
+                  '🔧 Demo client fails for different reason - your client ID might need recreation',
+                );
+              }
+            } else if (notification.isDisplayed()) {
+              log('✅ Demo Client Works! Your client ID needs to be recreated.');
+            }
+          });
+        } catch (error) {
+          log('❌ Error: ' + error.message);
+        }
+
+        // Also test your original client ID again
+        setTimeout(() => {
+          log('🔄 Now testing your original client ID...');
+          testYourClientId();
+        }, 3000);
+      }
+
+      function testYourClientId() {
+        const yourClientId =
+          '203453576607-fjkvjl9f2sve5gsm4n94fdsgmphgcs8u.apps.googleusercontent.com';
+
+        try {
+          window.google.accounts.id.initialize({
+            client_id: yourClientId,
+            callback: (response) => {
+              log('✅ Your Client ID Works!');
+            },
+            auto_select: false,
+          });
+
+          window.google.accounts.id.prompt((notification) => {
+            if (notification.isNotDisplayed()) {
+              const reason = notification.getNotDisplayedReason();
+              log('❌ Your Client ID Failed: ' + reason);
+
+              if (reason === 'unregistered_origin') {
+                log('🔧 Recommendation: Create a new OAuth client specifically for development');
+              }
+            } else if (notification.isDisplayed()) {
+              log('✅ Your Client ID Works! (Unexpected but good)');
+            }
+          });
+        } catch (error) {
+          log('❌ Error with your client: ' + error.message);
+        }
+      }
+    </script>
+  </body>
+</html>

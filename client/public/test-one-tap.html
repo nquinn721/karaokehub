@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google One Tap Test</title>
+  </head>
+  <body>
+    <h1>Google One Tap Isolated Test</h1>
+    <p>This is a minimal test to isolate the Google One Tap issue.</p>
+
+    <div id="test-results"></div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+      function log(message) {
+        console.log(message);
+        document.getElementById('test-results').innerHTML += '<div>' + message + '</div>';
+      }
+
+      window.addEventListener('load', () => {
+        log('🟢 Page loaded');
+
+        // Wait for Google script to load
+        const checkGoogle = () => {
+          if (window.google?.accounts?.id) {
+            log('🟢 Google script loaded');
+            runTest();
+          } else {
+            log('⏳ Waiting for Google script...');
+            setTimeout(checkGoogle, 100);
+          }
+        };
+
+        checkGoogle();
+      });
+
+      function runTest() {
+        const clientId = '203453576607-fjkvjl9f2sve5gsm4n94fdsgmphgcs8u.apps.googleusercontent.com';
+
+        log('🔍 Testing with Client ID: ' + clientId);
+        log('🔍 Current Origin: ' + window.location.origin);
+        log('🔍 Current Domain: ' + window.location.hostname);
+
+        try {
+          // Initialize Google One Tap
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: (response) => {
+              log('✅ Google One Tap callback triggered!');
+              log('Response: ' + JSON.stringify(response));
+            },
+            auto_select: false, // Disable auto-select for testing
+            cancel_on_tap_outside: true,
+            use_fedcm_for_prompt: true,
+          });
+
+          log('🟢 Google One Tap initialized');
+
+          // Try to prompt
+          setTimeout(() => {
+            log('🔄 Attempting to prompt One Tap...');
+            window.google.accounts.id.prompt((notification) => {
+              log(
+                '📋 Notification received: ' +
+                  JSON.stringify({
+                    isDisplayed: notification.isDisplayed(),
+                    isNotDisplayed: notification.isNotDisplayed(),
+                    isSkippedMoment: notification.isSkippedMoment(),
+                    isDismissedMoment: notification.isDismissedMoment(),
+                  }),
+              );
+
+              if (notification.isNotDisplayed()) {
+                const reason = notification.getNotDisplayedReason();
+                log('❌ One Tap not displayed. Reason: ' + reason);
+
+                if (reason === 'unregistered_origin') {
+                  log('🔧 SOLUTION: Add this origin to Google Cloud Console:');
+                  log('   ' + window.location.origin);
+                } else if (reason === 'suppressed_by_user') {
+                  log('🔧 SOLUTION: Clear cookies or use incognito mode');
+                } else if (reason === 'unknown_reason') {
+                  log('🔧 SOLUTION: Try different browser or check Google account status');
+                }
+              } else if (notification.isDisplayed()) {
+                log('✅ One Tap is displayed successfully!');
+              } else if (notification.isSkippedMoment()) {
+                log('⏭️ One Tap was skipped. Reason: ' + notification.getSkippedReason());
+              } else if (notification.isDismissedMoment()) {
+                log('❌ One Tap was dismissed. Reason: ' + notification.getDismissedReason());
+              }
+            });
+          }, 1000);
+        } catch (error) {
+          log('❌ Error during initialization: ' + error.message);
+        }
+      }
+    </script>
+  </body>
+</html>

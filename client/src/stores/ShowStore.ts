@@ -177,7 +177,7 @@ export class ShowStore {
       if (show) {
         // Import MapStore dynamically to avoid circular dependencies
         import('./index').then(({ mapStore }) => {
-          mapStore.selectShow(show);
+          mapStore.selectedShow = show;
         });
       }
     } else {
@@ -225,10 +225,8 @@ export class ShowStore {
       this.selectedShow = null; // Clear selection when changing days
     });
 
-    // Refresh map markers for the new day
+    // Trigger MapStore to refresh data for the new day
     this.refreshMapForDayChange();
-
-    // Don't automatically fetch - let the caller decide when to fetch
   }
 
   // Helper method to refresh map when day changes
@@ -237,26 +235,11 @@ export class ShowStore {
       // Dynamic import to avoid circular dependency
       const { mapStore } = await import('./MapStore');
       if (mapStore && mapStore.isInitialized) {
-        // Always try to fetch individual shows from map center if available
-        if (mapStore.searchCenter) {
-          // Fetch individual shows based on current search center and new selected day
-          console.log('🎯 Refreshing individual shows for day change:', this.selectedDay);
-          console.log('🗺️ Using map center:', mapStore.searchCenter);
-          await this.fetchShows(this.selectedDay, {
-            lat: mapStore.searchCenter.lat,
-            lng: mapStore.searchCenter.lng,
-            radius: mapStore.getDynamicRadius(),
-          });
-        }
-
-        // Also refresh city summaries if we're in city view mode
-        if (this.isUsingCityView) {
-          console.log('🏙️ Also refreshing city summaries for day change:', this.selectedDay);
-          await this.fetchCitySummaries(this.selectedDay);
-        }
+        // Let MapStore handle data fetching based on current zoom/location
+        mapStore.refreshDataForCurrentView();
       }
     } catch (error) {
-      console.warn('Could not refresh shows for day change:', error);
+      console.error('Error refreshing map for day change:', error);
     }
   }
 
@@ -287,6 +270,10 @@ export class ShowStore {
         // Fallback to day-based or all shows
         endpoint = day ? apiStore.endpoints.shows.byDay(day) : apiStore.endpoints.shows.base;
       }
+
+      console.log('🔗 Fetching shows from endpoint:', endpoint);
+      console.log('📅 Day parameter:', day);
+      console.log('🗺️ Map center parameter:', mapCenter);
 
       const response = await apiStore.get(endpoint);
 
@@ -569,6 +556,99 @@ export class ShowStore {
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
+    }
+  }
+
+  // Fetch all shows with filters (no distance limit) - for zoom 11-15
+  async fetchAllShows(
+    day?: DayOfWeek,
+    vendor?: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      runInAction(() => {
+        this.isLoading = true;
+        this.isUsingCityView = false;
+      });
+
+      console.log(
+        `🌍 Fetching all shows for ${day || 'all days'}${vendor ? ` and vendor ${vendor}` : ''}`,
+      );
+
+      // Use the regular /shows endpoint with filters
+      let endpoint = '/shows';
+      const params = new URLSearchParams();
+      if (day) params.append('day', day);
+      if (vendor) params.append('vendor', vendor);
+
+      if (params.toString()) {
+        endpoint += `?${params.toString()}`;
+      }
+
+      const response = await apiStore.get(endpoint);
+
+      runInAction(() => {
+        this.shows = response || [];
+        this.isLoading = false;
+      });
+
+      console.log(`📍 Received ${this.shows.length} shows from all cities`);
+      return { success: true };
+    } catch (error: any) {
+      runInAction(() => {
+        this.isLoading = false;
+      });
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch all shows',
+      };
+    }
+  }
+
+  // Fetch nearby shows within radius - for zoom 16+
+  async fetchNearbyShows(
+    lat: number,
+    lng: number,
+    radius: number,
+    day?: DayOfWeek,
+    vendor?: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      runInAction(() => {
+        this.isLoading = true;
+        this.isUsingCityView = false;
+      });
+
+      console.log(
+        `📍 Fetching nearby shows within ${radius} miles for ${day || 'all days'}${vendor ? ` and vendor ${vendor}` : ''}`,
+      );
+
+      const params = new URLSearchParams({
+        centerLat: lat.toString(),
+        centerLng: lng.toString(),
+        radius: radius.toString(),
+      });
+
+      if (day) params.append('day', day);
+      if (vendor) params.append('vendor', vendor);
+
+      const endpoint = `/shows/nearby?${params.toString()}`;
+      const response = await apiStore.get(endpoint);
+
+      runInAction(() => {
+        this.shows = response || [];
+        this.isLoading = false;
+      });
+
+      console.log(`📍 Received ${this.shows.length} nearby shows`);
+      return { success: true };
+    } catch (error: any) {
+      runInAction(() => {
+        this.isLoading = false;
+      });
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to fetch nearby shows',
+      };
     }
   }
 }

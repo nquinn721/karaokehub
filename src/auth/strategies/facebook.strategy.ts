@@ -27,8 +27,8 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       clientID,
       clientSecret,
       callbackURL: urlService.getOAuthUrls().facebookCallback,
-      scope: ['public_profile'], // Only request public_profile, email requires app review
-      profileFields: ['id', 'displayName', 'photos'], // Remove email from profileFields
+      scope: ['public_profile', 'email'], // Request both public_profile and email
+      profileFields: ['id', 'displayName', 'photos', 'email'], // Include email in profileFields
     });
   }
 

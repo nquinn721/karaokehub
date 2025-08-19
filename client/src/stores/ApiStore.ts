@@ -488,7 +488,10 @@ class ApiStore {
 
         if (retryCount >= maxRetries) {
           console.error('All config fetch attempts failed:', error);
-          // Don't throw here - app should still work without config
+          // Set configLoaded = true even on failure so app doesn't hang
+          runInAction(() => {
+            this.configLoaded = true;
+          });
           return;
         }
 
@@ -500,13 +503,8 @@ class ApiStore {
 
   // Get Google Maps API key from config
   get googleMapsApiKey(): string | undefined {
-    // First try to get from server config
-    if (this.clientConfig?.googleMapsApiKey) {
-      return this.clientConfig.googleMapsApiKey;
-    }
-
-    // Fallback to Vite environment variable for development
-    return import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    // Only get from server config - no fallback to env variables in production
+    return this.clientConfig?.googleMapsApiKey;
   }
 
   // API endpoints - centralized URL management

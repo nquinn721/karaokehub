@@ -61,6 +61,13 @@ export class KaraokeParserService {
   private currentParsingUrl: string | null = null;
   private parsingStartTime: Date | null = null;
 
+  // Log tracking for database storage
+  private currentParsingLogs: Array<{
+    timestamp: Date;
+    level: 'info' | 'success' | 'warning' | 'error';
+    message: string;
+  }> = [];
+
   constructor(
     @InjectRepository(ParsedSchedule)
     private parsedScheduleRepository: Repository<ParsedSchedule>,
@@ -100,6 +107,8 @@ export class KaraokeParserService {
     if (isActive) {
       this.currentParsingUrl = url || null;
       this.parsingStartTime = new Date();
+      // Clear previous parsing logs when starting a new session
+      this.currentParsingLogs = [];
     } else {
       this.currentParsingUrl = null;
       this.parsingStartTime = null;
@@ -219,6 +228,15 @@ export class KaraokeParserService {
 
     // Update the timestamp for this message
     this.recentLogMessages.set(messageKey, now);
+
+    // Capture log for database storage if we're currently parsing
+    if (this.isCurrentlyParsing) {
+      this.currentParsingLogs.push({
+        timestamp: new Date(),
+        level,
+        message,
+      });
+    }
 
     // Clean up old entries periodically (keep only last 10 seconds)
     if (this.recentLogMessages.size > 100) {
@@ -402,6 +420,60 @@ export class KaraokeParserService {
         'info',
       );
 
+      // CRITICAL DEBUG: Check if essential content might have been lost during trimming
+      const originalLower = htmlContent.toLowerCase();
+      const trimmedLower = trimmedHtml.toLowerCase();
+
+      // Check for common karaoke-related terms
+      const karaokeTerms = [
+        'karaoke',
+        'dj',
+        'music',
+        'show',
+        'venue',
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday',
+      ];
+      let termsMissing = [];
+
+      for (const term of karaokeTerms) {
+        const originalCount = (originalLower.match(new RegExp(term, 'g')) || []).length;
+        const trimmedCount = (trimmedLower.match(new RegExp(term, 'g')) || []).length;
+
+        if (originalCount > trimmedCount) {
+          termsMissing.push(`${term}(${originalCount}→${trimmedCount})`);
+        }
+      }
+
+      if (termsMissing.length > 0) {
+        this.logAndBroadcast(
+          `WARNING: Trimming may have removed important content: ${termsMissing.join(', ')}`,
+          'warning',
+        );
+      } else {
+        this.logAndBroadcast('Content trimming preserved all key karaoke terms', 'success');
+      }
+
+      // ADDITIONAL DEBUG: Check if page appears to be loading correctly
+      if (trimmedHtml.includes('loading') || trimmedHtml.includes('Loading')) {
+        this.logAndBroadcast(
+          'WARNING: Page may still be loading - could affect parsing quality',
+          'warning',
+        );
+      }
+
+      if (trimmedHtml.length < 5000) {
+        this.logAndBroadcast(
+          'WARNING: Very small HTML content - site may not have loaded properly',
+          'warning',
+        );
+      }
+
       const model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
       // Parse HTML content with enhanced prompt
@@ -494,6 +566,20 @@ export class KaraokeParserService {
       const truncatedContent =
         htmlContent.length > 10000 ? htmlContent.substring(0, 10000) + '...' : htmlContent;
 
+      const processingTime = Date.now() - startTime;
+
+      // Add final success logs before saving
+      this.logAndBroadcast(
+        `Processing completed in ${processingTime}ms - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}`,
+        'success',
+      );
+
+      // Debug: Log how many parsing logs we captured
+      this.logAndBroadcast(
+        `Captured ${this.currentParsingLogs.length} parsing logs for database storage`,
+        'info',
+      );
+
       // Save to parsed_schedules table for admin review
       const parsedSchedule = this.parsedScheduleRepository.create({
         url: url,
@@ -505,17 +591,13 @@ export class KaraokeParserService {
         },
         aiAnalysis: parsedData,
         status: ParseStatus.PENDING_REVIEW,
+        parsingLogs: [...this.currentParsingLogs], // Include captured logs
       });
 
       const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
-      const processingTime = Date.now() - startTime;
 
       this.logAndBroadcast(
         `Successfully saved parsed data for admin review. ID: ${savedSchedule.id}`,
-        'success',
-      );
-      this.logAndBroadcast(
-        `Processing completed in ${processingTime}ms - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}`,
         'success',
       );
 
@@ -568,6 +650,9 @@ export class KaraokeParserService {
     const startTime = Date.now();
 
     try {
+      // Set parsing status to active
+      this.setParsingStatus(true, url);
+
       this.logAndBroadcast(
         `Starting screenshot-based parse and save operation for URL: ${url}`,
         'info',
@@ -589,6 +674,20 @@ export class KaraokeParserService {
       const geminiTime = Date.now() - geminiStartTime;
       this.logAndBroadcast(`Gemini Vision completed in ${geminiTime}ms`, 'success');
 
+      const processingTime = Date.now() - startTime;
+
+      // Add final success logs before saving
+      this.logAndBroadcast(
+        `Screenshot processing completed in ${processingTime}ms - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}`,
+        'success',
+      );
+
+      // Debug: Log how many parsing logs we captured
+      this.logAndBroadcast(
+        `Captured ${this.currentParsingLogs.length} parsing logs for database storage`,
+        'info',
+      );
+
       // Save to parsed_schedules table for admin review
       const truncatedContent =
         htmlContent.length > 10000 ? htmlContent.substring(0, 10000) + '...' : htmlContent;
@@ -603,17 +702,13 @@ export class KaraokeParserService {
         },
         aiAnalysis: parsedData,
         status: ParseStatus.PENDING_REVIEW,
+        parsingLogs: [...this.currentParsingLogs], // Include captured logs
       });
 
       const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
-      const processingTime = Date.now() - startTime;
 
       this.logAndBroadcast(
         `Successfully saved screenshot-parsed data for admin review. ID: ${savedSchedule.id}`,
-        'success',
-      );
-      this.logAndBroadcast(
-        `Screenshot processing completed in ${processingTime}ms - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}`,
         'success',
       );
 
@@ -656,6 +751,9 @@ export class KaraokeParserService {
       }
 
       throw new Error(`Failed to parse website with screenshot: ${error.message}`);
+    } finally {
+      // Clear parsing status
+      this.setParsingStatus(false);
     }
   }
 
@@ -759,6 +857,26 @@ export class KaraokeParserService {
         'success',
       );
       this.logAndBroadcast(`Found ${timeData.length} elements with time data attributes`, 'info');
+
+      // DEBUG: Log sample of time data found for production debugging
+      if (timeData.length > 0) {
+        const sampleData = timeData.slice(0, 5).map((item) => ({
+          dataDay: item.dataDay,
+          dataTime: item.dataTime,
+          dataMonth: item.dataMonth,
+          text: item.textContent?.substring(0, 50) + (item.textContent?.length > 50 ? '...' : ''),
+        }));
+        this.logAndBroadcast(`Sample time data attributes: ${JSON.stringify(sampleData)}`, 'info');
+      } else {
+        this.logAndBroadcast(
+          'WARNING: No time data attributes found on page - this may cause parsing issues',
+          'warning',
+        );
+      }
+
+      // DEBUG: Log sample of HTML content to verify what we're getting
+      const htmlPreview = htmlContent.substring(0, 500).replace(/\s+/g, ' ');
+      this.logAndBroadcast(`HTML preview: ${htmlPreview}...`, 'info');
 
       return { htmlContent: enhancedContent, screenshot };
     } catch (error) {
@@ -1081,12 +1199,42 @@ ${htmlContent}`;
     // Clean and parse JSON response
     const cleanJsonString = this.cleanGeminiResponse(text);
     this.logAndBroadcast(`Cleaned JSON: ${cleanJsonString}`, 'info');
-    const parsedData = JSON.parse(cleanJsonString);
+
+    let parsedData;
+    try {
+      parsedData = JSON.parse(cleanJsonString);
+      this.logAndBroadcast('JSON parsing successful', 'success');
+    } catch (jsonError) {
+      this.logAndBroadcast(`JSON parsing failed: ${jsonError.message}`, 'error');
+      this.logAndBroadcast(`Failed JSON string: ${cleanJsonString.substring(0, 200)}...`, 'error');
+      throw new Error(`Invalid JSON response from Gemini: ${jsonError.message}`);
+    }
+
+    // CRITICAL DEBUG: Log detailed parsing results
+    const showCount = parsedData.shows?.length || 0;
+    const djCount = parsedData.djs?.length || 0;
+    const vendorName = parsedData.vendor?.name || 'Unknown';
 
     this.logAndBroadcast(
-      `Parsed data extracted - Shows: ${parsedData.shows?.length || 0}, DJs: ${parsedData.djs?.length || 0}, Vendor: ${parsedData.vendor?.name || 'Unknown'}`,
+      `Parsed data extracted - Shows: ${showCount}, DJs: ${djCount}, Vendor: ${vendorName}`,
       'success',
     );
+
+    // DEBUG: If no shows found, log more details
+    if (showCount === 0) {
+      this.logAndBroadcast('CRITICAL: No shows found in parsed data!', 'error');
+      this.logAndBroadcast(
+        `Vendor confidence: ${parsedData.vendor?.confidence || 'N/A'}`,
+        'warning',
+      );
+      this.logAndBroadcast(`Raw shows array: ${JSON.stringify(parsedData.shows)}`, 'warning');
+    }
+
+    // DEBUG: If no DJs found, log more details
+    if (djCount === 0) {
+      this.logAndBroadcast('WARNING: No DJs found in parsed data', 'warning');
+      this.logAndBroadcast(`Raw DJs array: ${JSON.stringify(parsedData.djs)}`, 'warning');
+    }
 
     // Ensure required structure with defaults
     const finalData: ParsedKaraokeData = {
@@ -1100,6 +1248,34 @@ ${htmlContent}`;
         parsedAt: new Date(),
       },
     };
+
+    // CRITICAL DEBUG: Log final data structure being returned
+    this.logAndBroadcast(
+      `FINAL RESULT: ${finalData.shows.length} shows, ${finalData.djs.length} DJs, vendor: ${finalData.vendor.name}`,
+      'info',
+    );
+
+    // Log sample shows for debugging
+    if (finalData.shows.length > 0) {
+      const sampleShows = finalData.shows.slice(0, 3).map((show) => ({
+        venue: show.venue,
+        day: show.day,
+        time: show.time,
+        djName: show.djName,
+        city: show.city,
+        state: show.state,
+      }));
+      this.logAndBroadcast(`Sample shows: ${JSON.stringify(sampleShows)}`, 'info');
+    }
+
+    // Log sample DJs for debugging
+    if (finalData.djs.length > 0) {
+      const sampleDJs = finalData.djs.slice(0, 3).map((dj) => ({
+        name: dj.name,
+        confidence: dj.confidence,
+      }));
+      this.logAndBroadcast(`Sample DJs: ${JSON.stringify(sampleDJs)}`, 'info');
+    }
 
     return finalData;
   }
@@ -1282,6 +1458,21 @@ ${htmlContent}`;
       cleaned = cleaned.substring(0, lastBrace + 1);
     }
 
+    // ENHANCED: Handle truncated JSON by ensuring proper closing
+    try {
+      // Try to parse as-is first
+      JSON.parse(cleaned);
+      return cleaned; // Already valid
+    } catch (error) {
+      this.logAndBroadcast(
+        `Initial JSON parse failed: ${error.message}, attempting repair`,
+        'warning',
+      );
+
+      // Attempt to repair truncated JSON
+      cleaned = this.repairTruncatedJson(cleaned);
+    }
+
     // Fix common JSON formatting issues
     cleaned = cleaned
       // Fix unquoted property names
@@ -1298,6 +1489,56 @@ ${htmlContent}`;
       .replace(/[\x00-\x1F\x7F-\x9F]/g, '');
 
     return cleaned.trim();
+  }
+
+  /**
+   * Repair truncated JSON by properly closing arrays and objects
+   */
+  private repairTruncatedJson(jsonStr: string): string {
+    this.logAndBroadcast(`Attempting to repair truncated JSON (length: ${jsonStr.length})`, 'info');
+
+    let repaired = jsonStr.trim();
+
+    // Remove any incomplete entries at the end
+    const lastCommaIndex = repaired.lastIndexOf(',');
+    if (lastCommaIndex > -1) {
+      // Check if there's an incomplete object/array after the last comma
+      const afterLastComma = repaired.substring(lastCommaIndex + 1).trim();
+
+      // If what follows is incomplete (no closing brace/bracket), remove it
+      if (afterLastComma && !afterLastComma.includes('}') && !afterLastComma.includes(']')) {
+        repaired = repaired.substring(0, lastCommaIndex);
+        this.logAndBroadcast('Removed incomplete JSON fragment after last comma', 'info');
+      }
+    }
+
+    // Count open/close braces and brackets to ensure proper nesting
+    let openBraces = 0;
+    let openBrackets = 0;
+
+    for (const char of repaired) {
+      if (char === '{') openBraces++;
+      else if (char === '}') openBraces--;
+      else if (char === '[') openBrackets++;
+      else if (char === ']') openBrackets--;
+    }
+
+    // Close any unclosed arrays
+    while (openBrackets > 0) {
+      repaired += ']';
+      openBrackets--;
+      this.logAndBroadcast('Added missing closing bracket', 'info');
+    }
+
+    // Close any unclosed objects
+    while (openBraces > 0) {
+      repaired += '}';
+      openBraces--;
+      this.logAndBroadcast('Added missing closing brace', 'info');
+    }
+
+    this.logAndBroadcast(`JSON repair completed (final length: ${repaired.length})`, 'success');
+    return repaired;
   }
 
   /**
