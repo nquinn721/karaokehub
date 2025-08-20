@@ -87,7 +87,7 @@ export class FacebookParserService {
 
     try {
       this.browser = await puppeteer.launch({
-        headless: false, // Set to false for debugging login process
+        headless: false, // Keep visible to handle CAPTCHAs
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -98,10 +98,12 @@ export class FacebookParserService {
           '--disable-features=VizDisplayCompositor',
           '--no-first-run',
           '--disable-extensions',
-          '--window-size=1920,1080'
+          '--window-size=1920,1080',
+          '--start-maximized'
         ],
-        defaultViewport: { width: 1920, height: 1080 },
+        defaultViewport: null, // Use full screen
         timeout: 60000,
+        slowMo: 100, // Add delay between actions to seem more human
       });
 
       this.page = await this.browser.newPage();
@@ -114,6 +116,10 @@ export class FacebookParserService {
       await this.page.setExtraHTTPHeaders({
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
       });
 
       // Remove automation indicators
@@ -121,9 +127,23 @@ export class FacebookParserService {
         Object.defineProperty(navigator, 'webdriver', {
           get: () => undefined,
         });
+        
+        // Remove automation flags
+        delete (window as any).cdc_adoQpoasnfa76pfcZLmcfl_Array;
+        delete (window as any).cdc_adoQpoasnfa76pfcZLmcfl_Promise;
+        delete (window as any).cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
+        
         (window as any).chrome = {
           runtime: {},
         };
+        
+        // Override permissions
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters) => (
+          parameters.name === 'notifications' ?
+            Promise.resolve({ state: Notification.permission } as any) :
+            originalQuery(parameters)
+        );
       });
 
       this.logger.log('Facebook parser browser initialized successfully');
