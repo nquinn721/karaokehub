@@ -313,62 +313,147 @@ export class FacebookParserService {
    * Extract data from Facebook groups
    */
   private async extractGroupData(url: string): Promise<FacebookPageData> {
-    this.logger.log('Extracting Facebook group data...');
+    this.logger.log('Extracting Facebook group data with enhanced scrolling and photo collection...');
 
     const screenshots: string[] = [];
     const posts: FacebookPost[] = [];
+    const collectedPhotos: string[] = [];
 
     try {
       // Take initial screenshot
       const initialScreenshot = await this.captureScreenshot();
       screenshots.push(initialScreenshot);
 
-      // Scroll to load more posts
-      for (let i = 0; i < 5; i++) {
-        await this.page!.evaluate(() => {
-          window.scrollBy(0, window.innerHeight * 0.8);
-        });
-        await new Promise(resolve => setTimeout(resolve, 3000));
+      this.logger.log('Starting enhanced scrolling through ~20 pages of content...');
 
-        // Take screenshot after scrolling
-        const scrollScreenshot = await this.captureScreenshot();
-        screenshots.push(scrollScreenshot);
+      // Enhanced scrolling through ~20 pages with photo collection
+      let lastHeight = 0;
+      let unchangedCount = 0;
+      const maxPages = 20;
+      let currentPage = 0;
+
+      for (let i = 0; i < maxPages && unchangedCount < 3; i++) {
+        currentPage++;
+        this.logger.log(`Scrolling page ${currentPage}/${maxPages}...`);
+
+        // Get current scroll height
+        const currentHeight = await this.page!.evaluate(() => document.body.scrollHeight);
+        
+        // Scroll down with more realistic human-like behavior
+        await this.page!.evaluate(() => {
+          const scrollAmount = Math.floor(window.innerHeight * (0.7 + Math.random() * 0.3));
+          window.scrollBy(0, scrollAmount);
+        });
+
+        // Wait for content to load with random variation
+        const waitTime = 2000 + Math.random() * 2000; // 2-4 seconds
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+
+        // Check if new content loaded
+        const newHeight = await this.page!.evaluate(() => document.body.scrollHeight);
+        if (newHeight === lastHeight) {
+          unchangedCount++;
+          this.logger.log(`No new content loaded (attempt ${unchangedCount}/3)`);
+        } else {
+          unchangedCount = 0;
+          lastHeight = newHeight;
+        }
+
+        // Take screenshot every few scrolls
+        if (i % 3 === 0) {
+          const scrollScreenshot = await this.captureScreenshot();
+          screenshots.push(scrollScreenshot);
+        }
+
+        // Collect photos from current viewport
+        const photosInViewport = await this.extractPhotosFromViewport();
+        collectedPhotos.push(...photosInViewport);
+
+        // Log progress
+        if (i % 5 === 0) {
+          this.logger.log(`Progress: Page ${currentPage}, Photos collected: ${collectedPhotos.length}`);
+        }
       }
 
-      // Extract post data
+      this.logger.log(`Completed scrolling. Collected ${collectedPhotos.length} photos from ${currentPage} pages`);
+
+      // Extract comprehensive post data after scrolling
       const extractedPosts = await this.page!.evaluate(() => {
-        const postElements = document.querySelectorAll('[data-testid="story-body"], [role="article"]');
+        const postElements = document.querySelectorAll('[data-testid="story-body"], [role="article"], [data-pagelet*="FeedUnit"]');
         const posts = [];
 
         postElements.forEach((postEl, index) => {
-          if (index > 20) return; // Limit to first 20 posts
+          if (index > 100) return; // Increased limit for more posts
 
           const post: any = {
             author: '',
             content: '',
             timestamp: '',
+            images: [],
           };
 
-          // Extract author
-          const authorEl = postEl.querySelector('[data-testid="post_author_name"], strong a');
-          if (authorEl) {
-            post.author = authorEl.textContent?.trim() || '';
+          // Extract author with multiple selectors
+          const authorSelectors = [
+            '[data-testid="post_author_name"]',
+            'strong a[role="link"]',
+            'h3 strong a',
+            '[data-testid="story-subtitle"] a',
+            '.fwb a'
+          ];
+          
+          for (const selector of authorSelectors) {
+            const authorEl = postEl.querySelector(selector);
+            if (authorEl && !post.author) {
+              post.author = authorEl.textContent?.trim() || '';
+              break;
+            }
           }
 
-          // Extract content
-          const contentEl = postEl.querySelector('[data-testid="post_message"], .userContent');
-          if (contentEl) {
-            post.content = contentEl.textContent?.trim() || '';
+          // Extract content with multiple selectors
+          const contentSelectors = [
+            '[data-testid="post_message"]',
+            '.userContent',
+            '[data-testid="story-body"] [dir="auto"]',
+            '.text_exposed_root'
+          ];
+          
+          for (const selector of contentSelectors) {
+            const contentEl = postEl.querySelector(selector);
+            if (contentEl && !post.content) {
+              post.content = contentEl.textContent?.trim() || '';
+              break;
+            }
           }
 
-          // Extract timestamp
-          const timeEl = postEl.querySelector('time');
-          if (timeEl) {
-            post.timestamp = timeEl.getAttribute('datetime') || timeEl.textContent?.trim() || '';
+          // Extract timestamp with multiple selectors
+          const timeSelectors = [
+            'time',
+            '[data-testid="story-subtitle"] abbr',
+            '.timestampContent',
+            'abbr[data-utime]'
+          ];
+          
+          for (const selector of timeSelectors) {
+            const timeEl = postEl.querySelector(selector);
+            if (timeEl && !post.timestamp) {
+              post.timestamp = timeEl.getAttribute('datetime') || 
+                             timeEl.getAttribute('data-utime') || 
+                             timeEl.textContent?.trim() || '';
+              break;
+            }
           }
 
-          // Only include posts with substantial content
-          if (post.content && post.content.length > 20) {
+          // Extract image URLs from this post
+          const imgElements = postEl.querySelectorAll('img[src*="scontent"], img[src*="fbcdn"]');
+          imgElements.forEach(img => {
+            const src = img.getAttribute('src');
+            if (src && src.includes('scontent') && !src.includes('emoji')) {
+              post.images.push(src);
+            }
+          });
+
+          // Only include posts with substantial content or images
+          if ((post.content && post.content.length > 15) || post.images.length > 0) {
             posts.push(post);
           }
         });
@@ -378,7 +463,7 @@ export class FacebookParserService {
 
       posts.push(...extractedPosts);
 
-      // Get HTML content
+      // Get final HTML content after all scrolling
       const htmlContent = await this.page!.content();
 
       // Extract all text content
@@ -386,7 +471,11 @@ export class FacebookParserService {
         return document.body.innerText;
       });
 
-      this.logger.log(`Extracted ${posts.length} posts and ${screenshots.length} screenshots from group`);
+      this.logger.log(`Enhanced extraction complete:
+        - Posts: ${posts.length}
+        - Screenshots: ${screenshots.length}
+        - Photos collected: ${collectedPhotos.length}
+        - Pages scrolled: ${currentPage}`);
 
       return {
         url,
@@ -394,7 +483,10 @@ export class FacebookParserService {
         screenshots,
         htmlContent,
         extractedText,
-        posts,
+        posts: posts.map(post => ({
+          ...post,
+          images: [...(post.images || []), ...collectedPhotos.slice(0, 10)] // Add collected photos to posts
+        })),
       };
 
     } catch (error) {
@@ -789,6 +881,44 @@ Return ONLY valid JSON:
     } catch (error) {
       this.logger.error(`Partial extraction failed: ${error.message}`);
       return null;
+    }
+  }
+
+  /**
+   * Extract photos from current viewport
+   */
+  private async extractPhotosFromViewport(): Promise<string[]> {
+    try {
+      const photos = await this.page!.evaluate(() => {
+        const imageElements = document.querySelectorAll('img[src*="scontent"], img[src*="fbcdn"]');
+        const photoUrls: string[] = [];
+
+        imageElements.forEach(img => {
+          const src = img.getAttribute('src');
+          if (src && 
+              (src.includes('scontent') || src.includes('fbcdn')) && 
+              !src.includes('emoji') && 
+              !src.includes('profile') &&
+              !src.includes('cover') &&
+              !src.includes('static')) {
+            
+            // Filter for likely content images (not UI elements)
+            const rect = img.getBoundingClientRect();
+            if (rect.width > 100 && rect.height > 100) { // Minimum size for content images
+              photoUrls.push(src);
+            }
+          }
+        });
+
+        return Array.from(new Set(photoUrls)); // Remove duplicates
+      });
+
+      this.logger.log(`Extracted ${photos.length} photos from current viewport`);
+      return photos;
+
+    } catch (error) {
+      this.logger.warn(`Error extracting photos from viewport: ${error.message}`);
+      return [];
     }
   }
 
