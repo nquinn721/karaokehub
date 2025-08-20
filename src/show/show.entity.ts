@@ -76,6 +76,9 @@ export class Show {
   @Column({ nullable: true })
   venueWebsite: string;
 
+  @Column({ nullable: true })
+  source: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 8, nullable: true })
   lat: number;
 

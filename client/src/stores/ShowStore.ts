@@ -22,6 +22,7 @@ export interface Show {
   venue?: string; // The bar/restaurant name
   venuePhone?: string; // Venue contact phone number
   venueWebsite?: string; // Venue website URL
+  source?: string; // Source URL/image that this show was parsed from
   day: DayOfWeek | string;
   startTime: string;
   endTime: string;
@@ -60,6 +61,7 @@ export interface CreateShowData {
   startTime: string;
   endTime: string;
   description?: string;
+  source?: string;
 }
 
 export class ShowStore {

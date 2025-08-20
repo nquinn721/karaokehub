@@ -311,4 +311,79 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
     this.parserLogs = [];
     this.server.to('parser-logs').emit('parser-logs-cleared');
   }
+
+  // Facebook Authentication Methods
+  private pendingFacebookRequests = new Map<string, (credentials: any) => void>();
+
+  /**
+   * Request Facebook credentials from admin UI
+   * Returns a promise that resolves when admin provides credentials
+   */
+  async requestFacebookCredentials(requestId: string): Promise<any> {
+    this.logger.log(`📡 Requesting Facebook credentials from admin UI (ID: ${requestId})`);
+
+    // Emit request to all connected admin clients
+    this.server.emit('facebook-login-required', {
+      requestId,
+      message: 'Facebook login required. Please provide credentials.',
+      timestamp: new Date().toISOString(),
+    });
+
+    // Return a promise that resolves when credentials are provided
+    return new Promise((resolve) => {
+      this.pendingFacebookRequests.set(requestId, resolve);
+
+      // Timeout after 5 minutes
+      setTimeout(
+        () => {
+          if (this.pendingFacebookRequests.has(requestId)) {
+            this.pendingFacebookRequests.delete(requestId);
+            this.logger.warn(`⏰ Facebook credential request timeout for ID: ${requestId}`);
+            resolve(null);
+          }
+        },
+        5 * 60 * 1000,
+      );
+    });
+  }
+
+  /**
+   * Handle Facebook credentials provided by admin
+   */
+  @SubscribeMessage('provide-facebook-credentials')
+  handleFacebookCredentials(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+    this.logger.log(`🔑 Received Facebook credentials for request ID: ${data.requestId}`);
+
+    const resolver = this.pendingFacebookRequests.get(data.requestId);
+    if (resolver) {
+      this.pendingFacebookRequests.delete(data.requestId);
+      resolver(data);
+
+      // Notify client that credentials were received
+      client.emit('facebook-login-result', {
+        requestId: data.requestId,
+        success: true,
+        message: 'Credentials received, attempting login...',
+      });
+    } else {
+      this.logger.warn(`⚠️ No pending Facebook request found for ID: ${data.requestId}`);
+      client.emit('facebook-login-result', {
+        requestId: data.requestId,
+        success: false,
+        message: 'Request expired or invalid',
+      });
+    }
+  }
+
+  /**
+   * Notify admin UI about Facebook login result
+   */
+  notifyFacebookLoginResult(requestId: string, success: boolean, message: string) {
+    this.server.emit('facebook-login-result', {
+      requestId,
+      success,
+      message,
+      timestamp: new Date().toISOString(),
+    });
+  }
 }

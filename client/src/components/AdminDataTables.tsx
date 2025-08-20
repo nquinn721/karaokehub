@@ -1,8 +1,6 @@
 import {
   faComment,
   faEdit,
-  faFileAudio,
-  faGlobe,
   faHeart,
   faMapMarkerAlt,
   faMicrophone,
@@ -45,10 +43,8 @@ import {
 } from '@mui/material';
 import type {
   AdminDJ,
-  AdminFavorite,
   AdminFeedback,
   AdminShow,
-  AdminSong,
   AdminUser,
   AdminVenue,
 } from '@stores/AdminStore';
@@ -85,16 +81,14 @@ const AdminDataTables: React.FC = observer(() => {
     venues: '',
     shows: '',
     djs: '',
-    favorites: '',
-    songs: '',
+    feedback: '',
   });
   const [pages, setPages] = useState<Record<string, number>>({
     users: 0,
     venues: 0,
     shows: 0,
     djs: 0,
-    favorites: 0,
-    songs: 0,
+    feedback: 0,
   });
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -128,12 +122,6 @@ const AdminDataTables: React.FC = observer(() => {
         break;
       case 'djs':
         await adminStore.fetchDjs(page + 1, rowsPerPage, search);
-        break;
-      case 'favorites':
-        await adminStore.fetchFavorites(page + 1, rowsPerPage, search);
-        break;
-      case 'songs':
-        await adminStore.fetchSongs(page + 1, rowsPerPage, search);
         break;
       case 'feedback':
         await adminStore.fetchFeedback(page + 1, rowsPerPage, search);
@@ -175,7 +163,7 @@ const AdminDataTables: React.FC = observer(() => {
       );
 
       // Refresh the current tab's data
-      const tables = ['users', 'venues', 'shows', 'djs', 'favorites', 'songs', 'feedback'];
+      const tables = ['users', 'venues', 'shows', 'djs', 'feedback'];
       const currentTable = tables[tabValue];
       if (currentTable) {
         fetchData(currentTable, pages[currentTable] || 0, searchTerms[currentTable] || undefined);
@@ -208,20 +196,12 @@ const AdminDataTables: React.FC = observer(() => {
 
   useEffect(() => {
     // Load initial data based on current tab
-    const tables = ['users', 'venues', 'shows', 'djs', 'favorites', 'songs', 'feedback'];
+    const tables = ['users', 'venues', 'shows', 'djs', 'feedback'];
     const currentTable = tables[tabValue];
     if (currentTable) {
       fetchData(currentTable, pages[currentTable] || 0, searchTerms[currentTable] || undefined);
     }
   }, [tabValue, pages, rowsPerPage]);
-
-  // Load parser status when needed
-  useEffect(() => {
-    if (tabValue === 7) {
-      // Parser tab (moved from index 6 to 7)
-      adminStore.fetchParserStatus();
-    }
-  }, [tabValue]);
 
   const SearchField = ({ table, placeholder }: { table: string; placeholder: string }) => (
     <TextField
@@ -289,10 +269,7 @@ const AdminDataTables: React.FC = observer(() => {
           <Tab icon={<FontAwesomeIcon icon={faMapMarkerAlt} />} label="Venues" />
           <Tab icon={<FontAwesomeIcon icon={faMusic} />} label="Shows" />
           <Tab icon={<FontAwesomeIcon icon={faMicrophone} />} label="DJs" />
-          <Tab icon={<FontAwesomeIcon icon={faHeart} />} label="Favorites" />
-          <Tab icon={<FontAwesomeIcon icon={faFileAudio} />} label="Songs" />
           <Tab icon={<FontAwesomeIcon icon={faComment} />} label="Feedback" />
-          <Tab icon={<FontAwesomeIcon icon={faGlobe} />} label="Parser" />
         </Tabs>
       </Box>
 
@@ -590,106 +567,6 @@ const AdminDataTables: React.FC = observer(() => {
 
       <TabPanel value={tabValue} index={4}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6">User Favorites</Typography>
-          <SearchField table="favorites" placeholder="Search favorites..." />
-        </Box>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>User</TableCell>
-                <TableCell>Show</TableCell>
-                <TableCell>Venue</TableCell>
-                <TableCell>Created</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {adminStore.isLoadingTable ? (
-                <TableRow>
-                  <TableCell colSpan={4} align="center">
-                    <CircularProgress size={24} />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                adminStore.favorites?.items.map((favorite: AdminFavorite) => (
-                  <TableRow key={favorite.id}>
-                    <TableCell>{favorite.user?.name || favorite.user?.email || 'N/A'}</TableCell>
-                    <TableCell>{favorite.show?.day || 'N/A'}</TableCell>
-                    <TableCell>{favorite.show?.vendor?.name || 'N/A'}</TableCell>
-                    <TableCell>{formatDate(favorite.createdAt)}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <PaginationControls table="favorites" data={adminStore.favorites} />
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={5}>
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6">Parsed Songs</Typography>
-          <SearchField table="songs" placeholder="Search parsed data..." />
-        </Box>
-        <TableContainer>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>URL</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Has AI Analysis</TableCell>
-                <TableCell>Created</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {adminStore.isLoadingTable ? (
-                <TableRow>
-                  <TableCell colSpan={4} align="center">
-                    <CircularProgress size={24} />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                adminStore.songs?.items.map((song: AdminSong) => (
-                  <TableRow key={song.id}>
-                    <TableCell>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          maxWidth: 200,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {song.url}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={song.status}
-                        color={song.status === 'approved' ? 'success' : 'warning'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={song.aiAnalysis ? 'Yes' : 'No'}
-                        color={song.aiAnalysis ? 'success' : 'default'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>{formatDate(song.createdAt)}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <PaginationControls table="songs" data={adminStore.songs} />
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={6}>
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Feedback Management</Typography>
           <IconButton onClick={() => adminStore.fetchFeedback()}>
             <FontAwesomeIcon icon={faRefresh} />
@@ -802,85 +679,6 @@ const AdminDataTables: React.FC = observer(() => {
           </Table>
         </TableContainer>
         <PaginationControls table="feedback" data={adminStore.feedback} />
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={7}>
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6">Parser Status</Typography>
-          <IconButton onClick={() => adminStore.fetchParserStatus()}>
-            <FontAwesomeIcon icon={faRefresh} />
-          </IconButton>
-        </Box>
-
-        {adminStore.isLoadingTable ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : adminStore.parserStatus ? (
-          <Box>
-            <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Chip
-                icon={<FontAwesomeIcon icon={faGlobe} />}
-                label={`Status: ${adminStore.parserStatus.status}`}
-                color="success"
-              />
-              <Chip
-                label={`Total Parsed: ${adminStore.parserStatus.statistics.totalParsed}`}
-                color="info"
-              />
-              <Chip
-                label={`Success Rate: ${adminStore.parserStatus.statistics.successRate}%`}
-                color={adminStore.parserStatus.statistics.successRate > 80 ? 'success' : 'warning'}
-              />
-            </Box>
-
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Recent Parser Activity
-            </Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>URL</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Created</TableCell>
-                    <TableCell>Time Ago</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {adminStore.parserStatus.recentActivity.map((activity) => (
-                    <TableRow key={activity.id}>
-                      <TableCell>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            maxWidth: 250,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {activity.url}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={activity.status}
-                          color={activity.status === 'approved' ? 'success' : 'warning'}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>{formatDate(activity.createdAt)}</TableCell>
-                      <TableCell>{activity.timeAgo}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        ) : (
-          <Alert severity="info">No parser data available</Alert>
-        )}
       </TabPanel>
 
       {/* Edit Dialog */}
@@ -1016,8 +814,6 @@ const AdminDataTables: React.FC = observer(() => {
                   'venues',
                   'shows',
                   'djs',
-                  'favorites',
-                  'songs',
                   'feedback',
                 ];
                 const currentTable = tables[tabValue];

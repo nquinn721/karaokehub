@@ -803,6 +803,24 @@ const ParserReviewPage: React.FC = observer(() => {
                             </Grid>
                             <Grid item xs={12}>
                               <TextField
+                                label="Source"
+                                value={show.source || ''}
+                                onChange={(e) => {
+                                  const newShows = [...editedData.shows];
+                                  newShows[index] = {
+                                    ...newShows[index],
+                                    source: e.target.value,
+                                  };
+                                  setEditedData({ ...editedData, shows: newShows });
+                                }}
+                                fullWidth
+                                size="small"
+                                placeholder="Original source URL where this show data was found"
+                                helperText="The URL or source where this show information was originally parsed from"
+                              />
+                            </Grid>
+                            <Grid item xs={12}>
+                              <TextField
                                 label="Venue Image URL"
                                 value={show.imageUrl || ''}
                                 onChange={(e) => {

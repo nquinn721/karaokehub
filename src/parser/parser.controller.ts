@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpException, HttpStatus, Param, Post } from '@nestjs/common';
+import { FacebookParserService } from './facebook-parser.service';
 import { KaraokeParserService } from './karaoke-parser.service';
 import { UrlToParse } from './url-to-parse.entity';
 import { UrlToParseService } from './url-to-parse.service';
@@ -8,6 +9,7 @@ export class ParserController {
   constructor(
     private readonly karaokeParserService: KaraokeParserService,
     private readonly urlToParseService: UrlToParseService,
+    private readonly facebookParserService: FacebookParserService,
   ) {}
 
   @Post('parse-website')
@@ -64,9 +66,11 @@ export class ParserController {
         console.log('Detected Instagram URL, using visual parsing');
         result = await this.karaokeParserService.parseInstagramWithScreenshots(body.url);
       } else if (url.includes('facebook.com') || url.includes('fb.com')) {
-        // Facebook URL - use existing Facebook parsing
-        console.log('Detected Facebook URL, using Facebook parsing');
-        result = await this.karaokeParserService.parseAndSaveWebsite(body.url);
+        // Facebook URL - use new streamlined Facebook parsing method
+        console.log('Detected Facebook URL, using streamlined FacebookParserService');
+        result = await this.facebookParserService.parseAndSaveFacebookPage(body.url);
+
+        // Result already has the correct format from parseAndSaveFacebookPage
       } else {
         // Regular website - use specified method
         const parseMethod = body.parseMethod || 'html';

@@ -31,6 +31,7 @@ export interface ParsedShowData {
   venuePhone?: string;
   venueWebsite?: string;
   imageUrl?: string;
+  source?: string;
   confidence: number;
 }
 
@@ -60,6 +61,7 @@ export interface ParsedScheduleItem {
 export interface UrlToParse {
   id: number;
   url: string;
+  name?: string;
   isApproved: boolean;
   createdAt: string;
   updatedAt: string;

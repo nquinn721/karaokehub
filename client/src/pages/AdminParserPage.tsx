@@ -1,4 +1,5 @@
 import AdminBreadcrumb from '@components/AdminBreadcrumb';
+import FacebookLoginModal from '@components/FacebookLoginModal';
 import {
   faCheck,
   faChevronDown,
@@ -54,6 +55,7 @@ import {
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { authStore, parserStore, uiStore, webSocketStore } from '@stores/index';
+import { autorun } from 'mobx';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
@@ -72,7 +74,35 @@ const AdminParserPage: React.FC = observer(() => {
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState(false);
   const [urlToDelete, setUrlToDelete] = useState<{ id: number; url: string } | null>(null);
 
+  // Facebook Login Modal state
+  const [facebookModalOpen, setFacebookModalOpen] = useState(false);
+  const [facebookRequestId, setFacebookRequestId] = useState<string | null>(null);
+  const [facebookLoginLoading, setFacebookLoginLoading] = useState(false);
+  const [facebookLoginError, setFacebookLoginError] = useState<string | null>(null);
+
   const logContainerRef = useRef<HTMLDivElement>(null);
+
+  // Facebook Login Modal handlers
+  const handleFacebookCredentials = (email: string, password: string, requestId: string) => {
+    setFacebookLoginLoading(true);
+    setFacebookLoginError(null);
+
+    // Send credentials via WebSocket
+    webSocketStore.socket?.emit('provide-facebook-credentials', {
+      email,
+      password,
+      requestId,
+    });
+
+    console.log('🔑 Credentials sent for request:', requestId);
+  };
+
+  const handleFacebookModalCancel = () => {
+    setFacebookModalOpen(false);
+    setFacebookRequestId(null);
+    setFacebookLoginError(null);
+    setFacebookLoginLoading(false);
+  };
 
   // Helper function to detect Facebook URLs
   const isFacebookUrl = (url: string): boolean => {
@@ -99,13 +129,40 @@ const AdminParserPage: React.FC = observer(() => {
     parserStore.initialize();
     parserStore.fetchUrlsToParse();
 
+    // Set up Facebook login modal functionality
+    const setupFacebookModal = () => {
+      // Set up WebSocket listeners
+      if (webSocketStore.socket) {
+        console.log('Setting up Facebook modal WebSocket listeners');
+
+        webSocketStore.socket.on('facebook-login-required', (data: any) => {
+          console.log('🚨 Facebook login required event received:', data);
+          setFacebookRequestId(data.requestId);
+          setFacebookModalOpen(true);
+          setFacebookLoginError(null);
+        });
+
+        webSocketStore.socket.on('facebook-login-result', (data: any) => {
+          console.log('✅ Facebook login result received:', data);
+          setFacebookLoginLoading(false);
+          if (data.success) {
+            setFacebookModalOpen(false);
+            setFacebookRequestId(null);
+            setFacebookLoginError(null);
+          } else {
+            setFacebookLoginError(data.message || 'Login failed');
+          }
+        });
+      }
+    };
+
     // Set up WebSocket for parser logs
-    if (webSocketStore.isConnected && webSocketStore.socket) {
-      parserStore.setupParserEvents(webSocketStore.socket);
-    } else {
-      // Connect WebSocket if not already connected
-      webSocketStore.connect();
-    }
+    autorun(() => {
+      if (webSocketStore.isConnected && webSocketStore.socket) {
+        parserStore.setupParserEvents(webSocketStore.socket);
+        setupFacebookModal(); // Set up modal when WebSocket is ready
+      }
+    });
 
     // Check if parsing is already in progress on the server
     const checkParsingStatus = async () => {
@@ -121,16 +178,42 @@ const AdminParserPage: React.FC = observer(() => {
     return () => {
       if (webSocketStore.socket) {
         parserStore.leaveParserLogs(webSocketStore.socket);
+        // Clean up Facebook modal listeners
+        webSocketStore.socket.off('facebook-login-required');
+        webSocketStore.socket.off('facebook-login-result');
       }
     };
   }, []);
 
   // Auto-scroll to bottom when new log entries are added
   useEffect(() => {
-    if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-    }
+    const scrollToBottom = () => {
+      if (logContainerRef.current) {
+        logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+      }
+    };
+
+    // Use setTimeout to ensure DOM has updated
+    const timeoutId = setTimeout(scrollToBottom, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [parserStore.parsingLog.length]);
+
+  // Additional auto-scroll trigger for rapid log updates
+  useEffect(() => {
+    const scrollToBottom = () => {
+      if (logContainerRef.current) {
+        // Force scroll to bottom
+        const element = logContainerRef.current;
+        element.scrollTop = element.scrollHeight;
+      }
+    };
+
+    // Also trigger on actual log content changes
+    if (parserStore.parsingLog.length > 0) {
+      scrollToBottom();
+    }
+  }, [parserStore.parsingLog]);
 
   // Monitor parsing completion through log messages
   useEffect(() => {
@@ -252,17 +335,33 @@ const AdminParserPage: React.FC = observer(() => {
       />
 
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 600, mb: 1 }}>
-          <FontAwesomeIcon
-            icon={faGlobe}
-            style={{ marginRight: '12px', color: theme.palette.primary.main }}
-          />
-          Karaoke Parser & Review
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Parse karaoke venue websites and review AI-extracted data
-        </Typography>
+      <Box
+        sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}
+      >
+        <Box>
+          <Typography variant="h4" component="h1" sx={{ fontWeight: 600, mb: 1 }}>
+            <FontAwesomeIcon
+              icon={faGlobe}
+              style={{ marginRight: '12px', color: theme.palette.primary.main }}
+            />
+            Karaoke Parser & Review
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Parse karaoke venue websites and review AI-extracted data
+          </Typography>
+        </Box>
+        <Button
+          variant="outlined"
+          onClick={async () => {
+            parserStore.addLogEntry('Refreshing data...', 'info');
+            await Promise.all([parserStore.fetchUrlsToParse(), parserStore.fetchPendingReviews()]);
+            parserStore.addLogEntry('Data refreshed successfully', 'success');
+          }}
+          startIcon={<FontAwesomeIcon icon={faRefresh} />}
+          sx={{ flexShrink: 0 }}
+        >
+          Refresh Data
+        </Button>
       </Box>
 
       <Grid container spacing={3}>
@@ -291,17 +390,22 @@ const AdminParserPage: React.FC = observer(() => {
                   onChange={(e) => setSelectedUrl(e.target.value)}
                   label="Select URL to Parse"
                   disabled={showCustomUrl}
-                  renderValue={(value) => (
-                    <Box
-                      sx={{
-                        wordBreak: 'break-all',
-                        whiteSpace: 'normal',
-                        py: 0.5,
-                      }}
-                    >
-                      {value}
-                    </Box>
-                  )}
+                  renderValue={(value) => {
+                    const urlObj = parserStore.urlsToParse.find((u) => u.url === value);
+                    const displayText = urlObj?.name || value;
+                    return (
+                      <Box
+                        sx={{
+                          wordBreak: 'break-all',
+                          whiteSpace: 'normal',
+                          py: 0.5,
+                        }}
+                        title={urlObj?.name ? `${urlObj.name} - ${value}` : value}
+                      >
+                        {displayText}
+                      </Box>
+                    );
+                  }}
                 >
                   {parserStore.urlsToParse.map((url) => (
                     <MenuItem
@@ -332,7 +436,24 @@ const AdminParserPage: React.FC = observer(() => {
                           alignSelf: 'center',
                         }}
                       >
-                        {url.url}
+                        <Box>
+                          {url.name ? (
+                            <>
+                              <Typography
+                                variant="body2"
+                                component="div"
+                                sx={{ fontWeight: 'bold' }}
+                              >
+                                {url.name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" component="div">
+                                {url.url}
+                              </Typography>
+                            </>
+                          ) : (
+                            url.url
+                          )}
+                        </Box>
                       </Box>
                       <IconButton
                         size="small"
@@ -376,14 +497,6 @@ const AdminParserPage: React.FC = observer(() => {
                   startIcon={<FontAwesomeIcon icon={faPlus} />}
                 >
                   {showCustomUrl ? 'Use Dropdown' : 'Custom URL'}
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => parserStore.fetchUrlsToParse()}
-                  startIcon={<FontAwesomeIcon icon={faRefresh} />}
-                >
-                  Refresh URLs
                 </Button>
               </Box>
 
@@ -648,6 +761,7 @@ const AdminParserPage: React.FC = observer(() => {
                     p: 1,
                     fontFamily: 'monospace',
                     fontSize: '0.75rem',
+                    scrollBehavior: 'smooth',
                   }}
                 >
                   {parserStore.parsingLog.map((logEntry) => (
@@ -698,19 +812,6 @@ const AdminParserPage: React.FC = observer(() => {
             </Box>
 
             <Divider sx={{ my: 2 }} />
-
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={async () => {
-                parserStore.addLogEntry('Refreshing data...', 'info');
-                await parserStore.fetchPendingReviews();
-                parserStore.addLogEntry('Data refreshed successfully', 'success');
-              }}
-              startIcon={<FontAwesomeIcon icon={faRefresh} />}
-            >
-              Refresh Data
-            </Button>
           </Paper>
         </Grid>
 
@@ -989,21 +1090,29 @@ const AdminParserPage: React.FC = observer(() => {
                       <AccordionDetails>
                         <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
                           <List dense>
-                            {selectedReview.parsingLogs.map((log: any, index: number) => (
+                            {selectedReview.parsingLogs.map((log: any, index: number) => {
+                              // Safety check for log structure
+                              const safeLog = {
+                                level: log?.level || 'info',
+                                message: log?.message || 'No message',
+                                timestamp: log?.timestamp || new Date()
+                              };
+                              
+                              return (
                               <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
                                 <Box sx={{ width: '100%' }}>
                                   <Box
                                     sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}
                                   >
                                     <Chip
-                                      label={log.level.toUpperCase()}
+                                      label={safeLog.level.toUpperCase()}
                                       size="small"
                                       color={
-                                        log.level === 'error'
+                                        safeLog.level === 'error'
                                           ? 'error'
-                                          : log.level === 'warning'
+                                          : safeLog.level === 'warning'
                                             ? 'warning'
-                                            : log.level === 'success'
+                                            : safeLog.level === 'success'
                                               ? 'success'
                                               : 'default'
                                       }
@@ -1023,11 +1132,11 @@ const AdminParserPage: React.FC = observer(() => {
                                       fontFamily: 'monospace',
                                       fontSize: '0.85rem',
                                       backgroundColor:
-                                        log.level === 'error'
+                                        safeLog.level === 'error'
                                           ? 'rgba(244, 67, 54, 0.1)'
-                                          : log.level === 'warning'
+                                          : safeLog.level === 'warning'
                                             ? 'rgba(255, 152, 0, 0.1)'
-                                            : log.level === 'success'
+                                            : safeLog.level === 'success'
                                               ? 'rgba(76, 175, 80, 0.1)'
                                               : 'rgba(0, 0, 0, 0.05)',
                                       padding: 1,
@@ -1035,11 +1144,12 @@ const AdminParserPage: React.FC = observer(() => {
                                       wordBreak: 'break-all',
                                     }}
                                   >
-                                    {log.message}
+                                    {safeLog.message}
                                   </Typography>
                                 </Box>
                               </ListItem>
-                            ))}
+                              );
+                            })}
                           </List>
                         </Box>
                       </AccordionDetails>
@@ -1123,6 +1233,16 @@ const AdminParserPage: React.FC = observer(() => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Facebook Login Modal - React Component */}
+      <FacebookLoginModal
+        open={facebookModalOpen}
+        onCredentials={handleFacebookCredentials}
+        onCancel={handleFacebookModalCancel}
+        requestId={facebookRequestId}
+        loading={facebookLoginLoading}
+        error={facebookLoginError}
+      />
     </Container>
   );
 });

@@ -29,6 +29,12 @@ import { UrlToParseService } from './url-to-parse.service';
     GeocodingService,
     FacebookService,
   ],
-  exports: [KaraokeParserService, FacebookParserService, UrlToParseService, DJNicknameService, FacebookService],
+  exports: [
+    KaraokeParserService,
+    FacebookParserService,
+    UrlToParseService,
+    DJNicknameService,
+    FacebookService,
+  ],
 })
 export class ParserModule {}

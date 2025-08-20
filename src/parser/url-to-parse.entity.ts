@@ -14,6 +14,9 @@ export class UrlToParse {
   @Column({ type: 'varchar', length: 500, unique: true })
   url: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  name: string;
+
   @Column({ type: 'boolean', default: false })
   isApproved: boolean;
 

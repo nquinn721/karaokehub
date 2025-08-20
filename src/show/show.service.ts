@@ -14,6 +14,7 @@ export interface CreateShowDto {
   startTime: string;
   endTime: string;
   description?: string;
+  source?: string;
 }
 
 export interface UpdateShowDto {
@@ -25,6 +26,7 @@ export interface UpdateShowDto {
   endTime?: string;
   description?: string;
   isActive?: boolean;
+  source?: string;
 }
 
 export interface GeocodedShow extends Show {
