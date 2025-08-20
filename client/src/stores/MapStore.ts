@@ -187,7 +187,7 @@ export class MapStore {
   };
 
   // Get current location and center map
-  async goToCurrentLocation(): Promise<void> {
+  async goToCurrentLocation(isMobile: boolean = false): Promise<void> {
     console.log('🌍 MapStore: Getting current location...');
 
     runInAction(() => {
@@ -217,7 +217,7 @@ export class MapStore {
       // Center map on user location
       if (this.mapInstance) {
         this.mapInstance.setCenter({ lat: latitude, lng: longitude });
-        this.mapInstance.setZoom(12);
+        this.mapInstance.setZoom(isMobile ? 10 : 12);
       }
 
       console.log('✅ MapStore: Location found:', { lat: latitude, lng: longitude });
@@ -234,7 +234,7 @@ export class MapStore {
 
       if (this.mapInstance) {
         this.mapInstance.setCenter(defaultLocation);
-        this.mapInstance.setZoom(5);
+        this.mapInstance.setZoom(isMobile ? 8 : 5);
       }
     } finally {
       runInAction(() => {

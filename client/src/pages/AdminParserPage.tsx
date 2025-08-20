@@ -233,67 +233,6 @@ const AdminParserPage: React.FC = observer(() => {
     return new Date(dateString).toLocaleString();
   };
 
-  const copyShowsData = (shows: any[]) => {
-    const header =
-      `Parsed Shows Data\n` +
-      `=`.repeat(80) +
-      `\n` +
-      `Generated: ${new Date().toLocaleString()}\n` +
-      `Total Shows: ${shows.length}\n` +
-      `${'-'.repeat(80)}\n\n`;
-
-    const showsText = shows
-      .map((show: any, index: number) => {
-        const showNumber = (index + 1).toString().padStart(3, '0');
-        let showData = `${showNumber}. ${show.venue}\n`;
-
-        // Address information
-        const addressParts = [];
-        if (show.address) addressParts.push(show.address);
-        if (show.city) addressParts.push(show.city);
-        if (show.state) addressParts.push(show.state);
-        if (show.zip) addressParts.push(show.zip);
-
-        if (addressParts.length > 0) {
-          showData += `     Address: ${addressParts.join(', ')}\n`;
-        } else {
-          showData += `     Address: No address components found\n`;
-        }
-
-        // Show details
-        showData += `     Day: ${show.day || show.date || 'Unknown'}\n`;
-        showData += `     Time: ${show.time || 'Unknown'}`;
-        if (show.startTime && show.endTime) {
-          showData += ` (${show.startTime} - ${show.endTime})`;
-        }
-        showData += `\n`;
-        showData += `     DJ: ${show.djName || 'Unknown'}\n`;
-
-        // Optional fields
-        if (show.venuePhone) showData += `     Phone: ${show.venuePhone}\n`;
-        if (show.venueWebsite) showData += `     Website: ${show.venueWebsite}\n`;
-        if (show.description) showData += `     Description: ${show.description}\n`;
-        if (show.notes) showData += `     Notes: ${show.notes}\n`;
-
-        showData += `     Confidence: ${Math.round(show.confidence * 100)}%\n`;
-
-        return showData;
-      })
-      .join('\n' + '-'.repeat(40) + '\n\n');
-
-    const fullText = header + showsText + '\n' + '='.repeat(80);
-
-    navigator.clipboard
-      .writeText(fullText)
-      .then(() => {
-        uiStore.addNotification(`Copied ${shows.length} shows data to clipboard!`, 'success');
-      })
-      .catch((err) => {
-        console.error('Failed to copy shows data:', err);
-        uiStore.addNotification('Failed to copy shows data to clipboard', 'error');
-      });
-  };
-
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>
       {/* Breadcrumbs */}
@@ -932,22 +871,9 @@ const AdminParserPage: React.FC = observer(() => {
                     selectedReview.aiAnalysis.shows.length > 0 && (
                       <Accordion>
                         <AccordionSummary expandIcon={<FontAwesomeIcon icon={faChevronDown} />}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                            <Typography variant="h6" sx={{ flexGrow: 1 }}>
-                              Shows Found ({selectedReview.aiAnalysis.shows.length})
-                            </Typography>
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                copyShowsData(selectedReview.aiAnalysis.shows);
-                              }}
-                              sx={{ ml: 1 }}
-                              title="Copy shows data"
-                            >
-                              <FontAwesomeIcon icon={faCopy} size="sm" />
-                            </IconButton>
-                          </Box>
+                          <Typography variant="h6">
+                            Shows Found ({selectedReview.aiAnalysis.shows.length})
+                          </Typography>
                         </AccordionSummary>
                         <AccordionDetails>
                           <List>
@@ -1056,64 +982,9 @@ const AdminParserPage: React.FC = observer(() => {
                   {selectedReview.parsingLogs && selectedReview.parsingLogs.length > 0 && (
                     <Accordion>
                       <AccordionSummary expandIcon={<FontAwesomeIcon icon={faChevronDown} />}>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            width: '100%',
-                            pr: 2,
-                          }}
-                        >
-                          <Typography variant="h6">
-                            Parsing Logs ({selectedReview.parsingLogs.length})
-                          </Typography>
-                          <IconButton
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent accordion toggle
-
-                              // Create formatted log text with header
-                              const header =
-                                `=== Parsing Logs for ${selectedReview.url} ===\n` +
-                                `Generated: ${new Date().toLocaleString()}\n` +
-                                `Total Logs: ${selectedReview.parsingLogs.length}\n` +
-                                `${'-'.repeat(80)}\n\n`;
-
-                              const logText = selectedReview.parsingLogs
-                                .map(
-                                  (log: any, index: number) =>
-                                    `${(index + 1).toString().padStart(3, '0')}. [${new Date(log.timestamp).toLocaleString()}] ${log.level.toUpperCase().padEnd(7)}: ${log.message}`,
-                                )
-                                .join('\n');
-
-                              const fullText = header + logText + '\n\n' + '='.repeat(80);
-
-                              navigator.clipboard
-                                .writeText(fullText)
-                                .then(() => {
-                                  uiStore.addNotification(
-                                    `Copied ${selectedReview.parsingLogs.length} parsing logs to clipboard!`,
-                                    'success',
-                                  );
-                                })
-                                .catch((err) => {
-                                  console.error('Failed to copy logs:', err);
-                                  uiStore.addNotification(
-                                    'Failed to copy logs to clipboard',
-                                    'error',
-                                  );
-                                });
-                            }}
-                            title="Copy parsing logs to clipboard"
-                            sx={{
-                              color: 'text.secondary',
-                              '&:hover': { color: 'primary.main' },
-                            }}
-                          >
-                            <FontAwesomeIcon icon={faCopy} size="sm" />
-                          </IconButton>
-                        </Box>
+                        <Typography variant="h6">
+                          Parsing Logs ({selectedReview.parsingLogs.length})
+                        </Typography>
                       </AccordionSummary>
                       <AccordionDetails>
                         <Box sx={{ maxHeight: 400, overflow: 'auto' }}>

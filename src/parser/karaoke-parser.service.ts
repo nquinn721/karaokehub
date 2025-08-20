@@ -5,10 +5,10 @@ import * as puppeteer from 'puppeteer';
 import { Repository } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
 import { GeocodingService } from '../geocoding/geocoding.service';
-import { FacebookService } from '../services/facebook.service';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
 import { KaraokeWebSocketGateway } from '../websocket/websocket.gateway';
+import { FacebookParserService } from './facebook-parser.service';
 import { ParsedSchedule, ParseStatus } from './parsed-schedule.entity';
 
 export interface ParsedKaraokeData {
@@ -80,7 +80,7 @@ export class KaraokeParserService {
     private showRepository: Repository<Show>,
     private geocodingService: GeocodingService,
     private webSocketGateway: KaraokeWebSocketGateway,
-    private facebookService: FacebookService,
+    private facebookParserService: FacebookParserService,
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -398,240 +398,249 @@ export class KaraokeParserService {
   }
 
   /**
-   * Facebook parsing using Graph API - handles all Facebook URLs through official API
+   * Enhanced Facebook parsing using the dedicated Facebook parser service
    */
-  private async parseFacebookPage(
-    url: string,
-    userAccessToken?: string,
-  ): Promise<ParsedKaraokeData> {
+  private async parseFacebookPage(url: string): Promise<ParsedKaraokeData> {
     try {
-      this.logAndBroadcast(`Starting Facebook Graph API parsing for: ${url}`, 'info');
+      this.logAndBroadcast('Using enhanced Facebook parser with login...', 'info');
 
-      // Check if this is a Facebook group URL and we have user authentication
-      if (url.includes('/groups/') && userAccessToken) {
-        return await this.parseFacebookPage(url, userAccessToken);
-      }
+      // Use the dedicated Facebook parser service
+      const facebookData = await this.facebookParserService.parseFacebookPage(url);
 
-      // Check if this is a Facebook event URL
-      if (this.facebookService.isFacebookEventUrl(url)) {
-        this.logAndBroadcast('Detected Facebook event URL, parsing with Graph API...', 'info');
+      // Convert FacebookParserData to ParsedKaraokeData format
+      const convertedData: ParsedKaraokeData = {
+        vendor: facebookData.vendor,
+        djs: facebookData.djs,
+        shows: facebookData.shows,
+        rawData: facebookData.rawData,
+      };
 
-        // Extract event data using Graph API
-        const eventData = await this.facebookService.getEventData(url);
-        if (eventData) {
-          // Convert to karaoke data format
-          const karaokeData = this.facebookService.convertToKaraokeData(eventData, url);
+      this.logAndBroadcast(
+        `Enhanced Facebook parsing completed: ${convertedData.shows.length} shows, ${convertedData.djs.length} DJs`,
+        'success',
+      );
+
+      return convertedData;
+    } catch (error) {
+      this.logAndBroadcast(`Enhanced Facebook parsing failed: ${error.message}`, 'error');
+
+      // Fallback to basic web scraping if login method fails
+      this.logAndBroadcast('Falling back to basic Facebook scraping...', 'warning');
+      return await this.fallbackFacebookParsing(url);
+    }
+  }
+
+  /**
+   * Fallback Facebook parsing without login (original method)
+   */
+  private async fallbackFacebookParsing(url: string): Promise<ParsedKaraokeData> {
+    let browser;
+    let extractedData;
+
+    try {
+      this.logAndBroadcast('Launching Puppeteer for enhanced Facebook parsing...', 'info');
+
+      const puppeteer = await import('puppeteer');
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-blink-features=AutomationControlled',
+          '--disable-extensions',
+          '--disable-default-apps',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
+          '--disable-features=TranslateUI',
+          '--disable-ipc-flooding-protection',
+        ],
+      });
+
+      const page = await browser.newPage();
+
+      // Enhanced bot detection avoidance
+      await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', {
+          get: () => undefined,
+        });
+      });
+
+      // Set realistic headers and user agent
+      await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      );
+
+      await page.setExtraHTTPHeaders({
+        Accept:
+          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        DNT: '1',
+        Connection: 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+      });
+
+      this.logAndBroadcast(`Navigating to Facebook URL: ${url}`, 'info');
+
+      // Multiple navigation attempts with different strategies
+      let navigationSuccess = false;
+      let attempt = 0;
+      const maxAttempts = 3;
+
+      while (!navigationSuccess && attempt < maxAttempts) {
+        try {
+          attempt++;
+          this.logAndBroadcast(`Navigation attempt ${attempt}/${maxAttempts}`, 'info');
+
+          await page.goto(url, {
+            waitUntil: 'domcontentloaded',
+            timeout: 20000,
+          });
+
+          // Wait for content and check if we got blocked
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+
+          const pageTitle = await page.title();
+          const pageContent = await page.content();
+
+          this.logAndBroadcast(`Page title: ${pageTitle}`, 'info');
+
+          // Check for Facebook blocking/login pages
+          if (
+            pageTitle.includes('Facebook') &&
+            !pageTitle.includes('Log in') &&
+            !pageTitle.includes('Sign up') &&
+            !pageContent.includes('blocked') &&
+            !pageContent.includes('not available')
+          ) {
+            navigationSuccess = true;
+            this.logAndBroadcast('Successfully accessed Facebook page', 'success');
+          } else {
+            this.logAndBroadcast(
+              `Navigation attempt ${attempt} may have been blocked or redirected`,
+              'warning',
+            );
+            if (attempt < maxAttempts) {
+              // Wait before retry
+              await new Promise((resolve) => setTimeout(resolve, 5000));
+            }
+          }
+        } catch (navError) {
           this.logAndBroadcast(
-            `Facebook event parsing complete: ${karaokeData.shows.length} shows, ${karaokeData.djs.length} DJs`,
-            'success',
+            `Navigation attempt ${attempt} failed: ${navError.message}`,
+            'warning',
           );
-          return karaokeData;
+          if (attempt >= maxAttempts) {
+            throw navError;
+          }
         }
       }
 
-      // For profile/page URLs, get profile events
-      this.logAndBroadcast('Detected Facebook profile/page URL, fetching events...', 'info');
-      const profileEvents = await this.facebookService.getProfileEvents(url);
-      if (profileEvents && profileEvents.length > 0) {
-        // Convert multiple events to combined karaoke data
-        let combinedData: ParsedKaraokeData = {
+      if (!navigationSuccess) {
+        throw new Error(
+          'Unable to access Facebook page after multiple attempts - may be blocked or require login',
+        );
+      }
+
+      this.logAndBroadcast('Extracting page content...', 'info');
+
+      // Enhanced content extraction
+      const pageContent = await page.evaluate(() => {
+        // Remove script and style elements
+        const scripts = document.querySelectorAll('script, style');
+        scripts.forEach((el) => el.remove());
+
+        // Get specific Facebook content areas
+        const contentSelectors = [
+          '[data-testid="post_message"]',
+          '[data-testid="story-subtitle"]',
+          '[role="article"]',
+          '[data-testid="event-permalink-details"]',
+          '.userContent',
+          '.text_exposed_root',
+          '[data-ad-preview="message"]',
+        ];
+
+        let extractedContent = '';
+        contentSelectors.forEach((selector) => {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach((el) => {
+            if (el.textContent) {
+              extractedContent += el.textContent + '\n';
+            }
+          });
+        });
+
+        // Fallback to body text if specific selectors don't work
+        const bodyText = document.body.innerText;
+
+        return {
+          title: document.title,
+          content: extractedContent || bodyText,
+          html: document.body.innerHTML,
+          extractedContent: extractedContent,
+          bodyText: bodyText,
+          contentLength: (extractedContent || bodyText).length,
+        };
+      });
+
+      this.logAndBroadcast(`Extracted ${pageContent.contentLength} characters of content`, 'info');
+
+      // Log sample content for debugging
+      const sampleContent = pageContent.content.substring(0, 500);
+      this.logAndBroadcast(`Sample content: ${sampleContent}...`, 'info');
+
+      extractedData = {
+        title: pageContent.title,
+        content: pageContent.content,
+        html: pageContent.html,
+        url: url,
+      };
+    } catch (error) {
+      this.logAndBroadcast(`Facebook parsing error: ${error.message}`, 'error');
+
+      // Enhanced error handling for Facebook-specific issues
+      if (error.message.includes('blocked') || error.message.includes('login')) {
+        this.logAndBroadcast(
+          'Facebook access blocked - this is common due to anti-bot measures',
+          'warning',
+        );
+
+        // Return a more informative error structure
+        return {
           vendor: {
             name: 'Facebook Page',
             website: url,
-            description: 'Parsed from Facebook Graph API',
-            confidence: 0.8,
+            description: 'Facebook access blocked - try manual extraction or alternative methods',
+            confidence: 0.1,
           },
           shows: [],
           djs: [],
           rawData: {
             url: url,
-            title: 'Facebook Events',
-            content: `Found ${profileEvents.length} events`,
+            title: 'Facebook Access Blocked',
+            content: 'Facebook blocked automated access. Consider manual data entry.',
             parsedAt: new Date(),
           },
         };
-
-        // Process each event and combine the results
-        for (const event of profileEvents) {
-          const eventKaraokeData = this.facebookService.convertToKaraokeData(event, url);
-          combinedData.shows.push(...eventKaraokeData.shows);
-          combinedData.djs.push(...eventKaraokeData.djs);
-        }
-
-        // Update vendor info if we have venue details
-        if (combinedData.shows.length > 0 && combinedData.shows[0].venue) {
-          combinedData.vendor.name = combinedData.shows[0].venue || 'Facebook Page';
-        }
-
-        this.logAndBroadcast(
-          `Facebook profile parsing complete: ${combinedData.shows.length} shows, ${combinedData.djs.length} DJs from ${profileEvents.length} events`,
-          'success',
-        );
-        return combinedData;
       }
 
-      // If no events found, return empty structure
-      this.logAndBroadcast('No Facebook events found for this URL', 'warning');
-      return {
-        vendor: {
-          name: 'Facebook Page',
-          website: url,
-          description: 'No karaoke events found',
-          confidence: 0.3,
-        },
-        shows: [],
-        djs: [],
-        rawData: {
-          url: url,
-          title: 'Facebook Page',
-          content: 'No events found',
-          parsedAt: new Date(),
-        },
-      };
-    } catch (error) {
-      this.logAndBroadcast(`Facebook Graph API parsing failed: ${error.message}`, 'error');
-
-      // Return empty data structure on error
-      return {
-        vendor: {
-          name: 'Facebook Page',
-          website: url,
-          description: `Failed to parse Facebook page: ${error.message}`,
-          confidence: 0.1,
-        },
-        shows: [],
-        djs: [],
-        rawData: {
-          url: url,
-          title: 'Facebook Error',
-          content: `Failed to parse: ${error.message}`,
-          parsedAt: new Date(),
-        },
-      };
-    }
-  }
-
-  /**
-   * Parse Facebook Group using user authentication
-   * Requires user to be a member of the group and have granted permissions
-   */
-  private async parseFacebookGroup(
-    url: string,
-    userAccessToken: string,
-  ): Promise<ParsedKaraokeData> {
-    try {
-      this.logAndBroadcast(`Parsing Facebook Group with user authentication: ${url}`, 'info');
-
-      // Extract group ID from URL
-      const groupId = this.extractGroupIdFromUrl(url);
-      if (!groupId) {
-        throw new Error('Could not extract group ID from URL');
-      }
-
-      this.logAndBroadcast(`Extracted group ID: ${groupId}`, 'info');
-
-      // Get group events and posts
-      const [events, posts] = await Promise.all([
-        this.facebookService.getGroupEvents(groupId, userAccessToken),
-        this.facebookService.getGroupPosts(groupId, userAccessToken),
-      ]);
-
-      this.logAndBroadcast(
-        `Found ${events.length} events and ${posts.length} posts in group`,
-        'info',
-      );
-
-      // Filter for karaoke-related content
-      const karaokeEvents = events.filter(
-        (event) =>
-          event.name?.toLowerCase().includes('karaoke') ||
-          event.description?.toLowerCase().includes('karaoke'),
-      );
-
-      const karaokePosts = posts.filter((post) => post.message?.toLowerCase().includes('karaoke'));
-
-      this.logAndBroadcast(
-        `Found ${karaokeEvents.length} karaoke events and ${karaokePosts.length} karaoke posts`,
-        'info',
-      );
-
-      // Convert events to karaoke data format
-      let combinedData: ParsedKaraokeData = {
-        vendor: {
-          name: 'Facebook Group',
-          website: url,
-          description: 'Parsed from Facebook Group with user authentication',
-          confidence: 0.8,
-        },
-        shows: [],
-        djs: [],
-        rawData: {
-          url: url,
-          title: 'Facebook Group',
-          content: `Found ${karaokeEvents.length} karaoke events, ${karaokePosts.length} karaoke posts`,
-          parsedAt: new Date(),
-        },
-      };
-
-      // Process karaoke events
-      for (const event of karaokeEvents) {
-        const eventKaraokeData = this.facebookService.convertToKaraokeData(event, url);
-        combinedData.shows.push(...eventKaraokeData.shows);
-        combinedData.djs.push(...eventKaraokeData.djs);
-      }
-
-      // Update vendor info if we have venue details
-      if (combinedData.shows.length > 0 && combinedData.shows[0].venue) {
-        combinedData.vendor.name = combinedData.shows[0].venue || 'Facebook Group';
-      }
-
-      this.logAndBroadcast(
-        `Facebook group parsing complete: ${combinedData.shows.length} shows, ${combinedData.djs.length} DJs`,
-        'success',
-      );
-
-      return combinedData;
-    } catch (error) {
-      this.logAndBroadcast(`Facebook group parsing failed: ${error.message}`, 'error');
-
-      // Return error data structure
-      return {
-        vendor: {
-          name: 'Facebook Group',
-          website: url,
-          description: `Failed to parse Facebook group: ${error.message}`,
-          confidence: 0.1,
-        },
-        shows: [],
-        djs: [],
-        rawData: {
-          url: url,
-          title: 'Facebook Group Error',
-          content: `Failed to parse: ${error.message}`,
-          parsedAt: new Date(),
-        },
-      };
-    }
-  }
-
-  /**
-   * Extract group ID from Facebook group URL
-   */
-  private extractGroupIdFromUrl(url: string): string | null {
-    const patterns = [
-      /facebook\.com\/groups\/(\d+)/,
-      /facebook\.com\/groups\/([^\/\?&]+)/,
-      /fb\.com\/groups\/(\d+)/,
-      /m\.facebook\.com\/groups\/(\d+)/,
-    ];
-
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match) {
-        return match[1];
+      throw error;
+    } finally {
+      if (browser) {
+        await browser.close();
       }
     }
-    return null;
+
+    // Convert extracted data to ParsedKaraokeData using Gemini
+    this.logAndBroadcast('Converting Facebook data to karaoke format with Gemini...', 'info');
+    return await this.convertFacebookToKaraokeData(extractedData);
   }
 
   /**
@@ -1236,21 +1245,12 @@ Return ONLY the JSON object, no other text.
   /**
    * Main parsing method - takes a URL and returns parsed karaoke data
    */
-  async parseWebsite(url: string, userAccessToken?: string): Promise<ParsedKaraokeData> {
+  async parseWebsite(url: string): Promise<ParsedKaraokeData> {
     try {
       // Check if this is a Facebook URL and use unified Facebook parsing
       if (url.includes('facebook.com') || url.includes('fb.com')) {
         this.logAndBroadcast(`Detected Facebook URL - using Facebook parsing`, 'info');
-
-        try {
-          return await this.parseFacebookPage(url, userAccessToken);
-        } catch (facebookError) {
-          this.logAndBroadcast(`Facebook parsing failed: ${facebookError.message}`, 'error');
-          this.logAndBroadcast(`Falling back to generic HTML parsing for Facebook URL`, 'warning');
-
-          // Fall back to generic HTML parsing if Facebook-specific parsing fails
-          // This will help with Facebook URLs that don't load properly
-        }
+        return await this.parseFacebookPage(url);
       }
 
       // Log memory usage before parsing
@@ -4163,48 +4163,15 @@ Return ONLY valid JSON:
 
       const allContent = [];
 
-      // First, capture the profile bio and click "See more" if present
-      this.logAndBroadcast('Extracting profile bio and expanding full description...', 'info');
-      const bioData = await page.evaluate(async () => {
-        // Try to click "See more" button to expand full bio
-        const seeMoreButtons = document.querySelectorAll('button, span, div');
-        let seeMoreClicked = false;
-
-        for (const element of seeMoreButtons) {
-          const text = element.textContent?.toLowerCase() || '';
-          if (text.includes('see more') || text.includes('more') || text.includes('...more')) {
-            try {
-              (element as HTMLElement).click();
-              seeMoreClicked = true;
-              break;
-            } catch (e) {
-              // Continue trying other elements
-            }
-          }
-        }
-
-        // Wait a moment for expansion if clicked
-        if (seeMoreClicked) {
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        }
-
-        // Get bio text after potential expansion
+      // First, capture the profile bio
+      this.logAndBroadcast('Extracting profile bio...', 'info');
+      const bioData = await page.evaluate(() => {
+        // Get bio text
         const bioElements = document.querySelectorAll('[data-testid="user-biography"]');
         let bioText = '';
         bioElements.forEach((el) => {
           bioText += el.textContent + ' ';
         });
-
-        // If bio is still short, try alternative selectors
-        if (bioText.length < 50) {
-          const altBioElements = document.querySelectorAll('div[dir="auto"]');
-          altBioElements.forEach((el) => {
-            const text = el.textContent || '';
-            if (text.length > 50 && text.toLowerCase().includes('karaoke')) {
-              bioText += text + ' ';
-            }
-          });
-        }
 
         // Get profile name
         const nameElements = document.querySelectorAll('h2');
@@ -4218,23 +4185,8 @@ Return ONLY valid JSON:
         return {
           bio: bioText.trim(),
           profileName: profileName,
-          seeMoreClicked: seeMoreClicked,
         };
       });
-
-      // Log the expanded bio
-      this.logAndBroadcast(
-        `Profile bio extracted (${bioData.bio.length} chars): ${bioData.bio.substring(0, 200)}...`,
-        'info',
-      );
-      if (bioData.seeMoreClicked) {
-        this.logAndBroadcast('✅ Successfully expanded "See more" to get full bio', 'success');
-      } else {
-        this.logAndBroadcast('⚠️ No "See more" button found or clicked', 'warning');
-      }
-
-      // Wait a moment after potential bio expansion
-      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Take profile bio screenshot
       const bioScreenshot = await page.screenshot({
@@ -4250,6 +4202,8 @@ Return ONLY valid JSON:
         text: bioData.bio,
         profileName: bioData.profileName,
       });
+
+      this.logAndBroadcast(`Profile bio extracted: ${bioData.bio.substring(0, 100)}...`, 'info');
 
       // Find all post links on the profile
       this.logAndBroadcast('Finding Instagram post links...', 'info');
@@ -4393,36 +4347,30 @@ Return ONLY valid JSON:
       const prompt = `Analyze this Instagram DJ profile and extract ALL karaoke shows with COMPLETE venue addresses and EXACT show times.
 
 🎯 CRITICAL FOCUS: This is a professional DJ's Instagram profile containing a weekly karaoke schedule. You have access to:
-1. Profile bio/description with weekly schedule summary (NOW FULLY EXPANDED - no truncation)
+1. Profile bio/description with weekly schedule summary
 2. Individual post images and descriptions with detailed venue information
 
 PROFILE: ${url}
-DJ HANDLE: djmax614
+DJ NAME: ${bioContent?.profileName || 'djmax614'}
 
 TEXT CONTENT EXTRACTED:
 ${textContent}
 
 🚨 CRITICAL REQUIREMENTS - READ CAREFULLY:
 
-🎤 DJ vs VENDOR DISTINCTION - MANDATORY:
-- VENDOR: Should be the DJ service/business name (like "Max Denney Karaoke" or "djmax614 Entertainment")
-- DJ: Should be the person hosting (look for "Hosted by @djmax614" or similar)
-- NEVER use the same name for both vendor and DJ
-- If you see "Hosted by @djmax614", the DJ name should be "djmax614"
+📍 ADDRESS EXTRACTION - MANDATORY:
+- Look for COMPLETE addresses in the post descriptions
+- Extract street addresses, city, state, ZIP codes
+- Common patterns: "123 Main St, Columbus, OH 43215"
+- If you see venue names like "Kelley's Pub" or "Oneilly's Sports Pub", find their addresses in the posts
+- NEVER submit a venue without attempting to find its address
 
-� SUNDAY SHOW - CRITICAL:
-- Look specifically for "KARAOKE IN THE LOUNGE SUNDAYS 6-9 PM NORTH HIGH DUBLIN"
-- This should be extracted as a separate show for "North High Dublin" venue
-- Time: 6 PM - 9 PM on Sunday
-- Look for this in BOTH the profile bio AND the first image
-
-🗓️ EXPECTED SHOWS (extract ALL of these):
-Based on typical schedule pattern, you should find:
-1. Wednesday @ Kelley's Pub and Patio (7PM-11PM)
-2. Thursday @ The Crescent Lounge (8PM-12AM) 
-3. Friday @ Oneilly's Sports Pub (9PM-late)
-4. Saturday @ The Crescent Lounge (8PM-12AM)
-5. Sunday @ North High Dublin (6PM-9PM) ← MAKE SURE TO FIND THIS ONE
+🕘 TIME EXTRACTION - MANDATORY:
+- Look for EXACT times mentioned in the bio or posts
+- Pay special attention to the bio text which likely contains the schedule
+- If bio says "FRI @oneilyssportspub 9PM" then Friday at Oneilly's is 9 PM, NOT 8 PM
+- Convert times to both formats: "9 pm" and "21:00"
+- Look for patterns like "7PM-11PM", "8PM-12AM", "9PM-2AM"
 
 🎤 VENUE MATCHING:
 Based on the bio and posts, extract shows for these SPECIFIC venues:
@@ -4437,21 +4385,6 @@ Based on the bio and posts, extract shows for these SPECIFIC venues:
 - If you see "@northighdublin" or "NORTH HIGH DUBLIN" - this is a separate venue
 - Sunday show is at "North High Dublin", NOT "The Crescent Lounge"
 
-📍 ADDRESS EXTRACTION - MANDATORY:
-- Look for COMPLETE addresses in the post descriptions
-- Extract street addresses, city, state, ZIP codes
-- Common patterns: "123 Main St, Columbus, OH 43215"
-- If you see venue names like "Kelley's Pub" or "Oneilly's Sports Pub", find their addresses in the posts
-- NEVER submit a venue without attempting to find its address
-
-🕘 TIME EXTRACTION - MANDATORY:
-- Look for EXACT times mentioned in the bio or posts
-- Pay special attention to the bio text which likely contains the schedule
-- If bio says "FRI @oneilyssportspub 9PM" then Friday at Oneilly's is 9 PM, NOT 8 PM
-- If bio says "SUN @northighdublin 6PM-9PM" then Sunday is 6 PM - 9 PM
-- Convert times to both formats: "9 pm" and "21:00"
-- Look for patterns like "7PM-11PM", "8PM-12AM", "9PM-2AM", "6PM-9PM"
-
 🗓️ DAY EXTRACTION:
 - Extract the exact day of week for each venue
 - Bio typically contains format like "WED @venue1 7PM" "THU @venue2 8PM" "SUN @northighdublin 6PM"
@@ -4461,7 +4394,7 @@ Based on the bio and posts, extract shows for these SPECIFIC venues:
 🌍 COORDINATES - REQUIRED:
 For every venue, provide precise lat/lng coordinates:
 - Use venue name + complete address for exact location
-- Example: "North High Dublin" in Dublin, OH → lat: 40.098919, lng: -83.118568
+- Example: "Oneilly's Sports Pub" in Lewis Center, OH → lat: 40.169235, lng: -83.036568
 
 🚨 ADDRESS COMPONENT SEPARATION - CRITICAL:
 NEVER MIX COMPONENTS:
@@ -4477,16 +4410,16 @@ address: "440 West Henderson Road Columbus, OH 43214" (mixed components)
 Return ONLY valid JSON:
 {
   "vendor": {
-    "name": "DJ Service/Business Name (NOT same as DJ name)",
+    "name": "DJ Name from profile",
     "website": "${url}",
     "description": "Profile bio text",
     "confidence": 0.9
   },
   "djs": [
     {
-      "name": "djmax614 (from 'Hosted by' text)",
+      "name": "DJ Name",
       "confidence": 0.9,
-      "context": "Instagram karaoke host"
+      "context": "Instagram profile owner"
     }
   ],
   "shows": [
@@ -4500,11 +4433,11 @@ Return ONLY valid JSON:
       "lng": "REQUIRED precise longitude", 
       "venuePhone": "Phone if found in posts",
       "venueWebsite": "Website if found",
-      "time": "EXACT time from bio/posts like '6 pm' or '9 pm'",
-      "startTime": "24-hour format like '18:00' or '21:00'",
+      "time": "EXACT time from bio/posts like '9 pm'",
+      "startTime": "24-hour format like '21:00'",
       "endTime": "End time or 'close'",
       "day": "exact_day_of_week",
-      "djName": "djmax614 (from 'Hosted by' text)",
+      "djName": "DJ name",
       "description": "Show details",
       "confidence": 0.9
     }

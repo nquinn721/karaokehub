@@ -34,30 +34,6 @@ export class ParserController {
     }
   }
 
-  @Post('parse')
-  async parse(@Body() body: { url: string; userAccessToken?: string; usePuppeteer?: boolean }) {
-    try {
-      // Parse with optional user access token for Facebook Groups
-      const result = await this.karaokeParserService.parseWebsite(body.url, body.userAccessToken);
-
-      return {
-        success: true,
-        data: result,
-        hasUserAuth: !!body.userAccessToken,
-        note: body.userAccessToken
-          ? 'Parsed with user authentication (can access private groups)'
-          : 'Parsed with app access token only (public content)',
-      };
-    } catch (error) {
-      console.error('Error parsing website:', error);
-      return {
-        success: false,
-        error: error.message,
-        hasUserAuth: !!body.userAccessToken,
-      };
-    }
-  }
-
   @Post('parse-and-save-website')
   async parseAndSaveWebsite(
     @Body()
@@ -268,44 +244,6 @@ export class ParserController {
     } catch (error) {
       console.error('Error deleting URL:', error);
       throw new HttpException('Failed to delete URL', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  @Get('urls/unapproved')
-  async getUnapprovedUrls(): Promise<UrlToParse[]> {
-    try {
-      return await this.urlToParseService.findUnapproved();
-    } catch (error) {
-      console.error('Error getting unapproved URLs:', error);
-      throw new HttpException('Failed to get unapproved URLs', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  @Post('urls/:id/approve')
-  async approveUrl(@Param('id') id: string): Promise<{ message: string; url: UrlToParse }> {
-    try {
-      const url = await this.urlToParseService.approve(parseInt(id));
-      if (!url) {
-        throw new HttpException('URL not found', HttpStatus.NOT_FOUND);
-      }
-      return { message: 'URL approved successfully', url };
-    } catch (error) {
-      console.error('Error approving URL:', error);
-      throw new HttpException('Failed to approve URL', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  @Post('urls/:id/unapprove')
-  async unapproveUrl(@Param('id') id: string): Promise<{ message: string; url: UrlToParse }> {
-    try {
-      const url = await this.urlToParseService.unapprove(parseInt(id));
-      if (!url) {
-        throw new HttpException('URL not found', HttpStatus.NOT_FOUND);
-      }
-      return { message: 'URL unapproved successfully', url };
-    } catch (error) {
-      console.error('Error unapproving URL:', error);
-      throw new HttpException('Failed to unapprove URL', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

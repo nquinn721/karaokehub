@@ -47,11 +47,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       const windowHeight = window.innerHeight;
       const sheetHeight = getSheetHeight(snapIndex);
       const baseTransform = windowHeight - sheetHeight;
-      
+
       // Ensure minimum 20px is always visible
       const minVisibleHeight = 20;
       const maxTransform = windowHeight - minVisibleHeight;
-      
+
       return Math.min(baseTransform + offset, maxTransform);
     },
     [getSheetHeight],

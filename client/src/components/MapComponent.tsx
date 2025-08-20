@@ -197,6 +197,7 @@ const PopupContent: React.FC<{ show: any }> = ({ show }) => {
 
 const MapComponent: React.FC = observer(() => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [clusterer, setClusterer] = useState<MarkerClusterer | null>(null);
 
@@ -207,12 +208,12 @@ const MapComponent: React.FC = observer(() => {
         await mapStore.initialize();
       }
 
-      // Get user location
-      await mapStore.goToCurrentLocation();
+      // Get user location with mobile awareness
+      await mapStore.goToCurrentLocation(isMobile);
     };
 
     initializeMap();
-  }, []);
+  }, [isMobile]);
 
   // Set map instance when map loads
   useEffect(() => {
@@ -410,7 +411,7 @@ const MapComponent: React.FC = observer(() => {
         <Box
           sx={{
             position: 'absolute',
-            bottom: 16,
+            bottom: 66,
             left: 16,
             zIndex: 1000,
             backgroundColor: theme.palette.background.paper,
@@ -422,7 +423,6 @@ const MapComponent: React.FC = observer(() => {
           <Typography variant="caption" color="textSecondary">
             Zoom: {mapStore?.currentZoom}
             {mapStore?.currentZoom <= 9 && ' (Clustering)'}
-            {mapStore?.currentZoom > 9 && mapStore?.currentZoom <= 15 && ' (All Shows)'}
             {mapStore?.currentZoom > 15 && ' (Nearby)'}
           </Typography>
         </Box>
@@ -431,7 +431,7 @@ const MapComponent: React.FC = observer(() => {
         <Map
           style={{ width: '100%', height: '100%' }}
           defaultCenter={mapStore?.userLocation || { lat: 39.8283, lng: -98.5795 }}
-          defaultZoom={11}
+          defaultZoom={isMobile ? 10 : 11}
           gestureHandling={'greedy'}
           disableDefaultUI={true}
           colorScheme={theme.palette.mode === 'dark' ? 'DARK' : 'LIGHT'}

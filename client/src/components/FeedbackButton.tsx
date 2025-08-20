@@ -1,7 +1,8 @@
 import { faComments } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Fab, Tooltip } from '@mui/material';
+import { Fab, Tooltip, useMediaQuery, useTheme } from '@mui/material';
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import FeedbackModal from './FeedbackModal';
 
 interface FeedbackButtonProps {
@@ -11,6 +12,19 @@ interface FeedbackButtonProps {
 
 const FeedbackButton: React.FC<FeedbackButtonProps> = ({ position = 'fixed', size = 'medium' }) => {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const location = useLocation();
+  
+  // Check if we're on shows page where bottom sheet might interfere
+  const isShowsPage = location.pathname === '/shows';
+  
+  // Adjust bottom position based on device and page
+  const getBottomPosition = () => {
+    if (!isMobile) return 24; // Desktop: normal position
+    if (isShowsPage) return 120; // Mobile shows page: higher to avoid bottom sheet
+    return 80; // Mobile other pages: slightly higher than desktop
+  };
 
   return (
     <>
@@ -23,8 +37,8 @@ const FeedbackButton: React.FC<FeedbackButtonProps> = ({ position = 'fixed', siz
             position === 'fixed'
               ? {
                   position: 'fixed',
-                  bottom: 24,
-                  right: 24,
+                  bottom: getBottomPosition(),
+                  right: { xs: 16, md: 24 }, // Slightly closer to edge on mobile
                   zIndex: 1000,
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   '&:hover': {
