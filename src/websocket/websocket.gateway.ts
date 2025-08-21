@@ -48,6 +48,7 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
   private userSockets: Map<string, string> = new Map(); // userId -> socketId
   private parserLogs: ParserLogEntry[] = []; // Store parser logs
   private connectedClients: Set<string> = new Set(); // Track connected client IDs
+  private pendingFacebookRequests: Map<string, (data: any) => void> = new Map(); // For Facebook login requests
 
   constructor(private urlService: UrlService) {
     // Update CORS origins dynamically
@@ -313,7 +314,6 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
   }
 
   // Facebook Authentication Methods
-  private pendingFacebookRequests = new Map<string, (credentials: any) => void>();
 
   /**
    * Request Facebook credentials from admin UI

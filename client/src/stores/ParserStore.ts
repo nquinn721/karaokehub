@@ -39,11 +39,18 @@ export interface ParsedScheduleItem {
   id: string;
   url: string;
   rawData: any;
-  aiAnalysis: {
+  aiAnalysis?: {
     vendor: ParsedVendorData;
     djs: ParsedDJData[];
     shows: ParsedShowData[];
   };
+  stats?: {
+    showsFound: number;
+    djsFound: number;
+    vendorsFound: number;
+  };
+  shows?: any[];
+  vendors?: any[];
   status: 'pending' | 'pending_review' | 'approved' | 'rejected' | 'needs_review';
   createdAt: string;
   updatedAt: string;
@@ -84,6 +91,7 @@ export class ParserStore {
   parsingStartTime: Date | null = null;
   parsingElapsedTime = 0;
   parsingTimer: number | null = null;
+  lastCompletedParsingTime: number | null = null; // Track the final completion time
   socket: Socket | null = null;
 
   constructor() {
@@ -234,6 +242,10 @@ export class ParserStore {
       this.parsingTimer = null;
     }
     runInAction(() => {
+      // Save the final completion time before clearing
+      if (this.parsingStartTime) {
+        this.lastCompletedParsingTime = Date.now() - this.parsingStartTime.getTime();
+      }
       this.parsingStartTime = null;
       this.parsingElapsedTime = 0;
     });
@@ -293,6 +305,21 @@ export class ParserStore {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
 
+  getFormattedCompletionTime(): string {
+    if (this.lastCompletedParsingTime === null) {
+      return 'N/A';
+    }
+    const seconds = Math.floor(this.lastCompletedParsingTime / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+
+    if (minutes > 0) {
+      return `${minutes}m ${remainingSeconds}s`;
+    } else {
+      return `${remainingSeconds}s`;
+    }
+  }
+
   /**
    * Check if parsing is currently active (has a start time and timer running)
    */
@@ -305,7 +332,7 @@ export class ParserStore {
       this.setLoading(true);
       this.setError(null);
 
-      const result = await apiStore.post('/parser/parse-website', { url });
+      const result = await apiStore.post('/parser/parse-url', { url });
 
       return { success: true, data: result };
     } catch (error: any) {
@@ -424,8 +451,8 @@ export class ParserStore {
       this.addLogEntry(`Using ${parseMethod} parsing method`, 'info');
       this.addLogEntry('Fetching webpage content...', 'info');
 
-      // Use the new parse-and-save-website endpoint which saves to database
-      const result = await apiStore.post('/parser/parse-and-save-website', {
+      // Use the new unified parser endpoint that auto-detects URL type
+      const result = await apiStore.post('/parser/parse-url', {
         url,
         parseMethod,
       });
@@ -452,9 +479,6 @@ export class ParserStore {
         this.addLogEntry(`HTML content processed: ${result.stats.htmlLength} characters`, 'info');
       }
 
-      // Refresh pending reviews to show the new entry
-      await this.fetchPendingReviews();
-
       this.addLogEntry('Data saved for admin review', 'success');
 
       return {
@@ -467,8 +491,11 @@ export class ParserStore {
 
       // Check if it's a timeout error
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        errorMessage = 'Parser request timed out - this usually indicates a server error';
-        this.addLogEntry('Request timed out - server may have encountered an error', 'error');
+        errorMessage = 'Parsing request timed out - the server may be processing a complex website';
+        this.addLogEntry(
+          'Parsing timed out - try increasing timeout or check server logs',
+          'error',
+        );
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
         this.addLogEntry(`Server error: ${errorMessage}`, 'error');
@@ -711,7 +738,7 @@ export class ParserStore {
       this.addLogEntry(`Starting to parse: ${url}`, 'info');
       this.addLogEntry('Sending request to parser service...', 'info');
 
-      await apiStore.post('/parser/parse-and-save-website', { url });
+      await apiStore.post('/parser/parse-url', { url });
 
       this.addLogEntry('Successfully parsed website', 'success');
       this.addLogEntry('Refreshing pending reviews...', 'info');

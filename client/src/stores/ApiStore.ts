@@ -302,9 +302,9 @@ class ApiStore {
       const isParserEndpoint =
         url.includes('/parser/parse') || url.includes('/parser/parse-and-save');
 
-      // Use longer timeout for parser endpoints (10 minutes) or default config
+      // Use longer timeout for parser endpoints (15 minutes) or default config
       const requestConfig = isParserEndpoint
-        ? { ...config, timeout: 600000 } // 10 minutes for parsing
+        ? { ...config, timeout: 900000 } // 15 minutes for parsing (enhanced FB parsing needs more time)
         : config;
 
       const response = await this.axiosInstance.post<T>(url, data, requestConfig);

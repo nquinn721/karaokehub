@@ -58,7 +58,6 @@ async function testFacebookMediaScraperWithWorker() {
     }
 
     console.log('\n🏆 Worker thread processing test completed successfully!');
-
   } catch (error) {
     console.error('❌ Test failed:', error.message);
     if (error.stack) {

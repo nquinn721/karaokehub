@@ -16,13 +16,20 @@ import { ParsedSchedule, ParseStatus } from './parsed-schedule.entity';
 import { UrlToParse } from './url-to-parse.entity';
 
 export interface ParsedKaraokeData {
-  vendor: {
+  vendor?: {
     name: string;
     owner?: string;
     website: string;
     description?: string;
     confidence: number;
   };
+  vendors?: Array<{
+    name: string;
+    owner?: string;
+    website?: string;
+    description?: string;
+    confidence: number;
+  }>;
   djs: Array<{
     name: string;
     confidence: number;
@@ -42,6 +49,7 @@ export interface ParsedKaraokeData {
     endTime?: string;
     day?: string;
     djName?: string;
+    vendor?: string; // Vendor/Company providing karaoke service
     description?: string;
     venuePhone?: string;
     venueWebsite?: string;
@@ -106,6 +114,26 @@ export class KaraokeParserService {
       parsingStartTime: this.parsingStartTime,
       elapsedTimeMs: this.parsingStartTime ? Date.now() - this.parsingStartTime.getTime() : 0,
     };
+  }
+
+  /**
+   * Get primary vendor from parsed data (handles both old and new vendor structure)
+   */
+  private getPrimaryVendorName(parsedData: ParsedKaraokeData): string | null {
+    return (
+      parsedData.vendor?.name ||
+      (parsedData.vendors && parsedData.vendors.length > 0 ? parsedData.vendors[0].name : null)
+    );
+  }
+
+  /**
+   * Get primary vendor object from parsed data (handles both old and new vendor structure)
+   */
+  private getPrimaryVendor(parsedData: ParsedKaraokeData): any {
+    return (
+      parsedData.vendor ||
+      (parsedData.vendors && parsedData.vendors.length > 0 ? parsedData.vendors[0] : null)
+    );
   }
 
   /**
@@ -408,18 +436,20 @@ export class KaraokeParserService {
    * Generate appropriate name for URL based on type and parsed content
    */
   private generateUrlName(url: string, parsedData: ParsedKaraokeData): string {
-    if (!parsedData.vendor?.name) {
+    const vendorName = this.getPrimaryVendorName(parsedData);
+
+    if (!vendorName) {
       return 'Unnamed Business';
     }
 
     if (url.includes('facebook.com/groups/')) {
-      return `FB Group: ${parsedData.vendor.name}`;
+      return `FB Group: ${vendorName}`;
     } else if (url.includes('facebook.com/')) {
-      return `FB: ${parsedData.vendor.name}`;
+      return `FB: ${vendorName}`;
     } else if (url.includes('instagram.com/')) {
-      return `IG: ${parsedData.vendor.name}`;
+      return `IG: ${vendorName}`;
     } else {
-      return parsedData.vendor.name;
+      return vendorName;
     }
   }
 
@@ -450,7 +480,8 @@ export class KaraokeParserService {
       }
 
       // If no name exists and we have vendor information, set the name
-      if (parsedData.vendor?.name) {
+      const vendorName = this.getPrimaryVendorName(parsedData);
+      if (vendorName) {
         const urlName = this.generateUrlName(url, parsedData);
         await this.updateUrlName(url, urlName);
         this.logAndBroadcast(`Set URL name: ${urlName}`, 'info');
@@ -1583,6 +1614,14 @@ CRITICAL RESPONSE REQUIREMENTS:
 - Ensure JSON is properly closed with all brackets and braces
 - Maximum 100 shows per response to prevent truncation
 
+🚫 DUPLICATE PREVENTION - CRITICAL RULES:
+- ONLY extract UNIQUE shows - no duplicates allowed
+- If the same venue appears multiple times with the same day/time, only include it ONCE
+- Different days at the same venue = separate shows (e.g., "Bar Monday" vs "Bar Saturday")  
+- Different times at the same venue = separate shows (e.g., "Bar 7:00 PM" vs "Bar 10:00 PM")
+- Same venue, same day, same time = DUPLICATE, include only once
+- Verify each show is truly distinct before adding to the list
+
 CRITICAL: For each venue mentioned, create a separate show entry for EACH day of the week it appears.
 
 EXCLUDE: Shows marked "CLOSED", "CANCELLED", "SUSPENDED", "UNAVAILABLE", "DISCONTINUED", "TEMPORARILY CLOSED", "OUT OF BUSINESS", "INACTIVE", "NOT RUNNING"
@@ -2287,12 +2326,57 @@ ${htmlContent}`;
   }
 
   /**
-   * Admin review methods - simplified implementations
+   * Admin review methods - memory-efficient implementation
    */
-  async getPendingReviews(): Promise<ParsedSchedule[]> {
-    return this.parsedScheduleRepository.find({
+  async getPendingReviews(limit: number = 50, offset: number = 0): Promise<any[]> {
+    // Get pending reviews without ordering to avoid sort buffer issues
+    const parsedSchedules = await this.parsedScheduleRepository.find({
       where: { status: ParseStatus.PENDING_REVIEW },
-      order: { createdAt: 'DESC' },
+      take: limit,
+      skip: offset,
+      // Remove order by to avoid sort buffer memory issues
+      // order: { createdAt: 'DESC' }
+    });
+
+    if (parsedSchedules.length === 0) {
+      return [];
+    }
+
+    // Sort in memory instead of in database
+    const sortedSchedules = parsedSchedules.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
+    // Transform the data to include extracted shows from rawData
+    return sortedSchedules.map((schedule) => {
+      const rawData = schedule.rawData || {};
+      const shows = rawData.shows || [];
+
+      // Extract source URL from rawData
+      const source = rawData.source || schedule.url;
+
+      // Add source and other metadata to each show
+      const transformedShows = shows.map((show) => ({
+        ...show,
+        source: source,
+        scheduleId: schedule.id,
+        parsedAt: schedule.createdAt,
+      }));
+
+      return {
+        id: schedule.id,
+        url: schedule.url,
+        source: source,
+        status: schedule.status,
+        createdAt: schedule.createdAt,
+        updatedAt: schedule.updatedAt,
+        vendorId: schedule.vendorId,
+        shows: transformedShows,
+        stats: rawData.stats || { showsFound: shows.length, djsFound: 0 },
+        vendor: rawData.vendor,
+        vendors: rawData.vendors,
+        parsingLogs: schedule.parsingLogs,
+      };
     });
   }
 
@@ -2304,58 +2388,77 @@ ${htmlContent}`;
 
     try {
       // Validate input data
-      if (
-        !approvedData ||
-        !approvedData.vendor ||
-        !approvedData.shows ||
-        approvedData.shows.length === 0
-      ) {
-        throw new Error('Invalid data: missing vendor information or no shows found');
+      if (!approvedData || !approvedData.shows || approvedData.shows.length === 0) {
+        throw new Error('Invalid data: no shows found');
       }
 
-      // 1. Find or create the vendor
-      let vendor = await this.vendorRepository.findOne({
-        where: { name: approvedData.vendor.name },
-      });
+      // Check if we have vendor data (either single vendor or vendors array)
+      const hasVendorData =
+        approvedData.vendor || (approvedData.vendors && approvedData.vendors.length > 0);
+      if (!hasVendorData) {
+        this.logAndBroadcast(
+          'No vendor data found - proceeding with venue-hosted shows only',
+          'warning',
+        );
+      }
 
-      if (!vendor) {
-        this.logAndBroadcast(`Creating new vendor: ${approvedData.vendor.name}`, 'info');
-        vendor = this.vendorRepository.create({
-          name: approvedData.vendor.name,
-          owner: approvedData.vendor.owner || '',
-          website: approvedData.vendor.website,
-          description: approvedData.vendor.description,
+      // 1. Find or create vendors (handle both single vendor and multiple vendors)
+      const vendorMap = new Map<string, Vendor>();
+      let primaryVendor: Vendor | null = null;
+
+      // Process vendors array or single vendor
+      const vendorsToProcess =
+        approvedData.vendors || (approvedData.vendor ? [approvedData.vendor] : []);
+
+      for (const vendorData of vendorsToProcess) {
+        if (!vendorData.name) continue;
+
+        let vendor = await this.vendorRepository.findOne({
+          where: { name: vendorData.name },
         });
-        vendor = await this.vendorRepository.save(vendor);
-        this.logAndBroadcast(`Created vendor with ID: ${vendor.id}`, 'success');
-      } else {
-        this.logAndBroadcast(`Using existing vendor: ${vendor.name} (ID: ${vendor.id})`, 'info');
 
-        // Update vendor with any missing information
-        let vendorUpdated = false;
-        if (!vendor.owner && approvedData.vendor.owner) {
-          vendor.owner = approvedData.vendor.owner;
-          vendorUpdated = true;
-        }
-        if (!vendor.website && approvedData.vendor.website) {
-          vendor.website = approvedData.vendor.website;
-          vendorUpdated = true;
-        }
-        if (!vendor.description && approvedData.vendor.description) {
-          vendor.description = approvedData.vendor.description;
-          vendorUpdated = true;
-        }
-
-        if (vendorUpdated) {
+        if (!vendor) {
+          this.logAndBroadcast(`Creating new vendor: ${vendorData.name}`, 'info');
+          vendor = this.vendorRepository.create({
+            name: vendorData.name,
+            owner: vendorData.owner || '',
+            website: vendorData.website,
+            description: vendorData.description,
+          });
           vendor = await this.vendorRepository.save(vendor);
-          this.logAndBroadcast(
-            `Updated existing vendor: ${vendor.name} with missing information`,
-            'info',
-          );
+          this.logAndBroadcast(`Created vendor with ID: ${vendor.id}`, 'success');
+        } else {
+          this.logAndBroadcast(`Using existing vendor: ${vendor.name} (ID: ${vendor.id})`, 'info');
+
+          // Update vendor with any missing information
+          let vendorUpdated = false;
+          if (!vendor.owner && vendorData.owner) {
+            vendor.owner = vendorData.owner;
+            vendorUpdated = true;
+          }
+          if (!vendor.website && vendorData.website) {
+            vendor.website = vendorData.website;
+            vendorUpdated = true;
+          }
+          if (!vendor.description && vendorData.description) {
+            vendor.description = vendorData.description;
+            vendorUpdated = true;
+          }
+
+          if (vendorUpdated) {
+            vendor = await this.vendorRepository.save(vendor);
+            this.logAndBroadcast(
+              `Updated existing vendor: ${vendor.name} with missing information`,
+              'info',
+            );
+          }
         }
+
+        vendorMap.set(vendorData.name, vendor);
+        if (!primaryVendor) primaryVendor = vendor; // First vendor becomes primary
       }
 
-      // 2. Create or update DJs
+      // 2. Create or update DJs (associate with their respective vendors)
       const djMap = new Map<string, DJ>();
       let djsCreated = 0;
       let djsUpdated = 0;
@@ -2368,15 +2471,18 @@ ${htmlContent}`;
           continue;
         }
 
+        // For DJs, use primary vendor or null if no vendors
+        const djVendorId = primaryVendor?.id || null;
+
         let dj = await this.djRepository.findOne({
-          where: { name: djData.name, vendorId: vendor.id },
+          where: { name: djData.name, vendorId: djVendorId },
         });
 
         if (!dj) {
           this.logAndBroadcast(`Creating new DJ: ${djData.name}`, 'info');
           dj = this.djRepository.create({
             name: djData.name,
-            vendorId: vendor.id,
+            vendorId: djVendorId,
             isActive: true,
           });
           dj = await this.djRepository.save(dj);
@@ -2418,10 +2524,24 @@ ${htmlContent}`;
 
         const normalizedDay = dayMapping[showData.day?.toLowerCase()] || 'monday';
 
+        // Determine vendor for this show
+        let showVendor: Vendor | null = null;
+        if (showData.vendor) {
+          showVendor = vendorMap.get(showData.vendor) || null;
+          if (!showVendor) {
+            this.logAndBroadcast(
+              `Warning: Vendor "${showData.vendor}" not found for show at ${showData.venue}`,
+              'warning',
+            );
+          }
+        } else if (primaryVendor) {
+          showVendor = primaryVendor; // Use primary vendor as fallback
+        }
+
         // Check for existing show with same vendor, day, time, venue, and DJ
         const existingShow = await this.showRepository.findOne({
           where: {
-            vendorId: vendor.id,
+            vendorId: showVendor?.id || null,
             day: normalizedDay as any,
             time: showData.time,
             venue: showData.venue,
@@ -2629,7 +2749,7 @@ ${htmlContent}`;
         }
 
         const show = this.showRepository.create({
-          vendorId: vendor.id,
+          vendorId: showVendor?.id || null,
           djId: djId,
           venue: showData.venue,
           address: cleanedAddress,
@@ -2663,15 +2783,18 @@ ${htmlContent}`;
         aiAnalysis: approvedData as any,
       });
 
-      const successMessage = `Successfully saved: 1 vendor, ${djsCreated} new DJs (${djsUpdated} updated), ${showsCreated} new shows (${showsUpdated} updated, ${showsDuplicated} duplicates skipped)`;
+      const vendorsCount = vendorMap.size;
+      const successMessage = `Successfully saved: ${vendorsCount} vendor(s), ${djsCreated} new DJs (${djsUpdated} updated), ${showsCreated} new shows (${showsUpdated} updated, ${showsDuplicated} duplicates skipped)`;
       this.logAndBroadcast(successMessage, 'success');
 
       const result = {
         success: true,
         message: successMessage,
         stats: {
-          vendorId: vendor.id,
-          vendorName: vendor.name,
+          vendorId: primaryVendor?.id || null,
+          vendorName: primaryVendor?.name || 'Multiple/None',
+          vendorsCount,
+          vendorNames: Array.from(vendorMap.keys()),
           djsCreated,
           djsUpdated,
           showsCreated,
@@ -2805,31 +2928,6 @@ ${htmlContent}`;
       htmlLength: htmlContent.length,
       title: this.extractTitleFromHtml(htmlContent),
       preview: htmlContent.substring(0, 1000),
-    };
-  }
-
-  async parseFacebookEvent(url: string): Promise<ParsedKaraokeData> {
-    // For now, use the same parsing method
-    return this.parseWebsite(url);
-  }
-
-  async parseAndSaveFacebookEvent(url: string): Promise<any> {
-    return this.parseAndSaveWebsite(url);
-  }
-
-  async parseFacebookShare(url: string): Promise<ParsedKaraokeData> {
-    return this.parseWebsite(url);
-  }
-
-  async parseAndSaveFacebookShare(url: string): Promise<any> {
-    return this.parseAndSaveWebsite(url);
-  }
-
-  async transformFacebookUrlWithGemini(url: string): Promise<any> {
-    return {
-      originalUrl: url,
-      transformedUrl: url, // No transformation for now
-      suggestions: [],
     };
   }
 
@@ -3113,6 +3211,14 @@ CRITICAL RESPONSE REQUIREMENTS:
 - If response would exceed limits, prioritize COMPLETE shows over partial ones
 - Ensure JSON is properly closed with all brackets and braces
 - Maximum 100 shows per response to prevent truncation
+
+🚫 DUPLICATE PREVENTION - CRITICAL RULES:
+- ONLY extract UNIQUE shows - no duplicates allowed
+- If the same venue appears multiple times with the same day/time, only include it ONCE
+- Different days at the same venue = separate shows (e.g., "Bar Monday" vs "Bar Saturday")  
+- Different times at the same venue = separate shows (e.g., "Bar 7:00 PM" vs "Bar 10:00 PM")
+- Same venue, same day, same time = DUPLICATE, include only once
+- Verify each show is truly distinct before adding to the list
 
 CRITICAL: This page contains shows for ALL 7 DAYS (Monday through Sunday). You must extract shows from the COMPLETE page, not just the top section.
 
@@ -3596,6 +3702,14 @@ CRITICAL RESPONSE REQUIREMENTS:
 - Get COMPLETE addresses with street, city, state
 - Extract EXACT show times (not approximations)
 - Look at BOTH the profile description/bio area AND individual posts
+
+🚫 DUPLICATE PREVENTION - CRITICAL RULES:
+- ONLY extract UNIQUE shows - no duplicates allowed
+- If the same venue appears multiple times with the same day/time, only include it ONCE
+- Different days at the same venue = separate shows (e.g., "Bar Monday" vs "Bar Saturday")  
+- Different times at the same venue = separate shows (e.g., "Bar 7:00 PM" vs "Bar 10:00 PM")
+- Same venue, same day, same time = DUPLICATE, include only once
+- Cross-check all screenshots to prevent duplicates between different images
 
 Instagram Profile: ${url}
 ${description ? `Description: ${description}` : ''}
@@ -4145,6 +4259,14 @@ TEXT CONTENT EXTRACTED:
 ${textContent}
 
 🚨 CRITICAL REQUIREMENTS - READ CAREFULLY:
+
+🚫 DUPLICATE PREVENTION - CRITICAL RULES:
+- ONLY extract UNIQUE shows - no duplicates allowed
+- If the same venue appears multiple times with the same day/time, only include it ONCE
+- Different days at the same venue = separate shows (e.g., "Bar Monday" vs "Bar Saturday")  
+- Different times at the same venue = separate shows (e.g., "Bar 7:00 PM" vs "Bar 10:00 PM")
+- Same venue, same day, same time = DUPLICATE, include only once
+- Cross-check bio and post content to prevent duplicates between different sources
 
 🎤 DJ vs VENDOR DISTINCTION - MANDATORY:
 - VENDOR: Should be the DJ service/business name (like "Max Denney Karaoke" or "djmax614 Entertainment")

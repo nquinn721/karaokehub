@@ -10,17 +10,17 @@ async function checkUrlsToParseTable() {
 
   try {
     const app = await NestFactory.createApplicationContext(AppModule);
-    
+
     const { getRepositoryToken } = require('@nestjs/typeorm');
     const { UrlToParse } = require('./dist/parser/url-to-parse.entity');
-    
+
     const urlsToParseRepository = app.get(getRepositoryToken(UrlToParse));
 
     const facebookUrl = 'https://www.facebook.com/groups/194826524192177';
-    
+
     // Find the URL record
     const urlRecord = await urlsToParseRepository.findOne({
-      where: { url: facebookUrl }
+      where: { url: facebookUrl },
     });
 
     if (urlRecord) {
@@ -33,20 +33,19 @@ async function checkUrlsToParseTable() {
       console.log(`   Updated: ${urlRecord.updatedAt}`);
     } else {
       console.log('❌ No URL record found for:', facebookUrl);
-      
+
       // Check if there are any Facebook URLs at all
       const allFbUrls = await urlsToParseRepository.find({
-        where: { url: require('typeorm').Like('%facebook.com%') }
+        where: { url: require('typeorm').Like('%facebook.com%') },
       });
-      
+
       console.log(`\n📊 Found ${allFbUrls.length} Facebook URLs in total:`);
-      allFbUrls.forEach(url => {
+      allFbUrls.forEach((url) => {
         console.log(`   - ${url.url} (name: ${url.name || 'NOT SET'})`);
       });
     }
 
     await app.close();
-
   } catch (error) {
     console.error('❌ Error checking URLs:', error.message);
   }

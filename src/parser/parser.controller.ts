@@ -12,32 +12,15 @@ export class ParserController {
     private readonly facebookParserService: FacebookParserService,
   ) {}
 
-  @Post('parse-website')
-  async parseWebsite(@Body() body: { url: string; usePuppeteer?: boolean }) {
-    try {
-      // First, try to add URL to the urls_to_parse table
-      let urlToParse;
-      try {
-        urlToParse = await this.urlToParseService.create(body.url);
-      } catch (error) {
-        // URL may already exist in urls_to_parse table, continuing with parsing
-      }
-
-      // Then parse the website
-      const result = await this.karaokeParserService.parseWebsite(body.url);
-
-      return {
-        ...result,
-        urlToParseId: urlToParse?.id,
-      };
-    } catch (error) {
-      console.error('Error parsing website:', error);
-      throw new HttpException('Failed to parse website', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  @Post('parse-and-save-website')
-  async parseAndSaveWebsite(
+  /**
+   * UNIFIED SMART PARSER ENDPOINT
+   * Auto-detects URL type and routes to appropriate parser:
+   * - Facebook URLs → Facebook Parser (Clean Method)
+   * - Instagram URLs → Instagram Visual Parser
+   * - Other URLs → Website Parser
+   */
+  @Post('parse-url')
+  async parseUrl(
     @Body()
     body: {
       url: string;
@@ -48,12 +31,11 @@ export class ParserController {
   ) {
     try {
       // Only add URL to the urls_to_parse table if it's not a custom URL
-      let urlToParse;
       if (!body.isCustomUrl) {
         try {
-          urlToParse = await this.urlToParseService.create(body.url);
+          await this.urlToParseService.create(body.url);
         } catch (error) {
-          // URL may already exist in urls_to_parse table, continuing with parsing
+          // URL may already exist, continue with parsing
         }
       }
 
@@ -63,18 +45,16 @@ export class ParserController {
 
       if (url.includes('instagram.com')) {
         // Instagram URL - use visual parsing with screenshots
-        console.log('Detected Instagram URL, using visual parsing');
+        console.log('🔍 Detected Instagram URL, using visual parsing');
         result = await this.karaokeParserService.parseInstagramWithScreenshots(body.url);
       } else if (url.includes('facebook.com') || url.includes('fb.com')) {
-        // Facebook URL - use new streamlined Facebook parsing method
-        console.log('Detected Facebook URL, using streamlined FacebookParserService');
-        result = await this.facebookParserService.parseAndSaveFacebookPage(body.url);
-
-        // Result already has the correct format from parseAndSaveFacebookPage
+        // Facebook URL - use new CLEAN Facebook parsing method
+        console.log('🔍 Detected Facebook URL, using CLEAN FacebookParserService');
+        result = await this.facebookParserService.parseAndSaveFacebookPageClean(body.url);
       } else {
         // Regular website - use specified method
         const parseMethod = body.parseMethod || 'html';
-        console.log(`Detected regular website, using ${parseMethod} parsing`);
+        console.log(`🔍 Detected regular website, using ${parseMethod} parsing`);
 
         if (parseMethod === 'screenshot') {
           result = await this.karaokeParserService.parseWebsiteWithScreenshot(body.url);
@@ -84,15 +64,21 @@ export class ParserController {
       }
 
       return {
-        message: 'Website parsed and saved for admin review',
-        parsedScheduleId: result.parsedScheduleId,
-        data: result.data,
-        stats: result.stats,
-        urlToParseId: urlToParse?.id,
+        success: true,
+        urlType:
+          url.includes('facebook.com') || url.includes('fb.com')
+            ? 'facebook'
+            : url.includes('instagram.com')
+              ? 'instagram'
+              : 'website',
+        ...result,
       };
     } catch (error) {
-      console.error('Error parsing and saving website:', error);
-      throw new HttpException('Failed to parse and save website', HttpStatus.INTERNAL_SERVER_ERROR);
+      console.error('❌ Error in unified parser:', error);
+      throw new HttpException(
+        `Failed to parse URL: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -285,82 +271,6 @@ export class ParserController {
       console.error('Error debugging Puppeteer:', error);
       throw new HttpException(
         `Failed to debug Puppeteer: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Post('parse-facebook-event')
-  async parseFacebookEvent(@Body() body: { url: string }) {
-    try {
-      const result = await this.karaokeParserService.parseFacebookEvent(body.url);
-      return result;
-    } catch (error) {
-      console.error('Error parsing Facebook event:', error);
-      throw new HttpException(
-        `Failed to parse Facebook event: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Post('parse-and-save-facebook-event')
-  async parseAndSaveFacebookEvent(@Body() body: { url: string }) {
-    try {
-      const result = await this.karaokeParserService.parseAndSaveFacebookEvent(body.url);
-      return result;
-    } catch (error) {
-      console.error('Error parsing and saving Facebook event:', error);
-      throw new HttpException(
-        `Failed to parse and save Facebook event: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Post('parse-facebook-share')
-  async parseFacebookShare(@Body() body: { url: string }) {
-    try {
-      const result = await this.karaokeParserService.parseFacebookShare(body.url);
-      return result;
-    } catch (error) {
-      console.error('Error parsing Facebook share:', error);
-      throw new HttpException(
-        `Failed to parse Facebook share: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Post('parse-and-save-facebook-share')
-  async parseAndSaveFacebookShare(@Body() body: { url: string }) {
-    try {
-      const result = await this.karaokeParserService.parseAndSaveFacebookShare(body.url);
-      return result;
-    } catch (error) {
-      console.error('Error parsing and saving Facebook share:', error);
-      throw new HttpException(
-        `Failed to parse and save Facebook share: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Post('transform-facebook-url')
-  async transformFacebookUrl(@Body() body: { url: string }) {
-    try {
-      const result = await this.karaokeParserService.transformFacebookUrlWithGemini(body.url);
-      return {
-        success: true,
-        originalUrl: body.url,
-        transformedUrl: result.transformedUrl,
-        extractedInfo: result.extractedInfo,
-        suggestions: result.suggestions,
-      };
-    } catch (error) {
-      console.error('Error transforming Facebook URL with Gemini:', error);
-      throw new HttpException(
-        `Failed to transform Facebook URL: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

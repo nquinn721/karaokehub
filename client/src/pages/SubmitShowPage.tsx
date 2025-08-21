@@ -602,14 +602,14 @@ const SubmitShowPage: React.FC = observer(() => {
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                         <Chip
-                          label={parsedData.aiAnalysis.vendor.name}
+                          label={parsedData.aiAnalysis?.vendor?.name || 'Unknown Vendor'}
                           color="primary"
                           variant="filled"
                           sx={{ fontWeight: 600 }}
                         />
-                        {parsedData.aiAnalysis.vendor.website && (
+                        {parsedData.aiAnalysis?.vendor?.website && (
                           <Chip
-                            label={parsedData.aiAnalysis.vendor.website}
+                            label={parsedData.aiAnalysis?.vendor?.website}
                             variant="outlined"
                             color="primary"
                           />
@@ -624,10 +624,10 @@ const SubmitShowPage: React.FC = observer(() => {
                         fontWeight={600}
                         color="secondary"
                       >
-                        🎤 DJs & KJs ({parsedData.aiAnalysis.djs.length})
+                        🎤 DJs & KJs ({parsedData.aiAnalysis?.djs?.length || 0})
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        {parsedData.aiAnalysis.djs.map((dj, index) => (
+                        {parsedData.aiAnalysis?.djs?.map((dj, index) => (
                           <Chip
                             key={index}
                             label={dj.name}
@@ -642,10 +642,10 @@ const SubmitShowPage: React.FC = observer(() => {
 
                   <Grid item xs={12} md={6}>
                     <Typography variant="subtitle1" gutterBottom fontWeight={600}>
-                      📅 Shows Found ({parsedData.aiAnalysis.shows.length})
+                      📅 Shows Found ({parsedData.aiAnalysis?.shows?.length || 0})
                     </Typography>
                     <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
-                      {parsedData.aiAnalysis.shows.map((show, index) => (
+                      {parsedData.aiAnalysis?.shows?.map((show, index) => (
                         <Card
                           key={index}
                           variant="outlined"
@@ -1214,15 +1214,15 @@ const SubmitShowPage: React.FC = observer(() => {
           </Typography>
           <Box component="ul" sx={{ pl: 2, mb: 2 }}>
             <Typography component="li" variant="body2" gutterBottom>
-              <strong>1 Vendor:</strong> {parsedData?.aiAnalysis.vendor.name}
+              <strong>1 Vendor:</strong> {parsedData?.aiAnalysis?.vendor?.name || 'Unknown'}
             </Typography>
             <Typography component="li" variant="body2" gutterBottom>
-              <strong>{parsedData?.aiAnalysis.djs.length} DJs/KJs:</strong>{' '}
-              {parsedData?.aiAnalysis.djs.map((dj) => dj.name).join(', ')}
+              <strong>{parsedData?.aiAnalysis?.djs?.length || 0} DJs/KJs:</strong>{' '}
+              {parsedData?.aiAnalysis?.djs?.map((dj) => dj.name).join(', ') || 'None'}
             </Typography>
             <Typography component="li" variant="body2">
-              <strong>{parsedData?.aiAnalysis.shows.length} Shows:</strong> All scheduled karaoke
-              events
+              <strong>{parsedData?.aiAnalysis?.shows?.length || 0} Shows:</strong> All scheduled
+              karaoke events
             </Typography>
           </Box>
           <Alert severity="info" sx={{ mt: 2 }}>

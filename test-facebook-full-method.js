@@ -11,7 +11,7 @@ async function testFullParseFacebookPage() {
   try {
     // Create NestJS application context
     const app = await NestFactory.createApplicationContext(AppModule);
-    
+
     const { FacebookParserService } = require('./dist/parser/facebook-parser.service');
     const facebookParserService = app.get(FacebookParserService);
 
@@ -34,7 +34,6 @@ async function testFullParseFacebookPage() {
     await app.close();
 
     console.log('\n🎉 FULL METHOD TEST SUCCESSFUL!');
-
   } catch (error) {
     console.error('\n❌ Full method test failed:', error.message);
     console.error('Stack:', error.stack);

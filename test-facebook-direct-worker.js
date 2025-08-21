@@ -11,12 +11,12 @@ async function testFacebookWorkerDirect() {
   try {
     // Create NestJS application context for proper dependency injection
     const app = await NestFactory.createApplicationContext(AppModule);
-    
+
     // Get services using proper injection tokens
     const { FacebookParserService } = require('./dist/parser/facebook-parser.service');
     const { ParsedSchedule, ParseStatus } = require('./dist/parser/parsed-schedule.entity');
     const { getRepositoryToken } = require('@nestjs/typeorm');
-    
+
     const facebookParserService = app.get(FacebookParserService);
     const parsedScheduleRepository = app.get(getRepositoryToken(ParsedSchedule));
 
@@ -25,10 +25,10 @@ async function testFacebookWorkerDirect() {
 
     // Test the worker-based method directly (bypasses login requirement)
     console.log('🧵 Testing worker thread method directly...');
-    
+
     // First initialize browser
     await facebookParserService.initializeBrowser();
-    
+
     // Call the worker method directly
     const workerResults = await facebookParserService.extractGroupMediaDataWithWorker(testUrl);
 
@@ -55,10 +55,10 @@ async function testFacebookWorkerDirect() {
     }
 
     console.log('\n🧪 Worker method test completed successfully!');
-    
+
     // Now test creating parsed_schedule manually
     console.log('\n💾 Testing manual parsed_schedule creation...');
-    
+
     const parsedSchedule = parsedScheduleRepository.create({
       url: testUrl,
       rawData: {
@@ -76,7 +76,7 @@ async function testFacebookWorkerDirect() {
     });
 
     const savedSchedule = await parsedScheduleRepository.save(parsedSchedule);
-    
+
     console.log(`✅ Successfully created parsed_schedule record! ID: ${savedSchedule.id}`);
     console.log(`   - URL: ${savedSchedule.url}`);
     console.log(`   - Status: ${savedSchedule.status}`);
@@ -86,7 +86,6 @@ async function testFacebookWorkerDirect() {
     // Cleanup
     await facebookParserService.cleanup();
     await app.close();
-
   } catch (error) {
     console.error('\n❌ Test failed:', error.message);
     console.error('Stack:', error.stack);

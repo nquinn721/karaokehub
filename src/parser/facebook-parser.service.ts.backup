@@ -1,0 +1,343 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import * as puppeteer from 'puppeteer';
+import * as fs from 'fs';
+import * as path from 'path';
+import { Worker } from 'worker_threads';
+import { KaraokeWebSocketGateway } from '../websocket/websocket.gateway';
+import { ParsedSchedule, ParseStatus } from './parsed-schedule.entity';
+import { UrlToParse } from './url-to-parse.entity';
+import type { 
+  ParsedFacebookData, 
+  ImageUrlPair, 
+  WorkerResult,
+  ImageWorkerMessage,
+  ValidationWorkerMessage 
+} from './worker-types';
+
+@Injectable()
+export class FacebookParserService {
+  private readonly logger = new Logger(FacebookParserService.name);
+  private currentParsingLogs: Array<{
+    timestamp: Date;
+    level: 'info' | 'success' | 'warning' | 'error';
+    message: string;
+  }> = [];
+
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly webSocketGateway: KaraokeWebSocketGateway,
+    @InjectRepository(ParsedSchedule)
+    private parsedScheduleRepository: Repository<ParsedSchedule>,
+    @InjectRepository(UrlToParse)
+    private urlToParseRepository: Repository<UrlToParse>,
+  ) {}
+
+  /**
+   * Main Facebook parsing entry point - follows the new clean architecture
+   */
+  async parseAndSaveFacebookPageClean(url: string): Promise<{
+    parsedScheduleId: string;
+    data: ParsedFacebookData;
+    stats: any;
+  }> {
+    this.currentParsingLogs = [];
+    const startTime = Date.now();
+
+    this.logAndBroadcast(`í¾¯ Starting clean Facebook parsing for: ${url}`);
+
+    try {
+      // Step 1: Extract image URLs from Facebook page
+      this.logAndBroadcast('í³¸ Step 1: Extracting images from Facebook page...');
+      const imageUrls = await this.extractImageUrls(url);
+      this.logAndBroadcast(`Found ${imageUrls.length} images to process`);
+
+      // Step 2: Process images using workers for parallel processing
+      this.logAndBroadcast('í´– Step 2: Processing images with AI analysis...');
+      const processedImages = await this.processImagesWithWorkers(imageUrls);
+      this.logAndBroadcast(`Processed ${processedImages.length} images successfully`);
+
+      // Step 3: Validate and aggregate data using validation worker
+      this.logAndBroadcast('âœ… Step 3: Validating and aggregating event data...');
+      const finalData = await this.validateAndAggregateData(processedImages, url);
+      this.logAndBroadcast('Data validation and aggregation complete');
+
+      // Step 4: Save to database
+      this.logAndBroadcast('í²¾ Step 4: Saving to database...');
+      const savedSchedule = await this.saveToDatabase(finalData, url);
+
+      const endTime = Date.now();
+      const duration = (endTime - startTime) / 1000;
+
+      this.logAndBroadcast(`âœ… Clean parsing completed in ${duration.toFixed(2)}s`, 'success');
+
+      return {
+        parsedScheduleId: savedSchedule.id,
+        data: finalData,
+        stats: {
+          shows: finalData.shows.length,
+          djs: finalData.djs.length,
+          vendors: finalData.vendors.length,
+          processingTime: duration,
+          imageCount: imageUrls.length,
+        },
+      };
+    } catch (error) {
+      const endTime = Date.now();
+      const duration = (endTime - startTime) / 1000;
+
+      this.logAndBroadcast(
+        `í²¥ Clean parsing failed after ${duration.toFixed(2)}s: ${error.message}`,
+        'error',
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Step 1: Extract image URLs from Facebook page using Puppeteer
+   */
+  private async extractImageUrls(url: string): Promise<ImageUrlPair[]> {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor'
+      ]
+    });
+
+    try {
+      const page = await browser.newPage();
+      
+      // Set a realistic user agent
+      await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      );
+
+      // Navigate to the page
+      await page.goto(url, { 
+        waitUntil: 'networkidle2',
+        timeout: 30000 
+      });
+
+      // Wait for images to load
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Extract image URLs
+      const imageUrls = await page.evaluate(() => {
+        const images: ImageUrlPair[] = [];
+        const imgElements = document.querySelectorAll('img');
+        
+        imgElements.forEach((img, index) => {
+          const src = img.src || img.getAttribute('data-src');
+          if (src && src.startsWith('http') && (src.includes('facebook') || src.includes('fbcdn'))) {
+            // Filter for images that might contain event information
+            const alt = img.alt || '';
+            const parent = img.parentElement?.textContent || '';
+            
+            // Look for keywords that suggest this might be an event image
+            const hasEventKeywords = /karaoke|dj|event|show|music|venue|bar|club|restaurant/i.test(alt + parent);
+            
+            if (hasEventKeywords || index < 10) { // Take first 10 regardless
+              images.push({
+                url: src,
+                index: index,
+                alt: alt,
+                context: parent.substring(0, 200) // First 200 chars of context
+              });
+            }
+          }
+        });
+        
+        return images;
+      });
+
+      return imageUrls.slice(0, 20); // Limit to 20 images max
+      
+    } finally {
+      await browser.close();
+    }
+  }
+
+  /**
+   * Step 2: Process images using worker threads for parallel AI analysis
+   */
+  private async processImagesWithWorkers(imageUrls: ImageUrlPair[]): Promise<WorkerResult[]> {
+    const batchSize = 3; // Process 3 images at a time to avoid rate limits
+    const results: WorkerResult[] = [];
+
+    for (let i = 0; i < imageUrls.length; i += batchSize) {
+      const batch = imageUrls.slice(i, i + batchSize);
+      this.logAndBroadcast(`Processing image batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(imageUrls.length / batchSize)}`);
+
+      const batchPromises = batch.map(imageUrl => this.processImageWithWorker(imageUrl));
+      const batchResults = await Promise.allSettled(batchPromises);
+
+      batchResults.forEach((result, batchIndex) => {
+        if (result.status === 'fulfilled' && result.value) {
+          results.push(result.value);
+        } else {
+          this.logAndBroadcast(
+            `Failed to process image ${i + batchIndex + 1}: ${result.status === 'rejected' ? result.reason : 'Unknown error'}`,
+            'warning'
+          );
+        }
+      });
+
+      // Brief pause between batches to respect rate limits
+      if (i + batchSize < imageUrls.length) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Process a single image using the TypeScript image worker
+   */
+  private async processImageWithWorker(imageUrl: ImageUrlPair): Promise<WorkerResult | null> {
+    return new Promise((resolve, reject) => {
+      const workerPath = path.join(__dirname, 'facebook-image-worker.js');
+      const worker = new Worker(workerPath);
+
+      const timeout = setTimeout(() => {
+        worker.terminate();
+        resolve(null); // Don't reject, just return null for failed images
+      }, 30000); // 30 second timeout per image
+
+      worker.on('message', (message: ImageWorkerMessage) => {
+        clearTimeout(timeout);
+        worker.terminate();
+        
+        if (message.type === 'success') {
+          resolve(message.result);
+        } else {
+          this.logAndBroadcast(`Image worker error: ${message.error}`, 'warning');
+          resolve(null);
+        }
+      });
+
+      worker.on('error', (error) => {
+        clearTimeout(timeout);
+        worker.terminate();
+        this.logAndBroadcast(`Worker error: ${error.message}`, 'warning');
+        resolve(null);
+      });
+
+      // Send image data to worker
+      worker.postMessage({
+        imageUrl: imageUrl,
+        geminiApiKey: this.configService.get<string>('GEMINI_API_KEY'),
+      });
+    });
+  }
+
+  /**
+   * Step 3: Validate and aggregate data using validation worker
+   */
+  private async validateAndAggregateData(
+    processedImages: WorkerResult[], 
+    originalUrl: string
+  ): Promise<ParsedFacebookData> {
+    return new Promise((resolve, reject) => {
+      const workerPath = path.join(__dirname, 'facebook-validation-worker.js');
+      const worker = new Worker(workerPath);
+
+      const timeout = setTimeout(() => {
+        worker.terminate();
+        reject(new Error('Validation worker timeout'));
+      }, 60000); // 60 second timeout for validation
+
+      worker.on('message', (message: ValidationWorkerMessage) => {
+        clearTimeout(timeout);
+        worker.terminate();
+        
+        if (message.type === 'success') {
+          resolve(message.result);
+        } else {
+          reject(new Error(`Validation worker error: ${message.error}`));
+        }
+      });
+
+      worker.on('error', (error) => {
+        clearTimeout(timeout);
+        worker.terminate();
+        reject(new Error(`Validation worker error: ${error.message}`));
+      });
+
+      // Send processed data to validation worker
+      worker.postMessage({
+        processedImages: processedImages,
+        originalUrl: originalUrl,
+        geminiApiKey: this.configService.get<string>('GEMINI_API_KEY'),
+      });
+    });
+  }
+
+  /**
+   * Step 4: Save validated data to database
+   */
+  private async saveToDatabase(data: ParsedFacebookData, url: string): Promise<ParsedSchedule> {
+    const schedule = new ParsedSchedule();
+    schedule.url = url;
+    schedule.status = ParseStatus.PENDING;
+    schedule.rawData = data;
+    schedule.aiAnalysis = data;
+    schedule.parsingLogs = this.currentParsingLogs;
+
+    return await this.parsedScheduleRepository.save(schedule);
+  }
+
+  /**
+   * Enhanced logging method that logs both to console and broadcasts to WebSocket clients
+   */
+  private logAndBroadcast(
+    message: string,
+    level: 'info' | 'success' | 'warning' | 'error' = 'info',
+  ) {
+    // Log to console using NestJS logger
+    switch (level) {
+      case 'success':
+      case 'info':
+        this.logger.log(message);
+        break;
+      case 'warning':
+        this.logger.warn(message);
+        break;
+      case 'error':
+        this.logger.error(message);
+        break;
+    }
+
+    // Add to current parsing logs
+    this.currentParsingLogs.push({
+      timestamp: new Date(),
+      level,
+      message,
+    });
+
+    // Broadcast to WebSocket clients if available
+    try {
+      this.webSocketGateway.server.emit('facebook-parsing-log', {
+        timestamp: new Date(),
+        level,
+        message,
+      });
+    } catch (error) {
+      this.logger.warn(`WebSocket broadcast failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Legacy method for backward compatibility (if needed)
+   */
+  async parseAndSaveFacebookPage(url: string) {
+    return this.parseAndSaveFacebookPageClean(url);
+  }
+}
