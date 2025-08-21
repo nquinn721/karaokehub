@@ -7,6 +7,14 @@ export class ConfigController {
 
   @Get('client')
   getClientConfig() {
+    console.log('HI');
+    console.log('HI');
+    console.log('HI');
+    console.log('HI');
+    console.log('HI');
+    console.log('HI');
+    console.log('HI');
+    console.log('HI');
     return {
       googleMapsApiKey: this.configService.get<string>('GOOGLE_MAPS_API_KEY'),
       // Add other client-side config here as needed

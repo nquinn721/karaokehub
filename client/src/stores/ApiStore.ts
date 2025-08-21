@@ -550,9 +550,12 @@ class ApiStore {
       byId: (id: string) => `/shows/${id}`,
       byVendor: (vendorId: string) => `/shows/vendor/${vendorId}`,
       byDJ: (djId: string) => `/shows/dj/${djId}`,
+      byVenue: (venueName: string) => `/shows/venue/${encodeURIComponent(venueName)}`,
       byDay: (day: string) => `/shows?day=${day}`,
       nearby: (centerLat: number, centerLng: number, radius: number = 35, day?: string) =>
         `/shows/nearby?centerLat=${centerLat}&centerLng=${centerLng}&radius=${radius}${day ? `&day=${day}` : ''}`,
+      search: (query: string, limit: number = 20) =>
+        `/shows/search?query=${encodeURIComponent(query)}&limit=${limit}`,
       citySummary: (day?: string) => `/shows/city-summary${day ? `?day=${day}` : ''}`,
     },
 

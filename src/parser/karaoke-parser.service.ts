@@ -1865,7 +1865,10 @@ ${htmlContent}`;
       vendor: parsedData.vendor || this.generateVendorFromUrl(url),
       djs: Array.isArray(parsedData.djs) ? parsedData.djs : [],
       shows: Array.isArray(parsedData.shows)
-        ? this.normalizeShowTimes(parsedData.shows).map((show) => ({ ...show, source: url }))
+        ? this.normalizeShowTimes(parsedData.shows).map((show) => ({
+            ...show,
+            source: show.source || url, // Only set page URL as fallback if show doesn't have its own source
+          }))
         : [],
       rawData: {
         url,
@@ -1890,8 +1893,9 @@ ${htmlContent}`;
         djName: show.djName,
         city: show.city,
         state: show.state,
+        source: show.source?.substring(0, 80) + '...', // Include source URL for debugging
       }));
-      this.logAndBroadcast(`Sample shows: ${JSON.stringify(sampleShows)}`, 'info');
+      this.logAndBroadcast(`Sample shows: ${JSON.stringify(sampleShows, null, 2)}`, 'info');
     }
 
     // Log sample DJs for debugging
@@ -2347,18 +2351,16 @@ ${htmlContent}`;
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
-    // Transform the data to include extracted shows from rawData
+    // Transform the data to include extracted shows from aiAnalysis
     return sortedSchedules.map((schedule) => {
-      const rawData = schedule.rawData || {};
-      const shows = rawData.shows || [];
-
-      // Extract source URL from rawData
-      const source = rawData.source || schedule.url;
+      console.log(JSON.stringify(schedule, null, 2));
+      const aiAnalysis = schedule.aiAnalysis || {};
+      const shows = aiAnalysis.shows || [];
 
       // Add source and other metadata to each show
       const transformedShows = shows.map((show) => ({
         ...show,
-        source: source,
+        source: show.source || schedule.url, // Preserve individual CDN URLs, fallback to group URL
         scheduleId: schedule.id,
         parsedAt: schedule.createdAt,
       }));
@@ -2366,15 +2368,18 @@ ${htmlContent}`;
       return {
         id: schedule.id,
         url: schedule.url,
-        source: source,
+        source: schedule.url, // Use schedule URL as the source for the overall schedule
         status: schedule.status,
         createdAt: schedule.createdAt,
         updatedAt: schedule.updatedAt,
         vendorId: schedule.vendorId,
-        shows: transformedShows,
-        stats: rawData.stats || { showsFound: shows.length, djsFound: 0 },
-        vendor: rawData.vendor,
-        vendors: rawData.vendors,
+        shows: shows,
+        stats: aiAnalysis.stats || { showsFound: shows.length, djsFound: 0 },
+        vendor: aiAnalysis.vendor,
+        vendors: aiAnalysis.vendors,
+        djs: aiAnalysis.djs,
+        venues: aiAnalysis.venues,
+        aiAnalysis: aiAnalysis, // Include the full aiAnalysis for the review modal
         parsingLogs: schedule.parsingLogs,
       };
     });

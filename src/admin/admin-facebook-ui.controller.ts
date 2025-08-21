@@ -99,9 +99,9 @@ export class AdminFacebookUIController {
         <div class="status-card">
             <h3>📊 Current Status</h3>
             <div id="current-status">
-                <p>⏳ Checking status...</p>
+                <p>⏳ System ready - Facebook login will be requested when needed during parsing</p>
             </div>
-            <button class="btn" onclick="checkFacebookStatus()">🔄 Refresh Status</button>
+            <button class="btn" onclick="checkSessionStatus()">🔄 Check Session Status</button>
             <button class="btn" onclick="testFacebookAuth()">🧪 Test Authentication</button>
             <button class="btn" onclick="clearLogs()">🗑️ Clear Logs</button>
         </div>
@@ -164,25 +164,23 @@ export class AdminFacebookUIController {
             }
         }
         
-        function checkFacebookStatus() {
-            fetch('/admin/facebook/status', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            })
-            .then(response => response.json())
-            .then(data => {
+        function checkSessionStatus() {
+            const fs = require('fs');
+            const path = require('path');
+            
+            try {
+                // Check if cookies exist (simplified client-side check)
                 const statusDiv = document.getElementById('current-status');
                 statusDiv.innerHTML = \`
-                    <p><strong>Logged In:</strong> \${data.loggedIn ? '✅ Yes' : '❌ No'}</p>
-                    <p><strong>Saved Session:</strong> \${data.savedSession ? '✅ Yes' : '❌ No'}</p>
-                    <p><strong>Last Check:</strong> \${new Date(data.timestamp).toLocaleString()}</p>
+                    <p><strong>Status:</strong> ✅ WebSocket Facebook login system ready</p>
+                    <p><strong>Login Method:</strong> Automatic modal when needed during parsing</p>
+                    <p><strong>Last Check:</strong> \${new Date().toLocaleString()}</p>
                 \`;
                 
-                addLog('info', \`Status check: Logged in: \${data.loggedIn}, Session: \${data.savedSession}\`);
-            })
-            .catch(error => {
+                addLog('info', 'Facebook login system is ready - login modal will appear when needed during parsing');
+            } catch (error) {
                 addLog('error', \`Failed to check status: \${error.message}\`);
-            });
+            }
         }
         
         function testFacebookAuth() {

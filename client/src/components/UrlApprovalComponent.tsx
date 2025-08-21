@@ -141,7 +141,7 @@ const UrlApprovalComponent = observer(() => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {unapprovedUrls.map((urlItem) => (
+                {(Array.isArray(unapprovedUrls) ? unapprovedUrls : []).map((urlItem) => (
                   <TableRow key={urlItem.id} hover>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

@@ -41,6 +41,7 @@ export class AdminService {
       totalDJs,
       totalFavorites,
       pendingReviews,
+      totalFeedback,
     ] = await Promise.all([
       this.userRepository.count(),
       this.userRepository.count({ where: { isActive: true } }),
@@ -50,6 +51,7 @@ export class AdminService {
       this.djRepository.count(),
       this.favoriteRepository.count(),
       this.parsedScheduleRepository.count({ where: { status: ParseStatus.PENDING_REVIEW } }),
+      this.feedbackRepository.count(),
     ]);
 
     // Get growth statistics (last 30 days)
@@ -80,6 +82,7 @@ export class AdminService {
       totalDJs,
       totalFavorites,
       pendingReviews,
+      totalFeedback,
       growth: {
         newUsersLast30Days,
         newVendorsLast30Days,

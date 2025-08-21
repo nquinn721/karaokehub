@@ -14,6 +14,8 @@ export interface ImageDataPair {
   alt?: string;
   context?: string;
   originalUrl?: string;
+  isLargeImage?: boolean; // Flag for memory optimization
+  compressionHint?: 'moderate' | 'aggressive'; // Hint for processing optimization
 }
 
 export interface WorkerResult {
@@ -85,6 +87,7 @@ export interface ParsedFacebookData {
   }>;
   rawData?: {
     url: string;
+    source?: string;
     title: string;
     content: string;
     parsedAt: Date;
@@ -102,6 +105,9 @@ export interface ImageWorkerMessage {
   result?: WorkerResult;
   data?: WorkerResult[] | { message: string; level?: 'info' | 'warning' | 'error' };
   error?: string;
+  // Log message properties
+  message?: string;
+  level?: 'info' | 'success' | 'warning' | 'error';
 }
 
 export interface ValidationWorkerData {

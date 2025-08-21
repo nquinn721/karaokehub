@@ -119,6 +119,18 @@ export class ParserStore {
       },
     );
 
+    // Listen for Facebook parser logs (from the new Facebook parser service)
+    socket.on(
+      'facebook-parsing-log',
+      (logEntry: {
+        message: string;
+        timestamp: Date;
+        level: 'info' | 'success' | 'warning' | 'error';
+      }) => {
+        this.addLogEntry(logEntry.message, logEntry.level || 'info');
+      },
+    );
+
     // Listen for log expiration events to remove logs after 10 seconds
     socket.on('parser-log-expired', (_logId: string) => {
       // The logs are already managed by the 10-second auto-expiration in the backend
@@ -679,8 +691,14 @@ export class ParserStore {
       this.setError(null);
 
       const response = await apiStore.get('/parser/urls/unapproved');
+      // Normalize to array in case the transport layer wraps the result
+      const data = Array.isArray(response)
+        ? response
+        : Array.isArray((response as any)?.data)
+          ? (response as any).data
+          : [];
 
-      return { success: true, data: response };
+      return { success: true, data };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to fetch unapproved URLs';
       this.setError(errorMessage);

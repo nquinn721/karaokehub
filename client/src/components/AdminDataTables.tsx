@@ -41,13 +41,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import type {
-  AdminDJ,
-  AdminFeedback,
-  AdminShow,
-  AdminUser,
-  AdminVenue,
-} from '@stores/AdminStore';
+import type { AdminDJ, AdminFeedback, AdminShow, AdminUser, AdminVenue } from '@stores/AdminStore';
 import { adminStore, uiStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
@@ -195,6 +189,11 @@ const AdminDataTables: React.FC = observer(() => {
   };
 
   useEffect(() => {
+    // Load statistics to show counts in tabs
+    if (!adminStore.statistics) {
+      adminStore.fetchStatistics();
+    }
+
     // Load initial data based on current tab
     const tables = ['users', 'venues', 'shows', 'djs', 'feedback'];
     const currentTable = tables[tabValue];
@@ -265,11 +264,26 @@ const AdminDataTables: React.FC = observer(() => {
     <Paper elevation={2} sx={{ borderRadius: 2, overflow: 'hidden' }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
-          <Tab icon={<FontAwesomeIcon icon={faUsers} />} label="Users" />
-          <Tab icon={<FontAwesomeIcon icon={faMapMarkerAlt} />} label="Venues" />
-          <Tab icon={<FontAwesomeIcon icon={faMusic} />} label="Shows" />
-          <Tab icon={<FontAwesomeIcon icon={faMicrophone} />} label="DJs" />
-          <Tab icon={<FontAwesomeIcon icon={faComment} />} label="Feedback" />
+          <Tab
+            icon={<FontAwesomeIcon icon={faUsers} />}
+            label={`Users${adminStore.statistics?.totalUsers ? ` (${adminStore.statistics.totalUsers})` : ''}`}
+          />
+          <Tab
+            icon={<FontAwesomeIcon icon={faMapMarkerAlt} />}
+            label={`Venues${adminStore.statistics?.totalVendors ? ` (${adminStore.statistics.totalVendors})` : ''}`}
+          />
+          <Tab
+            icon={<FontAwesomeIcon icon={faMusic} />}
+            label={`Shows${adminStore.statistics?.totalShows ? ` (${adminStore.statistics.totalShows})` : ''}`}
+          />
+          <Tab
+            icon={<FontAwesomeIcon icon={faMicrophone} />}
+            label={`DJs${adminStore.statistics?.totalDJs ? ` (${adminStore.statistics.totalDJs})` : ''}`}
+          />
+          <Tab
+            icon={<FontAwesomeIcon icon={faComment} />}
+            label={`Feedback${adminStore.statistics?.totalFeedback ? ` (${adminStore.statistics.totalFeedback})` : ''}`}
+          />
         </Tabs>
       </Box>
 
@@ -809,13 +823,7 @@ const AdminDataTables: React.FC = observer(() => {
                 }
 
                 // Refresh data
-                const tables = [
-                  'users',
-                  'venues',
-                  'shows',
-                  'djs',
-                  'feedback',
-                ];
+                const tables = ['users', 'venues', 'shows', 'djs', 'feedback'];
                 const currentTable = tables[tabValue];
                 if (currentTable) {
                   fetchData(

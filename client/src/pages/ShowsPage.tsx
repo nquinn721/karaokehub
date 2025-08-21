@@ -1,5 +1,6 @@
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
+  faCalendarAlt,
   faClock,
   faHeart,
   faMapMarkerAlt,
@@ -9,7 +10,6 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  Autocomplete,
   Box,
   Chip,
   CircularProgress,
@@ -17,16 +17,19 @@ import {
   List,
   ListItem,
   ListItemButton,
-  TextField,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BottomSheet } from '../components/BottomSheet';
 import { DayOfWeek } from '../components/DayPicker/DayPicker';
 import MapComponent from '../components/MapComponent';
+import { CombinedScheduleModal } from '../components/modals/CombinedScheduleModal';
+import { DJScheduleModal } from '../components/modals/DJScheduleModal';
+import { VenueScheduleModal } from '../components/modals/VenueScheduleModal';
+import { ShowSearch } from '../components/search/ShowSearch';
 import { SEO } from '../components/SEO';
 import { authStore, favoriteStore, showStore } from '../stores/index';
 import { mapStore } from '../stores/MapStore';
@@ -35,6 +38,14 @@ import { Show } from '../stores/ShowStore';
 const ShowsPage: React.FC = observer(() => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // Modal states
+  const [djModalOpen, setDjModalOpen] = useState(false);
+  const [venueModalOpen, setVenueModalOpen] = useState(false);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [selectedDJ, setSelectedDJ] = useState<{ id: string; name: string } | null>(null);
+  const [selectedVenue, setSelectedVenue] = useState<string | null>(null);
+  const [selectedShow, setSelectedShow] = useState<Show | null>(null);
 
   // Initialize stores only (no duplicate API calls)
   useEffect(() => {
@@ -69,6 +80,41 @@ const ShowsPage: React.FC = observer(() => {
     }
   };
 
+  // Handle show selection from search
+  const handleShowSelected = (show: Show) => {
+    mapStore.selectShowFromSidebar(show);
+  };
+
+  // Handle DJ click to show schedule
+  const handleDJClick = (event: React.MouseEvent, show: Show) => {
+    event.stopPropagation();
+    if (show.dj?.id && show.dj?.name) {
+      setSelectedDJ({ id: show.dj.id, name: show.dj.name });
+      setDjModalOpen(true);
+    }
+  };
+
+  // Handle venue click to show schedule
+  const handleVenueClick = (event: React.MouseEvent, show: Show) => {
+    event.stopPropagation();
+    if (show.venue) {
+      setSelectedVenue(show.venue);
+      setVenueModalOpen(true);
+    }
+  };
+
+  // Handle schedule button click to show combined schedule modal
+  const handleScheduleClick = (show: Show) => {
+    setSelectedShow(show);
+    setScheduleModalOpen(true);
+  };
+
+  // Handle schedule modal opening from map popup
+  const handleScheduleModalOpen = (show: Show) => {
+    setSelectedShow(show);
+    setScheduleModalOpen(true);
+  };
+
   return (
     <>
       <SEO
@@ -97,7 +143,7 @@ const ShowsPage: React.FC = observer(() => {
             height: { xs: '100%', md: '100%' },
           }}
         >
-          <MapComponent />
+          <MapComponent onScheduleModalOpen={handleScheduleModalOpen} />
         </Box>
 
         {/* Bottom Sheet / Sidebar for Shows and Filters */}
@@ -221,17 +267,13 @@ const ShowsPage: React.FC = observer(() => {
                 </Box>
               </Box>
 
-              {/* Vendor Filter */}
+              {/* Search */}
               <Box sx={{ mb: 2 }}>
-                <Autocomplete
+                <ShowSearch
+                  onSelectShow={handleShowSelected}
+                  placeholder="Search venues, DJs, locations..."
                   size="small"
-                  options={showStore.uniqueVendors}
-                  value={showStore.vendorFilter}
-                  onChange={(_, value) => showStore.setVendorFilter(value || null)}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Filter by vendor" variant="outlined" />
-                  )}
-                  clearOnEscape
+                  shows={showStore.filteredShows}
                 />
               </Box>
             </Box>
@@ -358,6 +400,7 @@ const ShowsPage: React.FC = observer(() => {
                                     <Typography
                                       variant="subtitle1"
                                       fontWeight={600}
+                                      onClick={(e) => handleVenueClick(e, show)}
                                       sx={{
                                         fontSize: { xs: '0.95rem', md: '1.1rem' },
                                         lineHeight: 1.2,
@@ -365,6 +408,13 @@ const ShowsPage: React.FC = observer(() => {
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
                                         whiteSpace: 'nowrap',
+                                        cursor: show.venue ? 'pointer' : 'default',
+                                        '&:hover': show.venue
+                                          ? {
+                                              color: theme.palette.primary.main,
+                                              textDecoration: 'underline',
+                                            }
+                                          : {},
                                       }}
                                     >
                                       {show.venue || show.vendor?.name || 'Unknown Venue'}
@@ -414,9 +464,17 @@ const ShowsPage: React.FC = observer(() => {
                                         <Typography
                                           variant="body2"
                                           color="text.secondary"
+                                          onClick={(e) => handleDJClick(e, show)}
                                           sx={{
                                             fontSize: { xs: '0.75rem', md: '0.8rem' },
                                             fontWeight: 500,
+                                            cursor: show.dj?.name ? 'pointer' : 'default',
+                                            '&:hover': show.dj?.name
+                                              ? {
+                                                  color: theme.palette.primary.main,
+                                                  textDecoration: 'underline',
+                                                }
+                                              : {},
                                           }}
                                         >
                                           {show.dj?.name || 'Unknown Host'}
@@ -513,31 +571,56 @@ const ShowsPage: React.FC = observer(() => {
                                     </Box>
                                   </Box>
 
-                                  {/* Favorite button */}
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      showStore.handleFavoriteToggle(show);
-                                    }}
-                                    sx={{
-                                      color: isFavorited
-                                        ? theme.palette.error.main
-                                        : theme.palette.text.disabled,
-                                      width: { xs: '36px', md: '40px' },
-                                      height: { xs: '36px', md: '40px' },
-                                      opacity: authStore.isAuthenticated ? 1 : 0.6,
-                                      '&:hover': {
-                                        color: theme.palette.error.main,
-                                        backgroundColor: theme.palette.error.main + '10',
-                                      },
-                                    }}
-                                  >
-                                    <FontAwesomeIcon
-                                      icon={isFavorited ? faHeart : faHeartRegular}
-                                      style={{ fontSize: '16px' }}
-                                    />
-                                  </IconButton>
+                                  {/* Action buttons */}
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                    {/* Schedule button */}
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleScheduleClick(show);
+                                      }}
+                                      sx={{
+                                        color: theme.palette.primary.main,
+                                        width: { xs: '32px', md: '36px' },
+                                        height: { xs: '32px', md: '36px' },
+                                        '&:hover': {
+                                          backgroundColor: theme.palette.primary.main + '10',
+                                        },
+                                      }}
+                                    >
+                                      <FontAwesomeIcon
+                                        icon={faCalendarAlt}
+                                        style={{ fontSize: '14px' }}
+                                      />
+                                    </IconButton>
+
+                                    {/* Favorite button */}
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        showStore.handleFavoriteToggle(show);
+                                      }}
+                                      sx={{
+                                        color: isFavorited
+                                          ? theme.palette.error.main
+                                          : theme.palette.text.disabled,
+                                        width: { xs: '32px', md: '36px' },
+                                        height: { xs: '32px', md: '36px' },
+                                        opacity: authStore.isAuthenticated ? 1 : 0.6,
+                                        '&:hover': {
+                                          color: theme.palette.error.main,
+                                          backgroundColor: theme.palette.error.main + '10',
+                                        },
+                                      }}
+                                    >
+                                      <FontAwesomeIcon
+                                        icon={isFavorited ? faHeart : faHeartRegular}
+                                        style={{ fontSize: '14px' }}
+                                      />
+                                    </IconButton>
+                                  </Box>
                                 </Box>
                               </Box>
                             </ListItemButton>
@@ -674,30 +757,13 @@ const ShowsPage: React.FC = observer(() => {
                 </Box>
               </Box>
 
-              {/* Vendor Filter */}
+              {/* Search */}
               <Box sx={{ mb: 2 }}>
-                <Autocomplete
+                <ShowSearch
+                  onSelectShow={handleShowSelected}
+                  placeholder="Search venues, DJs, locations..."
                   size="small"
-                  options={showStore.uniqueVendors}
-                  value={showStore.vendorFilter}
-                  onChange={(_, value) => showStore.setVendorFilter(value || null)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Filter by vendor"
-                      variant="outlined"
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: 0, // Square corners for desktop
-                        },
-                      }}
-                    />
-                  )}
-                  renderOption={(props, option) => (
-                    <Box component="li" {...props}>
-                      <Typography variant="body2">{option}</Typography>
-                    </Box>
-                  )}
+                  shows={showStore.filteredShows}
                 />
               </Box>
             </Box>
@@ -958,14 +1024,39 @@ const ShowsPage: React.FC = observer(() => {
                                   </Box>
                                 </Box>
 
-                                {/* Favorite heart icon positioned at top right */}
+                                {/* Action buttons positioned at top right */}
                                 <Box
                                   sx={{
                                     display: 'flex',
-                                    alignItems: 'flex-start',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: 0.5,
                                     minWidth: { xs: '32px', md: '36px' },
                                   }}
                                 >
+                                  {/* Schedule button */}
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleScheduleClick(show);
+                                    }}
+                                    sx={{
+                                      color: theme.palette.primary.main,
+                                      width: { xs: '28px', md: '32px' },
+                                      height: { xs: '28px', md: '32px' },
+                                      '&:hover': {
+                                        backgroundColor: theme.palette.primary.main + '10',
+                                      },
+                                    }}
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={faCalendarAlt}
+                                      style={{ fontSize: '12px' }}
+                                    />
+                                  </IconButton>
+
+                                  {/* Favorite button */}
                                   <IconButton
                                     size="small"
                                     onClick={(e) => {
@@ -996,7 +1087,7 @@ const ShowsPage: React.FC = observer(() => {
                                           ? faHeart
                                           : faHeartRegular
                                       }
-                                      style={{ fontSize: '16px' }}
+                                      style={{ fontSize: '12px' }}
                                     />
                                   </IconButton>
                                 </Box>
@@ -1013,6 +1104,41 @@ const ShowsPage: React.FC = observer(() => {
           </Box>
         )}
       </Box>
+
+      {/* Modals */}
+      {selectedDJ && (
+        <DJScheduleModal
+          open={djModalOpen}
+          onClose={() => {
+            setDjModalOpen(false);
+            setSelectedDJ(null);
+          }}
+          djId={selectedDJ.id}
+          djName={selectedDJ.name}
+        />
+      )}
+
+      {selectedVenue && (
+        <VenueScheduleModal
+          open={venueModalOpen}
+          onClose={() => {
+            setVenueModalOpen(false);
+            setSelectedVenue(null);
+          }}
+          venueName={selectedVenue}
+        />
+      )}
+
+      {selectedShow && (
+        <CombinedScheduleModal
+          open={scheduleModalOpen}
+          onClose={() => {
+            setScheduleModalOpen(false);
+            setSelectedShow(null);
+          }}
+          show={selectedShow}
+        />
+      )}
     </>
   );
 });

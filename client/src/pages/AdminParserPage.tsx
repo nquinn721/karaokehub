@@ -937,9 +937,29 @@ const AdminParserPage: React.FC = observer(() => {
       </Grid>
 
       {/* Review Dialog */}
-      <Dialog open={reviewDialog} onClose={() => setReviewDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Review Parsed Data</DialogTitle>
-        <DialogContent>
+      <Dialog 
+        open={reviewDialog} 
+        onClose={() => setReviewDialog(false)} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          bgcolor: 'background.paper', 
+          color: 'text.primary',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          Review Parsed Data
+        </DialogTitle>
+        <DialogContent sx={{ 
+          bgcolor: 'background.paper', 
+          color: 'text.primary' 
+        }}>
           {selectedReview && (
             <Box>
               <Typography variant="h6" sx={{ mb: 2 }}>
@@ -1093,7 +1113,13 @@ const AdminParserPage: React.FC = observer(() => {
                         <List>
                           {(selectedReview.shows || selectedReview.aiAnalysis?.shows || []).map(
                             (show: any, index: number) => (
-                              <ListItem key={index} sx={{ borderBottom: '1px solid #eee', py: 2 }}>
+                              <ListItem key={index} sx={{ 
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.1)', 
+                                py: 2,
+                                bgcolor: 'rgba(255, 255, 255, 0.02)',
+                                mb: 1,
+                                borderRadius: 1
+                              }}>
                                 <ListItemText
                                   primary={
                                     <Box
@@ -1119,7 +1145,13 @@ const AdminParserPage: React.FC = observer(() => {
                                     <Box component="div" sx={{ mt: 1 }}>
                                       {/* Location & Address - with missing data highlights */}
                                       <Box
-                                        sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}
+                                        sx={{ 
+                                          mb: 1, 
+                                          p: 1, 
+                                          bgcolor: 'rgba(255, 255, 255, 0.05)', 
+                                          borderRadius: 1,
+                                          border: '1px solid rgba(255, 255, 255, 0.1)'
+                                        }}
                                       >
                                         <Typography
                                           variant="body2"
@@ -1164,7 +1196,13 @@ const AdminParserPage: React.FC = observer(() => {
 
                                       {/* Schedule Information - with missing data highlights */}
                                       <Box
-                                        sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}
+                                        sx={{ 
+                                          mb: 1, 
+                                          p: 1, 
+                                          bgcolor: 'rgba(255, 255, 255, 0.05)', 
+                                          borderRadius: 1,
+                                          border: '1px solid rgba(255, 255, 255, 0.1)'
+                                        }}
                                       >
                                         <Typography
                                           variant="body2"
@@ -1218,7 +1256,13 @@ const AdminParserPage: React.FC = observer(() => {
                                       {/* Source Information - Enhanced to show image source */}
                                       {show.source && (
                                         <Box
-                                          sx={{ mb: 1, p: 1, bgcolor: 'blue.50', borderRadius: 1 }}
+                                          sx={{ 
+                                            mb: 1, 
+                                            p: 1, 
+                                            bgcolor: 'rgba(25, 118, 210, 0.1)', 
+                                            borderRadius: 1,
+                                            border: '1px solid rgba(25, 118, 210, 0.2)'
+                                          }}
                                         >
                                           <Typography
                                             variant="body2"
@@ -1234,7 +1278,7 @@ const AdminParserPage: React.FC = observer(() => {
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 style={{
-                                                  color: '#1976d2',
+                                                  color: '#90caf9',
                                                   textDecoration: 'underline',
                                                 }}
                                               >

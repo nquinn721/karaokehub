@@ -1,4 +1,5 @@
 import {
+  faCalendarAlt,
   faClock,
   faGlobe,
   faMapMarkerAlt,
@@ -22,8 +23,15 @@ import React, { useEffect, useState } from 'react';
 import { apiStore, showStore } from '../stores';
 import { mapStore } from '../stores/MapStore';
 
+interface MapComponentProps {
+  onScheduleModalOpen?: (show: any) => void;
+}
+
 // PopupContent component for InfoWindow
-const PopupContent: React.FC<{ show: any }> = ({ show }) => {
+const PopupContent: React.FC<{ 
+  show: any; 
+  onScheduleModalOpen?: (show: any) => void;
+}> = ({ show, onScheduleModalOpen }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -182,6 +190,7 @@ const PopupContent: React.FC<{ show: any }> = ({ show }) => {
             fontStyle: 'italic',
             lineHeight: 1.3,
             mt: 1,
+            mb: 1,
             display: '-webkit-box',
             WebkitLineClamp: isMobile ? 2 : 3,
             WebkitBoxOrient: 'vertical',
@@ -191,11 +200,43 @@ const PopupContent: React.FC<{ show: any }> = ({ show }) => {
           {show.description}
         </Typography>
       )}
+
+      {/* Action Buttons */}
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 1,
+          mt: show.description ? 1 : 1.5,
+          pt: 1,
+          borderTop: `1px solid ${theme.palette.divider}`,
+        }}
+      >
+        <IconButton
+          size="small"
+          onClick={() => {
+            if (onScheduleModalOpen) {
+              onScheduleModalOpen(show);
+            } else {
+              console.log('Schedule clicked for show:', show);
+            }
+          }}
+          sx={{
+            color: theme.palette.primary.main,
+            backgroundColor: theme.palette.primary.main + '10',
+            '&:hover': {
+              backgroundColor: theme.palette.primary.main + '20',
+            },
+          }}
+        >
+          <FontAwesomeIcon icon={faCalendarAlt} style={{ fontSize: '14px' }} />
+        </IconButton>
+      </Box>
     </Box>
   );
 };
 
-const MapComponent: React.FC = observer(() => {
+const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpen }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -461,7 +502,10 @@ const MapComponent: React.FC = observer(() => {
               pixelOffset={[0, -10]}
               maxWidth={400}
             >
-              <PopupContent show={mapStore.selectedShow} />
+              <PopupContent 
+                show={mapStore.selectedShow} 
+                onScheduleModalOpen={onScheduleModalOpen}
+              />
             </InfoWindow>
           )}
         </Map>

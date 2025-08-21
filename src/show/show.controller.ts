@@ -43,9 +43,10 @@ export class ShowController {
     return this.showService.getCitySummary(day);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.showService.findOne(id);
+  @Get('search')
+  search(@Query('query') query: string, @Query('limit') limit?: string) {
+    const searchLimit = limit ? parseInt(limit) : 20;
+    return this.showService.searchShows(query, searchLimit);
   }
 
   @Get('vendor/:vendorId')
@@ -56,6 +57,29 @@ export class ShowController {
   @Get('dj/:djId')
   findByDJ(@Param('djId') djId: string) {
     return this.showService.findByDJ(djId);
+  }
+
+  @Get('venue/:venueName')
+  findByVenue(@Param('venueName') venueName: string) {
+    console.log('🏢 Venue endpoint hit with venueName:', venueName);
+    const decodedVenueName = decodeURIComponent(venueName);
+    console.log('🏢 Decoded venue name:', decodedVenueName);
+    return this.showService.findByVenue(decodedVenueName);
+  }
+
+  @Get('venue-test/:venueName')
+  testVenueRoute(@Param('venueName') venueName: string) {
+    console.log('🧪 Test venue endpoint hit with:', venueName);
+    return { 
+      message: 'Venue test route working', 
+      venueName, 
+      decoded: decodeURIComponent(venueName) 
+    };
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.showService.findOne(id);
   }
 
   @Patch(':id')

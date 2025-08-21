@@ -653,6 +653,59 @@ export class ShowStore {
       };
     }
   }
+
+  /**
+   * Search shows by venue name, vendor name, address, city, or DJ name
+   */
+  async searchShows(query: string, limit: number = 20): Promise<Show[]> {
+    if (!query || query.trim().length < 2) {
+      return [];
+    }
+
+    try {
+      this.setLoading(true);
+
+      const response = await apiStore.get(apiStore.endpoints.shows.search(query, limit));
+
+      runInAction(() => {
+        this.isLoading = false;
+      });
+
+      return response || [];
+    } catch (error: any) {
+      runInAction(() => {
+        this.isLoading = false;
+      });
+      console.error('Error searching shows:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get shows for a specific DJ for the current week
+   */
+  async getDJWeeklySchedule(djId: string): Promise<Show[]> {
+    try {
+      const response = await apiStore.get(apiStore.endpoints.shows.byDJ(djId));
+      return response || [];
+    } catch (error: any) {
+      console.error('Error fetching DJ weekly schedule:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get shows for a specific venue for the current week
+   */
+  async getVenueWeeklySchedule(venue: string): Promise<Show[]> {
+    try {
+      const response = await apiStore.get(apiStore.endpoints.shows.byVenue(venue));
+      return response || [];
+    } catch (error: any) {
+      console.error('Error fetching venue weekly schedule:', error);
+      return [];
+    }
+  }
 }
 
 export const showStore = new ShowStore();

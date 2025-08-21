@@ -8,6 +8,7 @@ export interface AdminStatistics {
   totalShows: number;
   activeShows: number;
   totalDJs: number;
+  totalFeedback: number;
   totalFavorites: number;
   pendingReviews: number;
   growth: {

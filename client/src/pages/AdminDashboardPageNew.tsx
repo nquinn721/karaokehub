@@ -1,5 +1,6 @@
 import AdminBreadcrumb from '@components/AdminBreadcrumb';
 import {
+  faComments,
   faDatabase,
   faMapMarkerAlt,
   faMusic,
@@ -170,6 +171,22 @@ const AdminDashboardPage = observer(() => {
               value={adminStore.statistics.totalShows || 0}
               icon={faMusic}
               color="warning"
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <StatCard
+              title="Total DJs"
+              value={adminStore.statistics.totalDJs || 0}
+              icon={faMusic}
+              color="primary"
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <StatCard
+              title="Feedback"
+              value={adminStore.statistics.totalFeedback || 0}
+              icon={faComments}
+              color="error"
             />
           </Grid>
         </Grid>

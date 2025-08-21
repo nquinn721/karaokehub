@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { GeocodingService } from '../geocoding/geocoding.service';
 import { DayOfWeek, Show } from './show.entity';
 
@@ -179,6 +179,72 @@ export class ShowService {
       where: { djId, isActive: true },
       relations: ['vendor', 'dj', 'favorites'],
     });
+  }
+
+  /**
+   * Normalize venue name to handle common variations
+   */
+  private normalizeVenueName(venueName: string): string[] {
+    const normalized = venueName.toLowerCase()
+      .replace(/[''"]/g, '') // Remove quotes/apostrophes
+      .replace(/&/g, 'and') // Normalize ampersands
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .trim();
+    
+    // Generate common variations
+    const variations = new Set<string>();
+    variations.add(venueName); // Original
+    variations.add(normalized); // Normalized
+    
+    // Handle specific known variations
+    if (normalized.includes('oneilly') || normalized.includes('onelly') || normalized.includes('nelly')) {
+      variations.add('oneillys sports pub');
+      variations.add('onellys sports pub and grill');
+      variations.add('o nellys sports pub and grill');
+      variations.add('oneilly\'s sports pub');
+      variations.add('o\'nelly\'s sports pub & grill');
+    }
+    
+    return Array.from(variations);
+  }
+
+  async findByVenue(venueName: string): Promise<Show[]> {
+    console.log('🏢 Service findByVenue called with:', venueName);
+    
+    // Get venue name variations
+    const venueVariations = this.normalizeVenueName(venueName);
+    console.log('🏢 Searching for venue variations:', venueVariations);
+    
+    // Search for all variations
+    const allShows = await this.showRepository
+      .createQueryBuilder('show')
+      .leftJoinAndSelect('show.vendor', 'vendor')
+      .leftJoinAndSelect('show.dj', 'dj')
+      .leftJoinAndSelect('show.favorites', 'favorites')
+      .where('show.isActive = :isActive', { isActive: true })
+      .andWhere('LOWER(show.venue) IN (:...venues)', { 
+        venues: venueVariations.map(v => v.toLowerCase()) 
+      })
+      .addOrderBy(
+        // Order by day of week (Monday=1, Tuesday=2, etc.)
+        `CASE show.day 
+          WHEN 'monday' THEN 1
+          WHEN 'tuesday' THEN 2
+          WHEN 'wednesday' THEN 3
+          WHEN 'thursday' THEN 4
+          WHEN 'friday' THEN 5
+          WHEN 'saturday' THEN 6
+          WHEN 'sunday' THEN 7
+          ELSE 8
+        END`,
+        'ASC'
+      )
+      .addOrderBy('show.startTime', 'ASC')
+      .getMany();
+    
+    console.log('🏢 Total shows found for all variations:', allShows.length);
+    
+    return allShows;
   }
 
   async findByDay(day: DayOfWeek): Promise<Show[]> {
@@ -539,6 +605,77 @@ export class ShowService {
       return citySummaries;
     } catch (error) {
       this.logger.error('Error getting city summary:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Search shows by venue name, vendor name, address, city, or DJ name with enhanced partial matching
+   */
+  async searchShows(query: string, limit: number = 20): Promise<Show[]> {
+    if (!query || query.trim().length < 1) {
+      return [];
+    }
+
+    const searchTerms = query.trim().toLowerCase().split(/\s+/);
+
+    try {
+      const shows = await this.showRepository
+        .createQueryBuilder('show')
+        .leftJoinAndSelect('show.vendor', 'vendor')
+        .leftJoinAndSelect('show.dj', 'dj')
+        .leftJoinAndSelect('show.favorites', 'favorites')
+        .where('show.isActive = :isActive', { isActive: true })
+        .andWhere(
+          new Brackets((qb) => {
+            searchTerms.forEach((term, index) => {
+              const termParam = `searchTerm${index}`;
+              const wildcardTerm = `%${term}%`;
+
+              const condition = new Brackets((subQb) => {
+                subQb
+                  .where(`LOWER(show.venue) LIKE :${termParam}`, { [termParam]: wildcardTerm })
+                  .orWhere(`LOWER(show.address) LIKE :${termParam}`, { [termParam]: wildcardTerm })
+                  .orWhere(`LOWER(show.city) LIKE :${termParam}`, { [termParam]: wildcardTerm })
+                  .orWhere(`LOWER(vendor.name) LIKE :${termParam}`, { [termParam]: wildcardTerm })
+                  .orWhere(`LOWER(dj.name) LIKE :${termParam}`, { [termParam]: wildcardTerm });
+              });
+
+              if (index === 0) {
+                qb.where(condition);
+              } else {
+                qb.andWhere(condition);
+              }
+            });
+          }),
+        )
+        .orderBy(
+          // Prioritize exact matches and better relevance
+          `CASE 
+            WHEN LOWER(show.venue) LIKE :exactVenue THEN 1
+            WHEN LOWER(dj.name) LIKE :exactDJ THEN 2
+            WHEN LOWER(vendor.name) LIKE :exactVendor THEN 3
+            WHEN LOWER(show.city) LIKE :exactCity THEN 4
+            ELSE 5
+          END`,
+          'ASC',
+        )
+        .addOrderBy('show.venue', 'ASC')
+        .addOrderBy('show.day', 'ASC')
+        .addOrderBy('show.startTime', 'ASC')
+        .setParameters({
+          exactVenue: `%${query.trim().toLowerCase()}%`,
+          exactDJ: `%${query.trim().toLowerCase()}%`,
+          exactVendor: `%${query.trim().toLowerCase()}%`,
+          exactCity: `%${query.trim().toLowerCase()}%`,
+        })
+        .take(limit)
+        .getMany();
+
+      this.logger.log(`Search for "${query}" returned ${shows.length} results`);
+      return shows;
+    } catch (error) {
+      this.logger.error('Error searching shows:', error);
       throw error;
     }
   }

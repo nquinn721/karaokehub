@@ -17,6 +17,7 @@ import {
   faExclamationTriangle,
   faEye,
   faEyeSlash,
+  faFileLines,
   faFilter,
   faGlobe,
   faHeart,
@@ -100,6 +101,7 @@ library.add(
   faInfoCircle,
   faCheckCircle,
   faTimesCircle,
+  faFileLines,
   // Brand icons
   faGoogle,
   faGithub,

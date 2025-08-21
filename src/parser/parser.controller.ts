@@ -1,4 +1,13 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Logger,
+  Param,
+  Post,
+} from '@nestjs/common';
 import { FacebookParserService } from './facebook-parser.service';
 import { KaraokeParserService } from './karaoke-parser.service';
 import { UrlToParse } from './url-to-parse.entity';
@@ -48,9 +57,9 @@ export class ParserController {
         console.log('🔍 Detected Instagram URL, using visual parsing');
         result = await this.karaokeParserService.parseInstagramWithScreenshots(body.url);
       } else if (url.includes('facebook.com') || url.includes('fb.com')) {
-        // Facebook URL - use new CLEAN Facebook parsing method
-        console.log('🔍 Detected Facebook URL, using CLEAN FacebookParserService');
-        result = await this.facebookParserService.parseAndSaveFacebookPageClean(body.url);
+        // Facebook URL - use new ULTRA CLEAN Facebook parsing method
+        console.log('🔍 Detected Facebook URL, using ULTRA CLEAN FacebookParserService');
+        result = await this.facebookParserService.parseAndSaveFacebookPageNew(body.url);
       } else {
         // Regular website - use specified method
         const parseMethod = body.parseMethod || 'html';
@@ -151,11 +160,24 @@ export class ParserController {
 
   @Get('pending-reviews')
   async getPendingReviews() {
+    // Use NestJS Logger instead of console.log
+    const logger = new Logger('ParserController');
+    logger.log('🔥🔥🔥 PENDING REVIEWS ENDPOINT HIT - REQUEST RECEIVED 🔥🔥🔥');
+    logger.log('Timestamp: ' + new Date().toISOString());
+
+    // Also keep console.log for good measure
+    console.log('🔥🔥🔥 PENDING REVIEWS ENDPOINT HIT - REQUEST RECEIVED 🔥🔥🔥');
+    console.error('🔥🔥🔥 THIS IS AN ERROR LOG - SHOULD ALWAYS SHOW 🔥🔥🔥');
+    console.warn('🔥🔥🔥 THIS IS A WARNING LOG - SHOULD ALWAYS SHOW 🔥🔥🔥');
+
     try {
       const result = await this.karaokeParserService.getPendingReviews();
+      logger.log('✅ Successfully retrieved pending reviews, count: ' + (result?.length || 0));
+      console.log('✅ Successfully retrieved pending reviews, count:', result?.length || 0);
       return result;
     } catch (error) {
-      console.error('Error getting pending reviews:', error);
+      logger.error('❌ Error getting pending reviews: ' + error);
+      console.error('❌ Error getting pending reviews:', error);
       throw new HttpException('Failed to get pending reviews', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -213,6 +235,16 @@ export class ParserController {
     } catch (error) {
       console.error('Error getting URLs:', error);
       throw new HttpException('Failed to get URLs', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Get('urls/unapproved')
+  async getUnapprovedUrls(): Promise<UrlToParse[]> {
+    try {
+      return await this.urlToParseService.findUnapproved();
+    } catch (error) {
+      console.error('Error getting unapproved URLs:', error);
+      throw new HttpException('Failed to get unapproved URLs', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
