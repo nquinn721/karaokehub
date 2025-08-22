@@ -571,7 +571,7 @@ export class FacebookParserService {
       // Send work data to worker (with base64 data instead of URL)
       worker.postMessage({
         base64Data: imageData.base64Data,
-        imageUrl: imageData.originalUrl,
+        imageUrl: imageData.largeScaleUrl, // Use enhanced quality URL, not original
         mimeType: imageData.mimeType,
         geminiApiKey: process.env.GEMINI_API_KEY || '',
         workerId,
@@ -590,17 +590,18 @@ export class FacebookParserService {
         // Replace size parameters to get larger images
         let largeUrl = originalUrl;
 
+        // Remove the stp parameter which controls thumbnail sizing (key fix!)
+        largeUrl = largeUrl.replace(/[?&]stp=[^&]*/, '');
+        
         // Remove existing size parameters
         largeUrl = largeUrl.replace(/\/s\d+x\d+\//, '/');
         largeUrl = largeUrl.replace(/&w=\d+&h=\d+/, '');
         largeUrl = largeUrl.replace(/\?w=\d+&h=\d+/, '');
 
-        // Add large size parameter
-        if (largeUrl.includes('?')) {
-          largeUrl += '&w=1080&h=1080';
-        } else {
-          largeUrl += '?w=1080&h=1080';
-        }
+        // Clean up any double ampersands or leading ampersands
+        largeUrl = largeUrl.replace(/&&+/g, '&');
+        largeUrl = largeUrl.replace(/\?&/, '?');
+        largeUrl = largeUrl.replace(/&$/, '');
 
         return largeUrl;
       }

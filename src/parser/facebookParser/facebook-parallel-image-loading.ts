@@ -48,6 +48,9 @@ function createLargeScaleUrl(originalUrl: string): string {
     if (originalUrl.includes('scontent') || originalUrl.includes('fbcdn')) {
       let largeUrl = originalUrl;
 
+      // Remove the stp parameter which controls thumbnail sizing (key fix!)
+      largeUrl = largeUrl.replace(/[?&]stp=[^&]*/, '');
+      
       // Remove existing size parameters
       largeUrl = largeUrl.replace(/\/s\d+x\d+\//, '/');
       largeUrl = largeUrl.replace(/&w=\d+&h=\d+/, '');
@@ -55,12 +58,10 @@ function createLargeScaleUrl(originalUrl: string): string {
       largeUrl = largeUrl.replace(/&width=\d+&height=\d+/, '');
       largeUrl = largeUrl.replace(/\?width=\d+&height=\d+/, '');
 
-      // Add large size parameter
-      if (largeUrl.includes('?')) {
-        largeUrl += '&w=1080&h=1080';
-      } else {
-        largeUrl += '?w=1080&h=1080';
-      }
+      // Clean up any double ampersands or leading ampersands
+      largeUrl = largeUrl.replace(/&&+/g, '&');
+      largeUrl = largeUrl.replace(/\?&/, '?');
+      largeUrl = largeUrl.replace(/&$/, '');
 
       return largeUrl;
     }

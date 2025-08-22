@@ -260,7 +260,7 @@ async function validateDataWithGemini(
     const genAI = new GoogleGenerativeAI(geminiApiKey);
     const model = genAI.getGenerativeModel({ model: getGeminiModel('worker') });
 
-    const batchSize = 5; // Process 5 shows per batch to avoid token limits
+    const batchSize = 40; // Process 40 shows per batch for optimal efficiency
     const validatedIncompleteShows: ParsedImageData[] = [];
 
     for (let i = 0; i < incompleteShows.length; i += batchSize) {
