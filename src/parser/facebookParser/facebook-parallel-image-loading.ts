@@ -49,7 +49,14 @@ function createLargeScaleUrl(originalUrl: string): string {
       let largeUrl = originalUrl;
 
       // Remove the stp parameter which controls thumbnail sizing (key fix!)
-      largeUrl = largeUrl.replace(/[?&]stp=[^&]*/, '');
+      // Handle both cases: ?stp=... (first param) and &stp=... (subsequent param)  
+      if (largeUrl.includes('?stp=')) {
+        // stp is first parameter - replace ?stp=... with ? if there are more params, or remove entirely
+        largeUrl = largeUrl.replace(/\?stp=[^&]*&/, '?').replace(/\?stp=[^&]*$/, '');
+      } else {
+        // stp is not first parameter - just remove &stp=...
+        largeUrl = largeUrl.replace(/&stp=[^&]*/, '');
+      }
       
       // Remove existing size parameters
       largeUrl = largeUrl.replace(/\/s\d+x\d+\//, '/');

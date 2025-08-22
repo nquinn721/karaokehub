@@ -122,7 +122,8 @@ INTELLIGENT GEOGRAPHIC PROCESSING:
 2. Use your knowledge of US geography to complete partial addresses
 3. If you find a venue name, try to determine its likely location based on context
 4. **VENUE NAME LOOKUP**: If you can't find a complete address but have a venue name, use your knowledge to provide the full address and coordinates for that venue
-5. For addresses, extract AND infer all possible location data:
+5. **VENUE CONTACT INFO**: For known venues, try to provide phone number and website from your knowledge
+6. For addresses, extract AND infer all possible location data:
    - Full address: "123 Main St, Columbus, OH 43215" → extract all parts
    - Partial address: "456 Elm Street, Hilliard" → infer state as "OH" 
    - City only: "downtown Columbus" → infer state: "OH", common zip: "43215"
@@ -156,8 +157,8 @@ Return JSON format:
     "lat": "latitude - PROVIDE if you know the venue's exact location",
     "lng": "longitude - PROVIDE if you know the venue's exact location",
     "day": "day of week or date if mentioned",
-    "venuePhone": "phone number if visible",
-    "venueWebsite": "website if visible"
+    "venuePhone": "phone number if visible OR looked up from venue name",
+    "venueWebsite": "website URL if visible OR looked up from venue name"
   }
 }
 
@@ -166,10 +167,10 @@ PROCESSING EXAMPLES:
 - Address "Cemetery Rd, Hilliard, OH" → city: "Hilliard", state: "OH", zip: "43026" (inferred)
 - Venue "Downtown Columbus bar" → city: "Columbus", state: "OH", zip: "43215" (inferred)
 - "Powell karaoke night" → city: "Powell", state: "OH", zip: "43065" (inferred)
-- **VENUE LOOKUP**: "Champions Grille" → lookup: address: "123 Main St, Anytown, OH 12345", lat: "40.123", lng: "-83.456"
-- **KNOWN VENUE**: "Otie's Tavern & Grille" → lookup: address: "5861 Sawmill Rd, Dublin, OH 43017", lat: "40.099", lng: "-83.114"
+- **VENUE LOOKUP**: "Champions Grille" → lookup: address: "123 Main St, Anytown, OH 12345", lat: "40.123", lng: "-83.456", phone: "(614) 555-0123", website: "championsgrille.com"
+- **KNOWN VENUE**: "Otie's Tavern & Grille" → lookup: address: "5861 Sawmill Rd, Dublin, OH 43017", lat: "40.099", lng: "-83.114", phone: "(614) 889-3030", website: "otiestavern.com"
 
-IMPORTANT: Even if location data isn't visible in the image, use your geographic knowledge to fill in what you can reasonably infer from venue names, partial addresses, or city mentions.
+IMPORTANT: Even if location data isn't visible in the image, use your geographic knowledge to fill in what you can reasonably infer from venue names, partial addresses, or city mentions. For known venues, also try to provide their phone number and website if you know them.
 
 If NO karaoke-related content is found AT ALL, return empty fields.
 Return ONLY the JSON object, no other text.`;

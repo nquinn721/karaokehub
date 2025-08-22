@@ -79,7 +79,8 @@ async function processBatchWithGemini(
     if (!show.show?.zip) missingData.push('zip');
     if (!show.show?.lat) missingData.push('lat');
     if (!show.show?.lng) missingData.push('lng');
-
+    // Phone and website are optional enhancements, not missing data
+    
     return {
       index,
       vendor: show.vendor || 'Unknown',
@@ -91,6 +92,8 @@ async function processBatchWithGemini(
       currentZip: show.show?.zip || 'MISSING',
       currentLat: show.show?.lat || 'MISSING',
       currentLng: show.show?.lng || 'MISSING',
+      currentPhone: show.show?.venuePhone || 'MISSING',
+      currentWebsite: show.show?.venueWebsite || 'MISSING',
       missingFields: missingData,
     };
   });
@@ -111,6 +114,8 @@ Show ${info.index + 1}:
 - Current Zip: ${info.currentZip}
 - Current Lat: ${info.currentLat}
 - Current Lng: ${info.currentLng}
+- Current Phone: ${info.currentPhone}
+- Current Website: ${info.currentWebsite}
 - Missing: ${info.missingFields.join(', ') || 'None'}
 `,
   )
@@ -118,11 +123,12 @@ Show ${info.index + 1}:
 
 INSTRUCTIONS:
 1. For each show, use the vendor, DJ, and show information to determine the most likely location
-2. If a venue name is mentioned, research that venue's location
+2. If a venue name is mentioned, research that venue's location AND contact information
 3. If a city/state is mentioned in the text, use that information
 4. Fill in missing location data with your best estimate
-5. Be conservative - if you're not confident, leave the field as null
-6. Return ONLY a valid JSON array with enhanced data for each show
+5. **VENUE LOOKUP**: For known venues, try to provide phone number and website from your knowledge
+6. Be conservative - if you're not confident, leave the field as null
+7. Return ONLY a valid JSON array with enhanced data for each show
 
 RETURN FORMAT (JSON only, no other text):
 [
@@ -137,7 +143,9 @@ RETURN FORMAT (JSON only, no other text):
     "city": "City name or null",
     "zip": "Zip code or null",
     "lat": latitude_number_or_null,
-    "lng": longitude_number_or_null
+    "lng": longitude_number_or_null,
+    "venuePhone": "phone number if known from venue lookup or null",
+    "venueWebsite": "website URL if known from venue lookup or null"
   }
   // ... more shows
 ]
@@ -186,6 +194,8 @@ Return ONLY the JSON array, no markdown, no explanations.`;
           zip: enhancedData.zip || originalShow.show?.zip,
           lat: enhancedData.lat || originalShow.show?.lat,
           lng: enhancedData.lng || originalShow.show?.lng,
+          venuePhone: enhancedData.venuePhone || originalShow.show?.venuePhone,
+          venueWebsite: enhancedData.venueWebsite || originalShow.show?.venueWebsite,
         },
       };
 
@@ -196,6 +206,8 @@ Return ONLY the JSON array, no markdown, no explanations.`;
       if (enhancedData.zip && !originalShow.show?.zip) enhanced.push('zip');
       if (enhancedData.lat && !originalShow.show?.lat) enhanced.push('lat');
       if (enhancedData.lng && !originalShow.show?.lng) enhanced.push('lng');
+      if (enhancedData.venuePhone && !originalShow.show?.venuePhone) enhanced.push('venuePhone');
+      if (enhancedData.venueWebsite && !originalShow.show?.venueWebsite) enhanced.push('venueWebsite');
 
       if (enhanced.length > 0) {
         sendProgress(`✅ [BATCH] Show ${i + 1}: Enhanced ${enhanced.join(', ')}`);
