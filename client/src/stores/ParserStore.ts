@@ -553,6 +553,14 @@ export class ParserStore {
       // Refresh pending reviews
       await this.fetchPendingReviews();
 
+      // Refresh statistics to update admin counts after approval
+      try {
+        const { adminStore } = await import('./AdminStore');
+        await adminStore.fetchStatistics();
+      } catch (error) {
+        console.warn('Failed to refresh statistics after approval:', error);
+      }
+
       return {
         success: true,
         message: response.data?.result?.message || response.data?.message,
@@ -577,6 +585,14 @@ export class ParserStore {
 
       // Refresh pending reviews
       await this.fetchPendingReviews();
+
+      // Refresh statistics to update admin counts after approval
+      try {
+        const { adminStore } = await import('./AdminStore');
+        await adminStore.fetchStatistics();
+      } catch (error) {
+        console.warn('Failed to refresh statistics after approval:', error);
+      }
 
       return {
         success: true,

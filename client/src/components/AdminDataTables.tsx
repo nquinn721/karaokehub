@@ -156,11 +156,33 @@ const AdminDataTables: React.FC = observer(() => {
         'success',
       );
 
+      // Refresh statistics to update tab counts
+      await adminStore.fetchStatistics();
+
       // Refresh the current tab's data
       const tables = ['users', 'venues', 'shows', 'djs', 'feedback'];
       const currentTable = tables[tabValue];
       if (currentTable) {
         fetchData(currentTable, pages[currentTable] || 0, searchTerms[currentTable] || undefined);
+      }
+
+      // If we deleted a venue, also refresh shows and djs data if they're loaded
+      // since venues can have related shows and djs
+      if (type === 'venue') {
+        if (adminStore.shows) {
+          await adminStore.fetchShows(
+            (adminStore.shows.page || 1),
+            (adminStore.shows.limit || 10),
+            searchTerms.shows || undefined
+          );
+        }
+        if (adminStore.djs) {
+          await adminStore.fetchDjs(
+            (adminStore.djs.page || 1),
+            (adminStore.djs.limit || 10),
+            searchTerms.djs || undefined
+          );
+        }
       }
     } catch (error) {
       console.error('Delete failed:', error);

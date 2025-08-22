@@ -605,6 +605,14 @@ export class FacebookParserService {
         largeUrl = largeUrl.replace(/&w=\d+&h=\d+/, '');
         largeUrl = largeUrl.replace(/\?w=\d+&h=\d+/, '');
 
+        // Remove signature parameters that become invalid after URL modification
+        largeUrl = largeUrl.replace(/&oh=[^&]*/, '');
+        largeUrl = largeUrl.replace(/\?oh=[^&]*&/, '?');
+        largeUrl = largeUrl.replace(/\?oh=[^&]*$/, '');
+        largeUrl = largeUrl.replace(/&oe=[^&]*/, '');
+        largeUrl = largeUrl.replace(/\?oe=[^&]*&/, '?');
+        largeUrl = largeUrl.replace(/\?oe=[^&]*$/, '');
+
         // Clean up any double ampersands or leading ampersands
         largeUrl = largeUrl.replace(/&&+/g, '&');
         largeUrl = largeUrl.replace(/\?&/, '?');

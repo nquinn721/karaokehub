@@ -17,7 +17,10 @@ const testUrls = [
   'https://scontent-lga3-1.xx.fbcdn.net/v/t39.30808-6/535503365_10162554191363591_7749487615012513406_n.jpg?_nc_cat=102&stp=dst-jpg_s261x260_tt6&ccb=1-7&_nc_sid=aa7b47',
   
   // Case 4: No stp parameter
-  'https://scontent-lga3-1.xx.fbcdn.net/v/t39.30808-6/535503365_10162554191363591_7749487615012513406_n.jpg?_nc_cat=102&ccb=1-7&_nc_sid=aa7b47'
+  'https://scontent-lga3-1.xx.fbcdn.net/v/t39.30808-6/535503365_10162554191363591_7749487615012513406_n.jpg?_nc_cat=102&ccb=1-7&_nc_sid=aa7b47',
+  
+  // Case 5: Real URL with signature that should be removed
+  'https://scontent-lga3-3.xx.fbcdn.net/v/t39.30808-6/537887570_10239471219137488_5170534411219795979_n.jpg?_nc_cat=108&ccb=1-7&_nc_sid=aa7b47&_nc_ohc=GxnC-plZBjEQ7kNvwEjNQk-&oh=00_AfW97JERybyTB4rgAlrTNwUzW13r-b-rkSlj3fBYwR_P5w&oe=68ADC31B'
 ];
 
 function createLargeScaleUrl(originalUrl) {
@@ -39,6 +42,14 @@ function createLargeScaleUrl(originalUrl) {
       largeUrl = largeUrl.replace(/\/s\d+x\d+\//, '/');
       largeUrl = largeUrl.replace(/&w=\d+&h=\d+/, '');
       largeUrl = largeUrl.replace(/\?w=\d+&h=\d+/, '');
+
+      // Remove signature parameters that become invalid after URL modification
+      largeUrl = largeUrl.replace(/&oh=[^&]*/, '');
+      largeUrl = largeUrl.replace(/\?oh=[^&]*&/, '?');
+      largeUrl = largeUrl.replace(/\?oh=[^&]*$/, '');
+      largeUrl = largeUrl.replace(/&oe=[^&]*/, '');
+      largeUrl = largeUrl.replace(/\?oe=[^&]*&/, '?');
+      largeUrl = largeUrl.replace(/\?oe=[^&]*$/, '');
 
       // Clean up any double ampersands or leading ampersands
       largeUrl = largeUrl.replace(/&&+/g, '&');

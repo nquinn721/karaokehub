@@ -65,6 +65,14 @@ function createLargeScaleUrl(originalUrl: string): string {
       largeUrl = largeUrl.replace(/&width=\d+&height=\d+/, '');
       largeUrl = largeUrl.replace(/\?width=\d+&height=\d+/, '');
 
+      // Remove signature parameters that become invalid after URL modification
+      largeUrl = largeUrl.replace(/&oh=[^&]*/, '');
+      largeUrl = largeUrl.replace(/\?oh=[^&]*&/, '?');
+      largeUrl = largeUrl.replace(/\?oh=[^&]*$/, '');
+      largeUrl = largeUrl.replace(/&oe=[^&]*/, '');
+      largeUrl = largeUrl.replace(/\?oe=[^&]*&/, '?');
+      largeUrl = largeUrl.replace(/\?oe=[^&]*$/, '');
+
       // Clean up any double ampersands or leading ampersands
       largeUrl = largeUrl.replace(/&&+/g, '&');
       largeUrl = largeUrl.replace(/\?&/, '?');
