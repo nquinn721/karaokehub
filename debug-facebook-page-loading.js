@@ -32,7 +32,7 @@ async function debugFacebookPageLoading() {
     const page = await browser.newPage();
 
     // Try to load Facebook cookies
-    const cookiesPath = path.join(__dirname, 'facebook-cookies.json');
+    const cookiesPath = path.join(__dirname, 'data', 'facebook-cookies.json');
     if (fs.existsSync(cookiesPath)) {
       const cookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf8'));
       await page.setCookie(...cookies);

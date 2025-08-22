@@ -9,10 +9,11 @@ async function testFullFacebookParser() {
     // Import the required modules
     const { NestFactory } = require('@nestjs/core');
     const { AppModule } = require('./dist/app.module');
+    const { FacebookParserService } = require('./dist/parser/facebook-parser.service');
 
     // Create the application
     const app = await NestFactory.createApplicationContext(AppModule);
-    const facebookParser = app.get('FacebookParserService');
+    const facebookParser = app.get(FacebookParserService);
 
     const testUrl = 'https://www.facebook.com/groups/194826524192177';
 
@@ -21,7 +22,7 @@ async function testFullFacebookParser() {
     console.log('   Expected to find shows with proper address components');
 
     // Test the complete parsing workflow
-    const result = await facebookParser.parseAndSaveFacebookPage(testUrl);
+    const result = await facebookParser.parseAndSaveFacebookPageNew(testUrl);
 
     console.log('\n📊 Parsing Results:');
     console.log(`   Parsed Schedule ID: ${result.parsedScheduleId}`);

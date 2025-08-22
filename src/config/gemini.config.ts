@@ -38,17 +38,17 @@ export interface GeminiConfig {
  * These models have higher rate limits for paid subscriptions
  */
 export const GEMINI_CONFIG: GeminiConfig = {
-  // Use production models with higher quotas
-  textModel: 'gemini-1.5-flash', // 2,000 requests/minute for paid
-  visionModel: 'gemini-1.5-flash', // Supports vision + text
-  facebookModel: 'gemini-1.5-flash', // Fast processing for social media
-  workerModel: 'gemini-1.5-flash', // Background worker processing
+  // Use Gemini 2.0 Flash production models with highest quotas
+  textModel: 'gemini-2.0-flash', // 1M tokens/minute for paid tier
+  visionModel: 'gemini-2.0-flash', // Supports vision + text
+  facebookModel: 'gemini-2.0-flash', // Fast processing for social media
+  workerModel: 'gemini-2.0-flash', // Background worker processing
 
   rateLimiting: {
     maxRetriesOnQuota: 3,
     retryDelayMs: 1000,
     batchSize: 10,
-    requestsPerMinute: 1800, // Stay under 2,000/min limit
+    requestsPerMinute: 5000, // Much higher for 2.0 Flash production
   },
 
   performance: {
@@ -64,16 +64,16 @@ export const GEMINI_CONFIG: GeminiConfig = {
  * Use when accuracy is more important than speed
  */
 export const GEMINI_CONFIG_HIGH_ACCURACY: GeminiConfig = {
-  textModel: 'gemini-1.5-pro', // Higher accuracy, lower quota
-  visionModel: 'gemini-1.5-pro',
-  facebookModel: 'gemini-1.5-pro',
-  workerModel: 'gemini-1.5-flash', // Keep workers fast
+  textModel: 'gemini-2.0-flash', // Use same fast model but with more conservative settings
+  visionModel: 'gemini-2.0-flash',
+  facebookModel: 'gemini-2.0-flash',
+  workerModel: 'gemini-2.0-flash', // Keep consistent
 
   rateLimiting: {
     maxRetriesOnQuota: 5,
     retryDelayMs: 2000,
     batchSize: 5,
-    requestsPerMinute: 100, // Pro model has lower limits
+    requestsPerMinute: 2500, // More conservative for high accuracy
   },
 
   performance: {

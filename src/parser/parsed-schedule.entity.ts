@@ -25,9 +25,6 @@ export class ParsedSchedule {
   @Column()
   url: string;
 
-  @Column('json')
-  rawData: any;
-
   @Column('json', { nullable: true })
   aiAnalysis: any;
 
@@ -50,6 +47,9 @@ export class ParsedSchedule {
     level: 'info' | 'success' | 'warning' | 'error';
     message: string;
   }>;
+
+  @Column('json', { nullable: true })
+  rawData?: any; // TODO: Deprecated - remove after migrating to aiAnalysis
 
   @Column('uuid', { nullable: true })
   vendorId?: string;

@@ -3200,7 +3200,7 @@ ${htmlContent}`;
       this.logAndBroadcast('Starting Gemini Vision parsing with screenshot');
 
       const model = this.genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash-exp', // Latest model for vision tasks
+        model: getGeminiModel('vision'), // Latest model for vision tasks
         generationConfig: {
           temperature: 0.1, // Lower temperature for more consistent parsing
           topP: 0.8,
@@ -3688,7 +3688,7 @@ Return ONLY valid JSON with no extra text:
       );
 
       const model = this.genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash-exp',
+        model: getGeminiModel('vision'),
         generationConfig: {
           temperature: 0.1,
           topP: 0.8,
@@ -4225,7 +4225,7 @@ Return ONLY valid JSON:
       );
 
       const model = this.genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash-exp',
+        model: getGeminiModel('text'),
         generationConfig: {
           temperature: 0.1,
           topP: 0.8,

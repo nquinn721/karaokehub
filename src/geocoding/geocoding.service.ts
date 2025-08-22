@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { getGeminiModel } from '../config/gemini.config';
 
 interface GeocodeResult {
   lat: number;
@@ -390,7 +391,7 @@ export class GeocodingService {
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+      const model = this.genAI.getGenerativeModel({ model: getGeminiModel('text') });
 
       const prompt = `Please provide the exact latitude and longitude coordinates for this address: "${address}"
 
