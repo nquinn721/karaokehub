@@ -2832,6 +2832,42 @@ ${htmlContent}`;
     }
   }
 
+  /**
+   * Normalize parsed data to ensure confidence values are valid numbers
+   */
+  private normalizeDataConfidence(data: any): any {
+    if (!data) return data;
+
+    // Normalize vendor confidence
+    if (data.vendor && typeof data.vendor.confidence !== 'number') {
+      data.vendor.confidence = 0;
+    }
+    if (data.vendors && Array.isArray(data.vendors)) {
+      data.vendors = data.vendors.map((vendor: any) => ({
+        ...vendor,
+        confidence: typeof vendor.confidence === 'number' ? vendor.confidence : 0,
+      }));
+    }
+
+    // Normalize DJ confidence
+    if (data.djs && Array.isArray(data.djs)) {
+      data.djs = data.djs.map((dj: any) => ({
+        ...dj,
+        confidence: typeof dj.confidence === 'number' ? dj.confidence : 0,
+      }));
+    }
+
+    // Normalize show confidence
+    if (data.shows && Array.isArray(data.shows)) {
+      data.shows = data.shows.map((show: any) => ({
+        ...show,
+        confidence: typeof show.confidence === 'number' ? show.confidence : 0,
+      }));
+    }
+
+    return data;
+  }
+
   async approveAllItems(parsedScheduleId: string): Promise<any> {
     const schedule = await this.parsedScheduleRepository.findOne({
       where: { id: parsedScheduleId },
@@ -2841,7 +2877,10 @@ ${htmlContent}`;
       throw new Error('Schedule not found');
     }
 
-    return this.approveAndSaveParsedData(parsedScheduleId, schedule.aiAnalysis);
+    // Normalize confidence values before processing
+    const normalizedData = this.normalizeDataConfidence(schedule.aiAnalysis);
+
+    return this.approveAndSaveParsedData(parsedScheduleId, normalizedData);
   }
 
   async rejectSchedule(parsedScheduleId: string, reason?: string): Promise<void> {

@@ -93,13 +93,15 @@ const ParserReviewPage: React.FC = observer(() => {
         // Show success dialog with details
         const avgDjConfidence =
           result.data.djs?.length > 0
-            ? result.data.djs.reduce((sum: number, dj: any) => sum + dj.confidence, 0) /
+            ? result.data.djs.reduce((sum: number, dj: any) => sum + (dj.confidence || 0), 0) /
               result.data.djs.length
             : 0;
         const avgShowConfidence =
           result.data.shows?.length > 0
-            ? result.data.shows.reduce((sum: number, show: any) => sum + show.confidence, 0) /
-              result.data.shows.length
+            ? result.data.shows.reduce(
+                (sum: number, show: any) => sum + (show.confidence || 0),
+                0,
+              ) / result.data.shows.length
             : 0;
 
         setParseResults({

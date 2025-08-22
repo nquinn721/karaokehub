@@ -1,6 +1,17 @@
 /**
  * Facebook Data Validation Worker
- * Handles data validation and address completion using Gemini AI
+ * Handles data validation and address completion     (info) => `
+Show ${info.index + 1}:
+- Vendor: ${info.vendor}
+- DJ: ${info.dj}
+- Venue: ${info.venue}
+- Address: ${info.address}
+- Current State: ${info.currentState}
+- Current City: ${info.currentCity}
+- Current Zip: ${info.currentZip}
+- Current Lat: ${info.currentLat}
+- Current Lng: ${info.currentLng}
+- Missing: ${info.missingFields.join(', ') || 'None'}`i AI
  * - Takes parsed show data
  * - Uses Gemini to fill missing state/zip/lat/lng/city
  * - Returns validated and enhanced data
@@ -18,16 +29,25 @@ interface ValidationWorkerData {
 interface ParsedImageData {
   vendor?: string;
   dj?: string;
-  show?: string;
+  show?: {
+    venue?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    day?: string;
+    time?: string;
+    startTime?: string;
+    endTime?: string;
+    lat?: string;
+    lng?: string;
+    venuePhone?: string;
+    venueWebsite?: string;
+  };
+  imageUrl?: string;
   source: string;
   success: boolean;
   error?: string;
-  // Location data that may be missing
-  state?: string;
-  zip?: string;
-  lat?: number;
-  lng?: number;
-  city?: string;
 }
 
 interface ValidationResult {
@@ -54,22 +74,23 @@ async function processBatchWithGemini(
 ): Promise<ParsedImageData[]> {
   const showsInfo = shows.map((show, index) => {
     const missingData = [];
-    if (!show.state) missingData.push('state');
-    if (!show.city) missingData.push('city');
-    if (!show.zip) missingData.push('zip');
-    if (!show.lat) missingData.push('lat');
-    if (!show.lng) missingData.push('lng');
+    if (!show.show?.state) missingData.push('state');
+    if (!show.show?.city) missingData.push('city');
+    if (!show.show?.zip) missingData.push('zip');
+    if (!show.show?.lat) missingData.push('lat');
+    if (!show.show?.lng) missingData.push('lng');
 
     return {
       index,
       vendor: show.vendor || 'Unknown',
       dj: show.dj || 'Unknown',
-      show: show.show || 'Unknown',
-      currentState: show.state || 'MISSING',
-      currentCity: show.city || 'MISSING',
-      currentZip: show.zip || 'MISSING',
-      currentLat: show.lat || 'MISSING',
-      currentLng: show.lng || 'MISSING',
+      venue: show.show?.venue || 'Unknown',
+      address: show.show?.address || 'Unknown',
+      currentState: show.show?.state || 'MISSING',
+      currentCity: show.show?.city || 'MISSING',
+      currentZip: show.show?.zip || 'MISSING',
+      currentLat: show.show?.lat || 'MISSING',
+      currentLng: show.show?.lng || 'MISSING',
       missingFields: missingData,
     };
   });
@@ -83,7 +104,8 @@ ${showsInfo
 Show ${info.index + 1}:
 - Vendor: ${info.vendor}
 - DJ: ${info.dj}
-- Show: ${info.show}
+- Venue: ${info.venue}
+- Address: ${info.address}
 - Current State: ${info.currentState}
 - Current City: ${info.currentCity}
 - Current Zip: ${info.currentZip}
@@ -157,20 +179,23 @@ Return ONLY the JSON array, no markdown, no explanations.`;
     if (enhancedData) {
       const validatedShow: ParsedImageData = {
         ...originalShow,
-        state: enhancedData.state || originalShow.state,
-        city: enhancedData.city || originalShow.city,
-        zip: enhancedData.zip || originalShow.zip,
-        lat: typeof enhancedData.lat === 'number' ? enhancedData.lat : originalShow.lat,
-        lng: typeof enhancedData.lng === 'number' ? enhancedData.lng : originalShow.lng,
+        show: {
+          ...originalShow.show,
+          state: enhancedData.state || originalShow.show?.state,
+          city: enhancedData.city || originalShow.show?.city,
+          zip: enhancedData.zip || originalShow.show?.zip,
+          lat: enhancedData.lat || originalShow.show?.lat,
+          lng: enhancedData.lng || originalShow.show?.lng,
+        },
       };
 
       // Log what was enhanced
       const enhanced = [];
-      if (enhancedData.state && !originalShow.state) enhanced.push('state');
-      if (enhancedData.city && !originalShow.city) enhanced.push('city');
-      if (enhancedData.zip && !originalShow.zip) enhanced.push('zip');
-      if (typeof enhancedData.lat === 'number' && !originalShow.lat) enhanced.push('lat');
-      if (typeof enhancedData.lng === 'number' && !originalShow.lng) enhanced.push('lng');
+      if (enhancedData.state && !originalShow.show?.state) enhanced.push('state');
+      if (enhancedData.city && !originalShow.show?.city) enhanced.push('city');
+      if (enhancedData.zip && !originalShow.show?.zip) enhanced.push('zip');
+      if (enhancedData.lat && !originalShow.show?.lat) enhanced.push('lat');
+      if (enhancedData.lng && !originalShow.show?.lng) enhanced.push('lng');
 
       if (enhanced.length > 0) {
         sendProgress(`✅ [BATCH] Show ${i + 1}: Enhanced ${enhanced.join(', ')}`);
@@ -206,9 +231,14 @@ async function validateDataWithGemini(
     const incompleteShows: ParsedImageData[] = [];
 
     for (const show of shows) {
-      // Check if show has complete geo data: address, city, state, zip, lat, lng
+      // Check if show has complete geo data: venue/address and state, city, zip, lat, lng
       const hasCompleteGeoData =
-        show.vendor && show.state && show.city && show.zip && show.lat && show.lng;
+        show.show?.venue &&
+        show.show?.state &&
+        show.show?.city &&
+        show.show?.zip &&
+        show.show?.lat &&
+        show.show?.lng;
 
       if (hasCompleteGeoData) {
         completeShows.push(show);

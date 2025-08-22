@@ -185,9 +185,12 @@ export class ParserController {
   @Post('approve-schedule/:id')
   async approveSchedule(@Param('id') id: string, @Body() body: { approvedData: any }) {
     try {
+      // Normalize confidence values before processing
+      const normalizedData = this.normalizeDataConfidence(body.approvedData);
+      
       const result = await this.karaokeParserService.approveAndSaveParsedData(
         id,
-        body.approvedData,
+        normalizedData,
       );
       return {
         message: 'Schedule approved and saved successfully',
@@ -197,6 +200,42 @@ export class ParserController {
       console.error('Error approving schedule:', error);
       throw new HttpException('Failed to approve schedule', HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  /**
+   * Normalize parsed data to ensure confidence values are valid numbers
+   */
+  private normalizeDataConfidence(data: any): any {
+    if (!data) return data;
+
+    // Normalize vendor confidence
+    if (data.vendor && typeof data.vendor.confidence !== 'number') {
+      data.vendor.confidence = 0;
+    }
+    if (data.vendors && Array.isArray(data.vendors)) {
+      data.vendors = data.vendors.map((vendor: any) => ({
+        ...vendor,
+        confidence: typeof vendor.confidence === 'number' ? vendor.confidence : 0,
+      }));
+    }
+
+    // Normalize DJ confidence
+    if (data.djs && Array.isArray(data.djs)) {
+      data.djs = data.djs.map((dj: any) => ({
+        ...dj,
+        confidence: typeof dj.confidence === 'number' ? dj.confidence : 0,
+      }));
+    }
+
+    // Normalize show confidence
+    if (data.shows && Array.isArray(data.shows)) {
+      data.shows = data.shows.map((show: any) => ({
+        ...show,
+        confidence: typeof show.confidence === 'number' ? show.confidence : 0,
+      }));
+    }
+
+    return data;
   }
 
   @Post('approve-all/:id')

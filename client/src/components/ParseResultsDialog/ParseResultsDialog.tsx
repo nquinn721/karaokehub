@@ -170,11 +170,11 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
                 </Typography>
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="caption" color="text.secondary" display="block">
-                    Avg Confidence: {Math.round(confidence.avgDjConfidence)}%
+                    Avg Confidence: {Math.round(confidence.avgDjConfidence || 0)}%
                   </Typography>
                   <LinearProgress
                     variant="determinate"
-                    value={confidence.avgDjConfidence}
+                    value={confidence.avgDjConfidence || 0}
                     sx={{
                       mt: 1,
                       '& .MuiLinearProgress-bar': {
@@ -204,15 +204,15 @@ export const ParseResultsDialog: React.FC<ParseResultsDialogProps> = ({
                 </Typography>
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="caption" color="text.secondary" display="block">
-                    Avg Confidence: {Math.round(confidence.avgShowConfidence)}%
+                    Avg Confidence: {Math.round(confidence.avgShowConfidence || 0)}%
                   </Typography>
                   <LinearProgress
                     variant="determinate"
-                    value={confidence.avgShowConfidence}
+                    value={confidence.avgShowConfidence || 0}
                     sx={{
                       mt: 1,
                       '& .MuiLinearProgress-bar': {
-                        backgroundColor: getConfidenceColor(confidence.avgShowConfidence),
+                        backgroundColor: getConfidenceColor(confidence.avgShowConfidence || 0),
                       },
                     }}
                   />

@@ -995,7 +995,7 @@ const AdminParserPage: React.FC = observer(() => {
                             selectedReview.vendors.map((vendor: any, index: number) => (
                               <Chip
                                 key={index}
-                                label={`${vendor.name} (${Math.round(vendor.confidence * 100)}%)`}
+                                label={`${vendor.name} (${Math.round((vendor.confidence || 0) * 100)}%)`}
                                 variant="outlined"
                                 color="primary"
                                 size="small"
@@ -1007,7 +1007,7 @@ const AdminParserPage: React.FC = observer(() => {
                             selectedReview.aiAnalysis.vendors.map((vendor: any, index: number) => (
                               <Chip
                                 key={index}
-                                label={`${vendor.name} (${Math.round(vendor.confidence * 100)}%)`}
+                                label={`${vendor.name} (${Math.round((vendor.confidence || 0) * 100)}%)`}
                                 variant="outlined"
                                 color="primary"
                                 size="small"
@@ -1051,7 +1051,7 @@ const AdminParserPage: React.FC = observer(() => {
                             {selectedReview.aiAnalysis.djs.map((dj: any, index: number) => (
                               <Chip
                                 key={index}
-                                label={`${dj.name} (${Math.round(dj.confidence * 100)}%)`}
+                                label={`${dj.name} (${Math.round((dj.confidence || 0) * 100)}%)`}
                                 color="secondary"
                                 variant="filled"
                                 size="small"
@@ -1060,32 +1060,7 @@ const AdminParserPage: React.FC = observer(() => {
                           </Box>
                         ) : null}
 
-                        {/* Show DJs found in individual shows */}
-                        {(selectedReview.shows || selectedReview.aiAnalysis?.shows) && (
-                          <Box>
-                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                              DJs by Show:
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                              {(selectedReview.shows || selectedReview.aiAnalysis?.shows || [])
-                                .filter((show: any) => show.djName && show.djName !== 'Unknown')
-                                .map((show: any, index: number) => (
-                                  <Chip
-                                    key={index}
-                                    label={`${show.djName} @ ${show.venue}`}
-                                    variant="outlined"
-                                    color="secondary"
-                                    size="small"
-                                  />
-                                ))}
-                            </Box>
-                          </Box>
-                        )}
-
-                        {!selectedReview.aiAnalysis?.djs?.length &&
-                          !(selectedReview.shows || selectedReview.aiAnalysis?.shows)?.some(
-                            (show: any) => show.djName,
-                          ) && (
+                        {!selectedReview.aiAnalysis?.djs?.length && (
                             <Typography variant="body2" color="text.secondary">
                               {selectedReview.stats?.djsFound} DJs found in shows data (names not
                               extracted separately)
@@ -1137,7 +1112,7 @@ const AdminParserPage: React.FC = observer(() => {
                                         {show.venue}
                                       </Typography>
                                       <Typography variant="caption" color="text.secondary">
-                                        {Math.round(show.confidence * 100)}% confidence
+                                        {Math.round((show.confidence || 0) * 100)}% confidence
                                       </Typography>
                                     </Box>
                                   }

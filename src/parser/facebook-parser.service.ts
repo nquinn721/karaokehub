@@ -723,7 +723,7 @@ export class FacebookParserService {
           venueWebsite: item.show.venueWebsite,
           djName: item.dj || '',
           vendor: item.vendor || '',
-          source: sourceUrl,
+          source: item.imageUrl || sourceUrl, // Use image URL as source, fallback to group URL
           imageUrl: item.imageUrl,
         };
 

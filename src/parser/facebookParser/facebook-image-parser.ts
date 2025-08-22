@@ -38,6 +38,7 @@ interface ParsedImageResult {
     venuePhone?: string;
     venueWebsite?: string;
   };
+  imageUrl?: string;
   source: string;
   success: boolean;
   error?: string;
@@ -237,6 +238,8 @@ Return ONLY the JSON object, no other text.`;
             venueWebsite: parsedData.show.venueWebsite?.trim() || undefined,
           }
         : undefined,
+
+      imageUrl: imageUrl,
       source: imageUrl,
       success: true,
     };
@@ -254,6 +257,7 @@ Return ONLY the JSON object, no other text.`;
         });
       }
       return {
+        imageUrl: imageUrl,
         source: imageUrl,
         success: false,
         error: 'No karaoke information found in image',
@@ -261,6 +265,7 @@ Return ONLY the JSON object, no other text.`;
     }
   } catch (error) {
     return {
+      imageUrl: imageUrl,
       source: imageUrl,
       success: false,
       error: error.message,
@@ -350,6 +355,7 @@ async function parseImage(data: ImageWorkerData): Promise<ParsedImageResult> {
     return result;
   } catch (error) {
     const errorResult: ParsedImageResult = {
+      imageUrl: imageUrl || 'pre-loaded-image',
       source: imageUrl || 'pre-loaded-image',
       success: false,
       error: error.message,
@@ -379,7 +385,8 @@ if (parentPort) {
         workerId: data.workerId,
         error: error.message,
         data: {
-          source: data.imageUrl || data.base64Data ? 'pre-loaded-image' : 'unknown',
+          imageUrl: data.imageUrl || (data.base64Data ? 'pre-loaded-image' : 'unknown'),
+          source: data.imageUrl || (data.base64Data ? 'pre-loaded-image' : 'unknown'),
           success: false,
           error: error.message,
         },
