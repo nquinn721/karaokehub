@@ -651,15 +651,18 @@ const AdminDataTables: React.FC = observer(() => {
                             {show.zip && ` ${show.zip}`}
                           </Typography>
                         )}
-                        {show.lat && show.lng && !isNaN(Number(show.lat)) && !isNaN(Number(show.lng)) && (
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ display: 'block' }}
-                          >
-                            📍 {Number(show.lat).toFixed(4)}, {Number(show.lng).toFixed(4)}
-                          </Typography>
-                        )}
+                        {show.lat &&
+                          show.lng &&
+                          !isNaN(Number(show.lat)) &&
+                          !isNaN(Number(show.lng)) && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ display: 'block' }}
+                            >
+                              📍 {Number(show.lat).toFixed(4)}, {Number(show.lng).toFixed(4)}
+                            </Typography>
+                          )}
                       </Box>
                     </TableCell>
                     <TableCell>

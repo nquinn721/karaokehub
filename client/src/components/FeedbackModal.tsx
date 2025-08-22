@@ -123,30 +123,27 @@ const FeedbackModal: React.FC<FeedbackModalProps> = observer(({ open, onClose })
             Help us improve KaraokeHub! Your feedback is valuable to us.
           </Typography>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
-            <FormControl fullWidth>
-              <InputLabel sx={{ color: 'white' }}>Feedback Type</InputLabel>
-              <Select
-                value={formData.type}
-                onChange={(e) => handleInputChange('type', e.target.value)}
-                sx={{
-                  color: 'white',
-                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.3)' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'rgba(255,255,255,0.5)',
-                  },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'white' },
-                }}
-              >
-                {feedbackTypes.map((type) => (
-                  <MenuItem key={type.value} value={type.value}>
-                    {type.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-          </Box>
+          <FormControl fullWidth sx={{ mb: 3 }}>
+            <InputLabel sx={{ color: 'white' }}>Feedback Type</InputLabel>
+            <Select
+              value={formData.type}
+              onChange={(e) => handleInputChange('type', e.target.value)}
+              sx={{
+                color: 'white',
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.3)' },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255,255,255,0.5)',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'white' },
+              }}
+            >
+              {feedbackTypes.map((type) => (
+                <MenuItem key={type.value} value={type.value}>
+                  {type.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
           <TextField
             fullWidth
