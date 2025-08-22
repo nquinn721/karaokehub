@@ -36,9 +36,6 @@ export class Feedback {
   })
   type: FeedbackType;
 
-  @Column({ type: 'int', default: 5 })
-  rating: number;
-
   @Column({ type: 'varchar', length: 255, nullable: true })
   subject: string;
 

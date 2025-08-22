@@ -60,15 +60,19 @@ async function bootstrap() {
         return callback(null, true);
       }
 
-      // Special handling for production upload endpoint
-      const isProductionUpload =
+      // Special handling for production upload endpoint from localhost
+      // This allows local development to upload to production
+      const isProductionUploadFromLocal =
         origin &&
         origin.includes('localhost') &&
         process.env.ALLOW_LOCAL_PRODUCTION_UPLOAD === 'true';
 
-      if (allowedOrigins.includes(origin) || isProductionUpload) {
+      if (allowedOrigins.includes(origin) || isProductionUploadFromLocal) {
         callback(null, true);
       } else {
+        console.log(`CORS blocked origin: ${origin}`);
+        console.log(`Allowed origins: ${JSON.stringify(allowedOrigins)}`);
+        console.log(`Allow local production upload: ${process.env.ALLOW_LOCAL_PRODUCTION_UPLOAD}`);
         callback(new Error('Not allowed by CORS'), false);
       }
     },

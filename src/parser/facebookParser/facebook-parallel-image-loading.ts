@@ -40,7 +40,7 @@ interface WorkerData {
 }
 
 /**
- * Create large scale URL from original Facebook image URL
+ * Create large scale URL from original Facebook image URL using template approach
  */
 function createLargeScaleUrl(originalUrl: string): string {
   try {
@@ -48,47 +48,133 @@ function createLargeScaleUrl(originalUrl: string): string {
     if (originalUrl.includes('scontent') || originalUrl.includes('fbcdn')) {
       let largeUrl = originalUrl;
 
-      // Remove the stp parameter which controls thumbnail sizing (key fix!)
-      // Handle both cases: ?stp=... (first param) and &stp=... (subsequent param)
-      if (largeUrl.includes('?stp=')) {
-        // stp is first parameter - replace ?stp=... with ? if there are more params, or remove entirely
-        largeUrl = largeUrl.replace(/\?stp=[^&]*&/, '?').replace(/\?stp=[^&]*$/, '');
+      // Enhanced logging for URL transformation
+      console.log(`\n[URL-TRANSFORM] === URL CONVERSION ANALYSIS ===`);
+      console.log(`[URL-TRANSFORM] Input: ${originalUrl}`);
+
+      // DEFENSIVE FIX: Handle malformed URLs that have .jpg& instead of .jpg?
+      if (largeUrl.includes('.jpg&') && !largeUrl.includes('.jpg?')) {
+        console.log(`[URL-TRANSFORM] 🔧 MALFORMED URL FIX: .jpg& -> .jpg?`);
+        largeUrl = largeUrl.replace('.jpg&', '.jpg?');
+        console.log(`[URL-TRANSFORM] Fixed: ${largeUrl}`);
+      } else if (largeUrl.includes('.jpeg&') && !largeUrl.includes('.jpeg?')) {
+        console.log(`[URL-TRANSFORM] 🔧 MALFORMED URL FIX: .jpeg& -> .jpeg?`);
+        largeUrl = largeUrl.replace('.jpeg&', '.jpeg?');
+        console.log(`[URL-TRANSFORM] Fixed: ${largeUrl}`);
       } else {
-        // stp is not first parameter - just remove &stp=...
-        largeUrl = largeUrl.replace(/&stp=[^&]*/, '');
+        console.log(`[URL-TRANSFORM] ✅ No malformed patterns detected`);
       }
 
-      // Remove existing size parameters
-      largeUrl = largeUrl.replace(/\/s\d+x\d+\//, '/');
-      largeUrl = largeUrl.replace(/&w=\d+&h=\d+/, '');
-      largeUrl = largeUrl.replace(/\?w=\d+&h=\d+/, '');
-      largeUrl = largeUrl.replace(/&width=\d+&height=\d+/, '');
-      largeUrl = largeUrl.replace(/\?width=\d+&height=\d+/, '');
+      // SIMPLE TEMPLATE APPROACH: Extract key components and rebuild with working template
+      const urlMatch = largeUrl.match(
+        /https:\/\/scontent-([^.]+)\.xx\.fbcdn\.net\/v\/t39\.30808-6\/([^?]+)/,
+      );
+      if (urlMatch) {
+        const serverSuffix = urlMatch[1]; // e.g., "lga3-3" or "lga3-2"
+        const imageFilename = urlMatch[2]; // e.g., "537887570_10239471219137488_5170534411219795979_n.jpg"
 
-      // Remove signature parameters that become invalid after URL modification
-      largeUrl = largeUrl.replace(/&oh=[^&]*/, '');
-      largeUrl = largeUrl.replace(/\?oh=[^&]*&/, '?');
-      largeUrl = largeUrl.replace(/\?oh=[^&]*$/, '');
-      largeUrl = largeUrl.replace(/&oe=[^&]*/, '');
-      largeUrl = largeUrl.replace(/\?oe=[^&]*&/, '?');
-      largeUrl = largeUrl.replace(/\?oe=[^&]*$/, '');
+        console.log(`[URL-TRANSFORM] 📊 Parsed components:`);
+        console.log(`[URL-TRANSFORM]   Server: ${serverSuffix}`);
+        console.log(`[URL-TRANSFORM]   Filename: ${imageFilename}`);
 
-      // Clean up any double ampersands or leading ampersands
-      largeUrl = largeUrl.replace(/&&+/g, '&');
-      largeUrl = largeUrl.replace(/\?&/, '?');
-      largeUrl = largeUrl.replace(/&$/, '');
+        // Check if this looks like a thumbnail (has size constraints in path or stp parameter)
+        const checks = {
+          hasS320: largeUrl.includes('/s320x320/'),
+          hasS130: largeUrl.includes('/s130x130/'),
+          hasS200: largeUrl.includes('/s200x200/'),
+          hasStp: largeUrl.includes('stp=dst-jpg_p'),
+          hasCp: largeUrl.includes('stp=cp'),
+          hasDstJpgS: largeUrl.includes('stp=dst-jpg_s'),
+          hasS1: imageFilename.includes('/s1'),
+          hasP1: imageFilename.includes('/p1'),
+        };
 
+        // Only consider it a thumbnail if we have OBVIOUS size constraints
+        const isThumbnail =
+          checks.hasS320 ||
+          checks.hasS130 ||
+          checks.hasS200 ||
+          checks.hasStp ||
+          checks.hasCp ||
+          checks.hasDstJpgS;
+
+        console.log(`[URL-TRANSFORM] 🔍 Thumbnail detection:`);
+        Object.entries(checks).forEach(([key, value]) => {
+          if (value) console.log(`[URL-TRANSFORM]   ✓ ${key}: ${value}`);
+        });
+        console.log(
+          `[URL-TRANSFORM] 📋 Result: ${isThumbnail ? 'THUMBNAIL (will convert)' : 'FULL-SIZE (keep original)'}`,
+        );
+
+        if (isThumbnail) {
+          console.log(`[URL-TRANSFORM] 🔄 Converting thumbnail to large format...`);
+
+          // CONSERVATIVE APPROACH: Try minimal modifications first
+          let convertedUrl = originalUrl;
+
+          // Strategy 1: Try removing size constraints from path
+          if (
+            largeUrl.includes('/s320x320/') ||
+            largeUrl.includes('/s130x130/') ||
+            largeUrl.includes('/s200x200/')
+          ) {
+            convertedUrl = largeUrl.replace(/\/s\d+x\d+\//, '/');
+            console.log(`[URL-TRANSFORM] 🎯 Strategy 1 - Remove size path: ${convertedUrl}`);
+            console.log(`[URL-TRANSFORM] 📊 Conversion: THUMBNAIL -> LARGE`);
+            return convertedUrl;
+          }
+
+          // Strategy 2: Try removing 'stp' parameter that forces thumbnails
+          if (
+            largeUrl.includes('stp=dst-jpg_p') ||
+            largeUrl.includes('stp=cp') ||
+            largeUrl.includes('stp=dst-jpg_s')
+          ) {
+            try {
+              const url = new URL(largeUrl);
+              url.searchParams.delete('stp');
+              convertedUrl = url.toString();
+              console.log(`[URL-TRANSFORM] 🎯 Strategy 2 - Remove stp param: ${convertedUrl}`);
+              console.log(`[URL-TRANSFORM] 📊 Conversion: THUMBNAIL -> LARGE`);
+              return convertedUrl;
+            } catch (urlError) {
+              console.log(`[URL-TRANSFORM] ❌ Strategy 2 failed: ${urlError.message}`);
+            }
+          }
+
+          // Strategy 3: For very small thumbnails, just use original URL
+          // (conservative approach - don't risk breaking working URLs)
+          console.log(
+            `[URL-TRANSFORM] 🎯 Strategy 3 - Keep original (conservative): ${originalUrl}`,
+          );
+          console.log(`[URL-TRANSFORM] 📊 Conversion: NONE (keeping original)`);
+          return originalUrl;
+        } else {
+          console.log(`[URL-TRANSFORM] ✅ Full-size URL detected, keeping original`);
+          console.log(`[URL-TRANSFORM] 📊 Conversion: NONE (already full-size)`);
+        }
+      } else {
+        console.log(`[URL-TRANSFORM] ❌ Could not parse URL structure`);
+        console.log(`[URL-TRANSFORM] 📊 Conversion: FAILED (keeping original)`);
+      }
+
+      console.log(`[URL-TRANSFORM] 🎯 Final output: ${largeUrl}`);
+      console.log(`[URL-TRANSFORM] === END URL CONVERSION ===\n`);
       return largeUrl;
     }
 
     // Instagram or other CDN URLs
     if (originalUrl.includes('instagram') || originalUrl.includes('cdninstagram')) {
+      console.log(`[URL-TRANSFORM] 📸 Instagram URL detected, applying Instagram conversion`);
       // Try to get higher resolution Instagram images
       return originalUrl.replace(/\/s\d+x\d+\//, '/').replace(/\?.*$/, '');
     }
 
+    console.log(`[URL-TRANSFORM] ❓ Non-Facebook URL, returning unchanged: ${originalUrl}`);
     return originalUrl;
   } catch (error) {
+    console.log(`[URL-TRANSFORM] ❌ ERROR in URL transformation: ${error.message}`);
+    console.log(`[URL-TRANSFORM] 🔄 Returning original URL as fallback`);
     return originalUrl;
   }
 }
@@ -205,7 +291,40 @@ async function processImage(
     usedFallback: false,
   };
 
-  // First, try the large scale URL
+  // Log the start of processing for this image
+  console.log(`\n[IMAGE-${index}] === PROCESSING START ===`);
+  console.log(`[IMAGE-${index}] Original URL: ${originalUrl.substring(0, 100)}...`);
+  console.log(`[IMAGE-${index}] Large Scale URL: ${largeScaleUrl.substring(0, 100)}...`);
+  console.log(
+    `[IMAGE-${index}] URLs are identical: ${originalUrl === largeScaleUrl ? 'YES' : 'NO'}`,
+  );
+
+  // Smart processing strategy: if URLs are identical or conversion failed,
+  // just use original URL directly (no point in trying a template that will fail)
+  if (originalUrl === largeScaleUrl) {
+    console.log(`[IMAGE-${index}] 📋 URLs identical - using original directly`);
+    try {
+      const imageData = await loadImageAsBase64(originalUrl, timeout);
+      result.base64Data = imageData.base64Data;
+      result.size = imageData.size;
+      result.mimeType = imageData.mimeType;
+      result.success = true;
+      result.usedFallback = false; // Not really a fallback since URLs are same
+
+      console.log(`[IMAGE-${index}] ✅ ORIGINAL URL SUCCESS`);
+      console.log(`[IMAGE-${index}] Size: ${(imageData.size / 1024).toFixed(1)} KB`);
+      console.log(`[IMAGE-${index}] MIME: ${imageData.mimeType}`);
+
+      return result;
+    } catch (error) {
+      console.log(`[IMAGE-${index}] ❌ ORIGINAL URL FAILED: ${error.message}`);
+      result.error = error.message;
+      return result;
+    }
+  }
+
+  // If URLs are different, try large scale first, then fallback
+  console.log(`[IMAGE-${index}] 🔄 Attempting large scale download...`);
   try {
     const imageData = await loadImageAsBase64(largeScaleUrl, timeout);
     result.base64Data = imageData.base64Data;
@@ -214,10 +333,19 @@ async function processImage(
     result.success = true;
     result.usedFallback = false;
 
+    console.log(`[IMAGE-${index}] ✅ LARGE SCALE SUCCESS`);
+    console.log(`[IMAGE-${index}] Size: ${(imageData.size / 1024).toFixed(1)} KB`);
+    console.log(`[IMAGE-${index}] MIME: ${imageData.mimeType}`);
+    console.log(`[IMAGE-${index}] Gemini will receive: LARGE SCALE image data`);
+    console.log(`[IMAGE-${index}] URL to save: ${largeScaleUrl.substring(0, 80)}...`);
+
     return result;
   } catch (largeError) {
+    console.log(`[IMAGE-${index}] ❌ LARGE SCALE FAILED: ${largeError.message}`);
+
     // If large scale URL fails and it's different from original, try fallback
     if (largeScaleUrl !== originalUrl) {
+      console.log(`[IMAGE-${index}] 🔄 Attempting fallback to original URL...`);
       try {
         const imageData = await loadImageAsBase64(originalUrl, timeout);
         result.base64Data = imageData.base64Data;
@@ -226,14 +354,29 @@ async function processImage(
         result.success = true;
         result.usedFallback = true;
 
+        console.log(`[IMAGE-${index}] ✅ FALLBACK SUCCESS`);
+        console.log(`[IMAGE-${index}] Size: ${(imageData.size / 1024).toFixed(1)} KB`);
+        console.log(`[IMAGE-${index}] MIME: ${imageData.mimeType}`);
+        console.log(`[IMAGE-${index}] ⚠️  Gemini will receive: THUMBNAIL/ORIGINAL image data`);
+        console.log(
+          `[IMAGE-${index}] ⚠️  URL to save: ${largeScaleUrl.substring(0, 80)}... (MISMATCH!)`,
+        );
+        console.log(`[IMAGE-${index}] ⚠️  Actual source: ${originalUrl.substring(0, 80)}...`);
+
         return result;
       } catch (fallbackError) {
+        console.log(`[IMAGE-${index}] ❌ FALLBACK ALSO FAILED: ${fallbackError.message}`);
         result.error = `Large scale failed: ${largeError.message}. Fallback failed: ${fallbackError.message}`;
       }
     } else {
+      console.log(`[IMAGE-${index}] ❌ No fallback available (URLs identical)`);
       result.error = largeError.message;
     }
   }
+
+  console.log(`[IMAGE-${index}] ❌ COMPLETE FAILURE - Image will be skipped`);
+  console.log(`[IMAGE-${index}] Gemini will receive: NOTHING`);
+  console.log(`[IMAGE-${index}] Database will store: NOTHING`);
 
   return result;
 }
@@ -300,13 +443,59 @@ async function processImageBatch(
           success: false,
           usedFallback: false,
           error: error.message,
-        };
+          size: undefined,
+          mimeType: undefined,
+        } as ImageLoadResult;
       }
     }),
   );
 
   // Sort results by original index
   results.sort((a, b) => a.index - b.index);
+
+  const successCount = results.filter((r) => r.success).length;
+  const fallbackCount = results.filter((r) => r.success && r.usedFallback).length;
+  const largeSuccessCount = results.filter((r) => r.success && !r.usedFallback).length;
+  const failedCount = results.length - successCount;
+
+  // Log details about each result type
+  if (largeSuccessCount > 0) {
+    results
+      .filter((r) => r.success && !r.usedFallback)
+      .forEach((r, idx) => {
+        const size = r.size ? (r.size / 1024).toFixed(1) : 'Unknown';
+        console.log(
+          `[BATCH-SUMMARY]   ${idx + 1}. Size: ${size}KB, URL: ${r.largeScaleUrl.substring(0, 60)}...`,
+        );
+      });
+  }
+
+  if (fallbackCount > 0) {
+    console.log(`\n[BATCH-SUMMARY] ⚠️  Fallback successes (Gemini gets thumbnail quality):`);
+    results
+      .filter((r) => r.success && r.usedFallback)
+      .forEach((r, idx) => {
+        const size = r.size ? (r.size / 1024).toFixed(1) : 'Unknown';
+        console.log(
+          `[BATCH-SUMMARY]   ${idx + 1}. Size: ${size}KB, Original: ${r.originalUrl.substring(0, 60)}...`,
+        );
+        console.log(
+          `[BATCH-SUMMARY]       BUT database will save: ${r.largeScaleUrl.substring(0, 60)}...`,
+        );
+      });
+  }
+
+  if (failedCount > 0) {
+    console.log(`\n[BATCH-SUMMARY] ❌ Complete failures (skipped by Gemini):`);
+    results
+      .filter((r) => !r.success)
+      .forEach((r, idx) => {
+        console.log(`[BATCH-SUMMARY]   ${idx + 1}. Error: ${r.error}`);
+        console.log(`[BATCH-SUMMARY]       URL: ${r.originalUrl.substring(0, 60)}...`);
+      });
+  }
+
+  console.log(`[BATCH-SUMMARY] === END BATCH SUMMARY ===\n`);
 
   return results;
 }

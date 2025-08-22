@@ -11,7 +11,6 @@ import {
   IconButton,
   InputLabel,
   MenuItem,
-  Rating,
   Select,
   TextField,
   Typography,
@@ -28,7 +27,6 @@ interface FeedbackModalProps {
 const FeedbackModal: React.FC<FeedbackModalProps> = observer(({ open, onClose }) => {
   const [formData, setFormData] = useState({
     type: 'general' as 'bug' | 'feature' | 'improvement' | 'compliment' | 'complaint' | 'general',
-    rating: 5,
     subject: '',
     message: '',
     email: authStore.user?.email || '',
@@ -72,7 +70,6 @@ const FeedbackModal: React.FC<FeedbackModalProps> = observer(({ open, onClose })
   const handleClose = () => {
     setFormData({
       type: 'general' as 'bug' | 'feature' | 'improvement' | 'compliment' | 'complaint' | 'general',
-      rating: 5,
       subject: '',
       message: '',
       email: authStore.user?.email || '',
@@ -149,20 +146,6 @@ const FeedbackModal: React.FC<FeedbackModalProps> = observer(({ open, onClose })
               </Select>
             </FormControl>
 
-            <Box>
-              <Typography variant="body2" sx={{ mb: 1, opacity: 0.9 }}>
-                Overall Rating
-              </Typography>
-              <Rating
-                value={formData.rating}
-                onChange={(_, value) => handleInputChange('rating', value || 1)}
-                size="large"
-                sx={{
-                  color: '#ffd700',
-                  '& .MuiRating-iconEmpty': { color: 'rgba(255,255,255,0.3)' },
-                }}
-              />
-            </Box>
           </Box>
 
           <TextField

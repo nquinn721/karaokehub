@@ -60,8 +60,6 @@ const AppContent: React.FC = observer(() => {
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          p: 3,
-          paddingTop: '24px', // Minimal padding since secondary header is now properly positioned
           '&:has([data-homepage])': {
             p: 0,
             paddingTop: 0,

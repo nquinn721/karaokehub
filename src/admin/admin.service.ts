@@ -346,12 +346,16 @@ export class AdminService {
   async getDjs(page = 1, limit = 10, search?: string) {
     const query = this.djRepository
       .createQueryBuilder('dj')
-      .leftJoinAndSelect('dj.nicknames', 'nicknames');
+      .leftJoinAndSelect('dj.nicknames', 'nicknames')
+      .leftJoinAndSelect('dj.vendor', 'vendor');
 
     if (search) {
-      query.where('dj.name LIKE :search OR nicknames.nickname LIKE :search', {
-        search: `%${search}%`,
-      });
+      query.where(
+        'dj.name LIKE :search OR nicknames.nickname LIKE :search OR vendor.name LIKE :search',
+        {
+          search: `%${search}%`,
+        },
+      );
     }
 
     const [items, total] = await query

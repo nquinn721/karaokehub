@@ -117,22 +117,36 @@ export class UrlService {
    * Get CORS allowed origins
    */
   getAllowedOrigins(): string[] {
-    if (this.isProduction) {
-      return ['https://karaoke-hub.com'];
+    const baseOrigins = this.isProduction
+      ? ['https://karaoke-hub.com']
+      : [
+          'http://localhost:3000',
+          'http://localhost:5173', // Vite default
+          'http://localhost:5174', // Vite alternative
+          'http://localhost:5175', // Vite alternative
+          'http://localhost:5176', // Vite alternative
+          'http://localhost:8000', // Backend
+        ];
+
+    // In production, if local production upload is enabled, also allow localhost origins
+    if (
+      this.isProduction &&
+      this.configService.get<string>('ALLOW_LOCAL_PRODUCTION_UPLOAD') === 'true'
+    ) {
+      baseOrigins.push(
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:5175',
+        'http://localhost:5176',
+        'http://localhost:8000',
+      );
     }
 
-    // Development origins
+    // Add any custom origins from environment variable
     const customOrigins = this.configService.get<string>('ALLOWED_ORIGINS')?.split(',') || [];
-    const defaultOrigins = [
-      'http://localhost:3000',
-      'http://localhost:5173', // Vite default
-      'http://localhost:5174', // Vite alternative
-      'http://localhost:5175', // Vite alternative
-      'http://localhost:5176', // Vite alternative
-      'http://localhost:8000', // Backend
-    ];
 
-    return [...new Set([...customOrigins, ...defaultOrigins])];
+    return [...new Set([...baseOrigins, ...customOrigins])];
   }
 
   /**

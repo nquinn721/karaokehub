@@ -19,6 +19,7 @@ import { Worker } from 'worker_threads';
 import { KaraokeWebSocketGateway } from '../websocket/websocket.gateway';
 import { ParsedSchedule, ParseStatus } from './parsed-schedule.entity';
 import { UrlToParse } from './url-to-parse.entity';
+import { UrlToParseService } from './url-to-parse.service';
 
 interface ParsedImageData {
   vendor?: string;
@@ -70,6 +71,7 @@ export class FacebookParserService {
     @InjectRepository(UrlToParse)
     private urlToParseRepository: Repository<UrlToParse>,
     private webSocketGateway: KaraokeWebSocketGateway,
+    private urlToParseService: UrlToParseService,
   ) {}
 
   /**
@@ -246,6 +248,19 @@ export class FacebookParserService {
       this.logAndBroadcast(`   • Vendors: ${data.filter((d) => d.vendor).length}`);
       this.logAndBroadcast(`   • Schedule ID: ${savedSchedule.id}`);
 
+      // Mark URL as parsed
+      try {
+        const urlToParse = await this.urlToParseRepository.findOne({
+          where: { url: url },
+        });
+        if (urlToParse) {
+          await this.urlToParseService.markAsParsed(urlToParse.id);
+          this.logAndBroadcast(`✅ [COMPLETE] URL marked as parsed`);
+        }
+      } catch (error) {
+        this.logAndBroadcast(`⚠️ [WARNING] Failed to mark URL as parsed: ${error.message}`);
+      }
+
       return {
         parsedScheduleId: savedSchedule.id,
         data: {
@@ -365,9 +380,49 @@ export class FacebookParserService {
           this.logAndBroadcast(`🔄 [IMAGE-LOADING] ${message.message}`);
         } else if (message.type === 'complete') {
           if (message.data.success) {
-            const loadedImages: LoadedImageData[] = message.data.results
-              .filter((result: any) => result.success)
-              .map((result: any, idx: number) => ({
+            // Enhanced logging for image loading results
+            const allResults = message.data.results;
+            const successfulResults = allResults.filter((result: any) => result.success);
+            const failedResults = allResults.filter((result: any) => !result.success);
+
+            this.logAndBroadcast(`\n📊 [IMAGE-FILTERING] === PROCESSING IMAGE LOAD RESULTS ===`);
+            this.logAndBroadcast(
+              `📊 [IMAGE-FILTERING] Total images attempted: ${allResults.length}`,
+            );
+            this.logAndBroadcast(
+              `📊 [IMAGE-FILTERING] Successful downloads: ${successfulResults.length}`,
+            );
+            this.logAndBroadcast(`📊 [IMAGE-FILTERING] Failed downloads: ${failedResults.length}`);
+
+            if (failedResults.length > 0) {
+              this.logAndBroadcast(
+                `\n❌ [IMAGE-FILTERING] Failed images (will be skipped by Gemini):`,
+              );
+              failedResults.forEach((result: any, idx: number) => {
+                this.logAndBroadcast(`❌ [IMAGE-FILTERING]   ${idx + 1}. ${result.error}`);
+                this.logAndBroadcast(
+                  `❌ [IMAGE-FILTERING]      URL: ${result.originalUrl.substring(0, 60)}...`,
+                );
+              });
+            }
+
+            if (successfulResults.length > 0) {
+              this.logAndBroadcast(
+                `\n✅ [IMAGE-FILTERING] Successful images (will be sent to Gemini):`,
+              );
+              successfulResults.forEach((result: any, idx: number) => {
+                const sizeKB = result.size ? (result.size / 1024).toFixed(1) : 'Unknown';
+                this.logAndBroadcast(
+                  `✅ [IMAGE-FILTERING]   ${idx + 1}. Size: ${sizeKB}KB, Fallback: ${result.usedFallback ? 'YES' : 'NO'}`,
+                );
+                this.logAndBroadcast(
+                  `✅ [IMAGE-FILTERING]      ${result.usedFallback ? 'Original' : 'Large'}: ${(result.usedFallback ? result.originalUrl : result.largeScaleUrl).substring(0, 60)}...`,
+                );
+              });
+            }
+
+            const loadedImages: LoadedImageData[] = successfulResults.map(
+              (result: any, idx: number) => ({
                 originalUrl: result.originalUrl,
                 largeScaleUrl: result.largeScaleUrl,
                 base64Data: result.base64Data,
@@ -375,11 +430,13 @@ export class FacebookParserService {
                 mimeType: result.mimeType,
                 usedFallback: result.usedFallback,
                 index: idx,
-              }));
+              }),
+            );
 
             this.logAndBroadcast(
               `✅ [IMAGE-LOADING] Loaded ${loadedImages.length}/${urls.length} images successfully`,
             );
+            this.logAndBroadcast(`📊 [IMAGE-FILTERING] === END IMAGE FILTERING ===\n`);
             resolve(loadedImages);
           } else {
             reject(new Error('Image loading worker failed'));
@@ -403,68 +460,6 @@ export class FacebookParserService {
       worker.postMessage({
         imageUrls: urls,
         workerId: 1,
-        maxRetries: 3,
-        timeout: 30000,
-      });
-    });
-  } /**
-   * Run a single image loading worker
-   */
-  private async runImageLoadingWorker(
-    urls: string[],
-    workerId: number,
-    totalImages?: number,
-    startIndex?: number,
-  ): Promise<LoadedImageData[]> {
-    return new Promise((resolve, reject) => {
-      const workerPath = path.join(
-        __dirname,
-        'facebookParser',
-        'facebook-parallel-image-loading.js',
-      );
-      const worker = new Worker(workerPath);
-
-      worker.on('message', (message) => {
-        if (message.type === 'progress') {
-          // Only show progress for significant milestones to reduce noise
-          this.logAndBroadcast(`🔄 [IMAGE-WORKER-${workerId}] ${message.message}`);
-        } else if (message.type === 'complete') {
-          if (message.data.success) {
-            const loadedImages: LoadedImageData[] = message.data.results
-              .filter((result: any) => result.success)
-              .map((result: any, idx: number) => ({
-                originalUrl: result.originalUrl,
-                largeScaleUrl: result.largeScaleUrl,
-                base64Data: result.base64Data,
-                size: result.size,
-                mimeType: result.mimeType,
-                usedFallback: result.usedFallback,
-                index: (startIndex || 0) + idx, // Use global index
-              }));
-
-            resolve(loadedImages);
-          } else {
-            reject(new Error('Image loading worker failed'));
-          }
-        } else if (message.type === 'error') {
-          reject(new Error(message.error));
-        }
-      });
-
-      worker.on('error', (error) => {
-        reject(error);
-      });
-
-      worker.on('exit', (code) => {
-        if (code !== 0) {
-          reject(new Error(`Image loading worker stopped with exit code ${code}`));
-        }
-      });
-
-      // Send work data to worker
-      worker.postMessage({
-        imageUrls: urls,
-        workerId,
         maxRetries: 3,
         timeout: 30000,
       });
@@ -502,8 +497,6 @@ export class FacebookParserService {
             completedCount++;
             activeWorkers--;
 
-            this.logAndBroadcast(`📊 [PARSING] ${completedCount}/${totalImages} images parsed`);
-
             if (completedCount === totalImages) {
               // Filter out failed results
               const validResults = results.filter((r) => r && r.success);
@@ -513,7 +506,6 @@ export class FacebookParserService {
             }
           })
           .catch((error) => {
-            this.logAndBroadcast(`❌ [PARSE-WORKER-${workerId}] Error: ${error.message}`);
             completedCount++;
             activeWorkers--;
 
@@ -546,7 +538,6 @@ export class FacebookParserService {
 
       worker.on('message', (message) => {
         if (message.type === 'progress') {
-          this.logAndBroadcast(`🔄 [PARSE-WORKER-${workerId}] ${message.message}`);
         } else if (message.type === 'complete') {
           if (message.data.success) {
             resolve(message.data);
@@ -568,7 +559,6 @@ export class FacebookParserService {
         }
       });
 
-      // Send work data to worker (with base64 data instead of URL)
       worker.postMessage({
         base64Data: imageData.base64Data,
         imageUrl: imageData.largeScaleUrl, // Use enhanced quality URL, not original
@@ -577,54 +567,6 @@ export class FacebookParserService {
         workerId,
       });
     });
-  }
-
-  /**
-   * Create large scale URL from original image URL (DEPRECATED - moved to parallel worker)
-   */
-  private createLargeScaleUrl(originalUrl: string): string {
-    // This method is kept for compatibility but is now handled by the parallel worker
-    try {
-      // Facebook CDN URL conversion to larger size
-      if (originalUrl.includes('scontent') || originalUrl.includes('fbcdn')) {
-        // Replace size parameters to get larger images
-        let largeUrl = originalUrl;
-
-        // Remove the stp parameter which controls thumbnail sizing (key fix!)
-        // Handle both cases: ?stp=... (first param) and &stp=... (subsequent param)
-        if (largeUrl.includes('?stp=')) {
-          // stp is first parameter - replace ?stp=... with ? if there are more params, or remove entirely
-          largeUrl = largeUrl.replace(/\?stp=[^&]*&/, '?').replace(/\?stp=[^&]*$/, '');
-        } else {
-          // stp is not first parameter - just remove &stp=...
-          largeUrl = largeUrl.replace(/&stp=[^&]*/, '');
-        }
-
-        // Remove existing size parameters
-        largeUrl = largeUrl.replace(/\/s\d+x\d+\//, '/');
-        largeUrl = largeUrl.replace(/&w=\d+&h=\d+/, '');
-        largeUrl = largeUrl.replace(/\?w=\d+&h=\d+/, '');
-
-        // Remove signature parameters that become invalid after URL modification
-        largeUrl = largeUrl.replace(/&oh=[^&]*/, '');
-        largeUrl = largeUrl.replace(/\?oh=[^&]*&/, '?');
-        largeUrl = largeUrl.replace(/\?oh=[^&]*$/, '');
-        largeUrl = largeUrl.replace(/&oe=[^&]*/, '');
-        largeUrl = largeUrl.replace(/\?oe=[^&]*&/, '?');
-        largeUrl = largeUrl.replace(/\?oe=[^&]*$/, '');
-
-        // Clean up any double ampersands or leading ampersands
-        largeUrl = largeUrl.replace(/&&+/g, '&');
-        largeUrl = largeUrl.replace(/\?&/, '?');
-        largeUrl = largeUrl.replace(/&$/, '');
-
-        return largeUrl;
-      }
-
-      return originalUrl;
-    } catch (error) {
-      return originalUrl;
-    }
   }
 
   /**

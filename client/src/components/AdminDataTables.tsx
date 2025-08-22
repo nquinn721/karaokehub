@@ -1,7 +1,6 @@
 import {
   faComment,
   faEdit,
-  faHeart,
   faMapMarkerAlt,
   faMicrophone,
   faMusic,
@@ -376,7 +375,10 @@ const AdminDataTables: React.FC = observer(() => {
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
+                <TableCell>Stage Name</TableCell>
                 <TableCell>Email</TableCell>
+                <TableCell>Provider</TableCell>
+                <TableCell>Admin</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Created</TableCell>
               </TableRow>
@@ -384,15 +386,52 @@ const AdminDataTables: React.FC = observer(() => {
             <TableBody>
               {adminStore.isLoadingTable ? (
                 <TableRow>
-                  <TableCell colSpan={4} align="center">
+                  <TableCell colSpan={7} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
               ) : (
                 adminStore.users?.items.map((user: AdminUser) => (
                   <TableRow key={user.id}>
-                    <TableCell>{user.name || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {user.avatar && (
+                          <Box
+                            component="img"
+                            src={user.avatar}
+                            sx={{ width: 32, height: 32, borderRadius: '50%' }}
+                            alt="Avatar"
+                          />
+                        )}
+                        {user.name || 'N/A'}
+                      </Box>
+                    </TableCell>
+                    <TableCell>{user.stageName || 'N/A'}</TableCell>
                     <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      {user.provider ? (
+                        <Chip
+                          label={user.provider}
+                          size="small"
+                          color={
+                            user.provider === 'google'
+                              ? 'primary'
+                              : user.provider === 'facebook'
+                                ? 'info'
+                                : 'default'
+                          }
+                        />
+                      ) : (
+                        'Email'
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={user.isAdmin ? 'Admin' : 'User'}
+                        color={user.isAdmin ? 'warning' : 'default'}
+                        size="small"
+                      />
+                    </TableCell>
                     <TableCell>
                       <Chip
                         label={user.isActive ? 'Active' : 'Inactive'}
@@ -420,8 +459,13 @@ const AdminDataTables: React.FC = observer(() => {
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
+                <TableCell>Owner</TableCell>
+                <TableCell>Website</TableCell>
+                <TableCell>Social</TableCell>
                 <TableCell>Shows</TableCell>
                 <TableCell>DJs</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Last Parsed</TableCell>
                 <TableCell>Created</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
@@ -429,14 +473,56 @@ const AdminDataTables: React.FC = observer(() => {
             <TableBody>
               {adminStore.isLoadingTable ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={10} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
               ) : (
                 adminStore.venues?.items.map((venue: AdminVenue) => (
                   <TableRow key={venue.id}>
-                    <TableCell>{venue.name}</TableCell>
+                    <TableCell>
+                      <Box>
+                        <Typography variant="subtitle2">{venue.name}</Typography>
+                        {venue.description && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: 'block', maxWidth: 200 }}
+                          >
+                            {venue.description.length > 50
+                              ? `${venue.description.substring(0, 47)}...`
+                              : venue.description}
+                          </Typography>
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell>{venue.owner || 'N/A'}</TableCell>
+                    <TableCell>
+                      {venue.website ? (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          href={venue.website}
+                          target="_blank"
+                          sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+                        >
+                          Visit
+                        </Button>
+                      ) : (
+                        'N/A'
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        {venue.instagram && (
+                          <Chip label="IG" size="small" color="secondary" variant="outlined" />
+                        )}
+                        {venue.facebook && (
+                          <Chip label="FB" size="small" color="primary" variant="outlined" />
+                        )}
+                        {!venue.instagram && !venue.facebook && 'N/A'}
+                      </Box>
+                    </TableCell>
                     <TableCell>
                       <Chip
                         label={venue.showCount || 0}
@@ -450,6 +536,25 @@ const AdminDataTables: React.FC = observer(() => {
                         color={venue.djCount && venue.djCount > 0 ? 'secondary' : 'default'}
                         size="small"
                       />
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Chip
+                          label={venue.isActive ? 'Active' : 'Inactive'}
+                          color={venue.isActive ? 'success' : 'default'}
+                          size="small"
+                        />
+                        {venue.requiresReview && (
+                          <Chip label="Review Required" color="warning" size="small" />
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      {venue.lastParsed ? (
+                        <Typography variant="caption">{formatDate(venue.lastParsed)}</Typography>
+                      ) : (
+                        'Never'
+                      )}
                     </TableCell>
                     <TableCell>{formatDate(venue.createdAt)}</TableCell>
                     <TableCell>
@@ -493,11 +598,13 @@ const AdminDataTables: React.FC = observer(() => {
             <TableHead>
               <TableRow>
                 <TableCell>Vendor</TableCell>
-                <TableCell>Show Name</TableCell>
-                <TableCell>Address</TableCell>
-                <TableCell>Day</TableCell>
+                <TableCell>Venue</TableCell>
+                <TableCell>Location</TableCell>
+                <TableCell>Schedule</TableCell>
                 <TableCell>DJ</TableCell>
+                <TableCell>Contact</TableCell>
                 <TableCell>Status</TableCell>
+                <TableCell>Source</TableCell>
                 <TableCell>Created</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
@@ -505,7 +612,7 @@ const AdminDataTables: React.FC = observer(() => {
             <TableBody>
               {adminStore.isLoadingTable ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center">
+                  <TableCell colSpan={10} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
@@ -513,24 +620,100 @@ const AdminDataTables: React.FC = observer(() => {
                 adminStore.shows?.items.map((show: AdminShow) => (
                   <TableRow key={show.id}>
                     <TableCell>{show.vendor?.name || 'N/A'}</TableCell>
-                    <TableCell>{show.venue || 'N/A'}</TableCell>
                     <TableCell>
-                      <Typography variant="body2" title={show.address || ''}>
-                        {show.address
-                          ? show.address.length > 40
-                            ? `${show.address.substring(0, 37)}...`
-                            : show.address
-                          : 'N/A'}
-                      </Typography>
+                      <Box>
+                        <Typography variant="subtitle2">{show.venue || 'N/A'}</Typography>
+                        {show.description && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: 'block' }}
+                          >
+                            {show.description.length > 30
+                              ? `${show.description.substring(0, 27)}...`
+                              : show.description}
+                          </Typography>
+                        )}
+                      </Box>
                     </TableCell>
-                    <TableCell>{show.day || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Box>
+                        {show.address && (
+                          <Typography variant="body2" title={show.address}>
+                            {show.address.length > 30
+                              ? `${show.address.substring(0, 27)}...`
+                              : show.address}
+                          </Typography>
+                        )}
+                        {(show.city || show.state) && (
+                          <Typography variant="caption" color="text.secondary">
+                            {[show.city, show.state].filter(Boolean).join(', ')}
+                            {show.zip && ` ${show.zip}`}
+                          </Typography>
+                        )}
+                        {show.lat && show.lng && !isNaN(Number(show.lat)) && !isNaN(Number(show.lng)) && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: 'block' }}
+                          >
+                            📍 {Number(show.lat).toFixed(4)}, {Number(show.lng).toFixed(4)}
+                          </Typography>
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Box>
+                        {show.day && (
+                          <Chip label={show.day} size="small" color="primary" variant="outlined" />
+                        )}
+                        {show.startTime && show.endTime && (
+                          <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+                            {show.startTime} - {show.endTime}
+                          </Typography>
+                        )}
+                        {show.time && !show.startTime && (
+                          <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+                            {show.time}
+                          </Typography>
+                        )}
+                      </Box>
+                    </TableCell>
                     <TableCell>{show.dj?.name || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Box>
+                        {show.venuePhone && (
+                          <Typography variant="caption" sx={{ display: 'block' }}>
+                            📞 {show.venuePhone}
+                          </Typography>
+                        )}
+                        {show.venueWebsite && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            href={show.venueWebsite}
+                            target="_blank"
+                            sx={{ textTransform: 'none', fontSize: '0.7rem', mt: 0.5 }}
+                          >
+                            Website
+                          </Button>
+                        )}
+                        {!show.venuePhone && !show.venueWebsite && 'N/A'}
+                      </Box>
+                    </TableCell>
                     <TableCell>
                       <Chip
                         label={show.isActive ? 'Active' : 'Inactive'}
                         color={show.isActive ? 'success' : 'default'}
                         size="small"
                       />
+                    </TableCell>
+                    <TableCell>
+                      {show.source ? (
+                        <Chip label={show.source} size="small" color="info" variant="outlined" />
+                      ) : (
+                        'Manual'
+                      )}
                     </TableCell>
                     <TableCell>{formatDate(show.createdAt)}</TableCell>
                     <TableCell>
@@ -574,7 +757,9 @@ const AdminDataTables: React.FC = observer(() => {
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
+                <TableCell>Vendor</TableCell>
                 <TableCell>Nicknames</TableCell>
+                <TableCell>Status</TableCell>
                 <TableCell>Created</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
@@ -582,7 +767,7 @@ const AdminDataTables: React.FC = observer(() => {
             <TableBody>
               {adminStore.isLoadingTable ? (
                 <TableRow>
-                  <TableCell colSpan={4} align="center">
+                  <TableCell colSpan={6} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
@@ -590,6 +775,18 @@ const AdminDataTables: React.FC = observer(() => {
                 adminStore.djs?.items.map((dj: AdminDJ) => (
                   <TableRow key={dj.id}>
                     <TableCell>{dj.name}</TableCell>
+                    <TableCell>
+                      {dj.vendor ? (
+                        <Chip
+                          label={dj.vendor.name}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                        />
+                      ) : (
+                        'N/A'
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                         {dj.nicknames && dj.nicknames.length > 0 ? (
@@ -619,6 +816,13 @@ const AdminDataTables: React.FC = observer(() => {
                           </Typography>
                         )}
                       </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={dj.isActive ? 'Active' : 'Inactive'}
+                        color={dj.isActive ? 'success' : 'default'}
+                        size="small"
+                      />
                     </TableCell>
                     <TableCell>{formatDate(dj.createdAt)}</TableCell>
                     <TableCell>
@@ -669,7 +873,6 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>Type</TableCell>
                 <TableCell>Subject</TableCell>
                 <TableCell>Message</TableCell>
-                <TableCell>Rating</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>User</TableCell>
                 <TableCell>Date</TableCell>
@@ -705,15 +908,6 @@ const AdminDataTables: React.FC = observer(() => {
                         {feedback.message}
                       </Typography>
                     </Tooltip>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Typography variant="body2">{feedback.rating}</Typography>
-                      <FontAwesomeIcon
-                        icon={faHeart}
-                        style={{ color: '#f39c12', fontSize: '12px' }}
-                      />
-                    </Box>
                   </TableCell>
                   <TableCell>
                     <Chip

@@ -3,7 +3,6 @@ import { apiStore } from './ApiStore';
 
 export interface FeedbackSubmission {
   type: 'bug' | 'feature' | 'improvement' | 'compliment' | 'complaint' | 'general';
-  rating: number;
   subject?: string;
   message: string;
   email?: string;

@@ -61,35 +61,71 @@ export interface PaginatedResponse<T> {
 export interface AdminUser {
   id: string;
   email: string;
-  name?: string;
+  name: string;
+  stageName?: string;
+  avatar?: string;
+  provider?: string;
+  providerId?: string;
   isActive: boolean;
+  isAdmin: boolean;
+  stripeCustomerId?: string;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AdminVenue {
   id: string;
   name: string;
-  location?: string;
+  owner?: string;
+  website?: string;
+  description?: string;
+  instagram?: string;
+  facebook?: string;
+  isActive: boolean;
+  requiresReview: boolean;
+  lastParsed?: Date;
+  parseNotes?: string;
   showCount?: number;
   djCount?: number;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AdminShow {
   id: string;
-  day?: string;
-  venue?: string;
+  vendorId: string;
+  djId?: string;
   address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  venue?: string;
+  time?: string;
+  day?: string;
+  startTime?: string;
+  endTime?: string;
+  description?: string;
+  imageUrl?: string;
+  venuePhone?: string;
+  venueWebsite?: string;
+  source?: string;
+  lat?: number;
+  lng?: number;
   isActive: boolean;
   vendor?: AdminVenue;
   dj?: AdminDJ;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AdminDJ {
   id: string;
   name: string;
+  vendorId: string;
+  isActive: boolean;
+  vendor?: AdminVenue;
   createdAt: Date;
+  updatedAt: Date;
   nicknames?: {
     id: string;
     nickname: string;
@@ -118,7 +154,6 @@ export interface AdminSong {
 export interface AdminFeedback {
   id: string;
   type: 'bug' | 'feature' | 'improvement' | 'compliment' | 'complaint' | 'general';
-  rating: number;
   subject?: string;
   message: string;
   email?: string;

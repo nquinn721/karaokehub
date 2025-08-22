@@ -25,7 +25,6 @@ import {
   CardActionArea,
   CardContent,
   Chip,
-  Container,
   Divider,
   Grid,
   IconButton,
@@ -433,8 +432,8 @@ const DashboardPage: React.FC = observer(() => {
           },
         }}
       >
-        <Container maxWidth="xl" sx={{ py: 4, position: 'relative', zIndex: 1 }}>
-          <Box>
+        <Box sx={{ maxWidth: '1400px', mx: 'auto', py: 6, position: 'relative', zIndex: 1 }}>
+          <Box sx={{ px: 3 }}>
             {/* Enhanced Welcome Header */}
             <Box sx={{ mb: 5, textAlign: 'center' }}>
               <Box
@@ -885,7 +884,7 @@ const DashboardPage: React.FC = observer(() => {
               </Box>
             )}
           </Box>
-        </Container>
+        </Box>
       </Box>
     </>
   );

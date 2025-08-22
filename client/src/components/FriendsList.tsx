@@ -177,16 +177,15 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
               </Box>
             )}
 
-            {(searchQuery.length >= 2 &&
+            {searchQuery.length >= 2 &&
               !friendsStore.searchLoading &&
-              !friendsStore.searchResults) ||
-              (friendsStore.searchResults.length === 0 && (
+              (!friendsStore.searchResults || friendsStore.searchResults.length === 0) && (
                 <Typography variant="body2" color="text.secondary" sx={{ p: 1 }}>
                   No users found
                 </Typography>
-              ))}
+              )}
 
-            {(friendsStore.searchResults || []).map((user) => (
+            {friendsStore.safeSearchResults.map((user) => (
               <Box
                 key={user.id}
                 sx={{

@@ -73,7 +73,7 @@ class FriendsStore {
       const response = await apiStore.get('/friends/search', { params: { query, limit: 10 } });
 
       runInAction(() => {
-        this.searchResults = response.data;
+        this.searchResults = Array.isArray(response.data) ? response.data : [];
         this.searchLoading = false;
       });
     } catch (error: any) {
@@ -300,6 +300,11 @@ class FriendsStore {
   // Check if there's a pending request from this user
   hasPendingRequestFrom(userId: string): boolean {
     return this.pendingRequests.some((request) => request.requester.id === userId);
+  }
+
+  // Get search results safely
+  get safeSearchResults(): UserSearchResult[] {
+    return Array.isArray(this.searchResults) ? this.searchResults : [];
   }
 }
 

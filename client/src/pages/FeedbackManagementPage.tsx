@@ -27,7 +27,6 @@ import {
   InputLabel,
   MenuItem,
   Paper,
-  Rating,
   Select,
   TextField,
   Typography,
@@ -183,7 +182,6 @@ const FeedbackManagementPage: React.FC = observer(() => {
                       />
                     </Box>
                   </Box>
-                  <Rating value={feedback.rating} readOnly size="small" />
                 </Box>
 
                 {feedback.subject && (

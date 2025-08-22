@@ -25,7 +25,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Container,
   Dialog,
   DialogActions,
   DialogContent,
@@ -348,22 +347,24 @@ const AdminParserPage: React.FC = observer(() => {
         },
       }}
     >
-      <Container maxWidth="xl" sx={{ py: 4, position: 'relative', zIndex: 1 }}>
+      <Box sx={{ maxWidth: '1400px', mx: 'auto', py: 6, position: 'relative', zIndex: 1 }}>
         {/* Breadcrumbs */}
-        <AdminBreadcrumb
-          items={[
-            {
-              label: 'Admin',
-              icon: faUserShield,
-              path: '/admin',
-            },
-            {
-              label: 'Parser',
-              icon: faGlobe,
-              isActive: true,
-            },
-          ]}
-        />
+        <Box sx={{ px: 3 }}>
+          <AdminBreadcrumb
+            items={[
+              {
+                label: 'Admin',
+                icon: faUserShield,
+                path: '/admin',
+              },
+              {
+                label: 'Parser',
+                icon: faGlobe,
+                isActive: true,
+              },
+            ]}
+          />
+        </Box>
 
         {/* Enhanced Header */}
         <Paper
@@ -376,6 +377,7 @@ const AdminParserPage: React.FC = observer(() => {
             border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
             borderRadius: 3,
             mb: 4,
+            mx: 3,
             overflow: 'hidden',
             position: 'relative',
             '&::before': {
@@ -440,132 +442,151 @@ const AdminParserPage: React.FC = observer(() => {
           </Box>
         </Paper>
 
-        <Grid container spacing={3}>
-          {/* Parse Section */}
-          <Grid item xs={12} lg={6}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 3,
-                borderRadius: 3,
-                background: `linear-gradient(135deg, 
+        <Box sx={{ px: 3 }}>
+          <Grid container spacing={3}>
+            {/* Parse Section */}
+            <Grid item xs={12} lg={6}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, 
                 ${alpha(theme.palette.background.paper, 0.95)} 0%, 
                 ${alpha(theme.palette.background.paper, 0.8)} 100%)`,
-                backdropFilter: 'blur(10px)',
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                position: 'relative',
-                overflow: 'hidden',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: '3px',
-                  background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                },
-              }}
-            >
-              <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-                <FontAwesomeIcon icon={faPlay} style={{ marginRight: '8px' }} />
-                Parse Website
-              </Typography>
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                  },
+                }}
+              >
+                <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
+                  <FontAwesomeIcon icon={faPlay} style={{ marginRight: '8px' }} />
+                  Parse Website
+                </Typography>
 
-              {/* URL Filter */}
-              <Box sx={{ mb: 3 }}>
-                <FormControl sx={{ minWidth: 200 }}>
-                  <InputLabel>Filter URLs</InputLabel>
-                  <Select
-                    value={parserStore.urlFilter}
-                    onChange={(e) =>
-                      parserStore.setUrlFilter(
-                        e.target.value as 'all' | 'unparsed' | 'approved-and-unparsed',
-                      )
-                    }
-                    label="Filter URLs"
-                    size="small"
-                  >
-                    <MenuItem value="all">All URLs</MenuItem>
-                    <MenuItem value="unparsed">Unparsed Only</MenuItem>
-                    <MenuItem value="approved-and-unparsed">Approved & Unparsed</MenuItem>
-                  </Select>
-                </FormControl>
-              </Box>
-
-              {parserStore.isLoading && (
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <CircularProgress size={20} sx={{ mr: 1 }} />
-                  <Typography variant="body2" color="text.secondary">
-                    Loading URLs to parse...
-                  </Typography>
+                {/* URL Filter */}
+                <Box sx={{ mb: 3 }}>
+                  <FormControl sx={{ minWidth: 200 }}>
+                    <InputLabel>Filter URLs</InputLabel>
+                    <Select
+                      value={parserStore.urlFilter}
+                      onChange={(e) =>
+                        parserStore.setUrlFilter(
+                          e.target.value as 'all' | 'unparsed' | 'approved-and-unparsed',
+                        )
+                      }
+                      label="Filter URLs"
+                      size="small"
+                    >
+                      <MenuItem value="all">All URLs</MenuItem>
+                      <MenuItem value="unparsed">Unparsed Only</MenuItem>
+                      <MenuItem value="approved-and-unparsed">Approved & Unparsed</MenuItem>
+                    </Select>
+                  </FormControl>
                 </Box>
-              )}
 
-              <Box sx={{ mb: 3 }}>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Select URL to Parse</InputLabel>
-                  <Select
-                    value={selectedUrl}
-                    onChange={(e) => setSelectedUrl(e.target.value)}
-                    label="Select URL to Parse"
-                    disabled={showCustomUrl}
-                    renderValue={(value) => {
-                      const urlObj = parserStore.urlsToParse.find((u) => u.url === value);
-                      const displayText = urlObj?.name || value;
-                      return (
-                        <Box
+                {parserStore.isLoading && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Loading URLs to parse...
+                    </Typography>
+                  </Box>
+                )}
+
+                <Box sx={{ mb: 3 }}>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel>Select URL to Parse</InputLabel>
+                    <Select
+                      value={selectedUrl}
+                      onChange={(e) => setSelectedUrl(e.target.value)}
+                      label="Select URL to Parse"
+                      disabled={showCustomUrl}
+                      renderValue={(value) => {
+                        const urlObj = parserStore.urlsToParse.find((u) => u.url === value);
+                        const displayText = urlObj?.name || value;
+                        return (
+                          <Box
+                            sx={{
+                              wordBreak: 'break-all',
+                              whiteSpace: 'normal',
+                              py: 0.5,
+                            }}
+                            title={urlObj?.name ? `${urlObj.name} - ${value}` : value}
+                          >
+                            {displayText}
+                          </Box>
+                        );
+                      }}
+                    >
+                      {parserStore.urlsToParse.map((url) => (
+                        <MenuItem
+                          key={url.id}
+                          value={url.url}
                           sx={{
-                            wordBreak: 'break-all',
-                            whiteSpace: 'normal',
-                            py: 0.5,
-                          }}
-                          title={urlObj?.name ? `${urlObj.name} - ${value}` : value}
-                        >
-                          {displayText}
-                        </Box>
-                      );
-                    }}
-                  >
-                    {parserStore.urlsToParse.map((url) => (
-                      <MenuItem
-                        key={url.id}
-                        value={url.url}
-                        sx={{
-                          display: 'flex !important',
-                          flexDirection: 'row !important',
-                          justifyContent: 'space-between !important',
-                          alignItems: 'center !important',
-                          py: 1,
-                          minHeight: '48px',
-                          '&.Mui-selected': {
                             display: 'flex !important',
                             flexDirection: 'row !important',
                             justifyContent: 'space-between !important',
                             alignItems: 'center !important',
-                          },
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            flex: 1,
-                            mr: 1,
-                            wordBreak: 'break-all',
-                            whiteSpace: 'normal',
-                            maxWidth: 'calc(100% - 40px)',
-                            alignSelf: 'center',
+                            py: 1,
+                            minHeight: '48px',
+                            '&.Mui-selected': {
+                              display: 'flex !important',
+                              flexDirection: 'row !important',
+                              justifyContent: 'space-between !important',
+                              alignItems: 'center !important',
+                            },
                           }}
                         >
-                          <Box>
-                            {url.name ? (
-                              <>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box
+                            sx={{
+                              flex: 1,
+                              mr: 1,
+                              wordBreak: 'break-all',
+                              whiteSpace: 'normal',
+                              maxWidth: 'calc(100% - 40px)',
+                              alignSelf: 'center',
+                            }}
+                          >
+                            <Box>
+                              {url.name ? (
+                                <>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography
+                                      variant="body2"
+                                      component="div"
+                                      sx={{ fontWeight: 'bold' }}
+                                    >
+                                      {url.name}
+                                    </Typography>
+                                    <Chip
+                                      label={url.hasBeenParsed ? 'Parsed' : 'Unparsed'}
+                                      size="small"
+                                      color={url.hasBeenParsed ? 'success' : 'warning'}
+                                      variant="outlined"
+                                    />
+                                  </Box>
                                   <Typography
-                                    variant="body2"
+                                    variant="caption"
+                                    color="text.secondary"
                                     component="div"
-                                    sx={{ fontWeight: 'bold' }}
                                   >
-                                    {url.name}
+                                    {url.url}
                                   </Typography>
+                                </>
+                              ) : (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Typography variant="body2">{url.url}</Typography>
                                   <Chip
                                     label={url.hasBeenParsed ? 'Parsed' : 'Unparsed'}
                                     size="small"
@@ -573,573 +594,563 @@ const AdminParserPage: React.FC = observer(() => {
                                     variant="outlined"
                                   />
                                 </Box>
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                  component="div"
-                                >
-                                  {url.url}
-                                </Typography>
-                              </>
-                            ) : (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography variant="body2">{url.url}</Typography>
-                                <Chip
-                                  label={url.hasBeenParsed ? 'Parsed' : 'Unparsed'}
-                                  size="small"
-                                  color={url.hasBeenParsed ? 'success' : 'warning'}
-                                  variant="outlined"
-                                />
-                              </Box>
-                            )}
+                              )}
+                            </Box>
                           </Box>
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 0.5, alignSelf: 'center' }}>
-                          <IconButton
-                            size="small"
-                            color={url.hasBeenParsed ? 'warning' : 'success'}
-                            onClick={async (e) => {
-                              e.stopPropagation(); // Prevent MenuItem selection
-                              if (url.hasBeenParsed) {
-                                await parserStore.markUrlAsUnparsed(url.id);
-                              } else {
-                                await parserStore.markUrlAsParsed(url.id);
-                              }
-                            }}
-                            title={url.hasBeenParsed ? 'Mark as Unparsed' : 'Mark as Parsed'}
-                            sx={{
-                              minWidth: '32px',
-                              width: '32px',
-                              height: '32px',
-                              flexShrink: 0,
-                            }}
-                          >
-                            <FontAwesomeIcon
-                              icon={url.hasBeenParsed ? faTimes : faCheck}
-                              size="sm"
-                            />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={async (e) => {
-                              e.stopPropagation(); // Prevent MenuItem selection
-                              setUrlToDelete({ id: url.id, url: url.url });
-                              setDeleteConfirmDialog(true);
-                            }}
-                            title="Delete URL"
-                            sx={{
-                              minWidth: '32px',
-                              width: '32px',
-                              height: '32px',
-                              flexShrink: 0,
-                            }}
-                          >
-                            <FontAwesomeIcon icon={faTrash} size="sm" />
-                          </IconButton>
-                        </Box>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                          <Box sx={{ display: 'flex', gap: 0.5, alignSelf: 'center' }}>
+                            <IconButton
+                              size="small"
+                              color={url.hasBeenParsed ? 'warning' : 'success'}
+                              onClick={async (e) => {
+                                e.stopPropagation(); // Prevent MenuItem selection
+                                if (url.hasBeenParsed) {
+                                  await parserStore.markUrlAsUnparsed(url.id);
+                                } else {
+                                  await parserStore.markUrlAsParsed(url.id);
+                                }
+                              }}
+                              title={url.hasBeenParsed ? 'Mark as Unparsed' : 'Mark as Parsed'}
+                              sx={{
+                                minWidth: '32px',
+                                width: '32px',
+                                height: '32px',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <FontAwesomeIcon
+                                icon={url.hasBeenParsed ? faTimes : faCheck}
+                                size="sm"
+                              />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={async (e) => {
+                                e.stopPropagation(); // Prevent MenuItem selection
+                                setUrlToDelete({ id: url.id, url: url.url });
+                                setDeleteConfirmDialog(true);
+                              }}
+                              title="Delete URL"
+                              sx={{
+                                minWidth: '32px',
+                                width: '32px',
+                                height: '32px',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <FontAwesomeIcon icon={faTrash} size="sm" />
+                            </IconButton>
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
 
-                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                  <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => {
+                        const newShowCustomUrl = !showCustomUrl;
+                        setShowCustomUrl(newShowCustomUrl);
+                        if (newShowCustomUrl) {
+                          // Switching to custom URL - clear selected URL
+                          setSelectedUrl('');
+                        } else {
+                          // Switching back to dropdown - clear custom URL
+                          setCustomUrl('');
+                        }
+                      }}
+                      startIcon={<FontAwesomeIcon icon={faPlus} />}
+                    >
+                      {showCustomUrl ? 'Use Dropdown' : 'Custom URL'}
+                    </Button>
+                  </Box>
+
+                  {showCustomUrl && (
+                    <TextField
+                      fullWidth
+                      label="Custom URL"
+                      value={customUrl}
+                      onChange={(e) => setCustomUrl(e.target.value)}
+                      placeholder="https://example.com/karaoke-schedule"
+                      sx={{ mb: 2 }}
+                    />
+                  )}
+
+                  {/* Parsing Method Selection */}
+                  <FormControl component="fieldset" sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Parsing Method
+                    </Typography>
+                    {isCurrentUrlFacebook ? (
+                      // Facebook URL - show only Facebook parsing option
+                      <Box
+                        sx={{
+                          p: 2,
+                          bgcolor: 'primary.main',
+                          color: 'primary.contrastText',
+                          borderRadius: 1,
+                        }}
+                      >
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          🔵 Facebook Parsing
+                        </Typography>
+                        <Typography variant="caption">
+                          Specialized Facebook parsing using Puppeteer and AI analysis
+                        </Typography>
+                      </Box>
+                    ) : isCurrentUrlInstagram ? (
+                      // Instagram URL - show only Instagram parsing option
+                      <Box
+                        sx={{
+                          p: 2,
+                          bgcolor: 'secondary.main',
+                          color: 'secondary.contrastText',
+                          borderRadius: 1,
+                        }}
+                      >
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          📷 Instagram Parsing
+                        </Typography>
+                        <Typography variant="caption">
+                          Visual Instagram parsing using screenshots and AI analysis
+                        </Typography>
+                      </Box>
+                    ) : (
+                      // Non-Facebook/Instagram URL - show normal parsing options
+                      <>
+                        <RadioGroup
+                          row
+                          value={parseMethod}
+                          onChange={(e) => setParseMethod(e.target.value as 'html' | 'screenshot')}
+                        >
+                          <FormControlLabel
+                            value="screenshot"
+                            control={<Radio />}
+                            label="Screenshot Parsing (Recommended)"
+                          />
+                          <FormControlLabel value="html" control={<Radio />} label="HTML Parsing" />
+                        </RadioGroup>
+                        <Typography variant="caption" color="text.secondary">
+                          {parseMethod === 'screenshot'
+                            ? 'Take a full-page screenshot and parse visually (recommended - finds all shows)'
+                            : 'Parse the HTML content with data attributes (may miss complex layouts)'}
+                        </Typography>
+                      </>
+                    )}
+                  </FormControl>
+
                   <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => {
-                      const newShowCustomUrl = !showCustomUrl;
-                      setShowCustomUrl(newShowCustomUrl);
-                      if (newShowCustomUrl) {
-                        // Switching to custom URL - clear selected URL
-                        setSelectedUrl('');
-                      } else {
-                        // Switching back to dropdown - clear custom URL
-                        setCustomUrl('');
-                      }
-                    }}
-                    startIcon={<FontAwesomeIcon icon={faPlus} />}
+                    fullWidth
+                    variant="contained"
+                    size="large"
+                    onClick={handleParseUrl}
+                    disabled={isParsingUrl || (!selectedUrl && !customUrl)}
+                    startIcon={
+                      isParsingUrl ? (
+                        <CircularProgress size={16} />
+                      ) : (
+                        <FontAwesomeIcon icon={faPlay} />
+                      )
+                    }
                   >
-                    {showCustomUrl ? 'Use Dropdown' : 'Custom URL'}
+                    {isParsingUrl
+                      ? `Parsing... (${parserStore.getFormattedElapsedTime()})`
+                      : isCurrentUrlFacebook
+                        ? 'Parse Facebook'
+                        : isCurrentUrlInstagram
+                          ? 'Parse Instagram'
+                          : 'Parse Website'}
                   </Button>
                 </Box>
 
-                {showCustomUrl && (
-                  <TextField
-                    fullWidth
-                    label="Custom URL"
-                    value={customUrl}
-                    onChange={(e) => setCustomUrl(e.target.value)}
-                    placeholder="https://example.com/karaoke-schedule"
-                    sx={{ mb: 2 }}
-                  />
-                )}
-
-                {/* Parsing Method Selection */}
-                <FormControl component="fieldset" sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Parsing Method
-                  </Typography>
-                  {isCurrentUrlFacebook ? (
-                    // Facebook URL - show only Facebook parsing option
-                    <Box
-                      sx={{
-                        p: 2,
-                        bgcolor: 'primary.main',
-                        color: 'primary.contrastText',
-                        borderRadius: 1,
-                      }}
-                    >
-                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                        🔵 Facebook Parsing
-                      </Typography>
-                      <Typography variant="caption">
-                        Specialized Facebook parsing using Puppeteer and AI analysis
-                      </Typography>
-                    </Box>
-                  ) : isCurrentUrlInstagram ? (
-                    // Instagram URL - show only Instagram parsing option
-                    <Box
-                      sx={{
-                        p: 2,
-                        bgcolor: 'secondary.main',
-                        color: 'secondary.contrastText',
-                        borderRadius: 1,
-                      }}
-                    >
-                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                        📷 Instagram Parsing
-                      </Typography>
-                      <Typography variant="caption">
-                        Visual Instagram parsing using screenshots and AI analysis
-                      </Typography>
-                    </Box>
-                  ) : (
-                    // Non-Facebook/Instagram URL - show normal parsing options
-                    <>
-                      <RadioGroup
-                        row
-                        value={parseMethod}
-                        onChange={(e) => setParseMethod(e.target.value as 'html' | 'screenshot')}
-                      >
-                        <FormControlLabel
-                          value="screenshot"
-                          control={<Radio />}
-                          label="Screenshot Parsing (Recommended)"
-                        />
-                        <FormControlLabel value="html" control={<Radio />} label="HTML Parsing" />
-                      </RadioGroup>
-                      <Typography variant="caption" color="text.secondary">
-                        {parseMethod === 'screenshot'
-                          ? 'Take a full-page screenshot and parse visually (recommended - finds all shows)'
-                          : 'Parse the HTML content with data attributes (may miss complex layouts)'}
-                      </Typography>
-                    </>
-                  )}
-                </FormControl>
-
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  onClick={handleParseUrl}
-                  disabled={isParsingUrl || (!selectedUrl && !customUrl)}
-                  startIcon={
-                    isParsingUrl ? (
-                      <CircularProgress size={16} />
-                    ) : (
-                      <FontAwesomeIcon icon={faPlay} />
-                    )
-                  }
-                >
-                  {isParsingUrl
-                    ? `Parsing... (${parserStore.getFormattedElapsedTime()})`
-                    : isCurrentUrlFacebook
-                      ? 'Parse Facebook'
-                      : isCurrentUrlInstagram
-                        ? 'Parse Instagram'
-                        : 'Parse Website'}
-                </Button>
-              </Box>
-
-              {/* Parsing Status */}
-              {isParsingUrl && (
-                <Box
-                  sx={{
-                    mt: 2,
-                    p: 2,
-                    bgcolor: 'primary.50',
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: 'primary.200',
-                  }}
-                >
-                  <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <CircularProgress size={16} sx={{ mr: 1 }} />
-                    <strong>
-                      Parsing in progress... ({parserStore.getFormattedElapsedTime()})
-                    </strong>
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    This may take several minutes depending on website size. The parser is
-                    processing the content and extracting show information.
-                  </Typography>
-                </Box>
-              )}
-
-              {parserStore.error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  {parserStore.error}
-                </Alert>
-              )}
-
-              {parseResult && parseResult.success && (
-                <Alert severity="success" sx={{ mb: 2 }}>
-                  Website parsed successfully! Check the review queue below.
-                </Alert>
-              )}
-
-              {parseResult && !parseResult.success && parseResult.error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  Parsing failed: {parseResult.error}
-                </Alert>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* Parser Statistics */}
-          <Grid item xs={12} lg={6}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 3,
-                borderRadius: 3,
-                background: `linear-gradient(135deg, 
-                ${alpha(theme.palette.background.paper, 0.95)} 0%, 
-                ${alpha(theme.palette.background.paper, 0.8)} 100%)`,
-                backdropFilter: 'blur(10px)',
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                position: 'relative',
-                overflow: 'hidden',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: '3px',
-                  background: `linear-gradient(90deg, ${theme.palette.warning.main}, ${theme.palette.info.main})`,
-                },
-              }}
-            >
-              <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-                <FontAwesomeIcon icon={faExclamationTriangle} style={{ marginRight: '8px' }} />
-                Parser Statistics
-              </Typography>
-
-              <Grid container spacing={2}>
-                <Grid item xs={4}>
+                {/* Parsing Status */}
+                {isParsingUrl && (
                   <Box
                     sx={{
-                      textAlign: 'center',
+                      mt: 2,
                       p: 2,
-                      backgroundColor: theme.palette.action.hover,
+                      bgcolor: 'primary.50',
                       borderRadius: 1,
-                    }}
-                  >
-                    <Typography variant="h4" color="primary" sx={{ fontWeight: 600 }}>
-                      {parserStore.pendingReviews.length}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Pending Reviews
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={4}>
-                  <Box
-                    sx={{
-                      textAlign: 'center',
-                      p: 2,
-                      backgroundColor: theme.palette.action.hover,
-                      borderRadius: 1,
-                    }}
-                  >
-                    <Typography variant="h4" color="success.main" sx={{ fontWeight: 600 }}>
-                      {parserStore.urlsToParse.length}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      URLs in Queue
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={4}>
-                  <Box
-                    sx={{
-                      textAlign: 'center',
-                      p: 2,
-                      backgroundColor: theme.palette.action.hover,
-                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'primary.200',
                     }}
                   >
                     <Typography
-                      variant="h4"
-                      color={parserStore.lastCompletedParsingTime ? 'info.main' : 'text.secondary'}
-                      sx={{ fontWeight: 600 }}
+                      variant="body2"
+                      sx={{ display: 'flex', alignItems: 'center', mb: 1 }}
                     >
-                      {parserStore.getFormattedCompletionTime()}
+                      <CircularProgress size={16} sx={{ mr: 1 }} />
+                      <strong>
+                        Parsing in progress... ({parserStore.getFormattedElapsedTime()})
+                      </strong>
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Last Parse Time
+                      This may take several minutes depending on website size. The parser is
+                      processing the content and extracting show information.
                     </Typography>
                   </Box>
-                </Grid>
-              </Grid>
-
-              {/* Selected URL Display */}
-              {selectedUrl && (
-                <>
-                  <Divider sx={{ my: 2 }} />
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      Selected URL:
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography
-                        variant="body2"
-                        component="a"
-                        href={selectedUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        sx={{
-                          color: 'primary.main',
-                          textDecoration: 'underline',
-                          wordBreak: 'break-all',
-                          flex: 1,
-                          '&:hover': {
-                            color: 'primary.dark',
-                          },
-                        }}
-                      >
-                        {selectedUrl}
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          navigator.clipboard.writeText(selectedUrl);
-                          uiStore.addNotification('URL copied to clipboard!', 'success');
-                        }}
-                        title="Copy URL"
-                        sx={{ ml: 1 }}
-                      >
-                        <FontAwesomeIcon icon={faCopy} style={{ fontSize: '14px' }} />
-                      </IconButton>
-                    </Box>
-                  </Box>
-                </>
-              )}
-
-              {/* Parser Live Log */}
-              <Divider sx={{ my: 2 }} />
-              <Box>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    mb: 2,
-                  }}
-                >
-                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                    Parser Log:
-                  </Typography>
-                  <Button
-                    size="small"
-                    variant="text"
-                    onClick={() => parserStore.clearLog()}
-                    sx={{ minWidth: 'auto', p: 0.5 }}
-                  >
-                    Clear
-                  </Button>
-                </Box>
-                {parserStore.parsingLog.length > 0 ? (
-                  <Box
-                    ref={logContainerRef}
-                    sx={{
-                      maxHeight: 200,
-                      overflow: 'auto',
-                      bgcolor: 'grey.900',
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      p: 1,
-                      fontFamily: 'monospace',
-                      fontSize: '0.75rem',
-                      scrollBehavior: 'smooth',
-                    }}
-                  >
-                    {parserStore.parsingLog.map((logEntry) => (
-                      <Box
-                        key={logEntry.id}
-                        sx={{
-                          display: 'flex',
-                          gap: 1,
-                          py: 0.25,
-                          borderBottom: '1px solid',
-                          borderColor: 'grey.800',
-                          '&:last-child': { borderBottom: 'none' },
-                        }}
-                      >
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: 'grey.500',
-                            minWidth: '60px',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {logEntry.timestamp.toLocaleTimeString()}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color:
-                              logEntry.level === 'success'
-                                ? 'success.main'
-                                : logEntry.level === 'error'
-                                  ? 'error.main'
-                                  : logEntry.level === 'warning'
-                                    ? 'warning.main'
-                                    : 'text.primary',
-                          }}
-                        >
-                          {logEntry.message}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                ) : (
-                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                    No log entries yet
-                  </Typography>
                 )}
-              </Box>
 
-              <Divider sx={{ my: 2 }} />
-            </Paper>
-          </Grid>
+                {parserStore.error && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    {parserStore.error}
+                  </Alert>
+                )}
 
-          {/* Pending Reviews */}
-          <Grid item xs={12}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 3,
-                borderRadius: 3,
-                background: `linear-gradient(135deg, 
+                {parseResult && parseResult.success && (
+                  <Alert severity="success" sx={{ mb: 2 }}>
+                    Website parsed successfully! Check the review queue below.
+                  </Alert>
+                )}
+
+                {parseResult && !parseResult.success && parseResult.error && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    Parsing failed: {parseResult.error}
+                  </Alert>
+                )}
+              </Paper>
+            </Grid>
+
+            {/* Parser Statistics */}
+            <Grid item xs={12} lg={6}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, 
                 ${alpha(theme.palette.background.paper, 0.95)} 0%, 
                 ${alpha(theme.palette.background.paper, 0.8)} 100%)`,
-                backdropFilter: 'blur(10px)',
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                position: 'relative',
-                overflow: 'hidden',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: '3px',
-                  background: `linear-gradient(90deg, ${theme.palette.success.main}, ${theme.palette.info.main})`,
-                },
-              }}
-            >
-              <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-                <FontAwesomeIcon icon={faEye} style={{ marginRight: '8px' }} />
-                Pending Reviews ({parserStore.pendingReviews.length})
-              </Typography>
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    background: `linear-gradient(90deg, ${theme.palette.warning.main}, ${theme.palette.info.main})`,
+                  },
+                }}
+              >
+                <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
+                  <FontAwesomeIcon icon={faExclamationTriangle} style={{ marginRight: '8px' }} />
+                  Parser Statistics
+                </Typography>
 
-              {parserStore.pendingReviews.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 4 }}>
-                  <Typography color="text.secondary">No pending reviews at this time</Typography>
-                </Box>
-              ) : (
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>URL</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Venue Found</TableCell>
-                        <TableCell>DJs Found</TableCell>
-                        <TableCell>Shows Found</TableCell>
-                        <TableCell>Created</TableCell>
-                        <TableCell>Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {parserStore.pendingReviews.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <Typography
-                              variant="body2"
-                              sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}
-                            >
-                              {item.url}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={item.status.replace('_', ' ')}
-                              color={getStatusColor(item.status) as any}
-                              size="small"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {item.stats?.vendorsFound ? (
-                              <Chip
-                                label={`${item.stats.vendorsFound} venues`}
-                                size="small"
-                                color="success"
-                              />
-                            ) : (
-                              <Chip label="None" size="small" color="default" />
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={item.stats?.djsFound || 0}
-                              size="small"
-                              color={item.stats?.djsFound ? 'info' : 'default'}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={item.stats?.showsFound || 0}
-                              size="small"
-                              color={item.stats?.showsFound ? 'info' : 'default'}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="caption">{formatDate(item.createdAt)}</Typography>
-                          </TableCell>
-                          <TableCell>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleReviewItem(item)}
-                              color="primary"
-                            >
-                              <FontAwesomeIcon icon={faEye} />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
+                <Grid container spacing={2}>
+                  <Grid item xs={4}>
+                    <Box
+                      sx={{
+                        textAlign: 'center',
+                        p: 2,
+                        backgroundColor: theme.palette.action.hover,
+                        borderRadius: 1,
+                      }}
+                    >
+                      <Typography variant="h4" color="primary" sx={{ fontWeight: 600 }}>
+                        {parserStore.pendingReviews.length}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Pending Reviews
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Box
+                      sx={{
+                        textAlign: 'center',
+                        p: 2,
+                        backgroundColor: theme.palette.action.hover,
+                        borderRadius: 1,
+                      }}
+                    >
+                      <Typography variant="h4" color="success.main" sx={{ fontWeight: 600 }}>
+                        {parserStore.urlsToParse.length}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        URLs in Queue
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Box
+                      sx={{
+                        textAlign: 'center',
+                        p: 2,
+                        backgroundColor: theme.palette.action.hover,
+                        borderRadius: 1,
+                      }}
+                    >
+                      <Typography
+                        variant="h4"
+                        color={
+                          parserStore.lastCompletedParsingTime ? 'info.main' : 'text.secondary'
+                        }
+                        sx={{ fontWeight: 600 }}
+                      >
+                        {parserStore.getFormattedCompletionTime()}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Last Parse Time
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                {/* Selected URL Display */}
+                {selectedUrl && (
+                  <>
+                    <Divider sx={{ my: 2 }} />
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        Selected URL:
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography
+                          variant="body2"
+                          component="a"
+                          href={selectedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{
+                            color: 'primary.main',
+                            textDecoration: 'underline',
+                            wordBreak: 'break-all',
+                            flex: 1,
+                            '&:hover': {
+                              color: 'primary.dark',
+                            },
+                          }}
+                        >
+                          {selectedUrl}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedUrl);
+                            uiStore.addNotification('URL copied to clipboard!', 'success');
+                          }}
+                          title="Copy URL"
+                          sx={{ ml: 1 }}
+                        >
+                          <FontAwesomeIcon icon={faCopy} style={{ fontSize: '14px' }} />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  </>
+                )}
+
+                {/* Parser Live Log */}
+                <Divider sx={{ my: 2 }} />
+                <Box>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      mb: 2,
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                      Parser Log:
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => parserStore.clearLog()}
+                      sx={{ minWidth: 'auto', p: 0.5 }}
+                    >
+                      Clear
+                    </Button>
+                  </Box>
+                  {parserStore.parsingLog.length > 0 ? (
+                    <Box
+                      ref={logContainerRef}
+                      sx={{
+                        maxHeight: 200,
+                        overflow: 'auto',
+                        bgcolor: 'grey.900',
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        p: 1,
+                        fontFamily: 'monospace',
+                        fontSize: '0.75rem',
+                        scrollBehavior: 'smooth',
+                      }}
+                    >
+                      {parserStore.parsingLog.map((logEntry) => (
+                        <Box
+                          key={logEntry.id}
+                          sx={{
+                            display: 'flex',
+                            gap: 1,
+                            py: 0.25,
+                            borderBottom: '1px solid',
+                            borderColor: 'grey.800',
+                            '&:last-child': { borderBottom: 'none' },
+                          }}
+                        >
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: 'grey.500',
+                              minWidth: '60px',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {logEntry.timestamp.toLocaleTimeString()}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color:
+                                logEntry.level === 'success'
+                                  ? 'success.main'
+                                  : logEntry.level === 'error'
+                                    ? 'error.main'
+                                    : logEntry.level === 'warning'
+                                      ? 'warning.main'
+                                      : 'text.primary',
+                            }}
+                          >
+                            {logEntry.message}
+                          </Typography>
+                        </Box>
                       ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </Paper>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                      No log entries yet
+                    </Typography>
+                  )}
+                </Box>
+
+                <Divider sx={{ my: 2 }} />
+              </Paper>
+            </Grid>
+
+            {/* Pending Reviews */}
+            <Grid item xs={12}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, 
+                ${alpha(theme.palette.background.paper, 0.95)} 0%, 
+                ${alpha(theme.palette.background.paper, 0.8)} 100%)`,
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    background: `linear-gradient(90deg, ${theme.palette.success.main}, ${theme.palette.info.main})`,
+                  },
+                }}
+              >
+                <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
+                  <FontAwesomeIcon icon={faEye} style={{ marginRight: '8px' }} />
+                  Pending Reviews ({parserStore.pendingReviews.length})
+                </Typography>
+
+                {parserStore.pendingReviews.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography color="text.secondary">No pending reviews at this time</Typography>
+                  </Box>
+                ) : (
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>URL</TableCell>
+                          <TableCell>Status</TableCell>
+                          <TableCell>Venue Found</TableCell>
+                          <TableCell>DJs Found</TableCell>
+                          <TableCell>Shows Found</TableCell>
+                          <TableCell>Created</TableCell>
+                          <TableCell>Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {parserStore.pendingReviews.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <Typography
+                                variant="body2"
+                                sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                              >
+                                {item.url}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={item.status.replace('_', ' ')}
+                                color={getStatusColor(item.status) as any}
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {item.stats?.vendorsFound ? (
+                                <Chip
+                                  label={`${item.stats.vendorsFound} venues`}
+                                  size="small"
+                                  color="success"
+                                />
+                              ) : (
+                                <Chip label="None" size="small" color="default" />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={item.stats?.djsFound || 0}
+                                size="small"
+                                color={item.stats?.djsFound ? 'info' : 'default'}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={item.stats?.showsFound || 0}
+                                size="small"
+                                color={item.stats?.showsFound ? 'info' : 'default'}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="caption">
+                                {formatDate(item.createdAt)}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleReviewItem(item)}
+                                color="primary"
+                              >
+                                <FontAwesomeIcon icon={faEye} />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </Paper>
+            </Grid>
           </Grid>
-        </Grid>
+        </Box>
 
         {/* Review Dialog */}
         <Dialog
@@ -1679,7 +1690,7 @@ const AdminParserPage: React.FC = observer(() => {
           loading={facebookLoginLoading}
           error={facebookLoginError}
         />
-      </Container>
+      </Box>
     </Box>
   );
 });

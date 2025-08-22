@@ -11,18 +11,7 @@ import {
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  Alert,
-  alpha,
-  Box,
-  Button,
-  Container,
-  Paper,
-  Tab,
-  Tabs,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Alert, alpha, Box, Button, Paper, Tab, Tabs, Typography, useTheme } from '@mui/material';
 import { adminStore, authStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useState } from 'react';
@@ -45,7 +34,7 @@ function TabPanel(props: TabPanelProps) {
       aria-labelledby={`admin-tab-${index}`}
       {...other}
     >
-      {value === index && <Box>{children}</Box>}
+      {value === index && <Box sx={{ px: 3 }}>{children}</Box>}
     </div>
   );
 }
@@ -94,17 +83,19 @@ const AdminDashboardPageTabbed = observer(() => {
         },
       }}
     >
-      <Container maxWidth="xl" sx={{ py: 4, position: 'relative', zIndex: 1 }}>
+      <Box sx={{ maxWidth: '1400px', mx: 'auto', py: 6, position: 'relative', zIndex: 1 }}>
         {/* Breadcrumbs */}
-        <AdminBreadcrumb
-          items={[
-            {
-              label: 'Admin',
-              icon: faUsers,
-              isActive: true,
-            },
-          ]}
-        />
+        <Box sx={{ px: 3 }}>
+          <AdminBreadcrumb
+            items={[
+              {
+                label: 'Admin',
+                icon: faUsers,
+                isActive: true,
+              },
+            ]}
+          />
+        </Box>
 
         {/* Enhanced Header */}
         <Paper
@@ -117,6 +108,7 @@ const AdminDashboardPageTabbed = observer(() => {
             border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
             borderRadius: 3,
             mb: 4,
+            mx: 3,
             overflow: 'hidden',
             position: 'relative',
             '&::before': {
@@ -261,7 +253,7 @@ const AdminDashboardPageTabbed = observer(() => {
 
         {/* Data Upload Modal */}
         <DataUploadModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} />
-      </Container>
+      </Box>
     </Box>
   );
 });

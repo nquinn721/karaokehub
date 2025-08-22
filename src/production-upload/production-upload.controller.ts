@@ -36,28 +36,85 @@ export class ProductionUploadController {
     }
 
     try {
+      console.log('Production upload started:', {
+        vendors: data.vendors?.length || 0,
+        djs: data.djs?.length || 0,
+        shows: data.shows?.length || 0,
+      });
+
       const results = {
         vendors: { created: 0, updated: 0, errors: 0 },
         djs: { created: 0, updated: 0, errors: 0 },
         shows: { created: 0, updated: 0, errors: 0 },
       };
 
-      // Upload vendors
+      // Upload vendors with duplicate detection
       for (const vendorData of data.vendors || []) {
         try {
-          await this.vendorService.create(vendorData);
-          results.vendors.created++;
+          // Check for existing vendor by name
+          const existingVendors = await this.vendorService.findAll();
+          const existingVendor = existingVendors.find((v) => v.name === vendorData.name);
+
+          if (existingVendor) {
+            // Update existing vendor with any missing information
+            let vendorUpdated = false;
+            const updateData: any = {};
+
+            if (!existingVendor.website && vendorData.website) {
+              updateData.website = vendorData.website;
+              vendorUpdated = true;
+            }
+            if (!existingVendor.description && vendorData.description) {
+              updateData.description = vendorData.description;
+              vendorUpdated = true;
+            }
+
+            if (vendorUpdated) {
+              await this.vendorService.update(existingVendor.id, updateData);
+              results.vendors.updated++;
+            } else {
+              // Vendor exists and no updates needed
+              results.vendors.updated++;
+            }
+          } else {
+            // Create new vendor
+            await this.vendorService.create(vendorData);
+            results.vendors.created++;
+          }
         } catch (error) {
           console.error('Error uploading vendor:', error);
           results.vendors.errors++;
         }
       }
 
-      // Upload DJs
+      // Upload DJs with duplicate detection
       for (const djData of data.djs || []) {
         try {
-          await this.djService.create(djData);
-          results.djs.created++;
+          // Find vendor by name to get vendorId
+          const vendors = await this.vendorService.findAll();
+          const vendor = vendors.find((v) => v.name === djData.vendorName);
+
+          if (!vendor) {
+            console.error(`Vendor not found for DJ: ${djData.name} (vendor: ${djData.vendorName})`);
+            results.djs.errors++;
+            continue;
+          }
+
+          // Check for existing DJ by name and vendor
+          const existingDJs = await this.djService.findByVendor(vendor.id);
+          const existingDJ = existingDJs.find((dj) => dj.name === djData.name);
+
+          if (existingDJ) {
+            // DJ already exists, count as updated
+            results.djs.updated++;
+          } else {
+            // Create new DJ
+            await this.djService.create({
+              name: djData.name,
+              vendorId: vendor.id,
+            });
+            results.djs.created++;
+          }
         } catch (error) {
           console.error('Error uploading DJ:', error);
           results.djs.errors++;
@@ -67,14 +124,35 @@ export class ProductionUploadController {
       // Upload shows with duplicate detection
       for (const showData of data.shows || []) {
         try {
+          // Find vendor and DJ by name to get their IDs
+          const vendors = await this.vendorService.findAll();
+          const vendor = vendors.find((v) => v.name === showData.vendorName);
+
+          let dj = null;
+          if (showData.djName && vendor) {
+            const vendorDJs = await this.djService.findByVendor(vendor.id);
+            dj = vendorDJs.find((d) => d.name === showData.djName);
+          }
+
+          // Prepare show data with resolved IDs
+          const resolvedShowData = {
+            ...showData,
+            vendorId: vendor?.id || null,
+            djId: dj?.id || null,
+            time: showData.startTime, // Map startTime to time field for compatibility
+            // Keep original startTime and endTime fields as well
+            startTime: showData.startTime,
+            endTime: showData.endTime,
+          };
+
           // Check for existing show with same vendor, day, time, venue, and DJ
           const existingShow = await this.showRepository.findOne({
             where: {
-              vendorId: showData.vendorId || null,
-              day: showData.day,
-              time: showData.time,
-              venue: showData.venue,
-              djId: showData.djId || null,
+              vendorId: resolvedShowData.vendorId,
+              day: resolvedShowData.day,
+              time: resolvedShowData.time,
+              venue: resolvedShowData.venue,
+              djId: resolvedShowData.djId,
             },
           });
 
@@ -82,41 +160,45 @@ export class ProductionUploadController {
             // Update existing show with any missing information
             let showUpdated = false;
 
-            if (!existingShow.address && showData.address) {
-              existingShow.address = showData.address;
+            if (!existingShow.address && resolvedShowData.address) {
+              existingShow.address = resolvedShowData.address;
               showUpdated = true;
             }
-            if (!existingShow.venuePhone && showData.venuePhone) {
-              existingShow.venuePhone = showData.venuePhone;
+            if (!existingShow.venuePhone && resolvedShowData.venuePhone) {
+              existingShow.venuePhone = resolvedShowData.venuePhone;
               showUpdated = true;
             }
-            if (!existingShow.venueWebsite && showData.venueWebsite) {
-              existingShow.venueWebsite = showData.venueWebsite;
+            if (!existingShow.venueWebsite && resolvedShowData.venueWebsite) {
+              existingShow.venueWebsite = resolvedShowData.venueWebsite;
               showUpdated = true;
             }
-            if (!existingShow.description && showData.description) {
-              existingShow.description = showData.description;
+            if (!existingShow.description && resolvedShowData.description) {
+              existingShow.description = resolvedShowData.description;
               showUpdated = true;
             }
-            if (!existingShow.source && showData.source) {
-              existingShow.source = showData.source;
+            if (!existingShow.source && resolvedShowData.source) {
+              existingShow.source = resolvedShowData.source;
               showUpdated = true;
             }
-            if (!existingShow.city && showData.city) {
-              existingShow.city = showData.city;
+            if (!existingShow.city && resolvedShowData.city) {
+              existingShow.city = resolvedShowData.city;
               showUpdated = true;
             }
-            if (!existingShow.state && showData.state) {
-              existingShow.state = showData.state;
+            if (!existingShow.state && resolvedShowData.state) {
+              existingShow.state = resolvedShowData.state;
               showUpdated = true;
             }
-            if (!existingShow.zip && showData.zip) {
-              existingShow.zip = showData.zip;
+            if (!existingShow.zip && resolvedShowData.zip) {
+              existingShow.zip = resolvedShowData.zip;
               showUpdated = true;
             }
-            if ((!existingShow.lat || !existingShow.lng) && showData.lat && showData.lng) {
-              existingShow.lat = showData.lat;
-              existingShow.lng = showData.lng;
+            if (
+              (!existingShow.lat || !existingShow.lng) &&
+              resolvedShowData.lat &&
+              resolvedShowData.lng
+            ) {
+              existingShow.lat = resolvedShowData.lat;
+              existingShow.lng = resolvedShowData.lng;
               showUpdated = true;
             }
 
@@ -129,7 +211,7 @@ export class ProductionUploadController {
             }
           } else {
             // Create new show
-            const newShow = this.showRepository.create(showData);
+            const newShow = this.showRepository.create(resolvedShowData);
             await this.showRepository.save(newShow);
             results.shows.created++;
           }
@@ -143,6 +225,7 @@ export class ProductionUploadController {
         success: true,
         message: 'Data uploaded successfully',
         results,
+        summary: `Created: ${results.vendors.created} vendors, ${results.djs.created} DJs, ${results.shows.created} shows. Updated: ${results.vendors.updated} vendors, ${results.djs.updated} DJs, ${results.shows.updated} shows. Errors: ${results.vendors.errors + results.djs.errors + results.shows.errors} total.`,
       };
     } catch (error) {
       console.error('Production upload error:', error);
