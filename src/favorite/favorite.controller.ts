@@ -35,13 +35,24 @@ export class FavoriteController {
     return this.favoriteService.findByShow(showId);
   }
 
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    // This could find by favorite ID if needed
+    return this.favoriteService.findByUserAndShow(id, '');
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.favoriteService.remove(id);
   }
 
-  @Delete('show/:showId')
-  removeByShow(@Param('showId') showId: string, @Req() req: any) {
+  @Delete('user/:userId/show/:showId')
+  removeByUserAndShow(@Param('userId') userId: string, @Param('showId') showId: string) {
+    return this.favoriteService.removeByUserAndShow(userId, showId);
+  }
+
+  @Delete('my/show/:showId')
+  removeMyFavorite(@Param('showId') showId: string, @Req() req: any) {
     return this.favoriteService.removeByUserAndShow(req.user.id, showId);
   }
 }

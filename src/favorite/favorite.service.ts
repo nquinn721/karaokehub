@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DayOfWeek } from '../show/show.entity';
 import { SubscriptionService } from '../subscription/subscription.service';
-import { Favorite } from './favorite.entity';
+import { FavoriteShow } from './favorite.entity';
 
 export interface CreateFavoriteDto {
   userId: string;
@@ -14,12 +14,12 @@ export interface CreateFavoriteDto {
 @Injectable()
 export class FavoriteService {
   constructor(
-    @InjectRepository(Favorite)
-    private favoriteRepository: Repository<Favorite>,
+    @InjectRepository(FavoriteShow)
+    private favoriteRepository: Repository<FavoriteShow>,
     private subscriptionService: SubscriptionService,
   ) {}
 
-  async create(createFavoriteDto: CreateFavoriteDto): Promise<Favorite> {
+  async create(createFavoriteDto: CreateFavoriteDto): Promise<FavoriteShow> {
     // Check if user has ad-free access (required for favorites)
     const hasAdFreeAccess = await this.subscriptionService.hasAdFreeAccess(
       createFavoriteDto.userId,
@@ -35,27 +35,27 @@ export class FavoriteService {
     return await this.favoriteRepository.save(favorite);
   }
 
-  async findAll(): Promise<Favorite[]> {
+  async findAll(): Promise<FavoriteShow[]> {
     return await this.favoriteRepository.find({
       relations: ['user', 'show', 'show.vendor', 'show.dj'],
     });
   }
 
-  async findByUser(userId: string): Promise<Favorite[]> {
+  async findByUser(userId: string): Promise<FavoriteShow[]> {
     return await this.favoriteRepository.find({
       where: { userId },
       relations: ['show', 'show.vendor', 'show.dj'],
     });
   }
 
-  async findByShow(showId: string): Promise<Favorite[]> {
+  async findByShow(showId: string): Promise<FavoriteShow[]> {
     return await this.favoriteRepository.find({
       where: { showId },
       relations: ['user', 'show'],
     });
   }
 
-  async findByUserAndShow(userId: string, showId: string): Promise<Favorite> {
+  async findByUserAndShow(userId: string, showId: string): Promise<FavoriteShow> {
     return await this.favoriteRepository.findOne({
       where: { userId, showId },
       relations: ['user', 'show'],

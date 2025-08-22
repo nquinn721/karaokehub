@@ -30,6 +30,20 @@ export class UrlToParseService {
     });
   }
 
+  async findUnparsed(): Promise<UrlToParse[]> {
+    return await this.urlToParseRepository.find({
+      where: { hasBeenParsed: false },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async findApprovedAndUnparsed(): Promise<UrlToParse[]> {
+    return await this.urlToParseRepository.find({
+      where: { isApproved: true, hasBeenParsed: false },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
   async create(url: string): Promise<UrlToParse> {
     const urlToParse = this.urlToParseRepository.create({ url });
     return await this.urlToParseRepository.save(urlToParse);
@@ -63,6 +77,24 @@ export class UrlToParseService {
       return null;
     }
     urlToParse.isApproved = false;
+    return await this.urlToParseRepository.save(urlToParse);
+  }
+
+  async markAsParsed(id: number): Promise<UrlToParse | null> {
+    const urlToParse = await this.findById(id);
+    if (!urlToParse) {
+      return null;
+    }
+    urlToParse.hasBeenParsed = true;
+    return await this.urlToParseRepository.save(urlToParse);
+  }
+
+  async markAsUnparsed(id: number): Promise<UrlToParse | null> {
+    const urlToParse = await this.findById(id);
+    if (!urlToParse) {
+      return null;
+    }
+    urlToParse.hasBeenParsed = false;
     return await this.urlToParseRepository.save(urlToParse);
   }
 }

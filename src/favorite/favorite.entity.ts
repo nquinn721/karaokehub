@@ -19,8 +19,8 @@ export enum DayOfWeek {
   SUNDAY = 'sunday',
 }
 
-@Entity('favorites')
-export class Favorite {
+@Entity('favorite_shows')
+export class FavoriteShow {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -41,11 +41,11 @@ export class Favorite {
   createdAt: Date;
 
   // Relationships
-  @ManyToOne(() => User, (user) => user.favorites)
+  @ManyToOne(() => User, (user) => user.favoriteShows)
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @ManyToOne(() => Show, (show) => show.favorites)
+  @ManyToOne(() => Show, (show) => show.favoriteShows)
   @JoinColumn({ name: 'showId' })
   show: Show;
 }

@@ -1,6 +1,9 @@
 import { faCheck, faTimes, faUpload } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -13,13 +16,10 @@ import {
   Grid,
   IconButton,
   LinearProgress,
-  Typography,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   List,
   ListItem,
   ListItemText,
+  Typography,
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React, { useState } from 'react';
@@ -75,14 +75,17 @@ const DataUploadModal: React.FC<{
     setStep('upload');
 
     try {
-      // Send data to production endpoint
-      const response = await fetch('https://karaoke-hub.com/api/upload-karaoke-data', {
+      // Use the new production upload endpoint that bypasses CORS
+      const response = await fetch('https://karaoke-hub.com/api/production-upload/data', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-upload-token': 'karaoke-hub-data-integration-system', // Production upload token
         },
         body: JSON.stringify({
-          ...uploadData,
+          vendors: uploadData.vendors || [],
+          djs: uploadData.djs || [],
+          shows: uploadData.shows || [],
           metadata: {
             uploadedBy: 'Admin',
             uploadedAt: new Date().toISOString(),
@@ -94,7 +97,10 @@ const DataUploadModal: React.FC<{
       });
 
       if (!response.ok) {
-        throw new Error(`Upload failed: HTTP ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(
+          `Upload failed: HTTP ${response.status} ${response.statusText}. ${errorText}`,
+        );
       }
 
       const result = await response.json();
@@ -129,10 +135,11 @@ const DataUploadModal: React.FC<{
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               This will fetch all vendors, DJs, and shows from your local database.
             </Typography>
-            
+
             {uploadData && (
               <Alert severity="success" sx={{ mb: 2 }}>
-                Successfully fetched {uploadData.vendors?.length || 0} vendors, {uploadData.djs?.length || 0} DJs, and {uploadData.shows?.length || 0} shows!
+                Successfully fetched {uploadData.vendors?.length || 0} vendors,{' '}
+                {uploadData.djs?.length || 0} DJs, and {uploadData.shows?.length || 0} shows!
               </Alert>
             )}
 
@@ -145,7 +152,7 @@ const DataUploadModal: React.FC<{
             >
               {uploading ? 'Fetching...' : 'Fetch Local Data'}
             </Button>
-            
+
             {uploading && <LinearProgress sx={{ mt: 2 }} />}
           </Box>
         );
@@ -194,23 +201,25 @@ const DataUploadModal: React.FC<{
 
                 <Accordion sx={{ mb: 2 }}>
                   <AccordionSummary>
-                    <Typography variant="subtitle2">View Vendors ({uploadData.vendors.length})</Typography>
+                    <Typography variant="subtitle2">
+                      View Vendors ({uploadData.vendors.length})
+                    </Typography>
                   </AccordionSummary>
                   <AccordionDetails>
                     <List dense>
                       {uploadData.vendors.slice(0, 5).map((vendor, index) => (
                         <ListItem key={index}>
-                          <ListItemText 
-                            primary={vendor.name} 
-                            secondary={vendor.website}
-                          />
+                          <ListItemText primary={vendor.name} secondary={vendor.website} />
                         </ListItem>
                       ))}
                       {uploadData.vendors.length > 5 && (
                         <ListItem>
-                          <ListItemText 
+                          <ListItemText
                             primary={`... and ${uploadData.vendors.length - 5} more vendors`}
-                            primaryTypographyProps={{ fontStyle: 'italic', color: 'text.secondary' }}
+                            primaryTypographyProps={{
+                              fontStyle: 'italic',
+                              color: 'text.secondary',
+                            }}
                           />
                         </ListItem>
                       )}
@@ -226,17 +235,17 @@ const DataUploadModal: React.FC<{
                     <List dense>
                       {uploadData.djs.slice(0, 5).map((dj, index) => (
                         <ListItem key={index}>
-                          <ListItemText 
-                            primary={dj.name} 
-                            secondary={dj.vendorName}
-                          />
+                          <ListItemText primary={dj.name} secondary={dj.vendorName} />
                         </ListItem>
                       ))}
                       {uploadData.djs.length > 5 && (
                         <ListItem>
-                          <ListItemText 
+                          <ListItemText
                             primary={`... and ${uploadData.djs.length - 5} more DJs`}
-                            primaryTypographyProps={{ fontStyle: 'italic', color: 'text.secondary' }}
+                            primaryTypographyProps={{
+                              fontStyle: 'italic',
+                              color: 'text.secondary',
+                            }}
                           />
                         </ListItem>
                       )}
@@ -246,23 +255,28 @@ const DataUploadModal: React.FC<{
 
                 <Accordion sx={{ mb: 2 }}>
                   <AccordionSummary>
-                    <Typography variant="subtitle2">View Shows ({uploadData.shows.length})</Typography>
+                    <Typography variant="subtitle2">
+                      View Shows ({uploadData.shows.length})
+                    </Typography>
                   </AccordionSummary>
                   <AccordionDetails>
                     <List dense>
                       {uploadData.shows.slice(0, 5).map((show, index) => (
                         <ListItem key={index}>
-                          <ListItemText 
-                            primary={show.venue} 
+                          <ListItemText
+                            primary={show.venue}
                             secondary={`${show.city}, ${show.state} - ${show.day} at ${show.startTime} with ${show.djName}`}
                           />
                         </ListItem>
                       ))}
                       {uploadData.shows.length > 5 && (
                         <ListItem>
-                          <ListItemText 
+                          <ListItemText
                             primary={`... and ${uploadData.shows.length - 5} more shows`}
-                            primaryTypographyProps={{ fontStyle: 'italic', color: 'text.secondary' }}
+                            primaryTypographyProps={{
+                              fontStyle: 'italic',
+                              color: 'text.secondary',
+                            }}
                           />
                         </ListItem>
                       )}
@@ -390,9 +404,7 @@ const DataUploadModal: React.FC<{
         {renderStepContent()}
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        {getDialogActions()}
-      </DialogActions>
+      <DialogActions sx={{ px: 3, pb: 2 }}>{getDialogActions()}</DialogActions>
     </Dialog>
   );
 });

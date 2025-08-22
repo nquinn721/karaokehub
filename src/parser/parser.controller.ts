@@ -187,11 +187,8 @@ export class ParserController {
     try {
       // Normalize confidence values before processing
       const normalizedData = this.normalizeDataConfidence(body.approvedData);
-      
-      const result = await this.karaokeParserService.approveAndSaveParsedData(
-        id,
-        normalizedData,
-      );
+
+      const result = await this.karaokeParserService.approveAndSaveParsedData(id, normalizedData);
       return {
         message: 'Schedule approved and saved successfully',
         result,
@@ -287,6 +284,29 @@ export class ParserController {
     }
   }
 
+  @Get('urls/unparsed')
+  async getUnparsedUrls(): Promise<UrlToParse[]> {
+    try {
+      return await this.urlToParseService.findUnparsed();
+    } catch (error) {
+      console.error('Error getting unparsed URLs:', error);
+      throw new HttpException('Failed to get unparsed URLs', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Get('urls/approved-and-unparsed')
+  async getApprovedAndUnparsedUrls(): Promise<UrlToParse[]> {
+    try {
+      return await this.urlToParseService.findApprovedAndUnparsed();
+    } catch (error) {
+      console.error('Error getting approved and unparsed URLs:', error);
+      throw new HttpException(
+        'Failed to get approved and unparsed URLs',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Post('urls')
   async addUrl(@Body() body: { url: string }): Promise<UrlToParse> {
     try {
@@ -305,6 +325,28 @@ export class ParserController {
     } catch (error) {
       console.error('Error deleting URL:', error);
       throw new HttpException('Failed to delete URL', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('urls/:id/mark-parsed')
+  async markUrlAsParsed(@Param('id') id: string): Promise<{ message: string }> {
+    try {
+      await this.urlToParseService.markAsParsed(parseInt(id));
+      return { message: 'URL marked as parsed successfully' };
+    } catch (error) {
+      console.error('Error marking URL as parsed:', error);
+      throw new HttpException('Failed to mark URL as parsed', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('urls/:id/mark-unparsed')
+  async markUrlAsUnparsed(@Param('id') id: string): Promise<{ message: string }> {
+    try {
+      await this.urlToParseService.markAsUnparsed(parseInt(id));
+      return { message: 'URL marked as unparsed successfully' };
+    } catch (error) {
+      console.error('Error marking URL as unparsed:', error);
+      throw new HttpException('Failed to mark URL as unparsed', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

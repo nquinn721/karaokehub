@@ -12,7 +12,7 @@ import GlobalNotifications from './components/GlobalNotifications';
 import PostLoginModal from './components/PostLoginModalNew';
 
 // Pages
-import AdminDashboardPage from './pages/AdminDashboardPage';
+import AdminDashboardPageTabbed from './pages/AdminDashboardPageTabbed';
 import AdminParserPage from './pages/AdminParserPage';
 import AuthError from './pages/AuthError';
 import AuthSuccess from './pages/AuthSuccess';
@@ -143,7 +143,7 @@ const AppContent: React.FC = observer(() => {
               path="/admin"
               element={
                 <ProtectedRoute>
-                  <AdminDashboardPage />
+                  <AdminDashboardPageTabbed />
                 </ProtectedRoute>
               }
             />

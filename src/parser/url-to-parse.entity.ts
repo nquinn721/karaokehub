@@ -20,6 +20,9 @@ export class UrlToParse {
   @Column({ type: 'boolean', default: false })
   isApproved: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  hasBeenParsed: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

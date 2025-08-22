@@ -60,7 +60,13 @@ async function bootstrap() {
         return callback(null, true);
       }
 
-      if (allowedOrigins.includes(origin)) {
+      // Special handling for production upload endpoint
+      const isProductionUpload =
+        origin &&
+        origin.includes('localhost') &&
+        process.env.ALLOW_LOCAL_PRODUCTION_UPLOAD === 'true';
+
+      if (allowedOrigins.includes(origin) || isProductionUpload) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'), false);
@@ -68,7 +74,7 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-upload-token'],
   });
 
   // Global validation

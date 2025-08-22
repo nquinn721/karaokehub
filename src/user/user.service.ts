@@ -36,14 +36,14 @@ export class UserService {
   async findAll(): Promise<User[]> {
     return await this.userRepository.find({
       where: { isActive: true },
-      relations: ['favorites'],
+      relations: ['favoriteShows'],
     });
   }
 
   async findOne(id: string): Promise<User> {
     return await this.userRepository.findOne({
       where: { id, isActive: true },
-      relations: ['favorites', 'favorites.show'],
+      relations: ['favoriteShows', 'favoriteShows.show'],
     });
   }
 

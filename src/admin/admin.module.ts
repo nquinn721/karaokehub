@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DJ } from '../dj/dj.entity';
 import { DJNickname } from '../entities/dj-nickname.entity';
 import { User } from '../entities/user.entity';
-import { Favorite } from '../favorite/favorite.entity';
+import { FavoriteShow } from '../favorite/favorite.entity';
 import { Feedback } from '../feedback/feedback.entity';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { Show } from '../show/show.entity';
@@ -20,7 +20,7 @@ import { AdminService } from './admin.service';
       DJ,
       DJNickname,
       ParsedSchedule,
-      Favorite,
+      FavoriteShow,
       Feedback,
     ]),
   ],

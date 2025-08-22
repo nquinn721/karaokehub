@@ -5,6 +5,7 @@ import { audioStore as audioStoreInstance } from './AudioStore';
 import { AuthStore } from './AuthStore';
 import { FavoriteStore } from './FavoriteStore';
 import { FeedbackStore, feedbackStore as feedbackStoreInstance } from './FeedbackStore';
+import { FriendsStore, friendsStore as friendsStoreInstance } from './FriendsStore';
 import { MapStore, mapStore as mapStoreInstance } from './MapStore';
 import { MusicStore, musicStore as musicStoreInstance } from './MusicStore';
 import { ParserStore } from './ParserStore';
@@ -27,6 +28,7 @@ export class RootStore {
   uiStore: UIStore;
   showStore: ShowStore;
   favoriteStore: FavoriteStore;
+  friendsStore: FriendsStore;
   songFavoriteStore: SongFavoriteStore;
   feedbackStore: FeedbackStore;
   vendorStore: VendorStore;
@@ -47,6 +49,7 @@ export class RootStore {
     this.uiStore = new UIStore();
     this.showStore = showStoreInstance; // Use the singleton instance
     this.favoriteStore = new FavoriteStore();
+    this.friendsStore = friendsStoreInstance; // Use the singleton instance
     this.songFavoriteStore = songFavoriteStoreInstance; // Use the singleton instance
     this.feedbackStore = feedbackStoreInstance; // Use the singleton instance
     this.vendorStore = new VendorStore();
@@ -109,6 +112,7 @@ export const {
   uiStore,
   showStore,
   favoriteStore,
+  friendsStore,
   songFavoriteStore,
   feedbackStore,
   vendorStore,

@@ -80,7 +80,7 @@ async function processBatchWithGemini(
     if (!show.show?.lat) missingData.push('lat');
     if (!show.show?.lng) missingData.push('lng');
     // Phone and website are optional enhancements, not missing data
-    
+
     return {
       index,
       vendor: show.vendor || 'Unknown',
@@ -207,7 +207,8 @@ Return ONLY the JSON array, no markdown, no explanations.`;
       if (enhancedData.lat && !originalShow.show?.lat) enhanced.push('lat');
       if (enhancedData.lng && !originalShow.show?.lng) enhanced.push('lng');
       if (enhancedData.venuePhone && !originalShow.show?.venuePhone) enhanced.push('venuePhone');
-      if (enhancedData.venueWebsite && !originalShow.show?.venueWebsite) enhanced.push('venueWebsite');
+      if (enhancedData.venueWebsite && !originalShow.show?.venueWebsite)
+        enhanced.push('venueWebsite');
 
       if (enhanced.length > 0) {
         sendProgress(`✅ [BATCH] Show ${i + 1}: Enhanced ${enhanced.join(', ')}`);

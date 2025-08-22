@@ -1,4 +1,5 @@
 import { BannerAd, WideAd } from '@components/AdPlaceholder';
+import FriendsList from '@components/FriendsList';
 import { SEO, seoConfigs } from '@components/SEO';
 import {
   faArrowRight,
@@ -12,7 +13,6 @@ import {
   faPlus,
   faStar,
   faTrophy,
-  faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -141,49 +141,112 @@ const DashboardPage: React.FC = observer(() => {
     value,
     subtitle,
     color = 'primary',
+    trending,
   }: {
     icon: any;
     title: string;
     value: number | string;
     subtitle: string;
     color?: 'primary' | 'secondary' | 'success' | 'warning' | 'error';
+    trending?: 'up' | 'down' | 'neutral';
   }) => (
     <Card
       sx={{
         height: '100%',
-        background: `linear-gradient(135deg, ${alpha(theme.palette[color].main, 0.1)}, ${alpha(theme.palette[color].main, 0.05)})`,
-        border: `1px solid ${alpha(theme.palette[color].main, 0.2)}`,
+        background: `linear-gradient(135deg, 
+          ${alpha(theme.palette[color].main, 0.12)} 0%, 
+          ${alpha(theme.palette[color].main, 0.08)} 50%,
+          ${alpha(theme.palette[color].main, 0.04)} 100%)`,
+        border: `1px solid ${alpha(theme.palette[color].main, 0.25)}`,
+        borderRadius: '20px',
+        overflow: 'hidden',
+        position: 'relative',
         '&:hover': {
-          transform: 'translateY(-2px)',
-          boxShadow: theme.shadows[8],
+          transform: 'translateY(-4px) scale(1.02)',
+          boxShadow: `0 12px 24px ${alpha(theme.palette[color].main, 0.15)}`,
+          border: `1px solid ${alpha(theme.palette[color].main, 0.4)}`,
         },
-        transition: 'all 0.3s ease',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '3px',
+          background: `linear-gradient(90deg, ${theme.palette[color].main}, ${theme.palette[color].light})`,
+        },
+        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
       }}
     >
-      <CardContent>
+      <CardContent sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <Box sx={{ flex: 1 }}>
-            <Typography color="text.secondary" gutterBottom variant="body2">
+            <Typography
+              color="text.secondary"
+              gutterBottom
+              variant="body2"
+              fontWeight={500}
+              sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.75rem' }}
+            >
               {title}
             </Typography>
-            <Typography variant="h4" component="div" fontWeight={600} color={color}>
+            <Typography
+              variant="h3"
+              component="div"
+              fontWeight={700}
+              color={color}
+              sx={{
+                mb: 0.5,
+                background: `linear-gradient(135deg, ${theme.palette[color].main}, ${theme.palette[color].dark})`,
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                color: 'transparent',
+              }}
+            >
               {value}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              {subtitle}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                {subtitle}
+              </Typography>
+              {trending && (
+                <Chip
+                  size="small"
+                  label={trending === 'up' ? '↗️' : trending === 'down' ? '↘️' : '→'}
+                  sx={{
+                    height: 20,
+                    fontSize: '0.7rem',
+                    backgroundColor:
+                      trending === 'up'
+                        ? alpha(theme.palette.success.main, 0.1)
+                        : trending === 'down'
+                          ? alpha(theme.palette.error.main, 0.1)
+                          : alpha(theme.palette.grey[500], 0.1),
+                    color:
+                      trending === 'up'
+                        ? theme.palette.success.main
+                        : trending === 'down'
+                          ? theme.palette.error.main
+                          : theme.palette.grey[600],
+                  }}
+                />
+              )}
+            </Box>
           </Box>
           <Box
             sx={{
-              backgroundColor: alpha(theme.palette[color].main, 0.2),
-              borderRadius: '12px',
-              p: 1.5,
+              background: `linear-gradient(135deg, ${theme.palette[color].main}, ${theme.palette[color].dark})`,
+              borderRadius: '16px',
+              p: 2,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              boxShadow: `0 4px 12px ${alpha(theme.palette[color].main, 0.3)}`,
+              minWidth: 56,
+              minHeight: 56,
             }}
           >
-            <FontAwesomeIcon icon={icon} size="lg" color={theme.palette[color].main} />
+            <FontAwesomeIcon icon={icon} size="lg" color="white" />
           </Box>
         </Box>
       </CardContent>
@@ -349,438 +412,481 @@ const DashboardPage: React.FC = observer(() => {
   return (
     <>
       <SEO {...seoConfigs.dashboard} />
-      <Container maxWidth="xl">
-        <Box sx={{ py: 4 }}>
-          {/* Welcome Header */}
-          <Box sx={{ mb: 4 }}>
-            <Typography
-              variant="h3"
-              component="h1"
-              fontWeight={700}
-              sx={{
-                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                color: 'transparent',
-                mb: 1,
-              }}
-            >
-              {getGreeting()}, {authStore.user?.name || 'Karaoke Star'}! 🎤
-            </Typography>
-            <Typography variant="h6" color="text.secondary" fontWeight={400}>
-              Ready to rock the stage? Here's what's happening in your karaoke world.
-            </Typography>
-          </Box>
-
-          {/* Ad placement after welcome section - only show if not ad-free */}
-          {!subscriptionStore.hasAdFreeAccess && (
-            <Box sx={{ mb: 4 }}>
-              <BannerAd />
-            </Box>
-          )}
-
-          {/* Stats Cards */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} lg={3}>
-              <StatCard
-                icon={faCalendar}
-                title="Today's Shows"
-                value={showStats.todayCount}
-                subtitle="Shows you've favorited today"
-                color="success"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} lg={3}>
-              <StatCard
-                icon={faHeart}
-                title="Favorite Shows"
-                value={showStats.weekCount}
-                subtitle="Total shows in your favorites"
-                color="primary"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} lg={3}>
-              <StatCard
-                icon={faMusic}
-                title="Favorite Songs"
-                value={showStats.songFavoriteCount}
-                subtitle="Songs saved to your library"
-                color="secondary"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} lg={3}>
-              <StatCard
-                icon={faTrophy}
-                title="Subscription"
-                value={subscriptionStore.hasAdFreeAccess ? 'Active' : 'Free'}
-                subtitle={subscriptionStore.hasAdFreeAccess ? 'Ad-Free Plan' : 'Upgrade available'}
-                color={subscriptionStore.hasAdFreeAccess ? 'success' : 'secondary'}
-              />
-            </Grid>
-          </Grid>
-
-          <Grid container spacing={4}>
-            {/* Main Content - Favorite Shows and Songs */}
-            <Grid item xs={12} lg={8}>
-              <Card
+      <Box
+        sx={{
+          minHeight: '100vh',
+          background: `linear-gradient(135deg, 
+            ${alpha(theme.palette.primary.main, 0.1)} 0%, 
+            ${alpha(theme.palette.secondary.main, 0.05)} 50%, 
+            ${alpha(theme.palette.primary.main, 0.08)} 100%)`,
+          position: 'relative',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: `radial-gradient(circle at 20% 80%, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, ${alpha(theme.palette.secondary.main, 0.1)} 0%, transparent 50%)`,
+            pointerEvents: 'none',
+          },
+        }}
+      >
+        <Container maxWidth="xl" sx={{ py: 4, position: 'relative', zIndex: 1 }}>
+          <Box>
+            {/* Enhanced Welcome Header */}
+            <Box sx={{ mb: 5, textAlign: 'center' }}>
+              <Box
                 sx={{
-                  mb: 3,
-                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
-                  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                  display: 'inline-block',
+                  p: 3,
+                  borderRadius: '24px',
+                  background: `linear-gradient(135deg, 
+                  ${alpha(theme.palette.primary.main, 0.08)}, 
+                  ${alpha(theme.palette.secondary.main, 0.08)})`,
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.15)}`,
+                  backdropFilter: 'blur(10px)',
+                  mb: 2,
                 }}
               >
-                <CardContent sx={{ p: 3 }}>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      mb: 3,
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Box
-                        sx={{
-                          backgroundColor: theme.palette.primary.main,
-                          borderRadius: '12px',
-                          p: 1.5,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <FontAwesomeIcon icon={faHeart} color="white" size="lg" />
-                      </Box>
-                      <Box>
-                        <Typography variant="h5" component="h2" fontWeight={600}>
-                          Your Favorites
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Shows and songs you've saved for easy access
-                        </Typography>
-                      </Box>
-                    </Box>
+                <Typography
+                  variant="h2"
+                  component="h1"
+                  fontWeight={800}
+                  sx={{
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    color: 'transparent',
+                    mb: 1,
+                    textShadow: `0 2px 4px ${alpha(theme.palette.primary.main, 0.1)}`,
+                  }}
+                >
+                  {getGreeting()},{' '}
+                  {authStore.user?.stageName || authStore.user?.name || 'Karaoke Star'}! 🎤
+                </Typography>
+                <Typography
+                  variant="h5"
+                  color="text.secondary"
+                  fontWeight={400}
+                  sx={{
+                    maxWidth: '600px',
+                    mx: 'auto',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Ready to rock the stage? Here's what's happening in your karaoke world.
+                </Typography>
+              </Box>
+            </Box>
 
-                    <Button
-                      variant="outlined"
-                      startIcon={<FontAwesomeIcon icon={faPlus} />}
-                      onClick={() => navigate('/map')}
-                      sx={{ borderRadius: '8px' }}
-                    >
-                      Find More
-                    </Button>
-                  </Box>
+            {/* Ad placement after welcome section - only show if not ad-free */}
+            {!subscriptionStore.hasAdFreeAccess && (
+              <Box sx={{ mb: 4 }}>
+                <BannerAd />
+              </Box>
+            )}
 
-                  {!authStore.isAuthenticated ? (
-                    <Alert
-                      severity="info"
-                      sx={{
-                        borderRadius: '12px',
-                        '& .MuiAlert-message': { width: '100%' },
-                      }}
-                    >
-                      <Typography variant="body1" fontWeight={500}>
-                        Please log in to view your favorites
-                      </Typography>
-                      <Typography variant="body2">
-                        Save your favorite karaoke venues and songs!
-                      </Typography>
-                    </Alert>
-                  ) : loading ? (
-                    <Box sx={{ p: 4 }}>
-                      {[...Array(3)].map((_, index) => (
-                        <Box key={index} sx={{ mb: 2 }}>
-                          <Skeleton
-                            variant="rectangular"
-                            height={100}
-                            sx={{ borderRadius: '12px', mb: 1 }}
-                          />
-                        </Box>
-                      ))}
-                    </Box>
-                  ) : favoriteStore.favorites.length === 0 &&
-                    songFavoriteStore.songFavorites.length === 0 ? (
-                    <Paper
-                      sx={{
-                        p: 4,
-                        textAlign: 'center',
-                        backgroundColor: alpha(theme.palette.primary.main, 0.02),
-                        border: `2px dashed ${alpha(theme.palette.primary.main, 0.2)}`,
-                        borderRadius: '16px',
-                      }}
-                    >
-                      <Box sx={{ mb: 2 }}>
-                        <FontAwesomeIcon
-                          icon={faMusic}
-                          size="3x"
-                          color={theme.palette.text.secondary}
-                        />
-                      </Box>
-                      <Typography variant="h6" gutterBottom fontWeight={600}>
-                        No favorites yet!
-                      </Typography>
-                      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                        Start exploring karaoke venues and music to build your favorites collection.
-                      </Typography>
-                      <Stack direction="row" spacing={2} justifyContent="center">
-                        <Button
-                          variant="contained"
-                          startIcon={<FontAwesomeIcon icon={faMapMarkerAlt} />}
-                          onClick={() => navigate('/map')}
-                          sx={{ borderRadius: '8px' }}
-                        >
-                          Explore Shows
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          startIcon={<FontAwesomeIcon icon={faMusic} />}
-                          onClick={() => navigate('/music')}
-                          sx={{ borderRadius: '8px' }}
-                        >
-                          Browse Songs
-                        </Button>
-                      </Stack>
-                    </Paper>
-                  ) : (
-                    <Box>
-                      <Tabs
-                        value={activeTab}
-                        onChange={handleTabChange}
-                        sx={{ mb: 3 }}
-                        variant="fullWidth"
-                      >
-                        <Tab
-                          icon={<FontAwesomeIcon icon={faMicrophone} />}
-                          label={`Shows (${favoriteStore.favorites.length})`}
-                        />
-                        <Tab
-                          icon={<FontAwesomeIcon icon={faMusic} />}
-                          label={`Songs (${songFavoriteStore.songFavorites.length})`}
-                        />
-                      </Tabs>
-
-                      {activeTab === 0 && (
-                        <Box>
-                          {favoriteStore.favorites.length === 0 ? (
-                            <Typography
-                              variant="body1"
-                              color="text.secondary"
-                              textAlign="center"
-                              py={4}
-                            >
-                              No favorite shows yet. Start by exploring venues near you!
-                            </Typography>
-                          ) : (
-                            favoriteStore.favorites
-                              .slice(0, 5)
-                              .map((favorite) => (
-                                <FavoriteShowCard key={favorite.id} favorite={favorite} />
-                              ))
-                          )}
-
-                          {favoriteStore.favorites.length > 5 && (
-                            <Button
-                              variant="outlined"
-                              fullWidth
-                              endIcon={<FontAwesomeIcon icon={faArrowRight} />}
-                              sx={{
-                                mt: 2,
-                                borderRadius: '12px',
-                                py: 1.5,
-                                borderStyle: 'dashed',
-                              }}
-                            >
-                              View All {favoriteStore.favorites.length} Favorite Shows
-                            </Button>
-                          )}
-                        </Box>
-                      )}
-
-                      {activeTab === 1 && (
-                        <Box>
-                          {songFavoriteStore.songFavorites.length === 0 ? (
-                            <Typography
-                              variant="body1"
-                              color="text.secondary"
-                              textAlign="center"
-                              py={4}
-                            >
-                              No favorite songs yet. Start building your music library!
-                            </Typography>
-                          ) : (
-                            songFavoriteStore.songFavorites
-                              .slice(0, 5)
-                              .map((songFavorite) => (
-                                <FavoriteSongCard
-                                  key={songFavorite.id}
-                                  songFavorite={songFavorite}
-                                />
-                              ))
-                          )}
-
-                          {songFavoriteStore.songFavorites.length > 5 && (
-                            <Button
-                              variant="outlined"
-                              fullWidth
-                              endIcon={<FontAwesomeIcon icon={faArrowRight} />}
-                              sx={{
-                                mt: 2,
-                                borderRadius: '12px',
-                                py: 1.5,
-                                borderStyle: 'dashed',
-                              }}
-                            >
-                              View All {songFavoriteStore.songFavorites.length} Favorite Songs
-                            </Button>
-                          )}
-                        </Box>
-                      )}
-                    </Box>
-                  )}
-                </CardContent>
-              </Card>
+            {/* Enhanced Stats Cards */}
+            <Grid container spacing={4} sx={{ mb: 5 }}>
+              <Grid item xs={12} sm={6} lg={3}>
+                <StatCard
+                  icon={faCalendar}
+                  title="Today's Shows"
+                  value={showStats.todayCount}
+                  subtitle="Shows you've favorited today"
+                  color="success"
+                  trending="neutral"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} lg={3}>
+                <StatCard
+                  icon={faHeart}
+                  title="Favorite Shows"
+                  value={showStats.weekCount}
+                  subtitle="Total shows in your favorites"
+                  color="primary"
+                  trending="up"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} lg={3}>
+                <StatCard
+                  icon={faMusic}
+                  title="Favorite Songs"
+                  value={showStats.songFavoriteCount}
+                  subtitle="Songs saved to your library"
+                  color="secondary"
+                  trending="up"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} lg={3}>
+                <StatCard
+                  icon={faTrophy}
+                  title="Subscription"
+                  value={subscriptionStore.hasAdFreeAccess ? 'Pro' : 'Free'}
+                  subtitle={
+                    subscriptionStore.hasAdFreeAccess ? 'Premium features' : 'Upgrade available'
+                  }
+                  color={subscriptionStore.hasAdFreeAccess ? 'success' : 'warning'}
+                  trending={subscriptionStore.hasAdFreeAccess ? 'up' : 'neutral'}
+                />
+              </Grid>
             </Grid>
 
-            {/* Right Sidebar */}
-            <Grid item xs={12} lg={4}>
-              <Stack spacing={3}>
-                {/* Quick Actions */}
-                <Card>
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" fontWeight={600} gutterBottom>
-                      Quick Actions
-                    </Typography>
-                    <Stack spacing={2}>
-                      <Button
-                        variant="contained"
-                        fullWidth
-                        startIcon={<FontAwesomeIcon icon={faMapMarkerAlt} />}
-                        onClick={() => navigate('/map')}
-                        sx={{
-                          borderRadius: '8px',
-                          py: 1.5,
-                          justifyContent: 'flex-start',
-                        }}
-                      >
-                        Find Karaoke Shows
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        fullWidth
-                        startIcon={<FontAwesomeIcon icon={faMusic} />}
-                        onClick={() => navigate('/music')}
-                        sx={{
-                          borderRadius: '8px',
-                          py: 1.5,
-                          justifyContent: 'flex-start',
-                        }}
-                      >
-                        Browse Music Library
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        fullWidth
-                        startIcon={<FontAwesomeIcon icon={faUsers} />}
-                        sx={{
-                          borderRadius: '8px',
-                          py: 1.5,
-                          justifyContent: 'flex-start',
-                        }}
-                        disabled
-                      >
-                        Connect with Friends
-                        <Chip label="Soon" size="small" sx={{ ml: 'auto' }} />
-                      </Button>
-                    </Stack>
-                  </CardContent>
-                </Card>
-
-                {/* Performance Stats */}
-                <Card>
-                  <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                      <FontAwesomeIcon icon={faChartLine} color={theme.palette.primary.main} />
-                      <Typography variant="h6" fontWeight={600}>
-                        Your Progress
-                      </Typography>
-                    </Box>
-                    <Stack spacing={2}>
-                      <Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                          <Typography variant="body2">Shows Attended</Typography>
-                          <Typography variant="body2" fontWeight={600}>
-                            0
-                          </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={0}
-                          sx={{ borderRadius: '4px' }}
-                        />
-                      </Box>
-                      <Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                          <Typography variant="body2">Songs Performed</Typography>
-                          <Typography variant="body2" fontWeight={600}>
-                            0
-                          </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={0}
-                          sx={{ borderRadius: '4px' }}
-                        />
-                      </Box>
-                      <Divider />
-                      <Typography variant="body2" color="text.secondary" textAlign="center">
-                        Start attending shows to track your karaoke journey! 🎤
-                      </Typography>
-                    </Stack>
-                  </CardContent>
-                </Card>
-
-                {/* Upcoming Features */}
+            <Grid container spacing={4}>
+              {/* Main Content - Favorite Shows and Songs */}
+              <Grid item xs={12} lg={8}>
                 <Card
                   sx={{
-                    background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
-                    border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
+                    mb: 3,
+                    background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
                   }}
                 >
                   <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                      <FontAwesomeIcon icon={faStar} color={theme.palette.secondary.main} />
-                      <Typography variant="h6" fontWeight={600}>
-                        Coming Soon
-                      </Typography>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        mb: 3,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box
+                          sx={{
+                            backgroundColor: theme.palette.primary.main,
+                            borderRadius: '12px',
+                            p: 1.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faHeart} color="white" size="lg" />
+                        </Box>
+                        <Box>
+                          <Typography variant="h5" component="h2" fontWeight={600}>
+                            Your Favorites
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Shows and songs you've saved for easy access
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Button
+                        variant="outlined"
+                        startIcon={<FontAwesomeIcon icon={faPlus} />}
+                        onClick={() => navigate('/map')}
+                        sx={{ borderRadius: '8px' }}
+                      >
+                        Find More
+                      </Button>
                     </Box>
-                    <Stack spacing={1}>
-                      <Typography variant="body2" color="text.secondary">
-                        🎵 Personal song recommendations
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        🏆 Karaoke achievements & badges
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        👥 Connect with fellow singers
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        📊 Performance analytics
-                      </Typography>
-                    </Stack>
+
+                    {!authStore.isAuthenticated ? (
+                      <Alert
+                        severity="info"
+                        sx={{
+                          borderRadius: '12px',
+                          '& .MuiAlert-message': { width: '100%' },
+                        }}
+                      >
+                        <Typography variant="body1" fontWeight={500}>
+                          Please log in to view your favorites
+                        </Typography>
+                        <Typography variant="body2">
+                          Save your favorite karaoke venues and songs!
+                        </Typography>
+                      </Alert>
+                    ) : loading ? (
+                      <Box sx={{ p: 4 }}>
+                        {[...Array(3)].map((_, index) => (
+                          <Box key={index} sx={{ mb: 2 }}>
+                            <Skeleton
+                              variant="rectangular"
+                              height={100}
+                              sx={{ borderRadius: '12px', mb: 1 }}
+                            />
+                          </Box>
+                        ))}
+                      </Box>
+                    ) : favoriteStore.favorites.length === 0 &&
+                      songFavoriteStore.songFavorites.length === 0 ? (
+                      <Paper
+                        sx={{
+                          p: 4,
+                          textAlign: 'center',
+                          backgroundColor: alpha(theme.palette.primary.main, 0.02),
+                          border: `2px dashed ${alpha(theme.palette.primary.main, 0.2)}`,
+                          borderRadius: '16px',
+                        }}
+                      >
+                        <Box sx={{ mb: 2 }}>
+                          <FontAwesomeIcon
+                            icon={faMusic}
+                            size="3x"
+                            color={theme.palette.text.secondary}
+                          />
+                        </Box>
+                        <Typography variant="h6" gutterBottom fontWeight={600}>
+                          No favorites yet!
+                        </Typography>
+                        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                          Start exploring karaoke venues and music to build your favorites
+                          collection.
+                        </Typography>
+                        <Stack direction="row" spacing={2} justifyContent="center">
+                          <Button
+                            variant="contained"
+                            startIcon={<FontAwesomeIcon icon={faMapMarkerAlt} />}
+                            onClick={() => navigate('/map')}
+                            sx={{ borderRadius: '8px' }}
+                          >
+                            Explore Shows
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            startIcon={<FontAwesomeIcon icon={faMusic} />}
+                            onClick={() => navigate('/music')}
+                            sx={{ borderRadius: '8px' }}
+                          >
+                            Browse Songs
+                          </Button>
+                        </Stack>
+                      </Paper>
+                    ) : (
+                      <Box>
+                        <Tabs
+                          value={activeTab}
+                          onChange={handleTabChange}
+                          sx={{ mb: 3 }}
+                          variant="fullWidth"
+                        >
+                          <Tab
+                            icon={<FontAwesomeIcon icon={faMicrophone} />}
+                            label={`Shows (${favoriteStore.favorites.length})`}
+                          />
+                          <Tab
+                            icon={<FontAwesomeIcon icon={faMusic} />}
+                            label={`Songs (${songFavoriteStore.songFavorites.length})`}
+                          />
+                        </Tabs>
+
+                        {activeTab === 0 && (
+                          <Box>
+                            {favoriteStore.favorites.length === 0 ? (
+                              <Typography
+                                variant="body1"
+                                color="text.secondary"
+                                textAlign="center"
+                                py={4}
+                              >
+                                No favorite shows yet. Start by exploring venues near you!
+                              </Typography>
+                            ) : (
+                              favoriteStore.favorites
+                                .slice(0, 5)
+                                .map((favorite) => (
+                                  <FavoriteShowCard key={favorite.id} favorite={favorite} />
+                                ))
+                            )}
+
+                            {favoriteStore.favorites.length > 5 && (
+                              <Button
+                                variant="outlined"
+                                fullWidth
+                                endIcon={<FontAwesomeIcon icon={faArrowRight} />}
+                                sx={{
+                                  mt: 2,
+                                  borderRadius: '12px',
+                                  py: 1.5,
+                                  borderStyle: 'dashed',
+                                }}
+                              >
+                                View All {favoriteStore.favorites.length} Favorite Shows
+                              </Button>
+                            )}
+                          </Box>
+                        )}
+
+                        {activeTab === 1 && (
+                          <Box>
+                            {songFavoriteStore.songFavorites.length === 0 ? (
+                              <Typography
+                                variant="body1"
+                                color="text.secondary"
+                                textAlign="center"
+                                py={4}
+                              >
+                                No favorite songs yet. Start building your music library!
+                              </Typography>
+                            ) : (
+                              songFavoriteStore.songFavorites
+                                .slice(0, 5)
+                                .map((songFavorite) => (
+                                  <FavoriteSongCard
+                                    key={songFavorite.id}
+                                    songFavorite={songFavorite}
+                                  />
+                                ))
+                            )}
+
+                            {songFavoriteStore.songFavorites.length > 5 && (
+                              <Button
+                                variant="outlined"
+                                fullWidth
+                                endIcon={<FontAwesomeIcon icon={faArrowRight} />}
+                                sx={{
+                                  mt: 2,
+                                  borderRadius: '12px',
+                                  py: 1.5,
+                                  borderStyle: 'dashed',
+                                }}
+                              >
+                                View All {songFavoriteStore.songFavorites.length} Favorite Songs
+                              </Button>
+                            )}
+                          </Box>
+                        )}
+                      </Box>
+                    )}
                   </CardContent>
                 </Card>
-              </Stack>
-            </Grid>
-          </Grid>
+              </Grid>
 
-          {/* Ad placement at bottom - only show if not ad-free */}
-          {!subscriptionStore.hasAdFreeAccess && (
-            <Box sx={{ mt: 4, mb: 2 }}>
-              <WideAd />
-            </Box>
-          )}
-        </Box>
-      </Container>
+              {/* Right Sidebar */}
+              <Grid item xs={12} lg={4}>
+                <Stack spacing={3}>
+                  {/* Quick Actions */}
+                  <Card>
+                    <CardContent sx={{ p: 3 }}>
+                      <Typography variant="h6" fontWeight={600} gutterBottom>
+                        Quick Actions
+                      </Typography>
+                      <Stack spacing={2}>
+                        <Button
+                          variant="contained"
+                          fullWidth
+                          startIcon={<FontAwesomeIcon icon={faMapMarkerAlt} />}
+                          onClick={() => navigate('/map')}
+                          sx={{
+                            borderRadius: '8px',
+                            py: 1.5,
+                            justifyContent: 'flex-start',
+                          }}
+                        >
+                          Find Karaoke Shows
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          fullWidth
+                          startIcon={<FontAwesomeIcon icon={faMusic} />}
+                          onClick={() => navigate('/music')}
+                          sx={{
+                            borderRadius: '8px',
+                            py: 1.5,
+                            justifyContent: 'flex-start',
+                          }}
+                        >
+                          Browse Music Library
+                        </Button>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+
+                  {/* Friends List */}
+                  <FriendsList onUserSelect={(userId) => console.log('Selected user:', userId)} />
+
+                  {/* Performance Stats */}
+                  <Card>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <FontAwesomeIcon icon={faChartLine} color={theme.palette.primary.main} />
+                        <Typography variant="h6" fontWeight={600}>
+                          Your Progress
+                        </Typography>
+                      </Box>
+                      <Stack spacing={2}>
+                        <Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2">Shows Attended</Typography>
+                            <Typography variant="body2" fontWeight={600}>
+                              0
+                            </Typography>
+                          </Box>
+                          <LinearProgress
+                            variant="determinate"
+                            value={0}
+                            sx={{ borderRadius: '4px' }}
+                          />
+                        </Box>
+                        <Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2">Songs Performed</Typography>
+                            <Typography variant="body2" fontWeight={600}>
+                              0
+                            </Typography>
+                          </Box>
+                          <LinearProgress
+                            variant="determinate"
+                            value={0}
+                            sx={{ borderRadius: '4px' }}
+                          />
+                        </Box>
+                        <Divider />
+                        <Typography variant="body2" color="text.secondary" textAlign="center">
+                          Start attending shows to track your karaoke journey! 🎤
+                        </Typography>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+
+                  {/* Upcoming Features */}
+                  <Card
+                    sx={{
+                      background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
+                      border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
+                    }}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        <FontAwesomeIcon icon={faStar} color={theme.palette.secondary.main} />
+                        <Typography variant="h6" fontWeight={600}>
+                          Coming Soon
+                        </Typography>
+                      </Box>
+                      <Stack spacing={1}>
+                        <Typography variant="body2" color="text.secondary">
+                          🎵 Personal song recommendations
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          🏆 Karaoke achievements & badges
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          👥 Connect with fellow singers
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          📊 Performance analytics
+                        </Typography>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Stack>
+              </Grid>
+            </Grid>
+
+            {/* Ad placement at bottom - only show if not ad-free */}
+            {!subscriptionStore.hasAdFreeAccess && (
+              <Box sx={{ mt: 4, mb: 2 }}>
+                <WideAd />
+              </Box>
+            )}
+          </Box>
+        </Container>
+      </Box>
     </>
   );
 });

@@ -16,6 +16,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
+  alpha,
   Box,
   Breadcrumbs,
   Button,
@@ -358,7 +359,28 @@ export const MusicPage: React.FC = observer(() => {
   return (
     <>
       <SEO {...seoConfigs.music} />
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          background: `linear-gradient(135deg, 
+            ${alpha(theme.palette.primary.main, 0.1)} 0%, 
+            ${alpha(theme.palette.secondary.main, 0.05)} 50%, 
+            ${alpha(theme.palette.primary.main, 0.08)} 100%)`,
+          position: 'relative',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: `radial-gradient(circle at 20% 80%, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, ${alpha(theme.palette.secondary.main, 0.1)} 0%, transparent 50%)`,
+            pointerEvents: 'none',
+          },
+        }}
+      >
+        <Container maxWidth="lg" sx={{ py: 4, position: 'relative', zIndex: 1 }}>
         {/* Breadcrumbs */}
         <Breadcrumbs
           separator={<FontAwesomeIcon icon={faChevronRight} style={{ fontSize: '12px' }} />}
@@ -1028,7 +1050,8 @@ export const MusicPage: React.FC = observer(() => {
             </Button>
           </DialogActions>
         </Dialog>
-      </Container>
+        </Container>
+      </Box>
     </>
   );
 });

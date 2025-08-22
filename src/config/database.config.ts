@@ -3,8 +3,10 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DJ } from '../dj/dj.entity';
 import { DJNickname } from '../entities/dj-nickname.entity';
 import { User } from '../entities/user.entity';
-import { Favorite } from '../favorite/favorite.entity';
+import { FavoriteShow } from '../favorite/favorite.entity';
 import { Feedback } from '../feedback/feedback.entity';
+import { FriendRequest } from '../friends/friend-request.entity';
+import { Friendship } from '../friends/friendship.entity';
 import { SongFavorite } from '../music/song-favorite.entity';
 import { Song } from '../music/song.entity';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
@@ -29,13 +31,15 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       DJ,
       DJNickname,
       Show,
-      Favorite,
+      FavoriteShow,
       Feedback,
       ParsedSchedule,
       Subscription,
       UrlToParse,
       Song,
       SongFavorite,
+      FriendRequest,
+      Friendship,
     ],
     synchronize: true, // Enable sync if explicitly set or in development
     logging: false, // Turn off SQL logging completely

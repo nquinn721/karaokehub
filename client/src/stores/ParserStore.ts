@@ -70,6 +70,7 @@ export interface UrlToParse {
   url: string;
   name?: string;
   isApproved: boolean;
+  hasBeenParsed: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -93,6 +94,7 @@ export class ParserStore {
   parsingTimer: number | null = null;
   lastCompletedParsingTime: number | null = null; // Track the final completion time
   socket: Socket | null = null;
+  urlFilter: 'all' | 'unparsed' | 'approved-and-unparsed' = 'all';
 
   constructor() {
     makeAutoObservable(this);
@@ -187,6 +189,26 @@ export class ParserStore {
 
   setError(error: string | null) {
     this.error = error;
+  }
+
+  setUrlFilter(filter: 'all' | 'unparsed' | 'approved-and-unparsed') {
+    this.urlFilter = filter;
+    this.fetchUrlsBasedOnFilter();
+  }
+
+  async fetchUrlsBasedOnFilter(): Promise<void> {
+    switch (this.urlFilter) {
+      case 'unparsed':
+        await this.fetchUnparsedUrls();
+        break;
+      case 'approved-and-unparsed':
+        await this.fetchApprovedAndUnparsedUrls();
+        break;
+      case 'all':
+      default:
+        await this.fetchUrlsToParse();
+        break;
+    }
   }
 
   // Parser log management
@@ -661,6 +683,51 @@ export class ParserStore {
     }
   }
 
+  async fetchUnparsedUrls(): Promise<void> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      const response = await apiStore.get('/parser/urls/unparsed');
+
+      runInAction(() => {
+        this.urlsToParse = Array.isArray(response) ? response : [];
+      });
+    } catch (error: any) {
+      console.error('Error fetching unparsed URLs:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to fetch unparsed URLs';
+      this.setError(errorMessage);
+      runInAction(() => {
+        this.urlsToParse = [];
+      });
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async fetchApprovedAndUnparsedUrls(): Promise<void> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      const response = await apiStore.get('/parser/urls/approved-and-unparsed');
+
+      runInAction(() => {
+        this.urlsToParse = Array.isArray(response) ? response : [];
+      });
+    } catch (error: any) {
+      console.error('Error fetching approved and unparsed URLs:', error);
+      const errorMessage =
+        error.response?.data?.message || 'Failed to fetch approved and unparsed URLs';
+      this.setError(errorMessage);
+      runInAction(() => {
+        this.urlsToParse = [];
+      });
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
   async addUrlToParse(url: string): Promise<{ success: boolean; error?: string }> {
     try {
       this.setLoading(true);
@@ -694,6 +761,46 @@ export class ParserStore {
       return { success: true };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to delete URL';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async markUrlAsParsed(id: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await apiStore.post(`/parser/urls/${id}/mark-parsed`);
+
+      // Refresh the list after marking as parsed
+      await this.fetchUrlsToParse();
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to mark URL as parsed';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async markUrlAsUnparsed(id: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await apiStore.post(`/parser/urls/${id}/mark-unparsed`);
+
+      // Refresh the list after marking as unparsed
+      await this.fetchUrlsToParse();
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to mark URL as unparsed';
       this.setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {

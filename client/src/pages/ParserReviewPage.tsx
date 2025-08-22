@@ -17,6 +17,7 @@ import {
   AccordionDetails,
   AccordionSummary,
   Alert,
+  alpha,
   Box,
   Button,
   Checkbox,
@@ -240,42 +241,113 @@ const ParserReviewPage: React.FC = observer(() => {
     : null;
 
   return (
-    <Container maxWidth="xl">
-      <Box sx={{ py: 4 }}>
-        <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h4" component="h1">
-            <FontAwesomeIcon icon={faGlobe} style={{ marginRight: '12px' }} />
-            Karaoke Parser & Review
-          </Typography>
-
-          <Button
-            variant="contained"
-            onClick={() => setUrlToParseDialog(true)}
-            startIcon={<FontAwesomeIcon icon={faGlobe} />}
-          >
-            Parse New Website
-          </Button>
-        </Box>
-
-        {parserStore.error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {parserStore.error}
-          </Alert>
-        )}
-
-        {/* URL Parsing Section */}
-        <CustomCard title="Parse Saved URLs" sx={{ mb: 3 }}>
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              Select a URL from your saved list to parse:
-            </Typography>
-          </Box>
-
-          {parserStore.isLoading ? (
-            <Box sx={{ textAlign: 'center', py: 2 }}>
-              <Typography>Loading URLs...</Typography>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, 
+          ${alpha(theme.palette.primary.main, 0.1)} 0%, 
+          ${alpha(theme.palette.secondary.main, 0.05)} 50%, 
+          ${alpha(theme.palette.primary.main, 0.08)} 100%)`,
+        position: 'relative',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: `radial-gradient(circle at 20% 80%, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 50%),
+                      radial-gradient(circle at 80% 20%, ${alpha(theme.palette.secondary.main, 0.1)} 0%, transparent 50%)`,
+          pointerEvents: 'none',
+        },
+      }}
+    >
+      <Container maxWidth="xl" sx={{ py: 4, position: 'relative', zIndex: 1 }}>
+        {/* Enhanced Header */}
+        <Paper
+          elevation={0}
+          sx={{
+            background: `linear-gradient(135deg, 
+              ${alpha(theme.palette.background.paper, 0.95)} 0%, 
+              ${alpha(theme.palette.background.paper, 0.8)} 100%)`,
+            backdropFilter: 'blur(10px)',
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+            borderRadius: 3,
+            mb: 4,
+            overflow: 'hidden',
+            position: 'relative',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '3px',
+              background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+            },
+          }}
+        >
+          <Box sx={{ p: 4, pb: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box
+                  sx={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 2,
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                  }}
+                >
+                  <FontAwesomeIcon icon={faGlobe} size="lg" />
+                </Box>
+                <Box>
+                  <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', mb: 0.5 }}>
+                    Karaoke Parser & Review
+                  </Typography>
+                  <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400 }}>
+                    Parse karaoke venue websites and review AI-extracted data
+                  </Typography>
+                </Box>
+              </Box>
+              <Button
+                variant="contained"
+                onClick={() => setUrlToParseDialog(true)}
+                startIcon={<FontAwesomeIcon icon={faGlobe} />}
+                sx={{
+                  borderRadius: 2,
+                  px: 3,
+                  py: 1.5,
+                }}
+              >
+                Parse New Website
+              </Button>
             </Box>
-          ) : parserStore.urlsToParse.length === 0 ? (
+
+            {parserStore.error && (
+              <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+                {parserStore.error}
+              </Alert>
+            )}
+          </Box>
+        </Paper>
+
+        <Box>
+          {/* URL Parsing Section */}
+          <CustomCard title="Parse Saved URLs" sx={{ mb: 3 }}>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Select a URL from your saved list to parse:
+              </Typography>
+            </Box>
+            {parserStore.isLoading ? (
+              <Box sx={{ textAlign: 'center', py: 2 }}>
+                <Typography>Loading URLs...</Typography>
+              </Box>
+            ) : parserStore.urlsToParse.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 2 }}>
               <Typography color="text.secondary">
                 No URLs saved yet. Add some URLs using the "Parse New Website" button!
@@ -1061,8 +1133,9 @@ const ParserReviewPage: React.FC = observer(() => {
           results={parseResults}
           title="Parse Results"
         />
-      </Box>
-    </Container>
+        </Box>
+      </Container>
+    </Box>
   );
 });
 

@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
-import { Favorite } from '../favorite/favorite.entity';
+import { FavoriteShow } from '../favorite/favorite.entity';
 import { Vendor } from '../vendor/vendor.entity';
 
 export enum DayOfWeek {
@@ -103,6 +103,6 @@ export class Show {
   @JoinColumn({ name: 'djId' })
   dj: DJ;
 
-  @OneToMany(() => Favorite, (favorite) => favorite.show)
-  favorites: Favorite[];
+  @OneToMany(() => FavoriteShow, (favoriteShow) => favoriteShow.show)
+  favoriteShows: FavoriteShow[];
 }

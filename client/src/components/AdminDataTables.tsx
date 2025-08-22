@@ -40,6 +40,7 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useTheme,
 } from '@mui/material';
 import type { AdminDJ, AdminFeedback, AdminShow, AdminUser, AdminVenue } from '@stores/AdminStore';
 import { adminStore, uiStore } from '@stores/index';
@@ -69,6 +70,7 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const AdminDataTables: React.FC = observer(() => {
+  const theme = useTheme();
   const [tabValue, setTabValue] = useState(0);
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({
     users: '',
@@ -171,16 +173,16 @@ const AdminDataTables: React.FC = observer(() => {
       if (type === 'venue') {
         if (adminStore.shows) {
           await adminStore.fetchShows(
-            (adminStore.shows.page || 1),
-            (adminStore.shows.limit || 10),
-            searchTerms.shows || undefined
+            adminStore.shows.page || 1,
+            adminStore.shows.limit || 10,
+            searchTerms.shows || undefined,
           );
         }
         if (adminStore.djs) {
           await adminStore.fetchDjs(
-            (adminStore.djs.page || 1),
-            (adminStore.djs.limit || 10),
-            searchTerms.djs || undefined
+            adminStore.djs.page || 1,
+            adminStore.djs.limit || 10,
+            searchTerms.djs || undefined,
           );
         }
       }
@@ -283,34 +285,83 @@ const AdminDataTables: React.FC = observer(() => {
     );
 
   return (
-    <Paper elevation={2} sx={{ borderRadius: 2, overflow: 'hidden' }}>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
-          <Tab
-            icon={<FontAwesomeIcon icon={faUsers} />}
-            label={`Users${adminStore.statistics?.totalUsers ? ` (${adminStore.statistics.totalUsers})` : ''}`}
-          />
-          <Tab
-            icon={<FontAwesomeIcon icon={faMapMarkerAlt} />}
-            label={`Venues${adminStore.statistics?.totalVendors ? ` (${adminStore.statistics.totalVendors})` : ''}`}
-          />
-          <Tab
-            icon={<FontAwesomeIcon icon={faMusic} />}
-            label={`Shows${adminStore.statistics?.totalShows ? ` (${adminStore.statistics.totalShows})` : ''}`}
-          />
-          <Tab
-            icon={<FontAwesomeIcon icon={faMicrophone} />}
-            label={`DJs${adminStore.statistics?.totalDJs ? ` (${adminStore.statistics.totalDJs})` : ''}`}
-          />
-          <Tab
-            icon={<FontAwesomeIcon icon={faComment} />}
-            label={`Feedback${adminStore.statistics?.totalFeedback ? ` (${adminStore.statistics.totalFeedback})` : ''}`}
-          />
-        </Tabs>
+    <Box>
+      {/* Enhanced Header with Tabs */}
+      <Box sx={{ p: 4, pb: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: 2,
+              background: `linear-gradient(135deg, ${theme.palette.secondary.main}, ${theme.palette.primary.main})`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+            }}
+          >
+            <FontAwesomeIcon icon={faUsers} size="lg" />
+          </Box>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mb: 0.5 }}>
+              Data Management
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Manage users, venues, shows, DJs, and feedback
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              '& .MuiTab-root': {
+                minHeight: 60,
+                fontWeight: 600,
+                textTransform: 'none',
+                fontSize: '0.95rem',
+              },
+              '& .Mui-selected': {
+                color: theme.palette.primary.main,
+              },
+              '& .MuiTabs-indicator': {
+                height: 3,
+                borderRadius: '3px 3px 0 0',
+                background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+              },
+            }}
+          >
+            <Tab
+              icon={<FontAwesomeIcon icon={faUsers} />}
+              label={`Users${adminStore.statistics?.totalUsers ? ` (${adminStore.statistics.totalUsers})` : ''}`}
+            />
+            <Tab
+              icon={<FontAwesomeIcon icon={faMapMarkerAlt} />}
+              label={`Venues${adminStore.statistics?.totalVendors ? ` (${adminStore.statistics.totalVendors})` : ''}`}
+            />
+            <Tab
+              icon={<FontAwesomeIcon icon={faMusic} />}
+              label={`Shows${adminStore.statistics?.totalShows ? ` (${adminStore.statistics.totalShows})` : ''}`}
+            />
+            <Tab
+              icon={<FontAwesomeIcon icon={faMicrophone} />}
+              label={`DJs${adminStore.statistics?.totalDJs ? ` (${adminStore.statistics.totalDJs})` : ''}`}
+            />
+            <Tab
+              icon={<FontAwesomeIcon icon={faComment} />}
+              label={`Feedback${adminStore.statistics?.totalFeedback ? ` (${adminStore.statistics.totalFeedback})` : ''}`}
+            />
+          </Tabs>
+        </Box>
       </Box>
 
       {adminStore.tableError && (
-        <Alert severity="error" sx={{ m: 2 }}>
+        <Alert severity="error" sx={{ mx: 4, mt: 2, borderRadius: 2 }}>
           {adminStore.tableError}
         </Alert>
       )}
@@ -868,7 +919,7 @@ const AdminDataTables: React.FC = observer(() => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Paper>
+    </Box>
   );
 });
 

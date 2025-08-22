@@ -13,8 +13,10 @@ import { getDatabaseConfig } from './config/database.config';
 import { DJModule } from './dj/dj.module';
 import { FavoriteModule } from './favorite/favorite.module';
 import { FeedbackModule } from './feedback/feedback.module';
+import { FriendsModule } from './friends/friends.module';
 import { MusicModule } from './music/music.module';
 import { ParserModule } from './parser/parser.module';
+import { ProductionUploadModule } from './production-upload/production-upload.module';
 import { ShowModule } from './show/show.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { UploadModule } from './upload/upload.module';
@@ -62,10 +64,12 @@ import { WebSocketModule } from './websocket/websocket.module';
     ShowModule,
     FavoriteModule,
     FeedbackModule,
+    FriendsModule,
     ParserModule,
     MusicModule,
     SubscriptionModule,
     UploadModule,
+    ProductionUploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],

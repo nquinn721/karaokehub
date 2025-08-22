@@ -14,6 +14,7 @@ import { KaraokeWebSocketGateway } from '../websocket/websocket.gateway';
 import { FacebookParserService } from './facebook-parser.service';
 import { ParsedSchedule, ParseStatus } from './parsed-schedule.entity';
 import { UrlToParse } from './url-to-parse.entity';
+import { UrlToParseService } from './url-to-parse.service';
 
 export interface ParsedKaraokeData {
   vendor?: {
@@ -96,6 +97,7 @@ export class KaraokeParserService {
     private geocodingService: GeocodingService,
     private webSocketGateway: KaraokeWebSocketGateway,
     private facebookParserService: FacebookParserService,
+    private urlToParseService: UrlToParseService,
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -1200,6 +1202,13 @@ export class KaraokeParserService {
 
       const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
 
+      // Mark the URL as parsed in the urls_to_parse table
+      const urlToParse = await this.urlToParseRepository.findOne({ where: { url: url } });
+      if (urlToParse) {
+        await this.urlToParseService.markAsParsed(urlToParse.id);
+        this.logAndBroadcast(`Marked URL ${url} as parsed in database`, 'info');
+      }
+
       this.logAndBroadcast(
         `Successfully saved parsed data for admin review. ID: ${savedSchedule.id}`,
         'success',
@@ -1322,6 +1331,13 @@ export class KaraokeParserService {
       });
 
       const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
+
+      // Mark the URL as parsed in the urls_to_parse table
+      const urlToParse = await this.urlToParseRepository.findOne({ where: { url: url } });
+      if (urlToParse) {
+        await this.urlToParseService.markAsParsed(urlToParse.id);
+        this.logAndBroadcast(`Marked URL ${url} as parsed in database`, 'info');
+      }
 
       this.logAndBroadcast(
         `Successfully saved screenshot-parsed data for admin review. ID: ${savedSchedule.id}`,
@@ -3999,6 +4015,13 @@ Return ONLY valid JSON:
       });
 
       const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
+
+      // Mark the URL as parsed in the urls_to_parse table
+      const urlToParse = await this.urlToParseRepository.findOne({ where: { url: url } });
+      if (urlToParse) {
+        await this.urlToParseService.markAsParsed(urlToParse.id);
+        this.logAndBroadcast(`Marked URL ${url} as parsed in database`, 'info');
+      }
 
       this.logAndBroadcast(
         `Successfully saved Instagram parsed data for admin review. ID: ${savedSchedule.id}`,

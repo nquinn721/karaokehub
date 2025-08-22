@@ -1,8 +1,10 @@
 import { DataSource } from 'typeorm';
 import { DJ } from './src/dj/dj.entity';
 import { User } from './src/entities/user.entity';
-import { Favorite } from './src/favorite/favorite.entity';
+import { FavoriteShow } from './src/favorite/favorite-show.entity';
 import { Feedback } from './src/feedback/feedback.entity';
+import { FriendRequest } from './src/friends/friend-request.entity';
+import { Friendship } from './src/friends/friendship.entity';
 import { SongFavorite } from './src/music/song-favorite.entity';
 import { Song } from './src/music/song.entity';
 import { ParsedSchedule } from './src/parser/parsed-schedule.entity';
@@ -14,20 +16,22 @@ export default new DataSource({
   type: 'mysql',
   host: 'localhost',
   port: 3306,
-  username: 'karaoke_user',
-  password: 'karaoke_password',
-  database: 'karaoke_pal',
+  username: 'admin',
+  password: 'password',
+  database: 'karaoke-hub',
   entities: [
     User,
     Vendor,
     DJ,
     Show,
-    Favorite,
+    FavoriteShow,
     Feedback,
     ParsedSchedule,
     UrlToParse,
     Song,
     SongFavorite,
+    FriendRequest,
+    Friendship,
   ],
   migrations: ['./src/migrations/*.ts'],
   synchronize: false,

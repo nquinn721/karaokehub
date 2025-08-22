@@ -156,28 +156,28 @@ export class ShowService {
   async findAll(): Promise<Show[]> {
     return await this.showRepository.find({
       where: { isActive: true },
-      relations: ['vendor', 'dj', 'favorites'],
+      relations: ['vendor', 'dj', 'favoriteShows'],
     });
   }
 
   async findOne(id: string): Promise<Show> {
     return await this.showRepository.findOne({
       where: { id, isActive: true },
-      relations: ['vendor', 'dj', 'favorites'],
+      relations: ['vendor', 'dj', 'favoriteShows'],
     });
   }
 
   async findByVendor(vendorId: string): Promise<Show[]> {
     return await this.showRepository.find({
       where: { vendorId, isActive: true },
-      relations: ['vendor', 'dj', 'favorites'],
+      relations: ['vendor', 'dj', 'favoriteShows'],
     });
   }
 
   async findByDJ(djId: string): Promise<Show[]> {
     return await this.showRepository.find({
       where: { djId, isActive: true },
-      relations: ['vendor', 'dj', 'favorites'],
+      relations: ['vendor', 'dj', 'favoriteShows'],
     });
   }
 
@@ -185,45 +185,50 @@ export class ShowService {
    * Normalize venue name to handle common variations
    */
   private normalizeVenueName(venueName: string): string[] {
-    const normalized = venueName.toLowerCase()
+    const normalized = venueName
+      .toLowerCase()
       .replace(/[''"]/g, '') // Remove quotes/apostrophes
       .replace(/&/g, 'and') // Normalize ampersands
       .replace(/\s+/g, ' ') // Normalize spaces
       .trim();
-    
+
     // Generate common variations
     const variations = new Set<string>();
     variations.add(venueName); // Original
     variations.add(normalized); // Normalized
-    
+
     // Handle specific known variations
-    if (normalized.includes('oneilly') || normalized.includes('onelly') || normalized.includes('nelly')) {
+    if (
+      normalized.includes('oneilly') ||
+      normalized.includes('onelly') ||
+      normalized.includes('nelly')
+    ) {
       variations.add('oneillys sports pub');
       variations.add('onellys sports pub and grill');
       variations.add('o nellys sports pub and grill');
-      variations.add('oneilly\'s sports pub');
-      variations.add('o\'nelly\'s sports pub & grill');
+      variations.add("oneilly's sports pub");
+      variations.add("o'nelly's sports pub & grill");
     }
-    
+
     return Array.from(variations);
   }
 
   async findByVenue(venueName: string): Promise<Show[]> {
     console.log('🏢 Service findByVenue called with:', venueName);
-    
+
     // Get venue name variations
     const venueVariations = this.normalizeVenueName(venueName);
     console.log('🏢 Searching for venue variations:', venueVariations);
-    
+
     // Search for all variations
     const allShows = await this.showRepository
       .createQueryBuilder('show')
       .leftJoinAndSelect('show.vendor', 'vendor')
       .leftJoinAndSelect('show.dj', 'dj')
-      .leftJoinAndSelect('show.favorites', 'favorites')
+      .leftJoinAndSelect('show.favoriteShows', 'favoriteShows')
       .where('show.isActive = :isActive', { isActive: true })
-      .andWhere('LOWER(show.venue) IN (:...venues)', { 
-        venues: venueVariations.map(v => v.toLowerCase()) 
+      .andWhere('LOWER(show.venue) IN (:...venues)', {
+        venues: venueVariations.map((v) => v.toLowerCase()),
       })
       .addOrderBy(
         // Order by day of week (Monday=1, Tuesday=2, etc.)
@@ -237,20 +242,20 @@ export class ShowService {
           WHEN 'sunday' THEN 7
           ELSE 8
         END`,
-        'ASC'
+        'ASC',
       )
       .addOrderBy('show.startTime', 'ASC')
       .getMany();
-    
+
     console.log('🏢 Total shows found for all variations:', allShows.length);
-    
+
     return allShows;
   }
 
   async findByDay(day: DayOfWeek): Promise<Show[]> {
     return await this.showRepository.find({
       where: { day, isActive: true },
-      relations: ['vendor', 'dj', 'favorites'],
+      relations: ['vendor', 'dj', 'favoriteShows'],
     });
   }
 
@@ -266,7 +271,7 @@ export class ShowService {
         .createQueryBuilder('show')
         .leftJoinAndSelect('show.vendor', 'vendor')
         .leftJoinAndSelect('show.dj', 'dj')
-        .leftJoinAndSelect('show.favorites', 'favorites')
+        .leftJoinAndSelect('show.favoriteShows', 'favoriteShows')
         .addSelect(
           `(3959 * acos(cos(radians(:centerLat)) * cos(radians(show.lat)) * 
            cos(radians(show.lng) - radians(:centerLng)) + 
@@ -624,7 +629,7 @@ export class ShowService {
         .createQueryBuilder('show')
         .leftJoinAndSelect('show.vendor', 'vendor')
         .leftJoinAndSelect('show.dj', 'dj')
-        .leftJoinAndSelect('show.favorites', 'favorites')
+        .leftJoinAndSelect('show.favoriteShows', 'favoriteShows')
         .where('show.isActive = :isActive', { isActive: true })
         .andWhere(
           new Brackets((qb) => {

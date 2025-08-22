@@ -6,7 +6,9 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Favorite } from '../favorite/favorite.entity';
+import { FavoriteShow } from '../favorite/favorite.entity';
+import { FriendRequest } from '../friends/friend-request.entity';
+import { Friendship } from '../friends/friendship.entity';
 import { SongFavorite } from '../music/song-favorite.entity';
 import { Subscription } from '../subscription/subscription.entity';
 
@@ -53,12 +55,25 @@ export class User {
   updatedAt: Date;
 
   // Relationships
-  @OneToMany(() => Favorite, (favorite) => favorite.user)
-  favorites: Favorite[];
+  @OneToMany(() => FavoriteShow, (favoriteShow) => favoriteShow.user)
+  favoriteShows: FavoriteShow[];
 
   @OneToMany(() => Subscription, (subscription) => subscription.user)
   subscriptions: Subscription[];
 
   @OneToMany(() => SongFavorite, (songFavorite) => songFavorite.user)
   songFavorites: SongFavorite[];
+
+  // Friends relationships
+  @OneToMany(() => FriendRequest, (friendRequest) => friendRequest.requester)
+  sentFriendRequests: FriendRequest[];
+
+  @OneToMany(() => FriendRequest, (friendRequest) => friendRequest.recipient)
+  receivedFriendRequests: FriendRequest[];
+
+  @OneToMany(() => Friendship, (friendship) => friendship.user)
+  friendships: Friendship[];
+
+  @OneToMany(() => Friendship, (friendship) => friendship.friend)
+  friendsOf: Friendship[];
 }

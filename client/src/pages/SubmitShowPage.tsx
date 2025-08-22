@@ -11,6 +11,7 @@ import {
 } from '@mui/icons-material';
 import {
   Alert,
+  alpha,
   Autocomplete,
   Box,
   Button,
@@ -71,13 +72,10 @@ const SubmitShowPage: React.FC = observer(() => {
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
 
-  // URL parsing state
+  // URL submission state
   const [url, setUrl] = useState('');
   const [parsedData, setParsedData] = useState<ParsedScheduleItem | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [parsingPlatform, setParsingPlatform] = useState<
-    'instagram' | 'facebook' | 'website' | null
-  >(null);
   const [detectedPlatform, setDetectedPlatform] = useState<
     'instagram' | 'facebook' | 'website' | null
   >(null);
@@ -143,42 +141,28 @@ const SubmitShowPage: React.FC = observer(() => {
     }
   };
 
-  const getPlatformDisplayName = (platform: 'instagram' | 'facebook' | 'website'): string => {
-    switch (platform) {
-      case 'instagram':
-        return 'Instagram';
-      case 'facebook':
-        return 'Facebook';
-      case 'website':
-        return 'Website';
-    }
-  };
-
   const handleUrlSubmit = async () => {
     if (!url.trim()) {
       setError('Please enter a valid URL');
       return;
     }
 
-    const platform = detectPlatform(url);
-    setParsingPlatform(platform);
     setLoading(true);
     setError('');
 
     try {
-      const result = await parserStore.parseWebsite(url);
-      if (result.success && result.data) {
-        setParsedData(result.data);
-        setSuccess('URL parsed successfully! Please review the data below.');
+      const result = await parserStore.addUrlToParse(url);
+      if (result.success) {
+        setSuccess('URL submitted successfully for admin review! Admins will review and process your URL.');
+        setUrl('');
       } else {
-        setError(result.error || 'Failed to parse URL');
+        setError(result.error || 'Failed to submit URL');
       }
     } catch (err) {
-      setError('Failed to parse URL. Please try again.');
-      console.error('Parse error:', err);
+      setError('Failed to submit URL. Please try again.');
+      console.error('Submit error:', err);
     } finally {
       setLoading(false);
-      setParsingPlatform(null);
     }
   };
 
@@ -305,7 +289,28 @@ const SubmitShowPage: React.FC = observer(() => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: { xs: 2, sm: 4 }, mb: 4, px: { xs: 1, sm: 3 } }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, 
+          ${alpha(theme.palette.primary.main, 0.1)} 0%, 
+          ${alpha(theme.palette.secondary.main, 0.05)} 50%, 
+          ${alpha(theme.palette.primary.main, 0.08)} 100%)`,
+        position: 'relative',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: `radial-gradient(circle at 20% 80%, ${alpha(theme.palette.primary.main, 0.1)} 0%, transparent 50%),
+                      radial-gradient(circle at 80% 20%, ${alpha(theme.palette.secondary.main, 0.1)} 0%, transparent 50%)`,
+          pointerEvents: 'none',
+        },
+      }}
+    >
+      <Container maxWidth="lg" sx={{ mt: { xs: 2, sm: 4 }, mb: 4, px: { xs: 1, sm: 3 }, position: 'relative', zIndex: 1 }}>
       {/* Header Section */}
       <Box sx={{ textAlign: 'center', mb: { xs: 3, sm: 4 } }}>
         <MusicNote sx={{ fontSize: { xs: 48, sm: 64 }, color: 'primary.main', mb: 2 }} />
@@ -373,61 +378,33 @@ const SubmitShowPage: React.FC = observer(() => {
             variant="fullWidth"
             sx={{
               '& .MuiTab-root': {
-                py: { xs: 2.5, sm: 2 },
-                minHeight: { xs: 64, sm: 72 },
-                fontWeight: 500,
-                fontSize: { xs: '0.875rem', sm: '1rem' },
+                minHeight: 70,
+                fontWeight: 600,
                 textTransform: 'none',
+                fontSize: '1rem',
+                py: 2,
+              },
+              '& .Mui-selected': {
+                color: theme.palette.primary.main,
+              },
+              '& .MuiTabs-indicator': {
+                height: 3,
+                borderRadius: '3px 3px 0 0',
+                background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
               },
             }}
           >
             <Tab
-              icon={<Link sx={{ fontSize: { xs: 24, sm: 28 }, mb: 1 }} />}
-              label={
-                <Box>
-                  <Typography
-                    variant="subtitle1"
-                    fontWeight={600}
-                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-                  >
-                    Parse Website URL
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                      display: { xs: 'none', sm: 'block' },
-                    }}
-                  >
-                    Automatically extract show data
-                  </Typography>
-                </Box>
-              }
+              icon={<Link />}
+              label="Submit URL for Review"
+              iconPosition="start"
+              sx={{ gap: 1 }}
             />
             <Tab
-              icon={<Event sx={{ fontSize: { xs: 24, sm: 28 }, mb: 1 }} />}
-              label={
-                <Box>
-                  <Typography
-                    variant="subtitle1"
-                    fontWeight={600}
-                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
-                  >
-                    Add Show Manually
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                      display: { xs: 'none', sm: 'block' },
-                    }}
-                  >
-                    Enter show details by hand
-                  </Typography>
-                </Box>
-              }
+              icon={<Event />}
+              label="Add Show Manually"
+              iconPosition="start"
+              sx={{ gap: 1 }}
             />
           </Tabs>
         </Box>
@@ -486,7 +463,7 @@ const SubmitShowPage: React.FC = observer(() => {
               sx={{ mb: 3 }}
               disabled={loading}
               variant="outlined"
-              helperText="Enter the full URL of a webpage containing karaoke show information"
+              helperText="Enter a venue website URL that contains karaoke show schedules"
               InputProps={{
                 sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
               }}
@@ -498,10 +475,10 @@ const SubmitShowPage: React.FC = observer(() => {
               onClick={handleUrlSubmit}
               disabled={loading || !url.trim()}
               startIcon={
-                loading && parsingPlatform ? (
+                loading && detectedPlatform ? (
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <CircularProgress size={20} color="inherit" />
-                    {getPlatformIcon(parsingPlatform)}
+                    {getPlatformIcon(detectedPlatform)}
                   </Box>
                 ) : loading ? (
                   <CircularProgress size={20} color="inherit" />
@@ -520,25 +497,19 @@ const SubmitShowPage: React.FC = observer(() => {
                 fontWeight: 600,
                 fontSize: { xs: '1rem', sm: '1.1rem' },
                 minHeight: { xs: 48, sm: 'auto' },
-                ...((loading && parsingPlatform) || detectedPlatform
+                ...((loading && detectedPlatform) || detectedPlatform
                   ? {
                       background:
-                        (loading ? parsingPlatform : detectedPlatform) === 'instagram'
+                        detectedPlatform === 'instagram'
                           ? 'linear-gradient(45deg, #E4405F, #833AB4)'
-                          : (loading ? parsingPlatform : detectedPlatform) === 'facebook'
+                          : detectedPlatform === 'facebook'
                             ? 'linear-gradient(45deg, #1877F2, #42A5F5)'
                             : 'linear-gradient(45deg, #2196F3, #21CBF3)',
                     }
                   : {}),
               }}
             >
-              {loading && parsingPlatform
-                ? `Parsing ${getPlatformDisplayName(parsingPlatform)}...`
-                : loading
-                  ? 'Parsing Website...'
-                  : detectedPlatform
-                    ? `Parse ${getPlatformDisplayName(detectedPlatform)}`
-                    : 'Parse URL'}
+              {loading ? 'Submitting URL...' : 'Submit URL for Review'}
             </Button>
           </Card>
 
@@ -1256,7 +1227,8 @@ const SubmitShowPage: React.FC = observer(() => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+      </Container>
+    </Box>
   );
 });
 

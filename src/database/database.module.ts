@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../entities/user.entity';
 import { FavoriteController } from '../favorite/favorite.controller';
-import { Favorite } from '../favorite/favorite.entity';
+import { FavoriteShow } from '../favorite/favorite.entity';
 import { FavoriteService } from '../favorite/favorite.service';
 import { ShowController } from '../show/show.controller';
 import { Show } from '../show/show.entity';
@@ -14,7 +14,7 @@ import { Vendor } from '../vendor/vendor.entity';
 import { VendorService } from '../vendor/vendor.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Vendor, Show, Favorite])],
+  imports: [TypeOrmModule.forFeature([User, Vendor, Show, FavoriteShow])],
   providers: [UserService, VendorService, ShowService, FavoriteService],
   controllers: [UserController, VendorController, ShowController, FavoriteController],
   exports: [UserService, VendorService, ShowService, FavoriteService],

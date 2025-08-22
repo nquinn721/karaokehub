@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
 import { DJNickname } from '../entities/dj-nickname.entity';
 import { User } from '../entities/user.entity';
-import { Favorite } from '../favorite/favorite.entity';
+import { FavoriteShow } from '../favorite/favorite.entity';
 import { Feedback } from '../feedback/feedback.entity';
 import { ParsedSchedule, ParseStatus } from '../parser/parsed-schedule.entity';
 import { Show } from '../show/show.entity';
@@ -25,8 +25,8 @@ export class AdminService {
     private djNicknameRepository: Repository<DJNickname>,
     @InjectRepository(ParsedSchedule)
     private parsedScheduleRepository: Repository<ParsedSchedule>,
-    @InjectRepository(Favorite)
-    private favoriteRepository: Repository<Favorite>,
+    @InjectRepository(FavoriteShow)
+    private favoriteShowRepository: Repository<FavoriteShow>,
     @InjectRepository(Feedback)
     private feedbackRepository: Repository<Feedback>,
   ) {}
@@ -49,7 +49,7 @@ export class AdminService {
       this.showRepository.count(),
       this.showRepository.count({ where: { isActive: true } }),
       this.djRepository.count(),
-      this.favoriteRepository.count(),
+      this.favoriteShowRepository.count(),
       this.parsedScheduleRepository.count({ where: { status: ParseStatus.PENDING_REVIEW } }),
       this.feedbackRepository.count(),
     ]);
@@ -370,7 +370,7 @@ export class AdminService {
   }
 
   async getFavorites(page = 1, limit = 10, search?: string) {
-    const query = this.favoriteRepository
+    const query = this.favoriteShowRepository
       .createQueryBuilder('favorite')
       .leftJoinAndSelect('favorite.user', 'user')
       .leftJoinAndSelect('favorite.show', 'show')
@@ -478,7 +478,7 @@ export class AdminService {
       if (venue.shows && venue.shows.length > 0) {
         for (const show of venue.shows) {
           // Delete favorites for this show
-          await this.favoriteRepository.delete({ show: { id: show.id } });
+          await this.favoriteShowRepository.delete({ show: { id: show.id } });
         }
 
         // Delete all shows for this venue
@@ -516,7 +516,7 @@ export class AdminService {
     }
 
     // Delete all favorites for this show first
-    await this.favoriteRepository.delete({ show: { id } });
+    await this.favoriteShowRepository.delete({ show: { id } });
 
     // Then delete the show
     await this.showRepository.remove(show);
@@ -606,7 +606,7 @@ export class AdminService {
   }
 
   async getShowRelationships(id: string) {
-    const favorites = await this.favoriteRepository.find({
+    const favorites = await this.favoriteShowRepository.find({
       where: { show: { id } },
       relations: ['user'],
     });
