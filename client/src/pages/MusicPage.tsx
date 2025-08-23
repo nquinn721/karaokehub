@@ -129,10 +129,12 @@ export const MusicPage: React.FC = observer(() => {
       setSearchQuery(urlSearchQuery);
       musicStore.searchSongs(urlSearchQuery);
     } else if (currentView === 'category' && params.categoryId) {
-      console.log('📂 Loading category music for:', params.categoryId);
+      console.log('📂 Loading category music progressively for:', params.categoryId);
       // Clear previous results for category
       musicStore.clearResults();
-      musicStore.loadCategoryMusic(params.categoryId);
+      // Scroll to top immediately when loading category
+      window.scrollTo(0, 0);
+      musicStore.loadCategoryMusicProgressive(params.categoryId);
     } else {
       console.log('🏠 Showing home view - Featured Categories');
       // Only clear results when showing home view

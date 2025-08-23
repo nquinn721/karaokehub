@@ -572,6 +572,97 @@ export class MusicStore {
     }
   }
 
+  // Progressive loading for category music - loads 2 songs first, then the rest after 500ms
+  async loadCategoryMusicProgressive(categoryId: string) {
+    const category = this.featuredCategories.find((cat) => cat.id === categoryId);
+    if (!category) {
+      console.error('🚫 Category not found:', categoryId);
+      return;
+    }
+
+    console.log('🎵 Starting progressive loading for category:', categoryId);
+
+    try {
+      this.setLoading(true);
+      this.setSelectedCategory(categoryId);
+      this.resetPagination();
+
+      // Step 1: Load initial 2 songs quickly for immediate feedback
+      const queries = category.spotifyQuery.split(' ').join(',');
+      const initialApiUrl = `/music/category?queries=${encodeURIComponent(queries)}&limit=2&targetCount=2`;
+      
+      console.log('🚀 Loading initial 2 songs...');
+      const initialResponse = await apiStore.get(initialApiUrl);
+
+      if (initialResponse && Array.isArray(initialResponse) && initialResponse.length > 0) {
+        runInAction(() => {
+          // Show first 2 songs immediately
+          const favoriteSongs = songFavoriteStore.getFavoriteSongs();
+          const likedSongIds = new Set(favoriteSongs.map((song) => song.spotifyId || song.id));
+          
+          // Separate liked and non-liked songs from initial batch
+          const likedSongs = initialResponse.filter((song) => likedSongIds.has(song.id));
+          const nonLikedSongs = initialResponse.filter((song) => !likedSongIds.has(song.id));
+          
+          this.songs = this.deduplicateSongs([...likedSongs, ...nonLikedSongs]);
+          this.isLoading = false; // Stop loading spinner for initial songs
+          console.log('✅ Initial 2 songs loaded:', this.songs.length);
+        });
+
+        // Step 2: Wait 500ms then load the rest
+        setTimeout(async () => {
+          try {
+            console.log('🔄 Loading remaining songs after 500ms...');
+            const remainingApiUrl = `/music/category?queries=${encodeURIComponent(queries)}&limit=48&targetCount=48`;
+            const remainingResponse = await apiStore.get(remainingApiUrl);
+
+            if (remainingResponse && Array.isArray(remainingResponse) && remainingResponse.length > 0) {
+              runInAction(() => {
+                // Filter out songs we already have (avoid duplicates)
+                const existingSongIds = new Set(this.songs.map(song => song.id));
+                const newSongs = remainingResponse.filter(song => !existingSongIds.has(song.id));
+                
+                if (newSongs.length > 0) {
+                  // Prioritize favorites in the new batch too
+                  const favoriteSongs = songFavoriteStore.getFavoriteSongs();
+                  const likedSongIds = new Set(favoriteSongs.map((song) => song.spotifyId || song.id));
+                  
+                  const likedNewSongs = newSongs.filter((song) => likedSongIds.has(song.id));
+                  const nonLikedNewSongs = newSongs.filter((song) => !likedSongIds.has(song.id));
+                  
+                  // Append new songs (favorites first)
+                  const allNewSongs = [...likedNewSongs, ...nonLikedNewSongs];
+                  this.songs = this.deduplicateSongs([...this.songs, ...allNewSongs]);
+                  
+                  console.log(`✅ Progressive loading complete: ${this.songs.length} total songs`);
+                }
+                
+                // Set pagination state
+                this.currentPage = 1;
+                this.hasMoreSongs = remainingResponse.length === 48;
+              });
+            }
+          } catch (error) {
+            console.error('Error loading remaining songs:', error);
+          }
+        }, 500);
+      } else {
+        console.log('❌ No initial songs found');
+        runInAction(() => {
+          this.songs = [];
+          this.isLoading = false;
+          this.hasMoreSongs = false;
+        });
+      }
+    } catch (error) {
+      console.error('Error in progressive loading:', error);
+      runInAction(() => {
+        this.isLoading = false;
+        this.hasMoreSongs = false;
+      });
+    }
+  }
+
   // Clear search results
   clearResults() {
     runInAction(() => {
