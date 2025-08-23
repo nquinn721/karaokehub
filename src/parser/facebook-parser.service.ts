@@ -175,14 +175,12 @@ export class FacebookParserService {
       }
 
       // ========================================
-      // STEP 2: SINGLE WORKER IMAGE LOADING WITH Promise.all
+      // STEP 2: SIMPLE IMAGE LOADING - NO URL CONVERSION
       // ========================================
-      this.logAndBroadcast(
-        `⚡ [IMAGE-LOADING] Starting single worker with Promise.all for parallel HTTP requests...`,
-      );
+      this.logAndBroadcast(`⚡ [IMAGE-LOADING] Starting simple image download process...`);
       const imageLoadingStartTime = Date.now();
 
-      const loadedImages = await this.loadImagesWithSingleWorker(urls);
+      const loadedImages = await this.loadImagesSimple(urls);
 
       const imageLoadingTime = Date.now() - imageLoadingStartTime;
       this.logAndBroadcast(`✅ [IMAGE-LOADING] Completed in ${imageLoadingTime}ms`);
@@ -355,6 +353,77 @@ export class FacebookParserService {
         tempDir: path.join(process.cwd(), 'temp'),
         cookiesFilePath: path.join(process.cwd(), 'data', 'facebook-cookies.json'),
         geminiApiKey: process.env.GEMINI_API_KEY || '',
+      });
+    });
+  }
+
+  /**
+   * Simple image loading - just download the original URLs as base64, no conversion
+   */
+  private async loadImagesSimple(urls: string[]): Promise<LoadedImageData[]> {
+    this.logAndBroadcast(`📥 [SIMPLE-DOWNLOAD] Downloading ${urls.length} images directly...`);
+
+    const results: LoadedImageData[] = [];
+    let successful = 0;
+
+    for (let i = 0; i < urls.length; i++) {
+      const url = urls[i];
+      try {
+        const base64Data = await this.downloadImageAsBase64(url);
+
+        results.push({
+          originalUrl: url,
+          largeScaleUrl: url, // Same as original since we're not converting
+          base64Data,
+          size: Buffer.from(base64Data, 'base64').length,
+          mimeType: 'image/jpeg', // Default to JPEG for Facebook images
+          usedFallback: false, // We're not using fallback since we download original thumbnails
+          index: i,
+        });
+
+        successful++;
+      } catch (error) {
+        this.logAndBroadcast(
+          `❌ [SIMPLE-DOWNLOAD] Failed to download image ${i + 1}: ${error.message}`,
+        );
+        // Skip failed images, don't add to results
+      }
+    }
+
+    this.logAndBroadcast(`✅ [SIMPLE-DOWNLOAD] Complete: ${successful}/${urls.length} successful`);
+    this.logAndBroadcast(
+      `📊 [SIMPLE-DOWNLOAD] Total bytes: ${(results.reduce((sum, r) => sum + (r.size || 0), 0) / 1024 / 1024).toFixed(2)} MB`,
+    );
+
+    return results;
+  }
+
+  /**
+   * Download a single image as base64
+   */
+  private async downloadImageAsBase64(url: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const module = url.startsWith('https:') ? require('https') : require('http');
+
+      const req = module.get(url, (res: any) => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`HTTP ${res.statusCode}`));
+          return;
+        }
+
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk: Buffer) => chunks.push(chunk));
+        res.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          const base64 = buffer.toString('base64');
+          resolve(base64);
+        });
+      });
+
+      req.on('error', reject);
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error('Timeout'));
       });
     });
   }

@@ -1,6 +1,7 @@
 import {
   faComment,
   faEdit,
+  faEye,
   faMapMarkerAlt,
   faMicrophone,
   faMusic,
@@ -90,6 +91,15 @@ const AdminDataTables: React.FC = observer(() => {
   // Edit state
   const [editingItem, setEditingItem] = useState<any>(null);
   const [editType, setEditType] = useState<'venue' | 'show' | 'dj' | 'feedback' | null>(null);
+
+  // Feedback view state
+  const [viewingFeedback, setViewingFeedback] = useState<AdminFeedback | null>(null);
+
+  // User image view state
+  const [viewingUserImage, setViewingUserImage] = useState<{
+    src: string;
+    userName: string;
+  } | null>(null);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -203,8 +213,12 @@ const AdminDataTables: React.FC = observer(() => {
     }
   };
 
-  const handleEditFeedback = (feedback: AdminFeedback) => {
-    handleEdit(feedback, 'feedback');
+  const handleViewFeedback = (feedback: AdminFeedback) => {
+    setViewingFeedback(feedback);
+  };
+
+  const handleViewUserImage = (src: string, userName: string) => {
+    setViewingUserImage({ src, userName });
   };
 
   const handleDeleteFeedback = async (feedback: AdminFeedback) => {
@@ -396,12 +410,24 @@ const AdminDataTables: React.FC = observer(() => {
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         {user.avatar && (
-                          <Box
-                            component="img"
-                            src={user.avatar}
-                            sx={{ width: 32, height: 32, borderRadius: '50%' }}
-                            alt="Avatar"
-                          />
+                          <Tooltip title="Click to view larger image">
+                            <Box
+                              component="img"
+                              src={user.avatar}
+                              sx={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: '50%',
+                                cursor: 'pointer',
+                                transition: 'transform 0.2s ease-in-out',
+                                '&:hover': {
+                                  transform: 'scale(1.1)',
+                                },
+                              }}
+                              alt="Avatar"
+                              onClick={() => handleViewUserImage(user.avatar!, user.name || 'User')}
+                            />
+                          </Tooltip>
                         )}
                         {user.name || 'N/A'}
                       </Box>
@@ -937,13 +963,13 @@ const AdminDataTables: React.FC = observer(() => {
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Tooltip title="Edit Feedback">
+                      <Tooltip title="View Feedback">
                         <IconButton
                           size="small"
-                          onClick={() => handleEditFeedback(feedback)}
+                          onClick={() => handleViewFeedback(feedback)}
                           color="primary"
                         >
-                          <FontAwesomeIcon icon={faEdit} />
+                          <FontAwesomeIcon icon={faEye} />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete Feedback">
@@ -1115,6 +1141,179 @@ const AdminDataTables: React.FC = observer(() => {
             Save
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Feedback View Dialog */}
+      <Dialog
+        open={!!viewingFeedback}
+        onClose={() => setViewingFeedback(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <FontAwesomeIcon icon={faComment} />
+            Feedback Details
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {viewingFeedback && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {/* Header Info */}
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Chip
+                  label={viewingFeedback.type}
+                  size="medium"
+                  color={
+                    viewingFeedback.type === 'bug' || viewingFeedback.type === 'complaint'
+                      ? 'error'
+                      : viewingFeedback.type === 'feature' || viewingFeedback.type === 'improvement'
+                        ? 'info'
+                        : viewingFeedback.type === 'compliment'
+                          ? 'success'
+                          : 'default'
+                  }
+                />
+                <Chip
+                  label={viewingFeedback.status}
+                  size="medium"
+                  color={
+                    viewingFeedback.status === 'resolved'
+                      ? 'success'
+                      : viewingFeedback.status === 'reviewed'
+                        ? 'info'
+                        : 'warning'
+                  }
+                />
+              </Box>
+
+              {/* Subject */}
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  Subject
+                </Typography>
+                <Typography variant="body1">
+                  {viewingFeedback.subject || 'No subject provided'}
+                </Typography>
+              </Box>
+
+              {/* Message */}
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  Message
+                </Typography>
+                <Paper sx={{ p: 2, backgroundColor: 'background.default' }}>
+                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {viewingFeedback.message}
+                  </Typography>
+                </Paper>
+              </Box>
+
+              {/* User Info */}
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  User Information
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: 2,
+                  }}
+                >
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Name
+                    </Typography>
+                    <Typography variant="body1">
+                      {viewingFeedback.user?.name || viewingFeedback.name || 'Not provided'}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Email
+                    </Typography>
+                    <Typography variant="body1">
+                      {viewingFeedback.user?.email || viewingFeedback.email || 'Not provided'}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Submitted
+                    </Typography>
+                    <Typography variant="body1">
+                      {viewingFeedback.createdAt.toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {viewingFeedback.responseDate && (
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Responded
+                      </Typography>
+                      <Typography variant="body1">
+                        {viewingFeedback.responseDate.toLocaleString()}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+
+              {/* Response (if any) */}
+              {viewingFeedback.response && (
+                <Box>
+                  <Typography variant="h6" gutterBottom>
+                    Response
+                  </Typography>
+                  <Paper
+                    sx={{
+                      p: 2,
+                      backgroundColor: 'primary.50',
+                      border: '1px solid',
+                      borderColor: 'primary.200',
+                    }}
+                  >
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {viewingFeedback.response}
+                    </Typography>
+                  </Paper>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewingFeedback(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* User Image View Dialog */}
+      <Dialog
+        open={!!viewingUserImage}
+        onClose={() => setViewingUserImage(null)}
+        PaperProps={{
+          sx: {
+            background: 'transparent',
+            boxShadow: 'none',
+            overflow: 'visible',
+          },
+        }}
+      >
+        {viewingUserImage && (
+          <Box
+            component="img"
+            src={viewingUserImage.src}
+            alt={`${viewingUserImage.userName}'s profile image`}
+            sx={{
+              width: '400px',
+              height: '400px',
+              objectFit: 'cover',
+              borderRadius: 2,
+              boxShadow: 3,
+              cursor: 'pointer',
+            }}
+            onClick={() => setViewingUserImage(null)}
+          />
+        )}
       </Dialog>
     </Box>
   );
