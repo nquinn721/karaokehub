@@ -106,7 +106,7 @@ export class AdminService {
 
     // Get recent shows (last 5)
     const recentShows = await this.showRepository.find({
-      relations: ['vendor', 'dj'],
+      relations: ['dj', 'dj.vendor'],
       order: { createdAt: 'DESC' },
       take: 5,
     });
@@ -149,7 +149,7 @@ export class AdminService {
         id: `show-${show.id}`,
         type: 'show_added',
         action: 'New show scheduled',
-        details: `${show.vendor?.name || 'Unknown Venue'} - ${show.day || 'No day specified'}`,
+        details: `${show.dj?.vendor?.name || 'Unknown Venue'} - ${show.day || 'No day specified'}`,
         timestamp: show.createdAt,
         severity: 'info',
       });
@@ -478,15 +478,26 @@ export class AdminService {
         throw new Error('Venue not found');
       }
 
-      // First, delete all related favorites for shows belonging to this venue
-      if (venue.shows && venue.shows.length > 0) {
-        for (const show of venue.shows) {
+      // First, delete all related favorites for shows belonging to this vendor's DJs
+      const vendorShows = await this.showRepository.find({
+        where: {
+          dj: {
+            vendor: {
+              id: id,
+            },
+          },
+        },
+        relations: ['dj', 'dj.vendor'],
+      });
+
+      if (vendorShows && vendorShows.length > 0) {
+        for (const show of vendorShows) {
           // Delete favorites for this show
           await this.favoriteShowRepository.delete({ show: { id: show.id } });
         }
 
-        // Delete all shows for this venue
-        await this.showRepository.delete({ vendorId: id });
+        // Delete all shows for this vendor (through DJs)
+        await this.showRepository.delete(vendorShows.map((show) => show.id));
       }
 
       // Delete all DJs for this venue
@@ -596,15 +607,27 @@ export class AdminService {
   async getVenueRelationships(id: string) {
     const venue = await this.vendorRepository.findOne({
       where: { id },
-      relations: ['shows', 'djs'],
+      relations: ['djs'],
     });
 
     if (!venue) {
       throw new Error('Venue not found');
     }
 
+    // Get shows through DJs
+    const shows = await this.showRepository.find({
+      where: {
+        dj: {
+          vendor: {
+            id: id,
+          },
+        },
+      },
+      relations: ['dj', 'dj.vendor'],
+    });
+
     return {
-      shows: venue.shows,
+      shows: shows,
       djs: venue.djs,
     };
   }

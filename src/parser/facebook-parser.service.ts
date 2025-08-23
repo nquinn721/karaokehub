@@ -13,6 +13,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as fs from 'fs';
 import * as path from 'path';
 import { Repository } from 'typeorm';
 import { Worker } from 'worker_threads';
@@ -37,20 +38,9 @@ interface ParsedImageData {
     venuePhone?: string;
     venueWebsite?: string;
   };
-  imageUrl?: string;
   source: string;
   success: boolean;
   error?: string;
-}
-
-interface LoadedImageData {
-  originalUrl: string;
-  largeScaleUrl: string;
-  base64Data: string;
-  size: number;
-  mimeType: string;
-  usedFallback: boolean;
-  index: number;
 }
 
 interface ParsedFacebookData {
@@ -63,7 +53,7 @@ interface ParsedFacebookData {
 @Injectable()
 export class FacebookParserService {
   private currentParsingLogs: string[] = [];
-  private maxWorkers = 10; // Maximum parallel image parsing workers
+  private maxWorkers = require('os').cpus().length; // Use all available CPU cores for maximum parallel processing
 
   constructor(
     @InjectRepository(ParsedSchedule)
@@ -72,7 +62,11 @@ export class FacebookParserService {
     private urlToParseRepository: Repository<UrlToParse>,
     private webSocketGateway: KaraokeWebSocketGateway,
     private urlToParseService: UrlToParseService,
-  ) {}
+  ) {
+    this.logAndBroadcast(
+      `🚀 [INIT] Configured for ${this.maxWorkers} parallel enhanced image parsing workers`,
+    );
+  }
 
   /**
    * COMPATIBILITY METHODS - For existing codebase integration
@@ -175,45 +169,40 @@ export class FacebookParserService {
       }
 
       // ========================================
-      // STEP 2: SIMPLE IMAGE LOADING - NO URL CONVERSION
+      // STEP 2: ENHANCED PHOTO PARSING - HIGH RESOLUTION EXTRACTION
       // ========================================
-      this.logAndBroadcast(`⚡ [IMAGE-LOADING] Starting simple image download process...`);
-      const imageLoadingStartTime = Date.now();
 
-      const loadedImages = await this.loadImagesSimple(urls);
-
-      const imageLoadingTime = Date.now() - imageLoadingStartTime;
-      this.logAndBroadcast(`✅ [IMAGE-LOADING] Completed in ${imageLoadingTime}ms`);
-      this.logAndBroadcast(`📊 [IMAGE-LOADING] Loaded ${loadedImages.length} images successfully`);
-
-      // ========================================
-      // STEP 3: PARALLEL IMAGE PARSING WITH MULTIPLE WORKERS (CPU-INTENSIVE)
-      // ========================================
-      const availableWorkers = Math.min(this.maxWorkers, require('os').cpus().length);
+      // All URLs from group parser are now Facebook photo URLs (/photo/)
       this.logAndBroadcast(
-        `⚡ [IMAGE-PARSING] Starting parallel Gemini parsing with ${availableWorkers} CPU workers...`,
+        `🚀 [ENHANCED-PARSING] Processing ${urls.length} photo URLs with high-resolution extraction`,
       );
-      const workersStartTime = Date.now();
-
-      data = await this.parseImagesWithWorkers(loadedImages);
-
-      const workersTime = Date.now() - workersStartTime;
-      this.logAndBroadcast(`✅ [IMAGE-PARSING] Completed in ${workersTime}ms`);
       this.logAndBroadcast(
-        `📊 [RESULTS] Found ${data.length} valid results from ${loadedImages.length} images`,
+        `📊 [ENHANCED-PARSING] Using Gemini-guided navigation to extract high-res images`,
+      );
+
+      const enhancedParsingStartTime = Date.now();
+
+      // Use enhanced parsing that extracts high-res images from photo pages
+      data = await this.parsePhotoUrlsWithEnhancedWorkers(urls);
+
+      const enhancedParsingTime = Date.now() - enhancedParsingStartTime;
+      this.logAndBroadcast(`✅ [ENHANCED-PARSING] Completed in ${enhancedParsingTime}ms`);
+      this.logAndBroadcast(
+        `📊 [RESULTS] Found ${data.length} valid results from ${urls.length} photo URLs`,
       );
 
       // ========================================
       // STEP 4: DATA VALIDATION - Fill missing address data
       // ========================================
-      this.logAndBroadcast('🔍 [VALIDATION] Starting data validation for address completion...');
-      const validationStartTime = Date.now();
+      // SKIPPING VALIDATION FOR NOW - using parsed data directly
+      this.logAndBroadcast(
+        '⏭️ [VALIDATION] Skipping final data validation - using enhanced parser data directly',
+      );
+      // data = await this.validateDataWithWorker(data);
 
-      data = await this.validateDataWithWorker(data);
-
-      const validationTime = Date.now() - validationStartTime;
-      this.logAndBroadcast(`✅ [VALIDATION] Completed in ${validationTime}ms`);
-      this.logAndBroadcast(`📍 [VALIDATION] Enhanced shows with missing location data`);
+      // const validationTime = Date.now() - validationStartTime;
+      // this.logAndBroadcast(`✅ [VALIDATION] Completed in ${validationTime}ms`);
+      // this.logAndBroadcast(`📍 [VALIDATION] Enhanced shows with missing location data`);
 
       // ========================================
       // STEP 5: SAVE DATA TO DATABASE
@@ -358,158 +347,128 @@ export class FacebookParserService {
   }
 
   /**
-   * Simple image loading - just download the original URLs as base64, no conversion
+   * Parse Facebook photo URLs using enhanced workers with high-resolution extraction
    */
-  private async loadImagesSimple(urls: string[]): Promise<LoadedImageData[]> {
-    this.logAndBroadcast(`📥 [SIMPLE-DOWNLOAD] Downloading ${urls.length} images directly...`);
-
-    const results: LoadedImageData[] = [];
-    let successful = 0;
-
-    for (let i = 0; i < urls.length; i++) {
-      const url = urls[i];
-      try {
-        const base64Data = await this.downloadImageAsBase64(url);
-
-        results.push({
-          originalUrl: url,
-          largeScaleUrl: url, // Same as original since we're not converting
-          base64Data,
-          size: Buffer.from(base64Data, 'base64').length,
-          mimeType: 'image/jpeg', // Default to JPEG for Facebook images
-          usedFallback: false, // We're not using fallback since we download original thumbnails
-          index: i,
-        });
-
-        successful++;
-      } catch (error) {
-        this.logAndBroadcast(
-          `❌ [SIMPLE-DOWNLOAD] Failed to download image ${i + 1}: ${error.message}`,
-        );
-        // Skip failed images, don't add to results
-      }
-    }
-
-    this.logAndBroadcast(`✅ [SIMPLE-DOWNLOAD] Complete: ${successful}/${urls.length} successful`);
+  private async parsePhotoUrlsWithEnhancedWorkers(photoUrls: string[]): Promise<ParsedImageData[]> {
     this.logAndBroadcast(
-      `📊 [SIMPLE-DOWNLOAD] Total bytes: ${(results.reduce((sum, r) => sum + (r.size || 0), 0) / 1024 / 1024).toFixed(2)} MB`,
+      `🚀 [ENHANCED-PARSING] Starting enhanced photo URL parsing for ${photoUrls.length} photos...`,
+    );
+    this.logAndBroadcast(
+      `⚡ [ENHANCED-PARSING] Spawning ${Math.min(this.maxWorkers, photoUrls.length)} workers for maximum parallel processing`,
     );
 
-    return results;
-  }
+    return new Promise((resolve) => {
+      const results: (ParsedImageData | null)[] = new Array(photoUrls.length).fill(null);
+      let completedCount = 0;
+      const totalImages = photoUrls.length;
+      const maxConcurrentWorkers = Math.min(this.maxWorkers, photoUrls.length);
 
-  /**
-   * Download a single image as base64
-   */
-  private async downloadImageAsBase64(url: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const module = url.startsWith('https:') ? require('https') : require('http');
+      // Create all workers immediately for maximum parallelism
+      const workers: Promise<void>[] = [];
 
-      const req = module.get(url, (res: any) => {
-        if (res.statusCode !== 200) {
-          reject(new Error(`HTTP ${res.statusCode}`));
-          return;
-        }
+      for (let i = 0; i < maxConcurrentWorkers; i++) {
+        const workerPromise = this.processPhotosWithWorker(
+          photoUrls,
+          results,
+          i + 1,
+          maxConcurrentWorkers,
+          (completed) => {
+            completedCount += completed;
+            this.logAndBroadcast(
+              `📊 [ENHANCED-PARSING] Progress: ${completedCount}/${totalImages} completed`,
+            );
 
-        const chunks: Buffer[] = [];
-        res.on('data', (chunk: Buffer) => chunks.push(chunk));
-        res.on('end', () => {
-          const buffer = Buffer.concat(chunks);
-          const base64 = buffer.toString('base64');
-          resolve(base64);
-        });
-      });
+            if (completedCount === totalImages) {
+              const validResults = results.filter((r) => r && r.success);
+              this.logAndBroadcast(
+                `🎉 [ENHANCED-PARSING] All photos processed: ${validResults.length}/${totalImages} successful`,
+              );
+              resolve(validResults);
+            }
+          },
+        );
+        workers.push(workerPromise);
+      }
 
-      req.on('error', reject);
-      req.setTimeout(10000, () => {
-        req.destroy();
-        reject(new Error('Timeout'));
-      });
+      // Log worker distribution
+      const photosPerWorker = Math.ceil(photoUrls.length / maxConcurrentWorkers);
+      this.logAndBroadcast(
+        `📈 [ENHANCED-PARSING] Worker distribution: ~${photosPerWorker} photos per worker`,
+      );
     });
   }
 
   /**
-   * Load images using a single worker with Promise.all for parallel HTTP requests
+   * Process a subset of photos with a single worker
    */
-  private async loadImagesWithSingleWorker(urls: string[]): Promise<LoadedImageData[]> {
+  private async processPhotosWithWorker(
+    allPhotoUrls: string[],
+    results: (ParsedImageData | null)[],
+    workerId: number,
+    totalWorkers: number,
+    onProgress: (completed: number) => void,
+  ): Promise<void> {
+    // Distribute photos evenly across workers
+    const photosPerWorker = Math.ceil(allPhotoUrls.length / totalWorkers);
+    const startIndex = (workerId - 1) * photosPerWorker;
+    const endIndex = Math.min(startIndex + photosPerWorker, allPhotoUrls.length);
+    const workerPhotoUrls = allPhotoUrls.slice(startIndex, endIndex);
+
     this.logAndBroadcast(
-      `⚡ [IMAGE-LOADING] Using single worker with Promise.all for ${urls.length} images`,
+      `🔄 [ENHANCED-PARSING] Worker ${workerId}: Processing photos ${startIndex + 1}-${endIndex} (${workerPhotoUrls.length} total)`,
     );
 
+    let workerCompletedCount = 0;
+
+    for (let i = 0; i < workerPhotoUrls.length; i++) {
+      const photoUrl = workerPhotoUrls[i];
+      const globalIndex = startIndex + i;
+
+      try {
+        const result = await this.parsePhotoUrlWithEnhancedWorker(photoUrl, workerId);
+        results[globalIndex] = result;
+        workerCompletedCount++;
+
+        this.logAndBroadcast(
+          `✅ [ENHANCED-PARSING] Worker ${workerId}: Completed photo ${i + 1}/${workerPhotoUrls.length}`,
+        );
+      } catch (error) {
+        this.logAndBroadcast(
+          `❌ [ENHANCED-PARSING] Worker ${workerId}: Failed photo ${i + 1}/${workerPhotoUrls.length} - ${error.message}`,
+        );
+        workerCompletedCount++;
+      }
+
+      // Report progress
+      onProgress(1);
+    }
+
+    this.logAndBroadcast(
+      `🏁 [ENHANCED-PARSING] Worker ${workerId}: Finished all ${workerPhotoUrls.length} photos`,
+    );
+  }
+
+  /**
+   * Parse single Facebook photo URL with enhanced worker (high-resolution extraction)
+   */
+  private async parsePhotoUrlWithEnhancedWorker(
+    photoUrl: string,
+    workerId: number,
+  ): Promise<ParsedImageData> {
     return new Promise((resolve, reject) => {
       const workerPath = path.join(
         __dirname,
         'facebookParser',
-        'facebook-parallel-image-loading.js',
+        'facebook-enhanced-image-parser.js',
       );
       const worker = new Worker(workerPath);
 
       worker.on('message', (message) => {
         if (message.type === 'progress') {
-          this.logAndBroadcast(`🔄 [IMAGE-LOADING] ${message.message}`);
+          // Optionally log progress messages
+          this.logAndBroadcast(`[Worker ${workerId}] ${message.message}`);
         } else if (message.type === 'complete') {
-          if (message.data.success) {
-            // Enhanced logging for image loading results
-            const allResults = message.data.results;
-            const successfulResults = allResults.filter((result: any) => result.success);
-            const failedResults = allResults.filter((result: any) => !result.success);
-
-            this.logAndBroadcast(`\n📊 [IMAGE-FILTERING] === PROCESSING IMAGE LOAD RESULTS ===`);
-            this.logAndBroadcast(
-              `📊 [IMAGE-FILTERING] Total images attempted: ${allResults.length}`,
-            );
-            this.logAndBroadcast(
-              `📊 [IMAGE-FILTERING] Successful downloads: ${successfulResults.length}`,
-            );
-            this.logAndBroadcast(`📊 [IMAGE-FILTERING] Failed downloads: ${failedResults.length}`);
-
-            if (failedResults.length > 0) {
-              this.logAndBroadcast(
-                `\n❌ [IMAGE-FILTERING] Failed images (will be skipped by Gemini):`,
-              );
-              failedResults.forEach((result: any, idx: number) => {
-                this.logAndBroadcast(`❌ [IMAGE-FILTERING]   ${idx + 1}. ${result.error}`);
-                this.logAndBroadcast(
-                  `❌ [IMAGE-FILTERING]      URL: ${result.originalUrl.substring(0, 60)}...`,
-                );
-              });
-            }
-
-            if (successfulResults.length > 0) {
-              this.logAndBroadcast(
-                `\n✅ [IMAGE-FILTERING] Successful images (will be sent to Gemini):`,
-              );
-              successfulResults.forEach((result: any, idx: number) => {
-                const sizeKB = result.size ? (result.size / 1024).toFixed(1) : 'Unknown';
-                this.logAndBroadcast(
-                  `✅ [IMAGE-FILTERING]   ${idx + 1}. Size: ${sizeKB}KB, Fallback: ${result.usedFallback ? 'YES' : 'NO'}`,
-                );
-                this.logAndBroadcast(
-                  `✅ [IMAGE-FILTERING]      ${result.usedFallback ? 'Original' : 'Large'}: ${(result.usedFallback ? result.originalUrl : result.largeScaleUrl).substring(0, 60)}...`,
-                );
-              });
-            }
-
-            const loadedImages: LoadedImageData[] = successfulResults.map(
-              (result: any, idx: number) => ({
-                originalUrl: result.originalUrl,
-                largeScaleUrl: result.largeScaleUrl,
-                base64Data: result.base64Data,
-                size: result.size,
-                mimeType: result.mimeType,
-                usedFallback: result.usedFallback,
-                index: idx,
-              }),
-            );
-
-            this.logAndBroadcast(
-              `✅ [IMAGE-LOADING] Loaded ${loadedImages.length}/${urls.length} images successfully`,
-            );
-            this.logAndBroadcast(`📊 [IMAGE-FILTERING] === END IMAGE FILTERING ===\n`);
-            resolve(loadedImages);
-          } else {
-            reject(new Error('Image loading worker failed'));
-          }
+          resolve(message.data);
         } else if (message.type === 'error') {
           reject(new Error(message.error));
         }
@@ -521,119 +480,18 @@ export class FacebookParserService {
 
       worker.on('exit', (code) => {
         if (code !== 0) {
-          reject(new Error(`Image loading worker stopped with exit code ${code}`));
+          reject(new Error(`Enhanced parse worker stopped with exit code ${code}`));
         }
       });
 
-      // Send all URLs to single worker
-      worker.postMessage({
-        imageUrls: urls,
-        workerId: 1,
-        maxRetries: 3,
-        timeout: 30000,
-      });
-    });
-  }
-
-  /**
-   * Parse loaded images using parallel workers
-   */
-  private async parseImagesWithWorkers(
-    loadedImages: LoadedImageData[],
-  ): Promise<ParsedImageData[]> {
-    return new Promise((resolve, reject) => {
-      const results: ParsedImageData[] = [];
-      const imageQueue = [...loadedImages];
-
-      let completedCount = 0;
-      let activeWorkers = 0;
-      const totalImages = loadedImages.length;
-
-      const processNextImage = () => {
-        if (imageQueue.length === 0 || activeWorkers >= this.maxWorkers) {
-          return;
-        }
-
-        const imageData = imageQueue.shift();
-        if (!imageData) return;
-
-        activeWorkers++;
-
-        const workerId = activeWorkers;
-        this.parseImageWithWorker(imageData, workerId)
-          .then((result) => {
-            results[imageData.index] = result;
-            completedCount++;
-            activeWorkers--;
-
-            if (completedCount === totalImages) {
-              // Filter out failed results
-              const validResults = results.filter((r) => r && r.success);
-              resolve(validResults);
-            } else {
-              processNextImage();
-            }
-          })
-          .catch((error) => {
-            completedCount++;
-            activeWorkers--;
-
-            if (completedCount === totalImages) {
-              const validResults = results.filter((r) => r && r.success);
-              resolve(validResults);
-            } else {
-              processNextImage();
-            }
-          });
-      };
-
-      // Start initial workers
-      for (let i = 0; i < Math.min(this.maxWorkers, imageQueue.length); i++) {
-        processNextImage();
-      }
-    });
-  }
-
-  /**
-   * Parse single loaded image with worker
-   */
-  private async parseImageWithWorker(
-    imageData: LoadedImageData,
-    workerId: number,
-  ): Promise<ParsedImageData> {
-    return new Promise((resolve, reject) => {
-      const workerPath = path.join(__dirname, 'facebookParser', 'facebook-image-parser.js');
-      const worker = new Worker(workerPath);
-
-      worker.on('message', (message) => {
-        if (message.type === 'progress') {
-        } else if (message.type === 'complete') {
-          if (message.data.success) {
-            resolve(message.data);
-          } else {
-            resolve(message.data);
-          }
-        } else if (message.type === 'error') {
-          reject(new Error(message.error));
-        }
-      });
-
-      worker.on('error', (error) => {
-        reject(error);
-      });
-
-      worker.on('exit', (code) => {
-        if (code !== 0) {
-          reject(new Error(`Parse worker stopped with exit code ${code}`));
-        }
-      });
+      // Send photo URL and cookies path for session-aware navigation
+      const cookiesPath = path.join(process.cwd(), 'data', 'facebook-cookies.json');
 
       worker.postMessage({
-        base64Data: imageData.base64Data,
-        imageUrl: imageData.largeScaleUrl, // Use enhanced quality URL, not original
-        mimeType: imageData.mimeType,
+        photoUrl,
         geminiApiKey: process.env.GEMINI_API_KEY || '',
         workerId,
+        cookiesPath: fs.existsSync(cookiesPath) ? cookiesPath : undefined,
       });
     });
   }
@@ -750,8 +608,7 @@ export class FacebookParserService {
           venueWebsite: item.show.venueWebsite,
           djName: item.dj || '',
           vendor: item.vendor || '',
-          source: item.imageUrl || sourceUrl, // Use image URL as source, fallback to group URL
-          imageUrl: item.imageUrl,
+          source: item.source || sourceUrl, // Use CDN URL as source, fallback to group URL
         };
 
         shows.push(show);

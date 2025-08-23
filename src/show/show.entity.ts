@@ -10,7 +10,6 @@ import {
 } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
-import { Vendor } from '../vendor/vendor.entity';
 
 export enum DayOfWeek {
   MONDAY = 'monday',
@@ -26,9 +25,6 @@ export enum DayOfWeek {
 export class Show {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @Column('uuid')
-  vendorId: string;
 
   @Column('uuid', { nullable: true })
   djId: string;
@@ -68,15 +64,12 @@ export class Show {
   description: string;
 
   @Column({ nullable: true })
-  imageUrl: string;
-
-  @Column({ nullable: true })
   venuePhone: string;
 
   @Column({ nullable: true })
   venueWebsite: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   source: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 8, nullable: true })
@@ -95,10 +88,6 @@ export class Show {
   updatedAt: Date;
 
   // Relationships
-  @ManyToOne(() => Vendor, (vendor) => vendor.shows)
-  @JoinColumn({ name: 'vendorId' })
-  vendor: Vendor;
-
   @ManyToOne(() => DJ, (dj) => dj.shows)
   @JoinColumn({ name: 'djId' })
   dj: DJ;

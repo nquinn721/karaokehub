@@ -7,7 +7,6 @@ import { GeocodingService } from '../geocoding/geocoding.service';
 import { DayOfWeek, Show } from './show.entity';
 
 export interface CreateShowDto {
-  vendorId: string;
   djId: string;
   address: string;
   day: DayOfWeek;
@@ -18,7 +17,6 @@ export interface CreateShowDto {
 }
 
 export interface UpdateShowDto {
-  vendorId?: string;
   djId?: string;
   address?: string;
   day?: DayOfWeek;
@@ -163,14 +161,21 @@ export class ShowService {
   async findOne(id: string): Promise<Show> {
     return await this.showRepository.findOne({
       where: { id, isActive: true },
-      relations: ['vendor', 'dj', 'favoriteShows'],
+      relations: ['dj', 'dj.vendor', 'favoriteShows'],
     });
   }
 
   async findByVendor(vendorId: string): Promise<Show[]> {
     return await this.showRepository.find({
-      where: { vendorId, isActive: true },
-      relations: ['vendor', 'dj', 'favoriteShows'],
+      where: {
+        dj: {
+          vendor: {
+            id: vendorId,
+          },
+        },
+        isActive: true,
+      },
+      relations: ['dj', 'dj.vendor', 'favoriteShows'],
     });
   }
 
@@ -223,8 +228,8 @@ export class ShowService {
     // Search for all variations
     const allShows = await this.showRepository
       .createQueryBuilder('show')
-      .leftJoinAndSelect('show.vendor', 'vendor')
       .leftJoinAndSelect('show.dj', 'dj')
+      .leftJoinAndSelect('dj.vendor', 'vendor')
       .leftJoinAndSelect('show.favoriteShows', 'favoriteShows')
       .where('show.isActive = :isActive', { isActive: true })
       .andWhere('LOWER(show.venue) IN (:...venues)', {
@@ -269,8 +274,8 @@ export class ShowService {
       // Build the base query with distance calculation using Haversine formula
       let query = this.showRepository
         .createQueryBuilder('show')
-        .leftJoinAndSelect('show.vendor', 'vendor')
         .leftJoinAndSelect('show.dj', 'dj')
+        .leftJoinAndSelect('dj.vendor', 'vendor')
         .leftJoinAndSelect('show.favoriteShows', 'favoriteShows')
         .addSelect(
           `(3959 * acos(cos(radians(:centerLat)) * cos(radians(show.lat)) * 
@@ -484,7 +489,8 @@ export class ShowService {
       // Get show counts from database
       const queryBuilder = this.showRepository
         .createQueryBuilder('show')
-        .leftJoinAndSelect('show.vendor', 'vendor')
+        .leftJoinAndSelect('show.dj', 'dj')
+        .leftJoinAndSelect('dj.vendor', 'vendor')
         .where('show.isActive = :isActive', { isActive: true })
         .andWhere('show.city IS NOT NULL')
         .andWhere('show.state IS NOT NULL');
@@ -521,7 +527,7 @@ export class ShowService {
         const cityData = cityShowCounts.get(key);
         if (cityData) {
           cityData.showCount++;
-          cityData.vendors.add(show.vendor?.name || 'Unknown');
+          cityData.vendors.add(show.dj?.vendor?.name || 'Unknown');
         }
       });
 
@@ -627,8 +633,8 @@ export class ShowService {
     try {
       const shows = await this.showRepository
         .createQueryBuilder('show')
-        .leftJoinAndSelect('show.vendor', 'vendor')
         .leftJoinAndSelect('show.dj', 'dj')
+        .leftJoinAndSelect('dj.vendor', 'vendor')
         .leftJoinAndSelect('show.favoriteShows', 'favoriteShows')
         .where('show.isActive = :isActive', { isActive: true })
         .andWhere(

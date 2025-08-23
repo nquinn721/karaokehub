@@ -54,7 +54,6 @@ export interface ParsedKaraokeData {
     description?: string;
     venuePhone?: string;
     venueWebsite?: string;
-    imageUrl?: string;
     source?: string;
     confidence: number;
   }>;
@@ -1702,7 +1701,6 @@ SMART ADDRESS HANDLING:
 
 VENUE INFORMATION EXTRACTION:
 - venueWebsite: Look for venue websites, social media pages, or links related to the venue
-- imageUrl: Look for venue photos, logos, or images related to the venue
 - venuePhone: Look for phone numbers associated with the venue
 
 🌍 LAT/LNG COORDINATE EXTRACTION - CRITICAL:
@@ -1770,7 +1768,6 @@ Return JSON (no extra text):
       "lng": "REQUIRED: Precise longitude as decimal number (e.g., -82.998794)",
       "venuePhone": "Phone number",
       "venueWebsite": "Venue website if available",
-      "imageUrl": "Venue image URL if available",
       "time": "REQUIRED: original time format like '9 pm' or '10:00 pm'",
       "startTime": "REQUIRED: 24-hour format like '21:00' or '22:00'",
       "endTime": "HH:MM format or venue closing time or 'close' (default to '00:00' if unknown)",
@@ -1996,7 +1993,7 @@ ${htmlContent}`;
   }
 
   /**
-   * Remove duplicate shows based on venue, day, and time
+   * Remove duplicate shows based on venue and startTime only
    */
   private removeDuplicateShows(shows: any[]): any[] {
     const unique: any[] = [];
@@ -2005,26 +2002,28 @@ ${htmlContent}`;
     this.logAndBroadcast(`Starting deduplication with ${shows.length} shows`, 'info');
 
     for (const show of shows) {
-      // Create a more specific key that includes venue, day, and DJ name
-      // Don't rely on startTime since it might be null
+      // Create a key that includes venue, day, and startTime for deduplication
       const venue = show.venue?.toLowerCase().trim() || '';
       const day = show.day?.toLowerCase().trim() || '';
-      const djName = show.djName?.toLowerCase().trim() || '';
-      const key = `${venue}-${day}-${djName}`;
+      const startTime =
+        show.startTime?.toLowerCase().trim() || show.time?.toLowerCase().trim() || '';
+      const key = `${venue}-${day}-${startTime}`;
 
       if (key && !seenShows.has(key)) {
         seenShows.add(key);
         unique.push(show);
-        this.logger.debug(`Added show: ${show.venue} on ${show.day} with ${show.djName}`);
+        this.logger.debug(
+          `Added show: ${show.venue} on ${day} at ${startTime} with ${show.djName}`,
+        );
       } else {
         this.logger.debug(
-          `Skipped duplicate: ${show.venue} on ${show.day} with ${show.djName} (key: ${key})`,
+          `Skipped duplicate: ${show.venue} on ${day} at ${startTime} with ${show.djName} (key: ${key})`,
         );
       }
     }
 
     this.logAndBroadcast(
-      `Deduplication: ${shows.length} shows → ${unique.length} unique shows`,
+      `Deduplication: ${shows.length} shows → ${unique.length} unique shows (venue + day + startTime)`,
       'success',
     );
     return unique;
@@ -2423,7 +2422,7 @@ ${htmlContent}`;
         );
       }
 
-      // 1. Find or create vendors (handle both single vendor and multiple vendors)
+      // 1. Find or create vendors (handle both single vendor and multiple vendors) - Optimized for bulk operations
       const vendorMap = new Map<string, Vendor>();
       let primaryVendor: Vendor | null = null;
 
@@ -2431,61 +2430,126 @@ ${htmlContent}`;
       const vendorsToProcess =
         approvedData.vendors || (approvedData.vendor ? [approvedData.vendor] : []);
 
-      for (const vendorData of vendorsToProcess) {
-        if (!vendorData.name) continue;
-
-        let vendor = await this.vendorRepository.findOne({
-          where: { name: vendorData.name },
+      if (vendorsToProcess.length > 0) {
+        // Bulk fetch existing vendors
+        const vendorNames = vendorsToProcess.map((v) => v.name).filter((name) => name);
+        const existingVendors = await this.vendorRepository.find({
+          where: vendorNames.map((name) => ({ name })),
         });
 
-        if (!vendor) {
-          this.logAndBroadcast(`Creating new vendor: ${vendorData.name}`, 'info');
-          vendor = this.vendorRepository.create({
-            name: vendorData.name,
-            owner: vendorData.owner || '',
-            website: vendorData.website,
-            description: vendorData.description,
-          });
-          vendor = await this.vendorRepository.save(vendor);
-          this.logAndBroadcast(`Created vendor with ID: ${vendor.id}`, 'success');
-        } else {
-          this.logAndBroadcast(`Using existing vendor: ${vendor.name} (ID: ${vendor.id})`, 'info');
+        // Create lookup map for existing vendors
+        const existingVendorMap = new Map<string, Vendor>();
+        existingVendors.forEach((vendor) => {
+          existingVendorMap.set(vendor.name, vendor);
+        });
 
-          // Update vendor with any missing information
-          let vendorUpdated = false;
-          if (!vendor.owner && vendorData.owner) {
-            vendor.owner = vendorData.owner;
-            vendorUpdated = true;
-          }
-          if (!vendor.website && vendorData.website) {
-            vendor.website = vendorData.website;
-            vendorUpdated = true;
-          }
-          if (!vendor.description && vendorData.description) {
-            vendor.description = vendorData.description;
-            vendorUpdated = true;
-          }
+        // Process vendors with bulk operations
+        const vendorsToCreate = [];
+        const vendorsToUpdate = [];
 
-          if (vendorUpdated) {
-            vendor = await this.vendorRepository.save(vendor);
+        for (const vendorData of vendorsToProcess) {
+          if (!vendorData.name) continue;
+
+          let vendor = existingVendorMap.get(vendorData.name);
+
+          if (!vendor) {
+            // Create new vendor
+            vendor = this.vendorRepository.create({
+              name: vendorData.name,
+              owner: vendorData.owner || '',
+              website: vendorData.website,
+              description: vendorData.description,
+            });
+            vendorsToCreate.push(vendor);
+          } else {
             this.logAndBroadcast(
-              `Updated existing vendor: ${vendor.name} with missing information`,
+              `Using existing vendor: ${vendor.name} (ID: ${vendor.id})`,
               'info',
             );
+
+            // Update vendor with any missing information
+            let vendorUpdated = false;
+            if (!vendor.owner && vendorData.owner) {
+              vendor.owner = vendorData.owner;
+              vendorUpdated = true;
+            }
+            if (!vendor.website && vendorData.website) {
+              vendor.website = vendorData.website;
+              vendorUpdated = true;
+            }
+            if (!vendor.description && vendorData.description) {
+              vendor.description = vendorData.description;
+              vendorUpdated = true;
+            }
+
+            if (vendorUpdated) {
+              vendorsToUpdate.push(vendor);
+            }
           }
+
+          vendorMap.set(vendorData.name, vendor);
+          if (!primaryVendor) primaryVendor = vendor; // First vendor becomes primary
         }
 
-        vendorMap.set(vendorData.name, vendor);
-        if (!primaryVendor) primaryVendor = vendor; // First vendor becomes primary
+        // Bulk save new vendors
+        if (vendorsToCreate.length > 0) {
+          this.logAndBroadcast(`Bulk creating ${vendorsToCreate.length} vendors`, 'info');
+          const savedVendors = await this.vendorRepository.save(vendorsToCreate);
+          // Update the map with saved vendors (they now have IDs)
+          savedVendors.forEach((vendor) => {
+            vendorMap.set(vendor.name, vendor);
+            this.logAndBroadcast(`Created vendor with ID: ${vendor.id}`, 'success');
+          });
+        }
+
+        // Bulk update vendors
+        if (vendorsToUpdate.length > 0) {
+          this.logAndBroadcast(`Bulk updating ${vendorsToUpdate.length} vendors`, 'info');
+          await this.vendorRepository.save(vendorsToUpdate);
+        }
       }
 
-      // 2. Create or update DJs (associate with their respective vendors)
+      // 2. Create or update DJs (associate with their respective vendors) - Optimized for bulk operations
       const djMap = new Map<string, DJ>();
       let djsCreated = 0;
       let djsUpdated = 0;
 
       // Handle empty DJs array gracefully
       const djsData = approvedData.djs || [];
+
+      // Collect all unique vendor+name combinations for bulk lookup
+      const djLookupKeys = djsData
+        .filter((djData) => djData.name && djData.name.trim() !== '')
+        .map((djData) => ({
+          name: djData.name,
+          vendorId: primaryVendor?.id || null,
+          vendorName: primaryVendor?.name || 'default',
+        }));
+
+      // Bulk fetch existing DJs with vendor relationship
+      const existingDJs =
+        djLookupKeys.length > 0
+          ? await this.djRepository.find({
+              where: djLookupKeys.map((key) => ({
+                name: key.name,
+                vendorId: key.vendorId,
+              })),
+              relations: ['vendor'],
+            })
+          : [];
+
+      // Create lookup map for existing DJs using vendor+name composite key
+      const existingDJMap = new Map<string, DJ>();
+      existingDJs.forEach((dj) => {
+        const vendorName = dj.vendor?.name || 'default';
+        const compositeKey = `${vendorName}|${dj.name}`;
+        existingDJMap.set(compositeKey, dj);
+      });
+
+      // Process DJs with bulk operations
+      const djsToCreate = [];
+      const djsToUpdate = [];
+
       for (const djData of djsData) {
         if (!djData.name || djData.name.trim() === '') {
           this.logAndBroadcast('Skipping DJ with empty name', 'warning');
@@ -2494,42 +2558,86 @@ ${htmlContent}`;
 
         // For DJs, use primary vendor or null if no vendors
         const djVendorId = primaryVendor?.id || null;
+        const vendorName = primaryVendor?.name || 'default';
+        const compositeKey = `${vendorName}|${djData.name}`;
 
-        let dj = await this.djRepository.findOne({
-          where: { name: djData.name, vendorId: djVendorId },
-        });
+        let dj = existingDJMap.get(compositeKey);
 
         if (!dj) {
-          this.logAndBroadcast(`Creating new DJ: ${djData.name}`, 'info');
-          dj = this.djRepository.create({
+          // Create new DJ
+          const newDJ = this.djRepository.create({
             name: djData.name,
             vendorId: djVendorId,
             isActive: true,
           });
-          dj = await this.djRepository.save(dj);
+          djsToCreate.push(newDJ);
+          djMap.set(compositeKey, newDJ);
           djsCreated++;
         } else {
           this.logAndBroadcast(`Using existing DJ: ${dj.name} (ID: ${dj.id})`, 'info');
           // Update DJ to active if it was inactive
           if (!dj.isActive) {
             dj.isActive = true;
-            await this.djRepository.save(dj);
+            djsToUpdate.push(dj);
             djsUpdated++;
           }
+          djMap.set(compositeKey, dj);
         }
-        djMap.set(djData.name, dj);
       }
 
-      // 3. Create shows
+      // Bulk save new DJs
+      if (djsToCreate.length > 0) {
+        this.logAndBroadcast(`Bulk creating ${djsToCreate.length} DJs`, 'info');
+        const savedDJs = await this.djRepository.save(djsToCreate);
+        // Update the map with saved DJs (they now have IDs)
+        savedDJs.forEach((dj) => {
+          const vendorName = primaryVendor?.name || 'default';
+          const compositeKey = `${vendorName}|${dj.name}`;
+          djMap.set(compositeKey, dj);
+        });
+      }
+
+      // Bulk update DJs
+      if (djsToUpdate.length > 0) {
+        this.logAndBroadcast(`Bulk updating ${djsToUpdate.length} DJs`, 'info');
+        await this.djRepository.save(djsToUpdate);
+      }
+
+      // 3. Create shows (optimized for large batches)
       let showsCreated = 0;
       let showsUpdated = 0;
       let showsDuplicated = 0;
+
+      this.logAndBroadcast(
+        `Processing ${approvedData.shows.length} shows for batch creation...`,
+        'info',
+      );
+
+      // Prepare all shows for bulk insert
+      const showsToCreate = [];
       const showPromises = approvedData.shows.map(async (showData) => {
-        // Find DJ if specified
+        // Find DJ if specified (using vendor+name composite key)
         let djId: string | undefined;
         if (showData.djName) {
-          const dj = djMap.get(showData.djName);
+          // Determine which vendor this DJ belongs to
+          let djVendorName = 'default';
+          if (showData.vendor) {
+            const showVendorObj = vendorMap.get(showData.vendor);
+            djVendorName = showVendorObj?.name || 'default';
+          } else if (primaryVendor) {
+            djVendorName = primaryVendor.name;
+          }
+
+          const djCompositeKey = `${djVendorName}|${showData.djName}`;
+          const dj = djMap.get(djCompositeKey);
           djId = dj?.id;
+
+          if (!dj) {
+            this.logAndBroadcast(
+              `Warning: DJ "${showData.djName}" not found for vendor "${djVendorName}" in show at ${showData.venue}`,
+              'warning',
+            );
+          }
         }
 
         // Convert day and time to proper format
@@ -2562,15 +2670,18 @@ ${htmlContent}`;
         // Check for existing show with same vendor, day, time, venue, and DJ
         const existingShow = await this.showRepository.findOne({
           where: {
-            vendorId: showVendor?.id || null,
             day: normalizedDay as any,
             time: showData.time,
             venue: showData.venue,
             djId: djId || null, // Handle both null and undefined DJs
           },
+          relations: ['dj', 'dj.vendor'], // Load DJ and vendor relationships to check vendor match
         });
 
-        if (existingShow) {
+        // Check if existing show belongs to the same vendor (through DJ)
+        const isSameVendor = existingShow?.dj?.vendor?.id === (showVendor?.id || null);
+
+        if (existingShow && isSameVendor) {
           // Update existing show with any missing information
           let showUpdated = false;
           if (!existingShow.address && showData.address) {
@@ -2770,7 +2881,6 @@ ${htmlContent}`;
         }
 
         const show = this.showRepository.create({
-          vendorId: showVendor?.id || null,
           djId: djId,
           venue: showData.venue,
           address: cleanedAddress,
@@ -2784,19 +2894,30 @@ ${htmlContent}`;
           startTime: validatedStartTime,
           endTime: validatedEndTime,
           description: showData.description,
-          imageUrl: showData.imageUrl,
           venuePhone: showData.venuePhone,
           venueWebsite: showData.venueWebsite,
           source: showData.source,
           isActive: true,
         });
 
-        const savedShow = await this.showRepository.save(show);
-        showsCreated++;
-        return savedShow;
+        return show; // Return the show object instead of saving immediately
       });
 
-      await Promise.all(showPromises);
+      // Wait for all show objects to be prepared
+      const preparedShows = await Promise.all(showPromises);
+
+      // Bulk insert all shows for maximum performance
+      this.logAndBroadcast(`Bulk inserting ${preparedShows.length} shows...`, 'info');
+      const bulkStartTime = Date.now();
+
+      const savedShows = await this.showRepository.save(preparedShows);
+      showsCreated = savedShows.length;
+
+      const bulkTime = Date.now() - bulkStartTime;
+      this.logAndBroadcast(
+        `Bulk insert completed in ${bulkTime}ms (${savedShows.length} shows)`,
+        'success',
+      );
 
       // 4. Update the schedule to approved status (but don't delete yet)
       await this.parsedScheduleRepository.update(parsedScheduleId, {

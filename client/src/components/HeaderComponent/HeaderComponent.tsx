@@ -3,6 +3,7 @@ import {
   faBars,
   faCalendarDays,
   faCog,
+  faComments,
   faHome,
   faMusic,
   faPlus,
@@ -36,6 +37,7 @@ import { observer } from 'mobx-react-lite';
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getUserDisplayName, getUserSecondaryName } from '../../utils/userUtils';
+import FeedbackModal from '../FeedbackModal';
 import { ThemeToggle } from '../ThemeToggle';
 
 export interface HeaderComponentProps {
@@ -50,6 +52,7 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
     const location = useLocation();
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+    const [feedbackOpen, setFeedbackOpen] = React.useState(false);
 
     // Helper function to check if a path is active
     const isActivePath = (path: string) => {
@@ -645,10 +648,16 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
           anchor="left"
           open={mobileMenuOpen}
           onClose={handleMobileMenuClose}
+          ModalProps={{
+            sx: {
+              zIndex: theme.zIndex.modal - 40, // 1260 - backdrop above bottom sheet
+            },
+          }}
           PaperProps={{
             sx: {
               width: 280,
               backgroundColor: theme.palette.background.paper,
+              zIndex: theme.zIndex.modal - 40, // 1260 - ensures drawer appears above bottom sheet
             },
           }}
         >
@@ -920,6 +929,21 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
 
                 <Divider sx={{ my: 1 }} />
 
+                {/* Feedback */}
+                <ListItem disablePadding>
+                  <ListItemButton
+                    onClick={() => {
+                      setFeedbackOpen(true);
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <ListItemIcon>
+                      <FontAwesomeIcon icon={faComments} />
+                    </ListItemIcon>
+                    <ListItemText primary="Send Feedback" />
+                  </ListItemButton>
+                </ListItem>
+
                 {/* Logout */}
                 <ListItem disablePadding>
                   <ListItemButton
@@ -937,6 +961,23 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               </>
             ) : (
               <>
+                {/* Feedback */}
+                <ListItem disablePadding>
+                  <ListItemButton
+                    onClick={() => {
+                      setFeedbackOpen(true);
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <ListItemIcon>
+                      <FontAwesomeIcon icon={faComments} />
+                    </ListItemIcon>
+                    <ListItemText primary="Send Feedback" />
+                  </ListItemButton>
+                </ListItem>
+
+                <Divider sx={{ my: 1 }} />
+
                 {/* Login */}
                 <ListItem disablePadding>
                   <ListItemButton onClick={() => handleMobileNavigation('/login')}>
@@ -960,6 +1001,9 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
             )}
           </List>
         </Drawer>
+
+        {/* Feedback Modal */}
+        <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       </>
     );
   },

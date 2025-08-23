@@ -105,7 +105,6 @@ export interface AdminShow {
   startTime?: string;
   endTime?: string;
   description?: string;
-  imageUrl?: string;
   venuePhone?: string;
   venueWebsite?: string;
   source?: string;

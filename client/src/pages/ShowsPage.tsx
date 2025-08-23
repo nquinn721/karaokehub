@@ -28,7 +28,6 @@ import { DayOfWeek } from '../components/DayPicker/DayPicker';
 import MapComponent from '../components/MapComponent';
 import { CombinedScheduleModal } from '../components/modals/CombinedScheduleModal';
 import { DJScheduleModal } from '../components/modals/DJScheduleModal';
-import { VenueScheduleModal } from '../components/modals/VenueScheduleModal';
 import { ShowSearch } from '../components/search/ShowSearch';
 import { SEO } from '../components/SEO';
 import { authStore, favoriteStore, showStore } from '../stores/index';
@@ -41,10 +40,8 @@ const ShowsPage: React.FC = observer(() => {
 
   // Modal states
   const [djModalOpen, setDjModalOpen] = useState(false);
-  const [venueModalOpen, setVenueModalOpen] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [selectedDJ, setSelectedDJ] = useState<{ id: string; name: string } | null>(null);
-  const [selectedVenue, setSelectedVenue] = useState<string | null>(null);
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
 
   // Initialize stores only (no duplicate API calls)
@@ -91,15 +88,6 @@ const ShowsPage: React.FC = observer(() => {
     if (show.dj?.id && show.dj?.name) {
       setSelectedDJ({ id: show.dj.id, name: show.dj.name });
       setDjModalOpen(true);
-    }
-  };
-
-  // Handle venue click to show schedule
-  const handleVenueClick = (event: React.MouseEvent, show: Show) => {
-    event.stopPropagation();
-    if (show.venue) {
-      setSelectedVenue(show.venue);
-      setVenueModalOpen(true);
     }
   };
 
@@ -151,133 +139,130 @@ const ShowsPage: React.FC = observer(() => {
           <BottomSheet
             isOpen={true} // Always considered "open" when alwaysVisible
             onToggle={() => showStore.toggleSidebar()}
-            snapPoints={[0.12, 0.5, 0.9]} // Minimum 12% visible (ensures at least 20px), 50% middle, 90% full
+            snapPoints={[0.2, 0.5, 0.9]} // Minimum 20% visible (day buttons + search), 50% middle, 90% full
             initialSnap={0} // Start minimized
             alwaysVisible={true}
             closeOnOutsideClick={true}
+            draggableContent={
+              /* Filters Section - Draggable */
+              <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+                {/* Day Picker - Compact */}
+                <Box sx={{ mb: 2 }}>
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, 1fr)',
+                      gap: 1,
+                      mb: 1,
+                    }}
+                  >
+                    {Object.values(DayOfWeek)
+                      .slice(0, 4)
+                      .map((day) => {
+                        const isSelected = showStore.selectedDay === day;
+                        const dayLabels = {
+                          [DayOfWeek.MONDAY]: 'Mon',
+                          [DayOfWeek.TUESDAY]: 'Tue',
+                          [DayOfWeek.WEDNESDAY]: 'Wed',
+                          [DayOfWeek.THURSDAY]: 'Thu',
+                          [DayOfWeek.FRIDAY]: 'Fri',
+                          [DayOfWeek.SATURDAY]: 'Sat',
+                          [DayOfWeek.SUNDAY]: 'Sun',
+                        };
+                        return (
+                          <Box
+                            key={day}
+                            onClick={() => showStore.setSelectedDay(day)}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              py: 1,
+                              px: 0.5,
+                              borderRadius: 1,
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: isSelected ? 600 : 400,
+                              color: isSelected ? 'primary.contrastText' : 'text.primary',
+                              bgcolor: isSelected ? 'primary.main' : 'action.hover',
+                              border: `1px solid ${
+                                isSelected ? theme.palette.primary.main : theme.palette.divider
+                              }`,
+                              '&:hover': {
+                                bgcolor: isSelected ? 'primary.dark' : 'action.selected',
+                              },
+                            }}
+                          >
+                            {dayLabels[day]}
+                          </Box>
+                        );
+                      })}
+                  </Box>
+
+                  {/* Second row for remaining days */}
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gap: 1,
+                    }}
+                  >
+                    {Object.values(DayOfWeek)
+                      .slice(4)
+                      .map((day) => {
+                        const isSelected = showStore.selectedDay === day;
+                        const dayLabels = {
+                          [DayOfWeek.MONDAY]: 'Mon',
+                          [DayOfWeek.TUESDAY]: 'Tue',
+                          [DayOfWeek.WEDNESDAY]: 'Wed',
+                          [DayOfWeek.THURSDAY]: 'Thu',
+                          [DayOfWeek.FRIDAY]: 'Fri',
+                          [DayOfWeek.SATURDAY]: 'Sat',
+                          [DayOfWeek.SUNDAY]: 'Sun',
+                        };
+                        return (
+                          <Box
+                            key={day}
+                            onClick={() => showStore.setSelectedDay(day)}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              py: 1,
+                              px: 0.5,
+                              borderRadius: 1,
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: isSelected ? 600 : 400,
+                              color: isSelected ? 'primary.contrastText' : 'text.primary',
+                              bgcolor: isSelected ? 'primary.main' : 'action.hover',
+                              border: `1px solid ${
+                                isSelected ? theme.palette.primary.main : theme.palette.divider
+                              }`,
+                              '&:hover': {
+                                bgcolor: isSelected ? 'primary.dark' : 'action.selected',
+                              },
+                            }}
+                          >
+                            {dayLabels[day]}
+                          </Box>
+                        );
+                      })}
+                  </Box>
+                </Box>
+
+                {/* Search */}
+                <Box sx={{ mb: 2 }}>
+                  <ShowSearch
+                    onSelectShow={handleShowSelected}
+                    placeholder="Search venues, DJs, locations..."
+                    size="small"
+                    shows={showStore.filteredShows}
+                  />
+                </Box>
+              </Box>
+            }
           >
-            {/* Filters Section */}
-            <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Filters
-              </Typography>
-
-              {/* Day Picker - Compact */}
-              <Box sx={{ mb: 2 }}>
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: 1,
-                    mb: 1,
-                  }}
-                >
-                  {Object.values(DayOfWeek)
-                    .slice(0, 4)
-                    .map((day) => {
-                      const isSelected = showStore.selectedDay === day;
-                      const dayLabels = {
-                        [DayOfWeek.MONDAY]: 'Mon',
-                        [DayOfWeek.TUESDAY]: 'Tue',
-                        [DayOfWeek.WEDNESDAY]: 'Wed',
-                        [DayOfWeek.THURSDAY]: 'Thu',
-                        [DayOfWeek.FRIDAY]: 'Fri',
-                        [DayOfWeek.SATURDAY]: 'Sat',
-                        [DayOfWeek.SUNDAY]: 'Sun',
-                      };
-                      return (
-                        <Box
-                          key={day}
-                          onClick={() => showStore.setSelectedDay(day)}
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            py: 1,
-                            px: 0.5,
-                            borderRadius: 1,
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: isSelected ? 600 : 400,
-                            color: isSelected ? 'primary.contrastText' : 'text.primary',
-                            bgcolor: isSelected ? 'primary.main' : 'action.hover',
-                            border: `1px solid ${
-                              isSelected ? theme.palette.primary.main : theme.palette.divider
-                            }`,
-                            '&:hover': {
-                              bgcolor: isSelected ? 'primary.dark' : 'action.selected',
-                            },
-                          }}
-                        >
-                          {dayLabels[day]}
-                        </Box>
-                      );
-                    })}
-                </Box>
-
-                {/* Second row for remaining days */}
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 1,
-                  }}
-                >
-                  {Object.values(DayOfWeek)
-                    .slice(4)
-                    .map((day) => {
-                      const isSelected = showStore.selectedDay === day;
-                      const dayLabels = {
-                        [DayOfWeek.MONDAY]: 'Mon',
-                        [DayOfWeek.TUESDAY]: 'Tue',
-                        [DayOfWeek.WEDNESDAY]: 'Wed',
-                        [DayOfWeek.THURSDAY]: 'Thu',
-                        [DayOfWeek.FRIDAY]: 'Fri',
-                        [DayOfWeek.SATURDAY]: 'Sat',
-                        [DayOfWeek.SUNDAY]: 'Sun',
-                      };
-                      return (
-                        <Box
-                          key={day}
-                          onClick={() => showStore.setSelectedDay(day)}
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            py: 1,
-                            px: 0.5,
-                            borderRadius: 1,
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: isSelected ? 600 : 400,
-                            color: isSelected ? 'primary.contrastText' : 'text.primary',
-                            bgcolor: isSelected ? 'primary.main' : 'action.hover',
-                            border: `1px solid ${
-                              isSelected ? theme.palette.primary.main : theme.palette.divider
-                            }`,
-                            '&:hover': {
-                              bgcolor: isSelected ? 'primary.dark' : 'action.selected',
-                            },
-                          }}
-                        >
-                          {dayLabels[day]}
-                        </Box>
-                      );
-                    })}
-                </Box>
-              </Box>
-
-              {/* Search */}
-              <Box sx={{ mb: 2 }}>
-                <ShowSearch
-                  onSelectShow={handleShowSelected}
-                  placeholder="Search venues, DJs, locations..."
-                  size="small"
-                  shows={showStore.filteredShows}
-                />
-              </Box>
-            </Box>
-
             {/* Shows List */}
             <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
               <Box
@@ -313,7 +298,7 @@ const ShowsPage: React.FC = observer(() => {
                     </Typography>
                   </Box>
                 ) : (
-                  <List sx={{ p: 0, pb: { xs: 4, md: 1 }, mr: '15px', mt: '5px' }}>
+                  <List sx={{ p: 0, pb: { xs: 10, md: 1 }, mr: '15px', mt: '5px' }}>
                     {showStore.filteredShows.map((show: Show) => {
                       const isFavorited = authStore.isAuthenticated
                         ? show.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
@@ -400,7 +385,6 @@ const ShowsPage: React.FC = observer(() => {
                                     <Typography
                                       variant="subtitle1"
                                       fontWeight={600}
-                                      onClick={(e) => handleVenueClick(e, show)}
                                       sx={{
                                         fontSize: { xs: '0.95rem', md: '1.1rem' },
                                         lineHeight: 1.2,
@@ -408,13 +392,6 @@ const ShowsPage: React.FC = observer(() => {
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
                                         whiteSpace: 'nowrap',
-                                        cursor: show.venue ? 'pointer' : 'default',
-                                        '&:hover': show.venue
-                                          ? {
-                                              color: theme.palette.primary.main,
-                                              textDecoration: 'underline',
-                                            }
-                                          : {},
                                       }}
                                     >
                                       {show.venue || show.vendor?.name || 'Unknown Venue'}
@@ -1115,17 +1092,6 @@ const ShowsPage: React.FC = observer(() => {
           }}
           djId={selectedDJ.id}
           djName={selectedDJ.name}
-        />
-      )}
-
-      {selectedVenue && (
-        <VenueScheduleModal
-          open={venueModalOpen}
-          onClose={() => {
-            setVenueModalOpen(false);
-            setSelectedVenue(null);
-          }}
-          venueName={selectedVenue}
         />
       )}
 

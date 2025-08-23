@@ -75,36 +75,78 @@ const DataUploadModal: React.FC<{
     setStep('upload');
 
     try {
-      // Use the new production upload endpoint that bypasses CORS
-      const response = await fetch('https://karaoke-hub.com/api/production-upload/data', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-upload-token': 'karaoke-hub-data-integration-system', // Production upload token
-        },
-        body: JSON.stringify({
-          vendors: uploadData.vendors || [],
-          djs: uploadData.djs || [],
-          shows: uploadData.shows || [],
-          metadata: {
-            uploadedBy: 'Admin',
-            uploadedAt: new Date().toISOString(),
-            source: 'Local Database',
-            notes: 'Bulk upload from local development environment',
-            ...uploadData.metadata,
-          },
-        }),
-      });
+      // Split data into smaller chunks to avoid 413 Content Too Large error
+      const CHUNK_SIZE = 100; // Upload 100 items at a time
+      const results = {
+        vendors: { success: 0, failed: 0 },
+        djs: { success: 0, failed: 0 },
+        shows: { success: 0, failed: 0 },
+      };
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `Upload failed: HTTP ${response.status} ${response.statusText}. ${errorText}`,
-        );
+      // Helper function to upload in chunks
+      const uploadInChunks = async (data: any[], type: 'vendors' | 'djs' | 'shows') => {
+        for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+          const chunk = data.slice(i, i + CHUNK_SIZE);
+          
+          const response = await fetch('https://karaoke-hub.com/api/production-upload/data', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-upload-token': 'karaoke-hub-data-integration-system',
+            },
+            body: JSON.stringify({
+              [type]: chunk,
+              vendors: type === 'vendors' ? chunk : [],
+              djs: type === 'djs' ? chunk : [],
+              shows: type === 'shows' ? chunk : [],
+              metadata: {
+                uploadedBy: 'Admin',
+                uploadedAt: new Date().toISOString(),
+                source: 'Local Database',
+                notes: `Chunk ${Math.floor(i / CHUNK_SIZE) + 1} of ${Math.ceil(data.length / CHUNK_SIZE)} for ${type}`,
+                isChunked: true,
+                chunkInfo: {
+                  current: Math.floor(i / CHUNK_SIZE) + 1,
+                  total: Math.ceil(data.length / CHUNK_SIZE),
+                  type: type,
+                  startIndex: i,
+                  endIndex: Math.min(i + CHUNK_SIZE, data.length),
+                },
+                ...uploadData.metadata,
+              },
+            }),
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Chunk upload failed for ${type}:`, errorText);
+            results[type].failed += chunk.length;
+          } else {
+            await response.json(); // Consume response
+            results[type].success += chunk.length;
+          }
+        }
+      };
+
+      // Upload each data type in chunks
+      if (uploadData.vendors?.length > 0) {
+        await uploadInChunks(uploadData.vendors, 'vendors');
+      }
+      
+      if (uploadData.djs?.length > 0) {
+        await uploadInChunks(uploadData.djs, 'djs');
+      }
+      
+      if (uploadData.shows?.length > 0) {
+        await uploadInChunks(uploadData.shows, 'shows');
       }
 
-      const result = await response.json();
-      setUploadResult(result);
+      setUploadResult({
+        message: 'Chunked upload completed',
+        results,
+        totalProcessed: results.vendors.success + results.djs.success + results.shows.success,
+        totalFailed: results.vendors.failed + results.djs.failed + results.shows.failed,
+      });
       setStep('complete');
     } catch (err) {
       console.error('DataUploadModal: Upload error:', err);
@@ -319,14 +361,72 @@ const DataUploadModal: React.FC<{
             </Typography>
             {uploadResult && (
               <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Data has been successfully uploaded to production.
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Data has been successfully uploaded to production in chunks.
                 </Typography>
-                {uploadResult.message && (
-                  <Alert severity="success" sx={{ mt: 2 }}>
-                    {uploadResult.message}
-                  </Alert>
+                
+                {uploadResult.results && (
+                  <Grid container spacing={2} sx={{ mt: 2, justifyContent: 'center' }}>
+                    <Grid item xs={12} sm={4}>
+                      <Card variant="outlined">
+                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                          <Typography variant="h6" color="primary">
+                            {uploadResult.results.vendors.success}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Vendors Uploaded
+                          </Typography>
+                          {uploadResult.results.vendors.failed > 0 && (
+                            <Typography variant="caption" color="error">
+                              {uploadResult.results.vendors.failed} failed
+                            </Typography>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={4}>
+                      <Card variant="outlined">
+                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                          <Typography variant="h6" color="primary">
+                            {uploadResult.results.djs.success}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            DJs Uploaded
+                          </Typography>
+                          {uploadResult.results.djs.failed > 0 && (
+                            <Typography variant="caption" color="error">
+                              {uploadResult.results.djs.failed} failed
+                            </Typography>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={4}>
+                      <Card variant="outlined">
+                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                          <Typography variant="h6" color="primary">
+                            {uploadResult.results.shows.success}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Shows Uploaded
+                          </Typography>
+                          {uploadResult.results.shows.failed > 0 && (
+                            <Typography variant="caption" color="error">
+                              {uploadResult.results.shows.failed} failed
+                            </Typography>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  </Grid>
                 )}
+
+                <Alert severity="success" sx={{ mt: 3 }}>
+                  Successfully uploaded {uploadResult.totalProcessed || 0} items
+                  {uploadResult.totalFailed > 0 && ` (${uploadResult.totalFailed} failed)`}
+                </Alert>
               </Box>
             )}
           </Box>
@@ -387,7 +487,9 @@ const DataUploadModal: React.FC<{
       }}
     >
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6">Upload Data to Production</Typography>
+        <Typography variant="h6" component="div">
+          Upload Data to Production
+        </Typography>
         {!uploading && (
           <IconButton onClick={handleClose} size="small">
             <FontAwesomeIcon icon={faTimes} />

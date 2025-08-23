@@ -10,6 +10,7 @@ export interface BottomSheetProps {
   onSnapChange?: (snapIndex: number) => void;
   closeOnOutsideClick?: boolean;
   alwaysVisible?: boolean; // Never fully close, always show handle
+  draggableContent?: React.ReactNode; // Content that should be draggable (filters section)
 }
 
 export const BottomSheet: React.FC<BottomSheetProps> = ({
@@ -21,6 +22,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   onSnapChange,
   closeOnOutsideClick = true,
   alwaysVisible = false,
+  draggableContent,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -29,8 +31,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const [startY, setStartY] = useState(0);
   const [currentY, setCurrentY] = useState(0);
   const [translateY, setTranslateY] = useState(0);
+  const [hasMoved, setHasMoved] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
+  const draggableAreaRef = useRef<HTMLDivElement>(null);
+  const isInitializedRef = useRef(false);
 
   // Calculate sheet height based on current snap point
   const getSheetHeight = useCallback(
@@ -61,6 +66,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const snapToPoint = useCallback(
     (snapIndex: number) => {
       if (!sheetRef.current) return;
+      
+      // Prevent unnecessary snapping if already at the target position
+      if (currentSnapIndex === snapIndex && !isDragging) {
+        return;
+      }
 
       const transform = getTransform(snapIndex);
       setTranslateY(transform);
@@ -73,7 +83,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       sheetRef.current.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
       sheetRef.current.style.transform = `translateY(${transform}px)`;
     },
-    [getTransform, onSnapChange],
+    [getTransform, onSnapChange, currentSnapIndex, isDragging],
   );
 
   // Find the closest snap point
@@ -97,15 +107,23 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 
   // Handle touch start
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (!dragHandleRef.current?.contains(e.target as Node)) return;
+    // Check if touch started on drag handle or draggable content area
+    const target = e.target as Node;
+    const isDragHandle = dragHandleRef.current?.contains(target);
+    const isDraggableArea = draggableAreaRef.current?.contains(target);
+    
+    if (!isDragHandle && !isDraggableArea) return;
 
     setIsDragging(true);
     setStartY(e.touches[0].clientY);
     setCurrentY(e.touches[0].clientY);
+    setHasMoved(false);
 
     if (sheetRef.current) {
       sheetRef.current.style.transition = 'none';
     }
+
+    // Don't preventDefault on touch start - we need to allow potential clicks
   }, []);
 
   // Handle touch move
@@ -113,31 +131,42 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     (e: TouchEvent) => {
       if (!isDragging || !sheetRef.current) return;
 
-      e.preventDefault();
       const touchY = e.touches[0].clientY;
-      const deltaY = touchY - startY;
-      const baseTransform = getTransform(currentSnapIndex);
-      const newTransform = baseTransform + deltaY;
-
-      // Limit dragging beyond boundaries
-      const minTransform = getTransform(snapPoints.length - 1);
-      const minVisibleHeight = 20;
-      const maxTransform = window.innerHeight - minVisibleHeight;
-
-      let constrainedTransform = Math.max(minTransform, Math.min(maxTransform, newTransform));
-
-      // Add resistance when dragging beyond limits
-      if (newTransform < minTransform) {
-        const overDrag = minTransform - newTransform;
-        constrainedTransform = minTransform - Math.sqrt(overDrag * 10);
-      } else if (newTransform > maxTransform) {
-        const overDrag = newTransform - maxTransform;
-        constrainedTransform = maxTransform + Math.sqrt(overDrag * 10);
+      const deltaY = Math.abs(touchY - startY);
+      
+      // Mark as moved if we've moved more than 5px (threshold for drag vs tap)
+      if (deltaY > 5) {
+        setHasMoved(true);
+        // Only prevent default once we're actually dragging
+        e.preventDefault();
       }
 
-      setCurrentY(touchY);
-      setTranslateY(constrainedTransform);
-      sheetRef.current.style.transform = `translateY(${constrainedTransform}px)`;
+      // Only update transform if we're actually dragging
+      if (deltaY > 5) {
+        const deltaYSigned = touchY - startY;
+        const baseTransform = getTransform(currentSnapIndex);
+        const newTransform = baseTransform + deltaYSigned;
+
+        // Limit dragging beyond boundaries
+        const minTransform = getTransform(snapPoints.length - 1);
+        const minVisibleHeight = 20;
+        const maxTransform = window.innerHeight - minVisibleHeight;
+
+        let constrainedTransform = Math.max(minTransform, Math.min(maxTransform, newTransform));
+
+        // Add resistance when dragging beyond limits
+        if (newTransform < minTransform) {
+          const overDrag = minTransform - newTransform;
+          constrainedTransform = minTransform - Math.sqrt(overDrag * 10);
+        } else if (newTransform > maxTransform) {
+          const overDrag = newTransform - maxTransform;
+          constrainedTransform = maxTransform + Math.sqrt(overDrag * 10);
+        }
+
+        setCurrentY(touchY);
+        setTranslateY(constrainedTransform);
+        sheetRef.current.style.transform = `translateY(${constrainedTransform}px)`;
+      }
     },
     [isDragging, startY, currentSnapIndex, getTransform, snapPoints],
   );
@@ -147,6 +176,17 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     if (!isDragging) return;
 
     setIsDragging(false);
+
+    // If it was a tap (not much movement), allow normal interactions
+    // This enables tap functionality on day buttons and search input
+    if (!hasMoved) {
+      // Reset state and return early - let the original element handle the tap
+      setHasMoved(false);
+      if (sheetRef.current) {
+        sheetRef.current.style.transition = '';
+      }
+      return;
+    }
 
     const velocity = currentY - startY;
     const currentTransform = translateY;
@@ -167,18 +207,13 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 
     // Special behavior for alwaysVisible mode
     if (alwaysVisible) {
-      // If at maximum snap (fully expanded) and dragging down significantly,
-      // drop to 50% (middle snap point)
-      if (currentSnapIndex === snapPoints.length - 1 && velocity > 100) {
-        const middleIndex = Math.floor(snapPoints.length / 2);
-        targetSnapIndex = middleIndex;
+      // Never allow full closure - always return to minimum snap point
+      if (targetSnapIndex < 0) {
+        targetSnapIndex = 0; // Always go back to minimum visible state
       }
-      // Never allow full closure - minimum is first snap point
-      const minVisibleHeight = 20;
-      const maxAllowedTransform = window.innerHeight - minVisibleHeight;
-      if (targetSnapIndex < 0 || (velocity > 100 && currentTransform > maxAllowedTransform * 0.8)) {
-        targetSnapIndex = 0; // Stay at minimum visible state
-        return;
+      // If dragging down significantly, go to minimum snap point
+      if (velocity > 50 && targetSnapIndex === 0) {
+        targetSnapIndex = 0; // Stay at minimum
       }
     } else {
       // Original behavior: Check if should close (dragging down past threshold)
@@ -193,6 +228,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     snapToPoint(targetSnapIndex);
   }, [
     isDragging,
+    hasMoved,
     currentY,
     startY,
     translateY,
@@ -200,6 +236,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     snapPoints,
     onToggle,
     snapToPoint,
+    alwaysVisible,
+    currentSnapIndex,
   ]);
 
   // Handle mouse events for desktop
@@ -313,12 +351,14 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     handleMouseUp,
   ]);
 
-  // Initialize position when opened or when always visible
+  // Initialize position when opened or when always visible (only once)
   useEffect(() => {
-    if ((isOpen || alwaysVisible) && isMobile) {
+    if ((isOpen || alwaysVisible) && isMobile && !isInitializedRef.current) {
       snapToPoint(initialSnap);
+      isInitializedRef.current = true;
     }
-  }, [isOpen, isMobile, snapToPoint, initialSnap, alwaysVisible]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile]); // Only depend on isMobile, not the changing props
 
   // Handle resize
   useEffect(() => {
@@ -386,7 +426,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             right: 0,
             bottom: 0,
             bgcolor: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 1300,
+            zIndex: 1200,
             opacity: isOpen ? 1 : 0,
             transition: 'opacity 0.3s',
             pointerEvents: isOpen ? 'auto' : 'none',
@@ -403,14 +443,14 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
           left: 0,
           right: 0,
           bottom: 0,
-          zIndex: 1400,
+          zIndex: 1250,
           borderTopLeftRadius: 16,
           borderTopRightRadius: 16,
           display: 'flex',
           flexDirection: 'column',
           maxHeight: '95vh',
           overflow: 'hidden',
-          transform: `translateY(${window.innerHeight}px)`,
+          transform: `translateY(${getTransform(currentSnapIndex)}px)`, // Start at current position instead of off-screen
         }}
       >
         {/* Drag Handle */}
@@ -448,7 +488,32 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             minHeight: 0, // Important for flex scrolling
           }}
         >
-          {children}
+          {/* Draggable Content Area */}
+          {draggableContent && (
+            <Box
+              ref={draggableAreaRef}
+              sx={{
+                touchAction: 'auto', // Allow normal touch interactions
+                position: 'relative',
+                zIndex: 1,
+              }}
+            >
+              {draggableContent}
+            </Box>
+          )}
+          
+          {/* Regular Content */}
+          <Box
+            sx={{
+              flex: 1,
+              overflow: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+            }}
+          >
+            {children}
+          </Box>
         </Box>
       </Paper>
     </>

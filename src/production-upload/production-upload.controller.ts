@@ -137,7 +137,6 @@ export class ProductionUploadController {
           // Prepare show data with resolved IDs
           const resolvedShowData = {
             ...showData,
-            vendorId: vendor?.id || null,
             djId: dj?.id || null,
             time: showData.startTime, // Map startTime to time field for compatibility
             // Keep original startTime and endTime fields as well
@@ -145,69 +144,79 @@ export class ProductionUploadController {
             endTime: showData.endTime,
           };
 
-          // Check for existing show with same vendor, day, time, venue, and DJ
+          // Check for existing show with same day, time, venue, and DJ
           const existingShow = await this.showRepository.findOne({
             where: {
-              vendorId: resolvedShowData.vendorId,
               day: resolvedShowData.day,
               time: resolvedShowData.time,
               venue: resolvedShowData.venue,
               djId: resolvedShowData.djId,
             },
+            relations: ['dj', 'dj.vendor'], // Load DJ and vendor relationships to check vendor match
           });
 
           if (existingShow) {
-            // Update existing show with any missing information
-            let showUpdated = false;
+            // Check if existing show belongs to the same vendor (through DJ)
+            const isSameVendor = existingShow?.dj?.vendor?.id === vendor?.id;
 
-            if (!existingShow.address && resolvedShowData.address) {
-              existingShow.address = resolvedShowData.address;
-              showUpdated = true;
-            }
-            if (!existingShow.venuePhone && resolvedShowData.venuePhone) {
-              existingShow.venuePhone = resolvedShowData.venuePhone;
-              showUpdated = true;
-            }
-            if (!existingShow.venueWebsite && resolvedShowData.venueWebsite) {
-              existingShow.venueWebsite = resolvedShowData.venueWebsite;
-              showUpdated = true;
-            }
-            if (!existingShow.description && resolvedShowData.description) {
-              existingShow.description = resolvedShowData.description;
-              showUpdated = true;
-            }
-            if (!existingShow.source && resolvedShowData.source) {
-              existingShow.source = resolvedShowData.source;
-              showUpdated = true;
-            }
-            if (!existingShow.city && resolvedShowData.city) {
-              existingShow.city = resolvedShowData.city;
-              showUpdated = true;
-            }
-            if (!existingShow.state && resolvedShowData.state) {
-              existingShow.state = resolvedShowData.state;
-              showUpdated = true;
-            }
-            if (!existingShow.zip && resolvedShowData.zip) {
-              existingShow.zip = resolvedShowData.zip;
-              showUpdated = true;
-            }
-            if (
-              (!existingShow.lat || !existingShow.lng) &&
-              resolvedShowData.lat &&
-              resolvedShowData.lng
-            ) {
-              existingShow.lat = resolvedShowData.lat;
-              existingShow.lng = resolvedShowData.lng;
-              showUpdated = true;
-            }
+            if (isSameVendor) {
+              // Update existing show with any missing information
+              let showUpdated = false;
 
-            if (showUpdated) {
-              await this.showRepository.save(existingShow);
-              results.shows.updated++;
+              if (!existingShow.address && resolvedShowData.address) {
+                existingShow.address = resolvedShowData.address;
+                showUpdated = true;
+              }
+              if (!existingShow.venuePhone && resolvedShowData.venuePhone) {
+                existingShow.venuePhone = resolvedShowData.venuePhone;
+                showUpdated = true;
+              }
+              if (!existingShow.venueWebsite && resolvedShowData.venueWebsite) {
+                existingShow.venueWebsite = resolvedShowData.venueWebsite;
+                showUpdated = true;
+              }
+              if (!existingShow.description && resolvedShowData.description) {
+                existingShow.description = resolvedShowData.description;
+                showUpdated = true;
+              }
+              if (!existingShow.source && resolvedShowData.source) {
+                existingShow.source = resolvedShowData.source;
+                showUpdated = true;
+              }
+              if (!existingShow.city && resolvedShowData.city) {
+                existingShow.city = resolvedShowData.city;
+                showUpdated = true;
+              }
+              if (!existingShow.state && resolvedShowData.state) {
+                existingShow.state = resolvedShowData.state;
+                showUpdated = true;
+              }
+              if (!existingShow.zip && resolvedShowData.zip) {
+                existingShow.zip = resolvedShowData.zip;
+                showUpdated = true;
+              }
+              if (
+                (!existingShow.lat || !existingShow.lng) &&
+                resolvedShowData.lat &&
+                resolvedShowData.lng
+              ) {
+                existingShow.lat = resolvedShowData.lat;
+                existingShow.lng = resolvedShowData.lng;
+                showUpdated = true;
+              }
+
+              if (showUpdated) {
+                await this.showRepository.save(existingShow);
+                results.shows.updated++;
+              } else {
+                // Show exists and no updates needed, count as updated
+                results.shows.updated++;
+              }
             } else {
-              // Show exists and no updates needed, count as updated
-              results.shows.updated++;
+              // Show exists but belongs to different vendor, treat as new show
+              const newShow = this.showRepository.create(resolvedShowData);
+              await this.showRepository.save(newShow);
+              results.shows.created++;
             }
           } else {
             // Create new show

@@ -669,72 +669,80 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
     sendProgress('⏳ Final wait for lazy-loaded images...');
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    // Extract all CDN image URLs with comprehensive filtering
-    sendProgress('🖼️ Extracting all CDN image URLs with enhanced detection...');
+    // Extract Facebook photo URLs (not CDN thumbnails) for high-resolution access
+    sendProgress('🖼️ Extracting Facebook photo URLs for high-resolution image access...');
 
     const imageUrls = await page.evaluate(() => {
-      const images = Array.from(document.querySelectorAll('img'));
-      const cdnUrls: string[] = [];
+      // Find all <a> tags that contain <img> elements and link to photo pages
+      const photoLinks = Array.from(document.querySelectorAll('a[href*="/photo/"]'));
+      const photoUrls: string[] = [];
 
-      console.log(`Found ${images.length} total img elements`);
+      console.log(`Found ${photoLinks.length} photo links`);
 
-      images.forEach((img, index) => {
-        const src = img.src;
-        const dataSrc = img.getAttribute('data-src');
-        const actualSrc = src || dataSrc;
+      photoLinks.forEach((link, index) => {
+        const href = (link as HTMLAnchorElement).href;
+        const img = link.querySelector('img') as HTMLImageElement;
 
-        // Check if it's a CDN URL (Facebook CDN patterns)
-        if (
-          actualSrc &&
-          (actualSrc.includes('scontent') ||
-            actualSrc.includes('fbcdn') ||
-            actualSrc.includes('facebook.com/safe_image') ||
-            actualSrc.includes('cdninstagram'))
-        ) {
-          // More lenient size filtering - accept images larger than 100x100
-          const width = img.naturalWidth || img.width || 0;
-          const height = img.naturalHeight || img.height || 0;
+        if (img && href) {
+          const imgSrc = img.src || img.getAttribute('data-src');
 
-          if (width > 100 && height > 100) {
-            // Exclude obvious profile pictures and UI elements
-            if (
-              !actualSrc.includes('profile') &&
-              !actualSrc.includes('avatar') &&
-              !actualSrc.includes('icon') &&
-              !actualSrc.includes('emoji') &&
-              !actualSrc.includes('reaction')
-            ) {
-              console.log(
-                `Adding image ${index + 1}: ${width}x${height} - ${actualSrc.substring(0, 100)}...`,
-              );
-              cdnUrls.push(actualSrc);
+          // Verify this is a content image (not profile/UI)
+          if (
+            imgSrc &&
+            (imgSrc.includes('scontent') ||
+              imgSrc.includes('fbcdn') ||
+              imgSrc.includes('cdninstagram'))
+          ) {
+            // Check image size to filter out small UI elements
+            const width = img.naturalWidth || img.width || 0;
+            const height = img.naturalHeight || img.height || 0;
+
+            if (width > 100 && height > 100) {
+              // Exclude profile pictures and UI elements
+              if (
+                !imgSrc.includes('profile') &&
+                !imgSrc.includes('avatar') &&
+                !imgSrc.includes('icon') &&
+                !imgSrc.includes('emoji') &&
+                !imgSrc.includes('reaction')
+              ) {
+                // Convert relative URLs to absolute URLs
+                const fullPhotoUrl = href.startsWith('http')
+                  ? href
+                  : `https://www.facebook.com${href}`;
+
+                console.log(
+                  `Adding photo URL ${index + 1}: ${width}x${height} - ${fullPhotoUrl.substring(0, 100)}...`,
+                );
+                photoUrls.push(fullPhotoUrl);
+              }
             }
           }
         }
       });
 
-      console.log(`Filtered to ${cdnUrls.length} valid CDN URLs`);
+      console.log(`Filtered to ${photoUrls.length} valid photo URLs`);
 
       // Remove duplicates
-      const uniqueUrls = [...new Set(cdnUrls)];
-      console.log(`After deduplication: ${uniqueUrls.length} unique URLs`);
+      const uniqueUrls = [...new Set(photoUrls)];
+      console.log(`After deduplication: ${uniqueUrls.length} unique photo URLs`);
 
       return uniqueUrls;
     });
 
     const processingTime = Date.now() - startTime;
 
-    sendProgress(`✅ Extraction complete! Found ${imageUrls.length} CDN image URLs`);
+    sendProgress(`✅ Extraction complete! Found ${imageUrls.length} Facebook photo URLs`);
 
     // Log first few URLs for debugging
     if (imageUrls.length > 0) {
-      sendProgress(`🔍 First 3 URLs for debugging:`);
+      sendProgress(`🔍 First 3 photo URLs for debugging:`);
       imageUrls.slice(0, 3).forEach((url, index) => {
         sendProgress(`   ${index + 1}. ${url.substring(0, 100)}...`);
       });
     } else {
       sendProgress(
-        `❌ No CDN images found - this might indicate an issue with image loading or detection`,
+        `❌ No photo URLs found - this might indicate an issue with photo link detection`,
       );
     }
 

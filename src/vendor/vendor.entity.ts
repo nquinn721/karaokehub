@@ -8,7 +8,6 @@ import {
 } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
-import { Show } from '../show/show.entity';
 
 @Entity('vendors')
 export class Vendor {
@@ -55,9 +54,6 @@ export class Vendor {
   // Relationships
   @OneToMany(() => DJ, (dj) => dj.vendor)
   djs: DJ[];
-
-  @OneToMany(() => Show, (show) => show.vendor)
-  shows: Show[];
 
   @OneToMany(() => ParsedSchedule, (parsedSchedule) => parsedSchedule.vendor)
   parsedSchedules: ParsedSchedule[];

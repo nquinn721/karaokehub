@@ -1304,8 +1304,8 @@ const AdminDataTables: React.FC = observer(() => {
             src={viewingUserImage.src}
             alt={`${viewingUserImage.userName}'s profile image`}
             sx={{
-              width: '400px',
-              height: '400px',
+              width: '200px',
+              height: '200px',
               objectFit: 'cover',
               borderRadius: 2,
               boxShadow: 3,

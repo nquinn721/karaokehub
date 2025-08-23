@@ -33,14 +33,14 @@ export class VendorService {
   async findAll(): Promise<Vendor[]> {
     return await this.vendorRepository.find({
       where: { isActive: true },
-      relations: ['djs', 'shows'],
+      relations: ['djs'],
     });
   }
 
   async findOne(id: string): Promise<Vendor> {
     return await this.vendorRepository.findOne({
       where: { id, isActive: true },
-      relations: ['djs', 'shows'],
+      relations: ['djs'],
     });
   }
 

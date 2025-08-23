@@ -30,7 +30,6 @@ export interface ParsedShowData {
   lng?: number;
   venuePhone?: string;
   venueWebsite?: string;
-  imageUrl?: string;
   source?: string;
   confidence: number;
 }
