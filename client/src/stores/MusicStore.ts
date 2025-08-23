@@ -590,7 +590,7 @@ export class MusicStore {
       // Step 1: Load initial 2 songs quickly for immediate feedback
       const queries = category.spotifyQuery.split(' ').join(',');
       const initialApiUrl = `/music/category?queries=${encodeURIComponent(queries)}&limit=2&targetCount=2`;
-      
+
       console.log('🚀 Loading initial 2 songs...');
       const initialResponse = await apiStore.get(initialApiUrl);
 
@@ -599,11 +599,11 @@ export class MusicStore {
           // Show first 2 songs immediately
           const favoriteSongs = songFavoriteStore.getFavoriteSongs();
           const likedSongIds = new Set(favoriteSongs.map((song) => song.spotifyId || song.id));
-          
+
           // Separate liked and non-liked songs from initial batch
           const likedSongs = initialResponse.filter((song) => likedSongIds.has(song.id));
           const nonLikedSongs = initialResponse.filter((song) => !likedSongIds.has(song.id));
-          
+
           this.songs = this.deduplicateSongs([...likedSongs, ...nonLikedSongs]);
           this.isLoading = false; // Stop loading spinner for initial songs
           console.log('✅ Initial 2 songs loaded:', this.songs.length);
@@ -616,27 +616,33 @@ export class MusicStore {
             const remainingApiUrl = `/music/category?queries=${encodeURIComponent(queries)}&limit=48&targetCount=48`;
             const remainingResponse = await apiStore.get(remainingApiUrl);
 
-            if (remainingResponse && Array.isArray(remainingResponse) && remainingResponse.length > 0) {
+            if (
+              remainingResponse &&
+              Array.isArray(remainingResponse) &&
+              remainingResponse.length > 0
+            ) {
               runInAction(() => {
                 // Filter out songs we already have (avoid duplicates)
-                const existingSongIds = new Set(this.songs.map(song => song.id));
-                const newSongs = remainingResponse.filter(song => !existingSongIds.has(song.id));
-                
+                const existingSongIds = new Set(this.songs.map((song) => song.id));
+                const newSongs = remainingResponse.filter((song) => !existingSongIds.has(song.id));
+
                 if (newSongs.length > 0) {
                   // Prioritize favorites in the new batch too
                   const favoriteSongs = songFavoriteStore.getFavoriteSongs();
-                  const likedSongIds = new Set(favoriteSongs.map((song) => song.spotifyId || song.id));
-                  
+                  const likedSongIds = new Set(
+                    favoriteSongs.map((song) => song.spotifyId || song.id),
+                  );
+
                   const likedNewSongs = newSongs.filter((song) => likedSongIds.has(song.id));
                   const nonLikedNewSongs = newSongs.filter((song) => !likedSongIds.has(song.id));
-                  
+
                   // Append new songs (favorites first)
                   const allNewSongs = [...likedNewSongs, ...nonLikedNewSongs];
                   this.songs = this.deduplicateSongs([...this.songs, ...allNewSongs]);
-                  
+
                   console.log(`✅ Progressive loading complete: ${this.songs.length} total songs`);
                 }
-                
+
                 // Set pagination state
                 this.currentPage = 1;
                 this.hasMoreSongs = remainingResponse.length === 48;
