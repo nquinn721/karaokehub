@@ -20,6 +20,7 @@ import { ProductionUploadModule } from './production-upload/production-upload.mo
 import { ShowModule } from './show/show.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { UploadModule } from './upload/upload.module';
+import { UserFeatureOverrideModule } from './user-feature-override/user-feature-override.module';
 import { UserModule } from './user/user.module';
 import { VendorModule } from './vendor/vendor.module';
 import { WebSocketModule } from './websocket/websocket.module';
@@ -59,6 +60,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     ConfigApiModule,
     WebSocketModule,
     UserModule,
+    UserFeatureOverrideModule,
     VendorModule,
     DJModule,
     ShowModule,

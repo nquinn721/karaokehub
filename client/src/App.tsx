@@ -1,15 +1,19 @@
 import { HeaderComponent } from '@components/HeaderComponent';
 import { Box, CssBaseline } from '@mui/material';
-import { authStore } from '@stores/index';
+import { authStore, showStore } from '@stores/index';
 import { ThemeProvider } from '@theme/ThemeProvider';
 import { observer } from 'mobx-react-lite';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
 import FeedbackButton from './components/FeedbackButton';
 import FloatingVolumeControl from './components/FloatingVolumeControl';
 import FooterComponent from './components/FooterComponent';
 import GlobalNotifications from './components/GlobalNotifications';
 import PostLoginModal from './components/PostLoginModalNew';
+import StageNameRequiredModal from './components/StageNameRequiredModal';
+import VenueDetectionModal from './components/VenueDetectionModal';
+import useVenueDetection from './hooks/useVenueDetection';
+import { VenueProximity } from './services/GeolocationService';
 
 // Pages
 import AdminDashboardPageTabbed from './pages/AdminDashboardPageTabbed';
@@ -42,6 +46,72 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 const AppContent: React.FC = observer(() => {
   const location = useLocation();
   const isShowsPage = location.pathname === '/shows';
+
+  // Venue detection state
+  const [detectedVenue, setDetectedVenue] = useState<VenueProximity | null>(null);
+  const [venueModalOpen, setVenueModalOpen] = useState(false);
+  const [dismissedVenues, setDismissedVenues] = useState<Set<string>>(new Set());
+
+  // Initialize venue detection
+  const { nearbyVenues, permissionStatus, requestPermission } = useVenueDetection({
+    shows: showStore.filteredShows,
+    enableAutoDetection: true,
+    trackingInterval: 30000, // 30 seconds
+  });
+
+  // Handle venue detection
+  useEffect(() => {
+    if (nearbyVenues.length > 0) {
+      // Find the closest venue that hasn't been dismissed
+      const closestVenue = nearbyVenues.find(
+        (venue) => !dismissedVenues.has(venue.show.id) && venue.isAtVenue,
+      );
+
+      if (closestVenue && !detectedVenue) {
+        setDetectedVenue(closestVenue);
+        setVenueModalOpen(true);
+        console.log('Detected user at venue:', closestVenue);
+      }
+    }
+  }, [nearbyVenues, dismissedVenues, detectedVenue]);
+
+  // Handle venue confirmation
+  const handleVenueConfirm = (showId: string) => {
+    console.log('User confirmed they are at show:', showId);
+    // TODO: You can add logic here to mark user as attending the show
+    setVenueModalOpen(false);
+    setDetectedVenue(null);
+  };
+
+  // Handle venue dismissal
+  const handleVenueDismiss = () => {
+    if (detectedVenue) {
+      setDismissedVenues((prev) => new Set(prev).add(detectedVenue.show.id));
+    }
+    setVenueModalOpen(false);
+    setDetectedVenue(null);
+  };
+
+  // Request permission on first visit
+  useEffect(() => {
+    if (permissionStatus === 'prompt') {
+      // Automatically request permission when user first visits
+      requestPermission().then((granted) => {
+        if (granted) {
+          console.log('Geolocation permission granted, starting venue detection');
+        } else {
+          console.log('Geolocation permission denied');
+        }
+      });
+    }
+  }, [permissionStatus, requestPermission]);
+
+  // Load shows for venue detection
+  useEffect(() => {
+    if (showStore.filteredShows.length === 0) {
+      showStore.fetchShows();
+    }
+  }, []);
 
   return (
     <Box
@@ -170,6 +240,17 @@ const AppContent: React.FC = observer(() => {
 
       {/* Footer - hidden on shows page */}
       {!isShowsPage && <FooterComponent />}
+
+      {/* Venue Detection Modal */}
+      {detectedVenue && (
+        <VenueDetectionModal
+          open={venueModalOpen}
+          onClose={() => setVenueModalOpen(false)}
+          venueProximity={detectedVenue}
+          onConfirm={handleVenueConfirm}
+          onDismiss={handleVenueDismiss}
+        />
+      )}
     </Box>
   );
 });
@@ -192,6 +273,9 @@ const App: React.FC = observer(() => {
 
         {/* Post Login Modal */}
         <PostLoginModal />
+
+        {/* Stage Name Required Modal */}
+        <StageNameRequiredModal open={authStore.showStageNameModal} />
       </Router>
     </ThemeProvider>
   );

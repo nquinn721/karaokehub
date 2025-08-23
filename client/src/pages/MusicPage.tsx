@@ -297,16 +297,19 @@ export const MusicPage: React.FC = observer(() => {
   };
 
   const handleFavorite = async (song: any) => {
-    // Check if user has premium access
-    if (subscriptionStore.shouldShowPaywall('favorites')) {
-      setPaywallFeature('favorites');
-      setPaywallOpen(true);
-      return;
+    const isFavorited = isSongFavorited(song.id);
+
+    // If trying to add a favorite, check paywall limits
+    if (!isFavorited) {
+      const currentFavoriteCount = songFavoriteStore.getSongFavoriteCount();
+      if (!subscriptionStore.canFavoriteSongs(currentFavoriteCount)) {
+        setPaywallFeature('favorites');
+        setPaywallOpen(true);
+        return;
+      }
     }
 
     try {
-      const isFavorited = isSongFavorited(song.id);
-
       if (isFavorited) {
         await songFavoriteStore.removeSongFavorite(song.id);
       } else {
@@ -352,6 +355,16 @@ export const MusicPage: React.FC = observer(() => {
 
   const handlePreviewPlay = async (song: any) => {
     if (!song.previewUrl) return;
+
+    // Check if user can use song previews
+    if (!subscriptionStore.canUseSongPreview()) {
+      setPaywallFeature('music_preview');
+      setPaywallOpen(true);
+      return;
+    }
+
+    // Use the song preview (this will increment the counter)
+    subscriptionStore.useSongPreview();
 
     // Use the global audio store
     await audioStore.playPreview(song);
@@ -641,8 +654,40 @@ export const MusicPage: React.FC = observer(() => {
                   sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
                 >
                   <FontAwesomeIcon icon={faPlay} style={{ fontSize: '14px' }} />
-                  Click the play button to listen to a 30-second preview of any song. Premium
-                  subscription required for music previews.
+                  Click the play button to listen to a 30-second preview of any song. Free users get
+                  10 previews, then premium subscription required for unlimited music previews.
+                  {authStore.isAuthenticated && !subscriptionStore.isSubscribed && (
+                    <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>
+                      ({subscriptionStore.getRemainingPreviews()} remaining)
+                    </span>
+                  )}
+                </Typography>
+              </Box>
+
+              {/* Information about favorites */}
+              <Box
+                sx={{
+                  mb: 3,
+                  p: 2.5,
+                  bgcolor: 'background.paper',
+                  borderRadius: 2,
+                  border: `1px solid ${theme.palette.divider}`,
+                  boxShadow: theme.shadows[1],
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                >
+                  <FontAwesomeIcon icon={faHeartSolid} style={{ fontSize: '14px' }} />
+                  Save songs to your favorites for quick access. Free users can save up to 5 songs,
+                  premium subscribers get unlimited favorites.
+                  {authStore.isAuthenticated && !subscriptionStore.isSubscribed && (
+                    <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>
+                      ({songFavoriteStore.getSongFavoriteCount()}/5 saved)
+                    </span>
+                  )}
                 </Typography>
               </Box>
 
@@ -760,6 +805,21 @@ export const MusicPage: React.FC = observer(() => {
                             >
                               {song.title}
                             </Typography>
+                            {isSongFavorited(song.id) && (
+                              <Chip
+                                label="♥ Favorite"
+                                size="small"
+                                color="error"
+                                sx={{
+                                  fontSize: '0.70rem',
+                                  height: '20px',
+                                  fontWeight: 600,
+                                  '& .MuiChip-label': {
+                                    px: 1,
+                                  },
+                                }}
+                              />
+                            )}
                             {song.year && (
                               <Chip
                                 label={song.year}
@@ -833,9 +893,9 @@ export const MusicPage: React.FC = observer(() => {
                             pr: 1,
                           }}
                         >
-                          {/* Play button - gated for premium subscribers with account */}
+                          {/* Play button - gated for preview limits */}
                           {authStore.isAuthenticated ? (
-                            subscriptionStore.shouldShowPaywall('music_preview') ? (
+                            !subscriptionStore.canUseSongPreview() ? (
                               <IconButton
                                 size="small"
                                 onClick={(e) => {
@@ -850,7 +910,11 @@ export const MusicPage: React.FC = observer(() => {
                                     bgcolor: theme.palette.warning.dark,
                                   },
                                 }}
-                                title="Upgrade to Premium to play previews"
+                                title={
+                                  subscriptionStore.isSubscribed
+                                    ? 'Play 30-second preview'
+                                    : `${subscriptionStore.getRemainingPreviews()} preview${subscriptionStore.getRemainingPreviews() === 1 ? '' : 's'} remaining - Upgrade for unlimited`
+                                }
                               >
                                 <FontAwesomeIcon icon={faPlay} size="sm" />
                               </IconButton>

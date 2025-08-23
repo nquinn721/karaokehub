@@ -65,7 +65,7 @@ const PostLoginModal: React.FC = observer(() => {
     }
   };
 
-  if (!authStore.showPostLoginModal) return null;
+  if (!authStore.showPostLoginModal || authStore.showStageNameModal) return null;
 
   return (
     <Dialog

@@ -46,6 +46,7 @@ import type { AdminDJ, AdminFeedback, AdminShow, AdminUser, AdminVenue } from '@
 import { adminStore, uiStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
+import { UserFeatureOverrideModal } from './UserFeatureOverrideModal';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -100,6 +101,10 @@ const AdminDataTables: React.FC = observer(() => {
     src: string;
     userName: string;
   } | null>(null);
+
+  // User feature override modal state
+  const [userOverrideModalOpen, setUserOverrideModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -223,6 +228,16 @@ const AdminDataTables: React.FC = observer(() => {
 
   const handleDeleteFeedback = async (feedback: AdminFeedback) => {
     await handleDelete(feedback, 'feedback');
+  };
+
+  const handleOpenUserOverrideModal = (user: AdminUser) => {
+    setSelectedUser(user);
+    setUserOverrideModalOpen(true);
+  };
+
+  const handleCloseUserOverrideModal = () => {
+    setUserOverrideModalOpen(false);
+    setSelectedUser(null);
   };
 
   useEffect(() => {
@@ -395,12 +410,13 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>Admin</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Created</TableCell>
+                <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {adminStore.isLoadingTable ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={8} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
@@ -466,6 +482,16 @@ const AdminDataTables: React.FC = observer(() => {
                       />
                     </TableCell>
                     <TableCell>{formatDate(user.createdAt)}</TableCell>
+                    <TableCell>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenUserOverrideModal(user)}
+                        color="primary"
+                        title="Manage Feature Overrides"
+                      >
+                        <FontAwesomeIcon icon={faEdit} style={{ fontSize: '14px' }} />
+                      </IconButton>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -1315,6 +1341,13 @@ const AdminDataTables: React.FC = observer(() => {
           />
         )}
       </Dialog>
+
+      {/* User Feature Override Modal */}
+      <UserFeatureOverrideModal
+        open={userOverrideModalOpen}
+        onClose={handleCloseUserOverrideModal}
+        user={selectedUser}
+      />
     </Box>
   );
 });

@@ -125,6 +125,39 @@ export class SongFavoriteStore {
     return this.songFavorites.map((fav) => fav.song).filter((song) => song !== undefined) as Song[];
   }
 
+  getFavoriteSongsForCategory(categoryId: string): Song[] {
+    const allFavorites = this.getFavoriteSongs();
+
+    // If it's a general category, return all favorites
+    if (categoryId === 'all' || categoryId === 'karaoke-classics') {
+      return allFavorites;
+    }
+
+    // Filter by genre/category
+    return allFavorites.filter((song) => {
+      if (!song.genre) return false;
+
+      const genre = song.genre.toLowerCase();
+      const category = categoryId.toLowerCase();
+
+      // Map category IDs to genre keywords
+      if (category.includes('80s') && song.youtubeId?.includes('80s')) return true;
+      if (category.includes('90s') && song.youtubeId?.includes('90s')) return true;
+      if (category.includes('rock') && (genre.includes('rock') || genre.includes('metal')))
+        return true;
+      if (category.includes('pop') && genre.includes('pop')) return true;
+      if (category.includes('country') && genre.includes('country')) return true;
+      if (category.includes('r&b') && (genre.includes('r&b') || genre.includes('soul')))
+        return true;
+      if (category.includes('hip-hop') && (genre.includes('hip') || genre.includes('rap')))
+        return true;
+      if (category.includes('dance') && (genre.includes('dance') || genre.includes('electronic')))
+        return true;
+
+      return false;
+    });
+  }
+
   async toggleSongFavorite(songId: string): Promise<boolean> {
     const isFavorited = this.isSongFavorited(songId);
 

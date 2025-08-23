@@ -16,6 +16,7 @@ const RegisterPage: React.FC = observer(() => {
     email: '',
     password: '',
     confirmPassword: '',
+    stageName: '',
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -40,6 +41,10 @@ const RegisterPage: React.FC = observer(() => {
 
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
+    }
+
+    if (!formData.stageName.trim()) {
+      newErrors.stageName = 'Stage name is required';
     }
 
     if (!formData.email.trim()) {
@@ -73,6 +78,7 @@ const RegisterPage: React.FC = observer(() => {
       name: formData.name,
       email: formData.email,
       password: formData.password,
+      stageName: formData.stageName,
     });
 
     if (result.success) {
@@ -116,6 +122,20 @@ const RegisterPage: React.FC = observer(() => {
               onChange={handleChange}
               error={!!errors.name}
               helperText={errors.name}
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="stageName"
+              label="Stage Name"
+              name="stageName"
+              autoComplete="off"
+              value={formData.stageName}
+              onChange={handleChange}
+              error={!!errors.stageName}
+              helperText={errors.stageName || 'Your unique karaoke identity'}
+              placeholder="e.g., SingStar, KaraokeKing, MelodyMaker"
             />
             <TextField
               margin="normal"

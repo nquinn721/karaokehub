@@ -63,10 +63,7 @@ export class FriendsService {
       .createQueryBuilder('user')
       .where('user.id NOT IN (:...excludeIds)', { excludeIds })
       .andWhere('user.isActive = :isActive', { isActive: true })
-      .andWhere(
-        '(LOWER(user.email) LIKE :query OR LOWER(user.name) LIKE :query OR LOWER(user.stageName) LIKE :query)',
-        { query: `%${query.toLowerCase()}%` },
-      )
+      .andWhere('LOWER(user.stageName) LIKE :query', { query: `%${query.toLowerCase()}%` })
       .select(['user.id', 'user.email', 'user.name', 'user.stageName', 'user.avatar'])
       .limit(limit)
       .getMany();

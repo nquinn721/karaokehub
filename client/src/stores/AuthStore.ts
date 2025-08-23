@@ -20,6 +20,7 @@ export interface RegisterCredentials {
   email: string;
   password: string;
   name: string;
+  stageName?: string;
 }
 
 export class AuthStore {
@@ -28,6 +29,7 @@ export class AuthStore {
   isLoading = false;
   isAuthenticated = false;
   showPostLoginModal = false;
+  showStageNameModal = false;
   isNewUser = false;
 
   constructor() {
@@ -48,6 +50,9 @@ export class AuthStore {
         this.getProfile().catch((error) => {
           console.warn('Failed to fetch profile on startup:', error);
         });
+      } else {
+        // Check if stage name modal should be shown
+        this.checkStageNameRequired();
       }
 
       // Fetch subscription status for authenticated users
@@ -97,7 +102,10 @@ export class AuthStore {
         this.isLoading = false;
         this.isNewUser = false;
 
-        // Show modal if user doesn't have a stage name
+        // Check if stage name modal should be shown
+        this.checkStageNameRequired();
+
+        // Show modal if user doesn't have a stage name (legacy support)
         this.showPostLoginModal = !response.user?.stageName;
       });
 
@@ -136,8 +144,11 @@ export class AuthStore {
         this.isLoading = false;
         this.isNewUser = true;
 
-        // Always show modal for new users
-        this.showPostLoginModal = true;
+        // For new users without stage name from registration, show stage name modal
+        this.checkStageNameRequired();
+
+        // Show modal for new users only if they don't have a stage name (legacy support)
+        this.showPostLoginModal = !response.user?.stageName;
       });
 
       // Set token in API store
@@ -169,6 +180,9 @@ export class AuthStore {
       this.token = null;
       this.isAuthenticated = false;
       this.isLoading = false;
+      this.showPostLoginModal = false;
+      this.showStageNameModal = false;
+      this.isNewUser = false;
     });
 
     // Clear token from API store
@@ -190,6 +204,9 @@ export class AuthStore {
         // Fix: Extract the user from the response since backend returns {success: true, user: {...}}
         this.user = response.user || response;
         this.isLoading = false;
+
+        // Check if stage name modal should be shown after profile fetch
+        this.checkStageNameRequired();
       });
 
       return { success: true };
@@ -246,6 +263,11 @@ export class AuthStore {
       runInAction(() => {
         this.user = { ...this.user!, ...response.data };
         this.isLoading = false;
+
+        // Close stage name modal if stage name was set
+        if (updateData.stageName) {
+          this.closeStageNameModal();
+        }
       });
 
       return { success: true, data: response.data };
@@ -267,6 +289,23 @@ export class AuthStore {
   closePostLoginModal() {
     this.showPostLoginModal = false;
     this.isNewUser = false;
+  }
+
+  // Check if stage name is required and show modal
+  checkStageNameRequired() {
+    if (this.user && !this.user.stageName) {
+      this.showStageNameModal = true;
+    } else {
+      this.showStageNameModal = false;
+    }
+  }
+
+  setShowStageNameModal(show: boolean) {
+    this.showStageNameModal = show;
+  }
+
+  closeStageNameModal() {
+    this.showStageNameModal = false;
   }
 
   // Getter to check if current user is admin
@@ -307,7 +346,10 @@ export class AuthStore {
         this.isLoading = false;
         this.isNewUser = authData.isNewUser || false;
 
-        // Show modal if user doesn't have a stage name
+        // Check if stage name modal should be shown
+        this.checkStageNameRequired();
+
+        // Show modal if user doesn't have a stage name (legacy support)
         this.showPostLoginModal = !authData.user?.stageName;
       });
 

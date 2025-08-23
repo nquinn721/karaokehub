@@ -48,6 +48,7 @@ export class MusicStore {
   currentPage = 0;
   hasMoreSongs = true;
   itemsPerPage = 20;
+  maxSongs = 200; // Maximum number of songs to load
 
   // Autocomplete functionality
   suggestions: string[] = [];
@@ -436,18 +437,25 @@ export class MusicStore {
         let newSongs = response || [];
 
         if (loadMore) {
-          // For load more, we need to deduplicate the combined results
+          // For load more, we need to deduplicate the combined results but respect max limit
           const allSongs = [...this.songs, ...newSongs];
           this.songs = this.deduplicateSongs(allSongs);
           this.isLoadingMore = false;
+
+          // Check if we've reached the maximum song limit
+          if (this.songs.length >= this.maxSongs) {
+            this.hasMoreSongs = false;
+            console.log(`🎵 Reached maximum song limit of ${this.maxSongs} songs in search`);
+          }
         } else {
           // For new search, deduplicate the results
           this.songs = this.deduplicateSongs(newSongs);
           this.isLoading = false;
         }
 
-        // Update pagination state
-        this.hasMoreSongs = response && response.length === this.itemsPerPage;
+        // Update pagination state - check both API response and song count limit
+        this.hasMoreSongs =
+          response && response.length === this.itemsPerPage && this.songs.length < this.maxSongs;
         if (loadMore) {
           this.currentPage++;
         } else {
@@ -517,30 +525,87 @@ export class MusicStore {
           let newSongs = response;
 
           if (loadMore) {
-            // For pagination, append new songs
-            const combinedSongs = [...this.songs, ...newSongs];
+            // For pagination, append new songs but respect max limit
+            const favoriteSongs = songFavoriteStore.getFavoriteSongsForCategory(categoryId);
+
+            // Create a more comprehensive matching system
+            const isMatchingFavorite = (song: any, favSong: any) => {
+              // Direct ID match
+              if (song.id === favSong.id || song.id === favSong.spotifyId) return true;
+
+              // Title and artist match (fuzzy matching)
+              const songTitle = song.title?.toLowerCase().trim();
+              const songArtist = song.artist?.toLowerCase().trim();
+              const favTitle = favSong.title?.toLowerCase().trim();
+              const favArtist = favSong.artist?.toLowerCase().trim();
+
+              return songTitle === favTitle && songArtist === favArtist;
+            };
+
+            // Separate new songs into favorites and non-favorites
+            const likedNewSongs = newSongs.filter((song) =>
+              favoriteSongs.some((favSong) => isMatchingFavorite(song, favSong)),
+            );
+            const nonLikedNewSongs = newSongs.filter(
+              (song) => !favoriteSongs.some((favSong) => isMatchingFavorite(song, favSong)),
+            );
+
+            // Append favorites first, then non-favorites
+            const orderedNewSongs = [...likedNewSongs, ...nonLikedNewSongs];
+            const combinedSongs = [...this.songs, ...orderedNewSongs];
             this.songs = this.deduplicateSongs(combinedSongs);
             this.currentPage += 1;
+
+            // Check if we've reached the maximum song limit
+            if (this.songs.length >= this.maxSongs) {
+              this.hasMoreSongs = false;
+              console.log(`🎵 Reached maximum song limit of ${this.maxSongs} songs`);
+            }
+
+            console.log(
+              `✅ Loaded more: ${orderedNewSongs.length} new songs, ${likedNewSongs.length} favorites found`,
+            );
           } else {
             // Initial load - prioritize liked songs at the top
-            const favoriteSongs = songFavoriteStore.getFavoriteSongs();
-            const likedSongIds = new Set(favoriteSongs.map((song) => song.spotifyId || song.id));
+            const favoriteSongs = songFavoriteStore.getFavoriteSongsForCategory(categoryId);
+
+            // Create a more comprehensive matching system
+            const isMatchingFavorite = (song: any, favSong: any) => {
+              // Direct ID match
+              if (song.id === favSong.id || song.id === favSong.spotifyId) return true;
+
+              // Title and artist match (fuzzy matching)
+              const songTitle = song.title?.toLowerCase().trim();
+              const songArtist = song.artist?.toLowerCase().trim();
+              const favTitle = favSong.title?.toLowerCase().trim();
+              const favArtist = favSong.artist?.toLowerCase().trim();
+
+              return songTitle === favTitle && songArtist === favArtist;
+            };
 
             // Separate liked and non-liked songs
-            const likedSongs = newSongs.filter((song) => likedSongIds.has(song.id));
-            const nonLikedSongs = newSongs.filter((song) => !likedSongIds.has(song.id));
+            const likedSongs = newSongs.filter((song) =>
+              favoriteSongs.some((favSong) => isMatchingFavorite(song, favSong)),
+            );
+            const nonLikedSongs = newSongs.filter(
+              (song) => !favoriteSongs.some((favSong) => isMatchingFavorite(song, favSong)),
+            );
 
             // Combine with liked songs first, then deduplicate
             this.songs = this.deduplicateSongs([...likedSongs, ...nonLikedSongs]);
             this.currentPage = 1;
 
             console.log(
+              `✅ Category loaded: ${this.songs.length} total songs, ${likedSongs.length} favorites prioritized`,
+            );
+
+            console.log(
               `🎵 Loaded ${response.length} songs for "${categoryId}", ${likedSongs.length} are favorited and shown first`,
             );
           }
 
-          // Check if we have more songs to load
-          this.hasMoreSongs = response.length === limit;
+          // Check if we have more songs to load (API has more AND we haven't hit max limit)
+          this.hasMoreSongs = response.length === limit && this.songs.length < this.maxSongs;
         } else {
           console.log('❌ Empty or invalid response, clearing songs list');
           if (!loadMore) {
@@ -597,16 +662,38 @@ export class MusicStore {
       if (initialResponse && Array.isArray(initialResponse) && initialResponse.length > 0) {
         runInAction(() => {
           // Show first 2 songs immediately
-          const favoriteSongs = songFavoriteStore.getFavoriteSongs();
-          const likedSongIds = new Set(favoriteSongs.map((song) => song.spotifyId || song.id));
+          const favoriteSongs = songFavoriteStore.getFavoriteSongsForCategory(categoryId);
+
+          // Create a more comprehensive matching system
+          const isMatchingFavorite = (song: any, favSong: any) => {
+            // Direct ID match
+            if (song.id === favSong.id || song.id === favSong.spotifyId) return true;
+
+            // Title and artist match (fuzzy matching)
+            const songTitle = song.title?.toLowerCase().trim();
+            const songArtist = song.artist?.toLowerCase().trim();
+            const favTitle = favSong.title?.toLowerCase().trim();
+            const favArtist = favSong.artist?.toLowerCase().trim();
+
+            return songTitle === favTitle && songArtist === favArtist;
+          };
 
           // Separate liked and non-liked songs from initial batch
-          const likedSongs = initialResponse.filter((song) => likedSongIds.has(song.id));
-          const nonLikedSongs = initialResponse.filter((song) => !likedSongIds.has(song.id));
+          const likedSongs = initialResponse.filter((song) =>
+            favoriteSongs.some((favSong) => isMatchingFavorite(song, favSong)),
+          );
+          const nonLikedSongs = initialResponse.filter(
+            (song) => !favoriteSongs.some((favSong) => isMatchingFavorite(song, favSong)),
+          );
 
           this.songs = this.deduplicateSongs([...likedSongs, ...nonLikedSongs]);
           this.isLoading = false; // Stop loading spinner for initial songs
-          console.log('✅ Initial 2 songs loaded:', this.songs.length);
+          console.log(
+            '✅ Initial 2 songs loaded:',
+            this.songs.length,
+            'favorites found:',
+            likedSongs.length,
+          );
         });
 
         // Step 2: Wait 500ms then load the rest
@@ -628,19 +715,36 @@ export class MusicStore {
 
                 if (newSongs.length > 0) {
                   // Prioritize favorites in the new batch too
-                  const favoriteSongs = songFavoriteStore.getFavoriteSongs();
-                  const likedSongIds = new Set(
-                    favoriteSongs.map((song) => song.spotifyId || song.id),
-                  );
+                  const favoriteSongs = songFavoriteStore.getFavoriteSongsForCategory(categoryId);
 
-                  const likedNewSongs = newSongs.filter((song) => likedSongIds.has(song.id));
-                  const nonLikedNewSongs = newSongs.filter((song) => !likedSongIds.has(song.id));
+                  // Create a more comprehensive matching system
+                  const isMatchingFavorite = (song: any, favSong: any) => {
+                    // Direct ID match
+                    if (song.id === favSong.id || song.id === favSong.spotifyId) return true;
+
+                    // Title and artist match (fuzzy matching)
+                    const songTitle = song.title?.toLowerCase().trim();
+                    const songArtist = song.artist?.toLowerCase().trim();
+                    const favTitle = favSong.title?.toLowerCase().trim();
+                    const favArtist = favSong.artist?.toLowerCase().trim();
+
+                    return songTitle === favTitle && songArtist === favArtist;
+                  };
+
+                  const likedNewSongs = newSongs.filter((song) =>
+                    favoriteSongs.some((favSong) => isMatchingFavorite(song, favSong)),
+                  );
+                  const nonLikedNewSongs = newSongs.filter(
+                    (song) => !favoriteSongs.some((favSong) => isMatchingFavorite(song, favSong)),
+                  );
 
                   // Append new songs (favorites first)
                   const allNewSongs = [...likedNewSongs, ...nonLikedNewSongs];
                   this.songs = this.deduplicateSongs([...this.songs, ...allNewSongs]);
 
-                  console.log(`✅ Progressive loading complete: ${this.songs.length} total songs`);
+                  console.log(
+                    `✅ Progressive loading complete: ${this.songs.length} total songs, ${likedNewSongs.length} additional favorites found`,
+                  );
                 }
 
                 // Set pagination state
@@ -684,7 +788,12 @@ export class MusicStore {
 
   // Load more songs for current search/category with debouncing
   async loadMore() {
-    if (!this.hasMoreSongs || this.isLoadingMore) return;
+    if (!this.hasMoreSongs || this.isLoadingMore || this.songs.length >= this.maxSongs) {
+      if (this.songs.length >= this.maxSongs) {
+        console.log(`🎵 Cannot load more - reached maximum of ${this.maxSongs} songs`);
+      }
+      return;
+    }
 
     // Debounce rapid loadMore calls
     const now = Date.now();

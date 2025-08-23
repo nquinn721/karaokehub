@@ -71,6 +71,19 @@ export interface AdminUser {
   stripeCustomerId?: string;
   createdAt: Date;
   updatedAt: Date;
+  featureOverrides?: AdminUserFeatureOverride[];
+}
+
+export interface AdminUserFeatureOverride {
+  id: string;
+  userId: string;
+  featureType: 'song_previews' | 'song_favorites' | 'show_favorites' | 'ad_free' | 'premium_access';
+  isEnabled: boolean;
+  customLimit: number | null;
+  notes: string | null;
+  expiresAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AdminVenue {
@@ -699,6 +712,80 @@ export class AdminStore {
       return await apiStore.get(`/admin/djs/${id}/relationships`);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch DJ relationships');
+    }
+  }
+
+  // User Feature Override methods
+  async getUserFeatureOverrides(userId: string): Promise<AdminUserFeatureOverride[]> {
+    try {
+      return await apiStore.get(`/admin/user-feature-overrides/user/${userId}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch user feature overrides');
+    }
+  }
+
+  async getAllFeatureOverrides(
+    page: number = 1,
+    limit: number = 20,
+    search?: string,
+  ): Promise<PaginatedResponse<AdminUserFeatureOverride>> {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        ...(search && { search }),
+      });
+
+      return await apiStore.get(`/admin/user-feature-overrides?${params}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch feature overrides');
+    }
+  }
+
+  async createFeatureOverride(data: {
+    userId: string;
+    featureType: AdminUserFeatureOverride['featureType'];
+    isEnabled: boolean;
+    customLimit?: number | null;
+    notes?: string;
+    expiresAt?: Date | null;
+  }): Promise<AdminUserFeatureOverride> {
+    try {
+      return await apiStore.post('/admin/user-feature-overrides', data);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to create feature override');
+    }
+  }
+
+  async updateFeatureOverride(
+    id: string,
+    data: {
+      isEnabled?: boolean;
+      customLimit?: number | null;
+      notes?: string;
+      expiresAt?: Date | null;
+    },
+  ): Promise<AdminUserFeatureOverride> {
+    try {
+      return await apiStore.put(`/admin/user-feature-overrides/${id}`, data);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to update feature override');
+    }
+  }
+
+  async deleteFeatureOverride(id: string): Promise<void> {
+    try {
+      await apiStore.delete(`/admin/user-feature-overrides/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to delete feature override');
+    }
+  }
+
+  async cleanupExpiredOverrides(): Promise<void> {
+    try {
+      await apiStore.post('/admin/user-feature-overrides/cleanup-expired');
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to cleanup expired overrides');
     }
   }
 }

@@ -212,44 +212,75 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
             >
               {/* Home */}
               <Button
-                variant={isActivePath('/') ? 'contained' : 'text'}
+                variant="text"
                 size="medium"
                 onClick={() => navigate('/')}
-                startIcon={<FontAwesomeIcon icon={faHome} />}
+                startIcon={<FontAwesomeIcon icon={faHome} size="sm" />}
                 sx={{
-                  color: isActivePath('/')
-                    ? theme.palette.primary.contrastText
-                    : theme.palette.mode === 'light'
-                      ? 'white'
-                      : 'inherit',
-                  backgroundColor: isActivePath('/')
-                    ? theme.palette.mode === 'light'
-                      ? 'rgba(255, 255, 255, 0.2)'
-                      : theme.palette.primary.main
-                    : 'transparent',
-                  fontWeight: isActivePath('/') ? 600 : 500,
+                  color: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                  fontWeight: isActivePath('/') ? 600 : 400,
                   textTransform: 'none',
-                  fontSize: '1rem',
-                  px: 2,
-                  py: 1,
-                  borderRadius: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.2s ease-in-out',
-                  border:
-                    isActivePath('/') && theme.palette.mode === 'light'
-                      ? '1px solid rgba(255, 255, 255, 0.3)'
-                      : 'none',
+                  fontSize: '0.95rem',
+                  letterSpacing: '0.02em',
+                  px: 2.5,
+                  py: 1.25,
+                  borderRadius: '12px',
+                  minHeight: '42px',
+                  position: 'relative',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  background: isActivePath('/')
+                    ? `linear-gradient(135deg, 
+                        ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(64, 224, 208, 0.15)'
+                            : 'rgba(100, 181, 246, 0.15)'
+                        } 0%, 
+                        ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(147, 51, 234, 0.1)'
+                            : 'rgba(156, 39, 176, 0.1)'
+                        } 100%)`
+                    : 'transparent',
+                  backdropFilter: isActivePath('/') ? 'blur(10px)' : 'none',
+                  border: isActivePath('/')
+                    ? `1px solid ${
+                        theme.palette.mode === 'light'
+                          ? 'rgba(64, 224, 208, 0.2)'
+                          : 'rgba(100, 181, 246, 0.2)'
+                      }`
+                    : '1px solid transparent',
+                  boxShadow: isActivePath('/')
+                    ? `0 4px 20px ${
+                        theme.palette.mode === 'light'
+                          ? 'rgba(64, 224, 208, 0.1)'
+                          : 'rgba(100, 181, 246, 0.1)'
+                      }`
+                    : 'none',
                   '&:hover': {
-                    backgroundColor: isActivePath('/')
-                      ? theme.palette.mode === 'light'
-                        ? 'rgba(255, 255, 255, 0.25)'
-                        : theme.palette.primary.dark
+                    background: isActivePath('/')
+                      ? `linear-gradient(135deg, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(64, 224, 208, 0.2)'
+                              : 'rgba(100, 181, 246, 0.2)'
+                          } 0%, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(147, 51, 234, 0.15)'
+                              : 'rgba(156, 39, 176, 0.15)'
+                          } 100%)`
                       : theme.palette.mode === 'light'
-                        ? 'rgba(255, 255, 255, 0.1)'
-                        : 'rgba(255, 255, 255, 0.05)',
-                    transform: 'translateY(-1px)',
+                        ? 'rgba(255, 255, 255, 0.15)'
+                        : 'rgba(255, 255, 255, 0.08)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 6px 25px ${
+                      theme.palette.mode === 'light'
+                        ? 'rgba(64, 224, 208, 0.15)'
+                        : 'rgba(100, 181, 246, 0.15)'
+                    }`,
+                  },
+                  '& .MuiButton-startIcon': {
+                    marginRight: '8px',
                   },
                 }}
               >
@@ -258,91 +289,243 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
 
               {/* Shows */}
               <Button
-                variant={isActivePath('/shows') ? 'contained' : 'text'}
+                variant="text"
                 size="medium"
                 onClick={() => navigate('/shows')}
-                startIcon={<FontAwesomeIcon icon={faCalendarDays} />}
+                startIcon={<FontAwesomeIcon icon={faCalendarDays} size="sm" />}
                 sx={{
-                  color: isActivePath('/shows')
-                    ? theme.palette.primary.contrastText
-                    : theme.palette.mode === 'light'
-                      ? 'white'
-                      : 'inherit',
-                  backgroundColor: isActivePath('/shows')
-                    ? theme.palette.mode === 'light'
-                      ? 'rgba(255, 255, 255, 0.2)'
-                      : theme.palette.primary.main
-                    : 'transparent',
-                  fontWeight: isActivePath('/shows') ? 600 : 500,
+                  color: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                  fontWeight: isActivePath('/shows') ? 600 : 400,
                   textTransform: 'none',
-                  fontSize: '1rem',
-                  px: 2,
-                  py: 1,
-                  borderRadius: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.2s ease-in-out',
-                  border:
-                    isActivePath('/shows') && theme.palette.mode === 'light'
-                      ? '1px solid rgba(255, 255, 255, 0.3)'
-                      : 'none',
+                  fontSize: '0.95rem',
+                  letterSpacing: '0.02em',
+                  px: 2.5,
+                  py: 1.25,
+                  borderRadius: '12px',
+                  minHeight: '42px',
+                  position: 'relative',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  background: isActivePath('/shows')
+                    ? `linear-gradient(135deg, 
+                        ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(64, 224, 208, 0.15)'
+                            : 'rgba(100, 181, 246, 0.15)'
+                        } 0%, 
+                        ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(147, 51, 234, 0.1)'
+                            : 'rgba(156, 39, 176, 0.1)'
+                        } 100%)`
+                    : 'transparent',
+                  backdropFilter: isActivePath('/shows') ? 'blur(10px)' : 'none',
+                  border: isActivePath('/shows')
+                    ? `1px solid ${
+                        theme.palette.mode === 'light'
+                          ? 'rgba(64, 224, 208, 0.2)'
+                          : 'rgba(100, 181, 246, 0.2)'
+                      }`
+                    : '1px solid transparent',
+                  boxShadow: isActivePath('/shows')
+                    ? `0 4px 20px ${
+                        theme.palette.mode === 'light'
+                          ? 'rgba(64, 224, 208, 0.1)'
+                          : 'rgba(100, 181, 246, 0.1)'
+                      }`
+                    : 'none',
                   '&:hover': {
-                    backgroundColor: isActivePath('/shows')
-                      ? theme.palette.mode === 'light'
-                        ? 'rgba(255, 255, 255, 0.25)'
-                        : theme.palette.primary.dark
+                    background: isActivePath('/shows')
+                      ? `linear-gradient(135deg, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(64, 224, 208, 0.2)'
+                              : 'rgba(100, 181, 246, 0.2)'
+                          } 0%, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(147, 51, 234, 0.15)'
+                              : 'rgba(156, 39, 176, 0.15)'
+                          } 100%)`
                       : theme.palette.mode === 'light'
-                        ? 'rgba(255, 255, 255, 0.1)'
-                        : 'rgba(255, 255, 255, 0.05)',
-                    transform: 'translateY(-1px)',
+                        ? 'rgba(255, 255, 255, 0.15)'
+                        : 'rgba(255, 255, 255, 0.08)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 6px 25px ${
+                      theme.palette.mode === 'light'
+                        ? 'rgba(64, 224, 208, 0.15)'
+                        : 'rgba(100, 181, 246, 0.15)'
+                    }`,
+                  },
+                  '& .MuiButton-startIcon': {
+                    marginRight: '8px',
                   },
                 }}
               >
                 Shows
               </Button>
 
+              {/* Submit Show - Elegantly prominent in the center */}
+              <Button
+                variant="outlined"
+                size="medium"
+                onClick={() => navigate('/submit')}
+                startIcon={<FontAwesomeIcon icon={faPlus} size="sm" />}
+                sx={{
+                  color: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                  background: isActivePath('/submit')
+                    ? `linear-gradient(135deg, 
+                        ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(64, 224, 208, 0.25)'
+                            : 'rgba(100, 181, 246, 0.25)'
+                        } 0%, 
+                        ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(147, 51, 234, 0.2)'
+                            : 'rgba(156, 39, 176, 0.2)'
+                        } 100%)`
+                    : 'transparent',
+                  borderColor:
+                    theme.palette.mode === 'light'
+                      ? 'rgba(64, 224, 208, 0.3)'
+                      : 'rgba(100, 181, 246, 0.3)',
+                  fontWeight: 600, // Always bold for prominence
+                  textTransform: 'none',
+                  fontSize: '0.95rem',
+                  letterSpacing: '0.03em',
+                  px: 3, // Slightly wider than others
+                  py: 1.25,
+                  borderRadius: '12px',
+                  minHeight: '42px',
+                  position: 'relative',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  backdropFilter: 'blur(12px)',
+                  boxShadow: isActivePath('/submit')
+                    ? `0 6px 30px ${
+                        theme.palette.mode === 'light'
+                          ? 'rgba(64, 224, 208, 0.15)'
+                          : 'rgba(100, 181, 246, 0.15)'
+                      }`
+                    : `0 2px 12px ${
+                        theme.palette.mode === 'light'
+                          ? 'rgba(64, 224, 208, 0.1)'
+                          : 'rgba(100, 181, 246, 0.1)'
+                      }`,
+                  '&:hover': {
+                    background: isActivePath('/submit')
+                      ? `linear-gradient(135deg, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(64, 224, 208, 0.3)'
+                              : 'rgba(100, 181, 246, 0.3)'
+                          } 0%, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(147, 51, 234, 0.25)'
+                              : 'rgba(156, 39, 176, 0.25)'
+                          } 100%)`
+                      : `linear-gradient(135deg, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(64, 224, 208, 0.15)'
+                              : 'rgba(100, 181, 246, 0.15)'
+                          } 0%, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(147, 51, 234, 0.1)'
+                              : 'rgba(156, 39, 176, 0.1)'
+                          } 100%)`,
+                    borderColor:
+                      theme.palette.mode === 'light'
+                        ? 'rgba(64, 224, 208, 0.5)'
+                        : 'rgba(100, 181, 246, 0.5)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: `0 8px 35px ${
+                      theme.palette.mode === 'light'
+                        ? 'rgba(64, 224, 208, 0.2)'
+                        : 'rgba(100, 181, 246, 0.2)'
+                    }`,
+                  },
+                  '& .MuiButton-startIcon': {
+                    marginRight: '8px',
+                  },
+                }}
+              >
+                Submit Show
+              </Button>
+
               {/* Music Search - Only show when authenticated */}
               {authStore.isAuthenticated && (
                 <Button
-                  variant={isActivePath('/music') ? 'contained' : 'text'}
+                  variant="text"
                   size="medium"
                   onClick={() => navigate('/music')}
-                  startIcon={<FontAwesomeIcon icon={faMusic} />}
+                  startIcon={<FontAwesomeIcon icon={faMusic} size="sm" />}
                   sx={{
-                    color: isActivePath('/music')
-                      ? theme.palette.primary.contrastText
-                      : theme.palette.mode === 'light'
-                        ? 'white'
-                        : 'inherit',
-                    backgroundColor: isActivePath('/music')
-                      ? theme.palette.mode === 'light'
-                        ? 'rgba(255, 255, 255, 0.2)'
-                        : theme.palette.primary.main
-                      : 'transparent',
-                    fontWeight: isActivePath('/music') ? 600 : 500,
+                    color: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                    fontWeight: isActivePath('/music') ? 600 : 400,
                     textTransform: 'none',
-                    fontSize: '1rem',
-                    px: 2,
-                    py: 1,
-                    borderRadius: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.2s ease-in-out',
-                    border:
-                      isActivePath('/music') && theme.palette.mode === 'light'
-                        ? '1px solid rgba(255, 255, 255, 0.3)'
-                        : 'none',
+                    fontSize: '0.95rem',
+                    letterSpacing: '0.02em',
+                    px: 2.5,
+                    py: 1.25,
+                    borderRadius: '12px',
+                    minHeight: '42px',
+                    position: 'relative',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    background: isActivePath('/music')
+                      ? `linear-gradient(135deg, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(64, 224, 208, 0.15)'
+                              : 'rgba(100, 181, 246, 0.15)'
+                          } 0%, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(147, 51, 234, 0.1)'
+                              : 'rgba(156, 39, 176, 0.1)'
+                          } 100%)`
+                      : 'transparent',
+                    backdropFilter: isActivePath('/music') ? 'blur(10px)' : 'none',
+                    border: isActivePath('/music')
+                      ? `1px solid ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(64, 224, 208, 0.2)'
+                            : 'rgba(100, 181, 246, 0.2)'
+                        }`
+                      : '1px solid transparent',
+                    boxShadow: isActivePath('/music')
+                      ? `0 4px 20px ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(64, 224, 208, 0.1)'
+                            : 'rgba(100, 181, 246, 0.1)'
+                        }`
+                      : 'none',
                     '&:hover': {
-                      backgroundColor: isActivePath('/music')
-                        ? theme.palette.mode === 'light'
-                          ? 'rgba(255, 255, 255, 0.25)'
-                          : theme.palette.primary.dark
+                      background: isActivePath('/music')
+                        ? `linear-gradient(135deg, 
+                            ${
+                              theme.palette.mode === 'light'
+                                ? 'rgba(64, 224, 208, 0.2)'
+                                : 'rgba(100, 181, 246, 0.2)'
+                            } 0%, 
+                            ${
+                              theme.palette.mode === 'light'
+                                ? 'rgba(147, 51, 234, 0.15)'
+                                : 'rgba(156, 39, 176, 0.15)'
+                            } 100%)`
                         : theme.palette.mode === 'light'
-                          ? 'rgba(255, 255, 255, 0.1)'
-                          : 'rgba(255, 255, 255, 0.05)',
-                      transform: 'translateY(-1px)',
+                          ? 'rgba(255, 255, 255, 0.15)'
+                          : 'rgba(255, 255, 255, 0.08)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 6px 25px ${
+                        theme.palette.mode === 'light'
+                          ? 'rgba(64, 224, 208, 0.15)'
+                          : 'rgba(100, 181, 246, 0.15)'
+                      }`,
+                    },
+                    '& .MuiButton-startIcon': {
+                      marginRight: '8px',
                     },
                   }}
                 >
@@ -350,92 +533,74 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                 </Button>
               )}
 
-              {/* Submit Show */}
-              <Button
-                variant={isActivePath('/submit') ? 'contained' : 'text'}
-                size="medium"
-                onClick={() => navigate('/submit')}
-                startIcon={<FontAwesomeIcon icon={faPlus} />}
-                sx={{
-                  color: isActivePath('/submit')
-                    ? theme.palette.primary.contrastText
-                    : theme.palette.mode === 'light'
-                      ? 'white'
-                      : 'inherit',
-                  backgroundColor: isActivePath('/submit')
-                    ? theme.palette.mode === 'light'
-                      ? 'rgba(255, 255, 255, 0.2)'
-                      : theme.palette.primary.main
-                    : 'transparent',
-                  fontWeight: isActivePath('/submit') ? 600 : 500,
-                  textTransform: 'none',
-                  fontSize: '1rem',
-                  px: 2,
-                  py: 1,
-                  borderRadius: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.2s ease-in-out',
-                  border:
-                    isActivePath('/submit') && theme.palette.mode === 'light'
-                      ? '1px solid rgba(255, 255, 255, 0.3)'
-                      : 'none',
-                  '&:hover': {
-                    backgroundColor: isActivePath('/submit')
-                      ? theme.palette.mode === 'light'
-                        ? 'rgba(255, 255, 255, 0.25)'
-                        : theme.palette.primary.dark
-                      : theme.palette.mode === 'light'
-                        ? 'rgba(255, 255, 255, 0.1)'
-                        : 'rgba(255, 255, 255, 0.05)',
-                    transform: 'translateY(-1px)',
-                  },
-                }}
-              >
-                Submit Show
-              </Button>
-
               {/* Dashboard (if authenticated) */}
               {authStore.isAuthenticated && (
                 <Button
-                  variant={isActivePath('/dashboard') ? 'contained' : 'text'}
+                  variant="text"
                   size="medium"
                   onClick={() => navigate('/dashboard')}
                   sx={{
-                    color: isActivePath('/dashboard')
-                      ? theme.palette.primary.contrastText
-                      : theme.palette.mode === 'light'
-                        ? 'white'
-                        : 'inherit',
-                    backgroundColor: isActivePath('/dashboard')
-                      ? theme.palette.mode === 'light'
-                        ? 'rgba(255, 255, 255, 0.2)'
-                        : theme.palette.primary.main
-                      : 'transparent',
-                    fontWeight: isActivePath('/dashboard') ? 600 : 500,
+                    color: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                    fontWeight: isActivePath('/dashboard') ? 600 : 400,
                     textTransform: 'none',
-                    fontSize: '1rem',
-                    px: 2,
-                    py: 1,
-                    borderRadius: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.2s ease-in-out',
-                    border:
-                      isActivePath('/dashboard') && theme.palette.mode === 'light'
-                        ? '1px solid rgba(255, 255, 255, 0.3)'
-                        : 'none',
+                    fontSize: '0.95rem',
+                    letterSpacing: '0.02em',
+                    px: 2.5,
+                    py: 1.25,
+                    borderRadius: '12px',
+                    minHeight: '42px',
+                    position: 'relative',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    background: isActivePath('/dashboard')
+                      ? `linear-gradient(135deg, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(64, 224, 208, 0.15)'
+                              : 'rgba(100, 181, 246, 0.15)'
+                          } 0%, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(147, 51, 234, 0.1)'
+                              : 'rgba(156, 39, 176, 0.1)'
+                          } 100%)`
+                      : 'transparent',
+                    backdropFilter: isActivePath('/dashboard') ? 'blur(10px)' : 'none',
+                    border: isActivePath('/dashboard')
+                      ? `1px solid ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(64, 224, 208, 0.2)'
+                            : 'rgba(100, 181, 246, 0.2)'
+                        }`
+                      : '1px solid transparent',
+                    boxShadow: isActivePath('/dashboard')
+                      ? `0 4px 20px ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(64, 224, 208, 0.1)'
+                            : 'rgba(100, 181, 246, 0.1)'
+                        }`
+                      : 'none',
                     '&:hover': {
-                      backgroundColor: isActivePath('/dashboard')
-                        ? theme.palette.mode === 'light'
-                          ? 'rgba(255, 255, 255, 0.25)'
-                          : theme.palette.primary.dark
+                      background: isActivePath('/dashboard')
+                        ? `linear-gradient(135deg, 
+                            ${
+                              theme.palette.mode === 'light'
+                                ? 'rgba(64, 224, 208, 0.2)'
+                                : 'rgba(100, 181, 246, 0.2)'
+                            } 0%, 
+                            ${
+                              theme.palette.mode === 'light'
+                                ? 'rgba(147, 51, 234, 0.15)'
+                                : 'rgba(156, 39, 176, 0.15)'
+                            } 100%)`
                         : theme.palette.mode === 'light'
-                          ? 'rgba(255, 255, 255, 0.1)'
-                          : 'rgba(255, 255, 255, 0.05)',
-                      transform: 'translateY(-1px)',
+                          ? 'rgba(255, 255, 255, 0.15)'
+                          : 'rgba(255, 255, 255, 0.08)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 6px 25px ${
+                        theme.palette.mode === 'light'
+                          ? 'rgba(64, 224, 208, 0.15)'
+                          : 'rgba(100, 181, 246, 0.15)'
+                      }`,
                     },
                   }}
                 >
@@ -656,7 +821,14 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
           PaperProps={{
             sx: {
               width: 280,
-              backgroundColor: theme.palette.background.paper,
+              backgroundColor:
+                theme.palette.mode === 'dark' ? theme.palette.background.paper : '#1a1a1a',
+              background:
+                theme.palette.mode === 'dark' ? theme.palette.background.paper : '#1a1a1a',
+              color: theme.palette.mode === 'dark' ? theme.palette.text.primary : '#ffffff',
+              borderRight: `1px solid ${
+                theme.palette.mode === 'dark' ? theme.palette.divider : '#333333'
+              }`,
               zIndex: theme.zIndex.modal - 40, // 1260 - ensures drawer appears above bottom sheet
             },
           }}
@@ -667,13 +839,26 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               alignItems: 'center',
               justifyContent: 'space-between',
               p: 2,
-              borderBottom: `1px solid ${theme.palette.divider}`,
+              borderBottom: `1px solid ${
+                theme.palette.mode === 'dark' ? theme.palette.divider : '#333333'
+              }`,
             }}
           >
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
+                color: theme.palette.mode === 'dark' ? theme.palette.text.primary : '#ffffff',
+              }}
+            >
               Menu
             </Typography>
-            <IconButton onClick={handleMobileMenuClose}>
+            <IconButton
+              onClick={handleMobileMenuClose}
+              sx={{
+                color: theme.palette.mode === 'dark' ? theme.palette.text.secondary : '#ffffff',
+              }}
+            >
               <FontAwesomeIcon icon={faTimes} />
             </IconButton>
           </Box>
@@ -682,23 +867,61 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
             {/* Theme Toggle */}
             <ListItem>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                <Typography variant="body2">Theme</Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: theme.palette.mode === 'dark' ? theme.palette.text.primary : '#ffffff',
+                  }}
+                >
+                  Theme
+                </Typography>
                 <ThemeToggle />
               </Box>
             </ListItem>
 
-            <Divider sx={{ my: 1 }} />
+            <Divider
+              sx={{
+                my: 1,
+                borderColor: theme.palette.mode === 'dark' ? theme.palette.divider : '#333333',
+              }}
+            />
 
             {/* Home */}
             <ListItem disablePadding>
               <ListItemButton
                 onClick={() => handleMobileNavigation('/')}
                 sx={{
-                  backgroundColor: isActivePath('/') ? theme.palette.primary.main : 'transparent',
-                  color: isActivePath('/') ? theme.palette.primary.contrastText : 'inherit',
+                  background: isActivePath('/')
+                    ? `linear-gradient(135deg, 
+                        ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(64, 224, 208, 0.15)'
+                            : 'rgba(100, 181, 246, 0.15)'
+                        } 0%, 
+                        ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(147, 51, 234, 0.1)'
+                            : 'rgba(156, 39, 176, 0.1)'
+                        } 100%)`
+                    : 'transparent',
+                  color: isActivePath('/')
+                    ? theme.palette.mode === 'light'
+                      ? 'white'
+                      : 'inherit'
+                    : 'inherit',
                   '&:hover': {
-                    backgroundColor: isActivePath('/')
-                      ? theme.palette.primary.dark
+                    background: isActivePath('/')
+                      ? `linear-gradient(135deg, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(64, 224, 208, 0.2)'
+                              : 'rgba(100, 181, 246, 0.2)'
+                          } 0%, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(147, 51, 234, 0.15)'
+                              : 'rgba(156, 39, 176, 0.15)'
+                          } 100%)`
                       : theme.palette.action.hover,
                   },
                 }}
@@ -720,13 +943,37 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               <ListItemButton
                 onClick={() => handleMobileNavigation('/shows')}
                 sx={{
-                  backgroundColor: isActivePath('/shows')
-                    ? theme.palette.primary.main
+                  background: isActivePath('/shows')
+                    ? `linear-gradient(135deg, 
+                        ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(64, 224, 208, 0.15)'
+                            : 'rgba(100, 181, 246, 0.15)'
+                        } 0%, 
+                        ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(147, 51, 234, 0.1)'
+                            : 'rgba(156, 39, 176, 0.1)'
+                        } 100%)`
                     : 'transparent',
-                  color: isActivePath('/shows') ? theme.palette.primary.contrastText : 'inherit',
+                  color: isActivePath('/shows')
+                    ? theme.palette.mode === 'light'
+                      ? 'white'
+                      : 'inherit'
+                    : 'inherit',
                   '&:hover': {
-                    backgroundColor: isActivePath('/shows')
-                      ? theme.palette.primary.dark
+                    background: isActivePath('/shows')
+                      ? `linear-gradient(135deg, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(64, 224, 208, 0.2)'
+                              : 'rgba(100, 181, 246, 0.2)'
+                          } 0%, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(147, 51, 234, 0.15)'
+                              : 'rgba(156, 39, 176, 0.15)'
+                          } 100%)`
                       : theme.palette.action.hover,
                   },
                 }}
@@ -743,19 +990,95 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
               </ListItemButton>
             </ListItem>
 
+            {/* Submit Show */}
+            <ListItem disablePadding>
+              <ListItemButton
+                onClick={() => handleMobileNavigation('/submit')}
+                sx={{
+                  background: isActivePath('/submit')
+                    ? `linear-gradient(135deg, 
+                        ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(64, 224, 208, 0.15)'
+                            : 'rgba(100, 181, 246, 0.15)'
+                        } 0%, 
+                        ${
+                          theme.palette.mode === 'light'
+                            ? 'rgba(147, 51, 234, 0.1)'
+                            : 'rgba(156, 39, 176, 0.1)'
+                        } 100%)`
+                    : 'transparent',
+                  color: isActivePath('/submit')
+                    ? theme.palette.mode === 'light'
+                      ? 'white'
+                      : 'inherit'
+                    : 'inherit',
+                  '&:hover': {
+                    background: isActivePath('/submit')
+                      ? `linear-gradient(135deg, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(64, 224, 208, 0.2)'
+                              : 'rgba(100, 181, 246, 0.2)'
+                          } 0%, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(147, 51, 234, 0.15)'
+                              : 'rgba(156, 39, 176, 0.15)'
+                          } 100%)`
+                      : theme.palette.action.hover,
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ color: 'inherit' }}>
+                  <FontAwesomeIcon icon={faPlus} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Submit Show"
+                  primaryTypographyProps={{
+                    fontWeight: isActivePath('/submit') ? 600 : 400,
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+
             {/* Music - Only show when authenticated */}
             {authStore.isAuthenticated && (
               <ListItem disablePadding>
                 <ListItemButton
                   onClick={() => handleMobileNavigation('/music')}
                   sx={{
-                    backgroundColor: isActivePath('/music')
-                      ? theme.palette.primary.main
+                    background: isActivePath('/music')
+                      ? `linear-gradient(135deg, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(64, 224, 208, 0.15)'
+                              : 'rgba(100, 181, 246, 0.15)'
+                          } 0%, 
+                          ${
+                            theme.palette.mode === 'light'
+                              ? 'rgba(147, 51, 234, 0.1)'
+                              : 'rgba(156, 39, 176, 0.1)'
+                          } 100%)`
                       : 'transparent',
-                    color: isActivePath('/music') ? theme.palette.primary.contrastText : 'inherit',
+                    color: isActivePath('/music')
+                      ? theme.palette.mode === 'light'
+                        ? 'white'
+                        : 'inherit'
+                      : 'inherit',
                     '&:hover': {
-                      backgroundColor: isActivePath('/music')
-                        ? theme.palette.primary.dark
+                      background: isActivePath('/music')
+                        ? `linear-gradient(135deg, 
+                            ${
+                              theme.palette.mode === 'light'
+                                ? 'rgba(64, 224, 208, 0.2)'
+                                : 'rgba(100, 181, 246, 0.2)'
+                            } 0%, 
+                            ${
+                              theme.palette.mode === 'light'
+                                ? 'rgba(147, 51, 234, 0.15)'
+                                : 'rgba(156, 39, 176, 0.15)'
+                            } 100%)`
                         : theme.palette.action.hover,
                     },
                   }}
@@ -780,15 +1103,37 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   <ListItemButton
                     onClick={() => handleMobileNavigation('/dashboard')}
                     sx={{
-                      backgroundColor: isActivePath('/dashboard')
-                        ? theme.palette.primary.main
+                      background: isActivePath('/dashboard')
+                        ? `linear-gradient(135deg, 
+                            ${
+                              theme.palette.mode === 'light'
+                                ? 'rgba(64, 224, 208, 0.15)'
+                                : 'rgba(100, 181, 246, 0.15)'
+                            } 0%, 
+                            ${
+                              theme.palette.mode === 'light'
+                                ? 'rgba(147, 51, 234, 0.1)'
+                                : 'rgba(156, 39, 176, 0.1)'
+                            } 100%)`
                         : 'transparent',
                       color: isActivePath('/dashboard')
-                        ? theme.palette.primary.contrastText
+                        ? theme.palette.mode === 'light'
+                          ? 'white'
+                          : 'inherit'
                         : 'inherit',
                       '&:hover': {
-                        backgroundColor: isActivePath('/dashboard')
-                          ? theme.palette.primary.dark
+                        background: isActivePath('/dashboard')
+                          ? `linear-gradient(135deg, 
+                              ${
+                                theme.palette.mode === 'light'
+                                  ? 'rgba(64, 224, 208, 0.2)'
+                                  : 'rgba(100, 181, 246, 0.2)'
+                              } 0%, 
+                              ${
+                                theme.palette.mode === 'light'
+                                  ? 'rgba(147, 51, 234, 0.15)'
+                                  : 'rgba(156, 39, 176, 0.15)'
+                              } 100%)`
                           : theme.palette.action.hover,
                       },
                     }}
@@ -840,15 +1185,37 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   <ListItemButton
                     onClick={() => handleMobileNavigation('/profile')}
                     sx={{
-                      backgroundColor: isActivePath('/profile')
-                        ? theme.palette.primary.main
+                      background: isActivePath('/profile')
+                        ? `linear-gradient(135deg, 
+                            ${
+                              theme.palette.mode === 'light'
+                                ? 'rgba(64, 224, 208, 0.15)'
+                                : 'rgba(100, 181, 246, 0.15)'
+                            } 0%, 
+                            ${
+                              theme.palette.mode === 'light'
+                                ? 'rgba(147, 51, 234, 0.1)'
+                                : 'rgba(156, 39, 176, 0.1)'
+                            } 100%)`
                         : 'transparent',
                       color: isActivePath('/profile')
-                        ? theme.palette.primary.contrastText
+                        ? theme.palette.mode === 'light'
+                          ? 'white'
+                          : 'inherit'
                         : 'inherit',
                       '&:hover': {
-                        backgroundColor: isActivePath('/profile')
-                          ? theme.palette.primary.dark
+                        background: isActivePath('/profile')
+                          ? `linear-gradient(135deg, 
+                              ${
+                                theme.palette.mode === 'light'
+                                  ? 'rgba(64, 224, 208, 0.2)'
+                                  : 'rgba(100, 181, 246, 0.2)'
+                              } 0%, 
+                              ${
+                                theme.palette.mode === 'light'
+                                  ? 'rgba(147, 51, 234, 0.15)'
+                                  : 'rgba(156, 39, 176, 0.15)'
+                              } 100%)`
                           : theme.palette.action.hover,
                       },
                     }}
@@ -870,15 +1237,37 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   <ListItemButton
                     onClick={() => handleMobileNavigation('/settings')}
                     sx={{
-                      backgroundColor: isActivePath('/settings')
-                        ? theme.palette.primary.main
+                      background: isActivePath('/settings')
+                        ? `linear-gradient(135deg, 
+                            ${
+                              theme.palette.mode === 'light'
+                                ? 'rgba(64, 224, 208, 0.15)'
+                                : 'rgba(100, 181, 246, 0.15)'
+                            } 0%, 
+                            ${
+                              theme.palette.mode === 'light'
+                                ? 'rgba(147, 51, 234, 0.1)'
+                                : 'rgba(156, 39, 176, 0.1)'
+                            } 100%)`
                         : 'transparent',
                       color: isActivePath('/settings')
-                        ? theme.palette.primary.contrastText
+                        ? theme.palette.mode === 'light'
+                          ? 'white'
+                          : 'inherit'
                         : 'inherit',
                       '&:hover': {
-                        backgroundColor: isActivePath('/settings')
-                          ? theme.palette.primary.dark
+                        background: isActivePath('/settings')
+                          ? `linear-gradient(135deg, 
+                              ${
+                                theme.palette.mode === 'light'
+                                  ? 'rgba(64, 224, 208, 0.2)'
+                                  : 'rgba(100, 181, 246, 0.2)'
+                              } 0%, 
+                              ${
+                                theme.palette.mode === 'light'
+                                  ? 'rgba(147, 51, 234, 0.15)'
+                                  : 'rgba(156, 39, 176, 0.15)'
+                              } 100%)`
                           : theme.palette.action.hover,
                       },
                     }}
@@ -901,15 +1290,37 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                     <ListItemButton
                       onClick={() => handleMobileNavigation('/admin')}
                       sx={{
-                        backgroundColor: isActivePath('/admin')
-                          ? theme.palette.primary.main
+                        background: isActivePath('/admin')
+                          ? `linear-gradient(135deg, 
+                              ${
+                                theme.palette.mode === 'light'
+                                  ? 'rgba(64, 224, 208, 0.15)'
+                                  : 'rgba(100, 181, 246, 0.15)'
+                              } 0%, 
+                              ${
+                                theme.palette.mode === 'light'
+                                  ? 'rgba(147, 51, 234, 0.1)'
+                                  : 'rgba(156, 39, 176, 0.1)'
+                              } 100%)`
                           : 'transparent',
                         color: isActivePath('/admin')
-                          ? theme.palette.primary.contrastText
+                          ? theme.palette.mode === 'light'
+                            ? 'white'
+                            : 'inherit'
                           : 'inherit',
                         '&:hover': {
-                          backgroundColor: isActivePath('/admin')
-                            ? theme.palette.primary.dark
+                          background: isActivePath('/admin')
+                            ? `linear-gradient(135deg, 
+                                ${
+                                  theme.palette.mode === 'light'
+                                    ? 'rgba(64, 224, 208, 0.2)'
+                                    : 'rgba(100, 181, 246, 0.2)'
+                                } 0%, 
+                                ${
+                                  theme.palette.mode === 'light'
+                                    ? 'rgba(147, 51, 234, 0.15)'
+                                    : 'rgba(156, 39, 176, 0.15)'
+                                } 100%)`
                             : theme.palette.action.hover,
                         },
                       }}

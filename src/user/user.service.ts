@@ -7,6 +7,7 @@ export interface CreateUserDto {
   email: string;
   name: string;
   password?: string;
+  stageName?: string;
   avatar?: string;
   provider?: string;
   providerId?: string;

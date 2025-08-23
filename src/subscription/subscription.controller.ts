@@ -21,11 +21,28 @@ export class SubscriptionController {
     const hasAdFree = await this.subscriptionService.hasAdFreeAccess(user.id);
     const hasPremium = await this.subscriptionService.hasPremiumAccess(user.id);
 
+    // Get detailed feature limits
+    const songPreviewsStatus = await this.subscriptionService.canUseSongPreviews(user.id, 0);
+    const songFavoritesStatus = await this.subscriptionService.canFavoriteSongs(user.id, 0);
+    const showFavoritesStatus = await this.subscriptionService.canFavoriteShows(user.id, 0);
+
     return {
       subscription,
       features: {
         adFree: hasAdFree,
         premium: hasPremium,
+        songPreviews: {
+          unlimited: songPreviewsStatus.limit === null,
+          limit: songPreviewsStatus.limit,
+        },
+        songFavorites: {
+          unlimited: songFavoritesStatus.limit === null,
+          limit: songFavoritesStatus.limit,
+        },
+        showFavorites: {
+          unlimited: showFavoritesStatus.limit === null,
+          limit: showFavoritesStatus.limit,
+        },
       },
     };
   }

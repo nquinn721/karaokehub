@@ -98,11 +98,11 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   const getFeatureMessage = (feature: string) => {
     switch (feature) {
       case 'favorites':
-        return 'Save your favorite songs and shows to easily find them later. Premium subscription required.';
+        return 'You can save up to 5 songs as favorites. Upgrade to premium for unlimited song favorites plus show favorites!';
       case 'ad_removal':
         return 'Enjoy a clean, ad-free experience while browsing karaoke content.';
       case 'music_preview':
-        return 'Listen to 30-second previews of songs before you sing them. Premium subscription required.';
+        return 'You have used all 10 free song previews! Upgrade to premium for unlimited 30-second song previews.';
       default:
         return 'This feature requires a premium subscription to access.';
     }

@@ -157,7 +157,7 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
             <TextField
               fullWidth
               size="small"
-              placeholder="Search by email or stage name..."
+              placeholder="Search by stage name..."
               value={searchQuery}
               onChange={handleSearchChange}
               InputProps={{

@@ -34,7 +34,7 @@ export class AuthService {
   async register(
     createUserDto: CreateUserDto,
   ): Promise<{ user: User; token: string; message?: string }> {
-    const { email, password, name } = createUserDto;
+    const { email, password, name, stageName } = createUserDto;
 
     // Check if user exists
     const existingUser = await this.userService.findByEmail(email);
@@ -75,6 +75,7 @@ export class AuthService {
       email,
       name,
       password: hashedPassword,
+      stageName,
     });
 
     // Generate JWT token

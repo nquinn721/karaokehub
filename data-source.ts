@@ -1,7 +1,7 @@
 import { DataSource } from 'typeorm';
 import { DJ } from './src/dj/dj.entity';
 import { User } from './src/entities/user.entity';
-import { FavoriteShow } from './src/favorite/favorite-show.entity';
+import { FavoriteShow } from './src/favorite/favorite.entity';
 import { Feedback } from './src/feedback/feedback.entity';
 import { FriendRequest } from './src/friends/friend-request.entity';
 import { Friendship } from './src/friends/friendship.entity';
@@ -10,6 +10,8 @@ import { Song } from './src/music/song.entity';
 import { ParsedSchedule } from './src/parser/parsed-schedule.entity';
 import { UrlToParse } from './src/parser/url-to-parse.entity';
 import { Show } from './src/show/show.entity';
+import { Subscription } from './src/subscription/subscription.entity';
+import { UserFeatureOverride } from './src/user-feature-override/user-feature-override.entity';
 import { Vendor } from './src/vendor/vendor.entity';
 
 export default new DataSource({
@@ -32,8 +34,10 @@ export default new DataSource({
     SongFavorite,
     FriendRequest,
     Friendship,
+    Subscription,
+    UserFeatureOverride,
   ],
-  migrations: ['./src/migrations/*.ts'],
+  migrations: ['./migrations/*.ts', './src/migrations/*.ts'],
   synchronize: false,
   logging: true,
 });

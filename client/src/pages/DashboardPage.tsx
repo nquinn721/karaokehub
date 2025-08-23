@@ -252,6 +252,178 @@ const DashboardPage: React.FC = observer(() => {
     </Card>
   );
 
+  // Compact stats component for mobile
+  const CompactStatsCard = () => (
+    <Card
+      sx={{
+        background: `linear-gradient(135deg, 
+          ${alpha(theme.palette.primary.main, 0.08)} 0%, 
+          ${alpha(theme.palette.secondary.main, 0.05)} 50%,
+          ${alpha(theme.palette.success.main, 0.03)} 100%)`,
+        border: `1px solid ${alpha(theme.palette.primary.main, 0.15)}`,
+        borderRadius: '20px',
+        overflow: 'hidden',
+        position: 'relative',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '3px',
+          background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main}, ${theme.palette.success.main})`,
+        },
+      }}
+    >
+      <CardContent sx={{ p: 3 }}>
+        <Typography
+          variant="h6"
+          gutterBottom
+          sx={{
+            textAlign: 'center',
+            fontWeight: 600,
+            mb: 3,
+            color: theme.palette.text.primary,
+          }}
+        >
+          Quick Stats
+        </Typography>
+
+        <Grid container spacing={2}>
+          {/* Today's Shows */}
+          <Grid item xs={6}>
+            <Box sx={{ textAlign: 'center' }}>
+              <Box
+                sx={{
+                  background: `linear-gradient(135deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`,
+                  borderRadius: '12px',
+                  p: 1.5,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mb: 1,
+                  boxShadow: `0 2px 8px ${alpha(theme.palette.success.main, 0.3)}`,
+                  minWidth: 44,
+                  minHeight: 44,
+                }}
+              >
+                <FontAwesomeIcon icon={faCalendar} size="sm" color="white" />
+              </Box>
+              <Typography variant="h5" fontWeight={700} color="success.main">
+                {showStats.todayCount}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                Today's Shows
+              </Typography>
+            </Box>
+          </Grid>
+
+          {/* Favorite Shows */}
+          <Grid item xs={6}>
+            <Box sx={{ textAlign: 'center' }}>
+              <Box
+                sx={{
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                  borderRadius: '12px',
+                  p: 1.5,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mb: 1,
+                  boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.3)}`,
+                  minWidth: 44,
+                  minHeight: 44,
+                }}
+              >
+                <FontAwesomeIcon icon={faHeart} size="sm" color="white" />
+              </Box>
+              <Typography variant="h5" fontWeight={700} color="primary.main">
+                {showStats.weekCount}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                Favorite Shows
+              </Typography>
+            </Box>
+          </Grid>
+
+          {/* Favorite Songs */}
+          <Grid item xs={6}>
+            <Box sx={{ textAlign: 'center' }}>
+              <Box
+                sx={{
+                  background: `linear-gradient(135deg, ${theme.palette.secondary.main}, ${theme.palette.secondary.dark})`,
+                  borderRadius: '12px',
+                  p: 1.5,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mb: 1,
+                  boxShadow: `0 2px 8px ${alpha(theme.palette.secondary.main, 0.3)}`,
+                  minWidth: 44,
+                  minHeight: 44,
+                }}
+              >
+                <FontAwesomeIcon icon={faMusic} size="sm" color="white" />
+              </Box>
+              <Typography variant="h5" fontWeight={700} color="secondary.main">
+                {showStats.songFavoriteCount}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                Favorite Songs
+              </Typography>
+            </Box>
+          </Grid>
+
+          {/* Subscription */}
+          <Grid item xs={6}>
+            <Box sx={{ textAlign: 'center' }}>
+              <Box
+                sx={{
+                  background: `linear-gradient(135deg, ${
+                    subscriptionStore.hasAdFreeAccess
+                      ? theme.palette.success.main
+                      : theme.palette.warning.main
+                  }, ${
+                    subscriptionStore.hasAdFreeAccess
+                      ? theme.palette.success.dark
+                      : theme.palette.warning.dark
+                  })`,
+                  borderRadius: '12px',
+                  p: 1.5,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mb: 1,
+                  boxShadow: `0 2px 8px ${alpha(
+                    subscriptionStore.hasAdFreeAccess
+                      ? theme.palette.success.main
+                      : theme.palette.warning.main,
+                    0.3,
+                  )}`,
+                  minWidth: 44,
+                  minHeight: 44,
+                }}
+              >
+                <FontAwesomeIcon icon={faTrophy} size="sm" color="white" />
+              </Box>
+              <Typography
+                variant="h6"
+                fontWeight={700}
+                color={subscriptionStore.hasAdFreeAccess ? 'success.main' : 'warning.main'}
+                sx={{ fontSize: '1.1rem' }}
+              >
+                {subscriptionStore.hasAdFreeAccess ? 'Pro' : 'Free'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                Subscription
+              </Typography>
+            </Box>
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
+  );
+
   const FavoriteShowCard = ({ favorite }: { favorite: any }) => (
     <Card
       sx={{
@@ -488,50 +660,58 @@ const DashboardPage: React.FC = observer(() => {
             )}
 
             {/* Enhanced Stats Cards */}
-            <Grid container spacing={4} sx={{ mb: 5 }}>
-              <Grid item xs={12} sm={6} lg={3}>
-                <StatCard
-                  icon={faCalendar}
-                  title="Today's Shows"
-                  value={showStats.todayCount}
-                  subtitle="Shows you've favorited today"
-                  color="success"
-                  trending="neutral"
-                />
+            {/* Mobile: Compact Stats Card */}
+            <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 4 }}>
+              <CompactStatsCard />
+            </Box>
+
+            {/* Desktop: Individual Stats Cards */}
+            <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+              <Grid container spacing={4} sx={{ mb: 5 }}>
+                <Grid item xs={12} sm={6} lg={3}>
+                  <StatCard
+                    icon={faCalendar}
+                    title="Today's Shows"
+                    value={showStats.todayCount}
+                    subtitle="Shows you've favorited today"
+                    color="success"
+                    trending="neutral"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} lg={3}>
+                  <StatCard
+                    icon={faHeart}
+                    title="Favorite Shows"
+                    value={showStats.weekCount}
+                    subtitle="Total shows in your favorites"
+                    color="primary"
+                    trending="up"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} lg={3}>
+                  <StatCard
+                    icon={faMusic}
+                    title="Favorite Songs"
+                    value={showStats.songFavoriteCount}
+                    subtitle="Songs saved to your library"
+                    color="secondary"
+                    trending="up"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} lg={3}>
+                  <StatCard
+                    icon={faTrophy}
+                    title="Subscription"
+                    value={subscriptionStore.hasAdFreeAccess ? 'Pro' : 'Free'}
+                    subtitle={
+                      subscriptionStore.hasAdFreeAccess ? 'Premium features' : 'Upgrade available'
+                    }
+                    color={subscriptionStore.hasAdFreeAccess ? 'success' : 'warning'}
+                    trending={subscriptionStore.hasAdFreeAccess ? 'up' : 'neutral'}
+                  />
+                </Grid>
               </Grid>
-              <Grid item xs={12} sm={6} lg={3}>
-                <StatCard
-                  icon={faHeart}
-                  title="Favorite Shows"
-                  value={showStats.weekCount}
-                  subtitle="Total shows in your favorites"
-                  color="primary"
-                  trending="up"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} lg={3}>
-                <StatCard
-                  icon={faMusic}
-                  title="Favorite Songs"
-                  value={showStats.songFavoriteCount}
-                  subtitle="Songs saved to your library"
-                  color="secondary"
-                  trending="up"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} lg={3}>
-                <StatCard
-                  icon={faTrophy}
-                  title="Subscription"
-                  value={subscriptionStore.hasAdFreeAccess ? 'Pro' : 'Free'}
-                  subtitle={
-                    subscriptionStore.hasAdFreeAccess ? 'Premium features' : 'Upgrade available'
-                  }
-                  color={subscriptionStore.hasAdFreeAccess ? 'success' : 'warning'}
-                  trending={subscriptionStore.hasAdFreeAccess ? 'up' : 'neutral'}
-                />
-              </Grid>
-            </Grid>
+            </Box>
 
             <Grid container spacing={4}>
               {/* Main Content - Favorite Shows and Songs */}
@@ -759,43 +939,6 @@ const DashboardPage: React.FC = observer(() => {
               {/* Right Sidebar */}
               <Grid item xs={12} lg={4}>
                 <Stack spacing={3}>
-                  {/* Quick Actions */}
-                  <Card>
-                    <CardContent sx={{ p: 3 }}>
-                      <Typography variant="h6" fontWeight={600} gutterBottom>
-                        Quick Actions
-                      </Typography>
-                      <Stack spacing={2}>
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          startIcon={<FontAwesomeIcon icon={faMapMarkerAlt} />}
-                          onClick={() => navigate('/map')}
-                          sx={{
-                            borderRadius: '8px',
-                            py: 1.5,
-                            justifyContent: 'flex-start',
-                          }}
-                        >
-                          Find Karaoke Shows
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          fullWidth
-                          startIcon={<FontAwesomeIcon icon={faMusic} />}
-                          onClick={() => navigate('/music')}
-                          sx={{
-                            borderRadius: '8px',
-                            py: 1.5,
-                            justifyContent: 'flex-start',
-                          }}
-                        >
-                          Browse Music Library
-                        </Button>
-                      </Stack>
-                    </CardContent>
-                  </Card>
-
                   {/* Friends List */}
                   <FriendsList onUserSelect={(userId) => console.log('Selected user:', userId)} />
 

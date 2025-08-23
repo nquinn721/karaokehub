@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UrlService } from '../config/url.service';
 import { User } from '../entities/user.entity';
+import { UserFeatureOverrideService } from '../user-feature-override/user-feature-override.service';
 import { StripeService } from './stripe.service';
 import { Subscription, SubscriptionPlan, SubscriptionStatus } from './subscription.entity';
 
@@ -15,6 +16,7 @@ export class SubscriptionService {
     private userRepository: Repository<User>,
     private stripeService: StripeService,
     private urlService: UrlService,
+    private userFeatureOverrideService: UserFeatureOverrideService,
   ) {}
 
   async getUserSubscription(userId: string): Promise<Subscription | null> {
@@ -196,6 +198,11 @@ export class SubscriptionService {
   }
 
   async hasAdFreeAccess(userId: string): Promise<boolean> {
+    // Check for admin override first
+    const hasOverride = await this.userFeatureOverrideService.hasAdFreeOverride(userId);
+    if (hasOverride) return true;
+
+    // Check subscription
     const subscription = await this.getUserSubscription(userId);
     return (
       (subscription?.status === SubscriptionStatus.ACTIVE ||
@@ -206,12 +213,87 @@ export class SubscriptionService {
   }
 
   async hasPremiumAccess(userId: string): Promise<boolean> {
+    // Check for admin override first
+    const hasOverride = await this.userFeatureOverrideService.hasPremiumOverride(userId);
+    if (hasOverride) return true;
+
+    // Check subscription
     const subscription = await this.getUserSubscription(userId);
     return (
       (subscription?.status === SubscriptionStatus.ACTIVE ||
         subscription?.status === SubscriptionStatus.TRIALING) &&
       subscription.plan === SubscriptionPlan.PREMIUM
     );
+  }
+
+  // New methods for feature-specific checks with overrides
+  async canUseSongPreviews(userId: string, currentCount: number): Promise<{ allowed: boolean; limit: number | null }> {
+    // Check for unlimited override
+    const hasUnlimited = await this.userFeatureOverrideService.hasUnlimitedSongPreviews(userId);
+    if (hasUnlimited) {
+      return { allowed: true, limit: null }; // unlimited
+    }
+
+    // Check for custom limit override
+    const customLimit = await this.userFeatureOverrideService.getSongPreviewLimit(userId);
+    if (customLimit !== null) {
+      return { allowed: currentCount < customLimit, limit: customLimit };
+    }
+
+    // Check premium subscription
+    if (await this.hasPremiumAccess(userId)) {
+      return { allowed: true, limit: null }; // unlimited
+    }
+
+    // Default free tier limit
+    const defaultLimit = 10;
+    return { allowed: currentCount < defaultLimit, limit: defaultLimit };
+  }
+
+  async canFavoriteSongs(userId: string, currentCount: number): Promise<{ allowed: boolean; limit: number | null }> {
+    // Check for unlimited override
+    const hasUnlimited = await this.userFeatureOverrideService.hasUnlimitedSongFavorites(userId);
+    if (hasUnlimited) {
+      return { allowed: true, limit: null }; // unlimited
+    }
+
+    // Check for custom limit override
+    const customLimit = await this.userFeatureOverrideService.getSongFavoriteLimit(userId);
+    if (customLimit !== null) {
+      return { allowed: currentCount < customLimit, limit: customLimit };
+    }
+
+    // Check premium subscription
+    if (await this.hasPremiumAccess(userId)) {
+      return { allowed: true, limit: null }; // unlimited
+    }
+
+    // Default free tier limit
+    const defaultLimit = 5;
+    return { allowed: currentCount < defaultLimit, limit: defaultLimit };
+  }
+
+  async canFavoriteShows(userId: string, currentCount: number): Promise<{ allowed: boolean; limit: number | null }> {
+    // Check for unlimited override
+    const hasUnlimited = await this.userFeatureOverrideService.hasUnlimitedShowFavorites(userId);
+    if (hasUnlimited) {
+      return { allowed: true, limit: null }; // unlimited
+    }
+
+    // Check for custom limit override
+    const customLimit = await this.userFeatureOverrideService.getShowFavoriteLimit(userId);
+    if (customLimit !== null) {
+      return { allowed: currentCount < customLimit, limit: customLimit };
+    }
+
+    // Check premium subscription
+    if (await this.hasPremiumAccess(userId)) {
+      return { allowed: true, limit: null }; // unlimited
+    }
+
+    // Default free tier limit
+    const defaultLimit = 3;
+    return { allowed: currentCount < defaultLimit, limit: defaultLimit };
   }
 
   async syncUserSubscription(userId: string): Promise<any> {
