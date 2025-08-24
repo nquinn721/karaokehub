@@ -753,7 +753,7 @@ export const MusicPage: React.FC = observer(() => {
 
               <List
                 sx={{
-                  bgcolor: 'background.paper',
+                  bgcolor: theme.palette.mode === 'dark' ? '#2a2a2a' : '#f5f5f5',
                   borderRadius: 2,
                   p: 1,
                   '& .MuiListItem-root': {
@@ -765,17 +765,10 @@ export const MusicPage: React.FC = observer(() => {
                 }}
               >
                 {musicStore.sortedSongs.map((song, index) => {
-                  // Debug: log song data for the first 3 songs
-                  if (index < 3) {
-                    console.log(`🎵 Song ${index + 1}:`, {
-                      id: song.id,
-                      title: song.title,
-                      artist: song.artist,
-                      hasPreviewUrl: !!song.previewUrl,
-                      previewUrl: song.previewUrl,
-                      fullSong: song,
-                    });
-                  }
+                  // Create a more explicit check for the currently playing song
+                  const isThisSongPlaying = audioStore.currentlyPlaying === song.id && 
+                                          audioStore.isPlaying && 
+                                          audioStore.currentlyPlaying !== null;
 
                   return (
                     <React.Fragment key={`${song.id}-${index}`}>
@@ -993,8 +986,7 @@ export const MusicPage: React.FC = observer(() => {
                                 sx={{
                                   color: !song.previewUrl
                                     ? theme.palette.grey[400]
-                                    : audioStore.currentlyPlaying === song.id &&
-                                        audioStore.isPlaying
+                                    : isThisSongPlaying
                                       ? theme.palette.success.main
                                       : theme.palette.grey[600],
                                   '&:hover': song.previewUrl
@@ -1009,18 +1001,13 @@ export const MusicPage: React.FC = observer(() => {
                                 title={
                                   !song.previewUrl
                                     ? 'Preview not available for this song'
-                                    : audioStore.currentlyPlaying === song.id &&
-                                        audioStore.isPlaying
+                                    : isThisSongPlaying
                                       ? 'Pause preview'
                                       : 'Play 30-second preview'
                                 }
                               >
                                 <FontAwesomeIcon
-                                  icon={
-                                    audioStore.currentlyPlaying === song.id && audioStore.isPlaying
-                                      ? faPause
-                                      : faPlay
-                                  }
+                                  icon={isThisSongPlaying ? faPause : faPlay}
                                   style={{ fontSize: '14px' }}
                                 />
                               </IconButton>

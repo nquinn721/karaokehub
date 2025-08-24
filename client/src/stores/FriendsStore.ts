@@ -52,7 +52,7 @@ class FriendsStore {
   loading = false;
   searchLoading = false;
   error: string | null = null;
-  private searchTimeout: NodeJS.Timeout | null = null;
+  private searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     makeAutoObservable(this);

@@ -251,11 +251,11 @@ export const UserFeatureOverrideModal: React.FC<UserFeatureOverrideModalProps> =
           }}
         >
           {/* Add/Edit Form */}
-          <Box 
-            sx={{ 
+          <Box
+            sx={{
               mt: 3,
-              mb: 3, 
-              p: 3, 
+              mb: 3,
+              p: 3,
               borderRadius: 2,
               background: `linear-gradient(135deg, ${theme.palette.primary.main}08 0%, transparent 100%)`,
               border: `1px solid ${theme.palette.divider}`,
@@ -337,11 +337,11 @@ export const UserFeatureOverrideModal: React.FC<UserFeatureOverrideModalProps> =
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <CalendarToday 
-                        sx={{ 
+                      <CalendarToday
+                        sx={{
                           color: theme.palette.primary.main,
-                          fontSize: '20px' 
-                        }} 
+                          fontSize: '20px',
+                        }}
                       />
                     </InputAdornment>
                   ),
@@ -555,8 +555,8 @@ export const UserFeatureOverrideModal: React.FC<UserFeatureOverrideModalProps> =
             background: `linear-gradient(135deg, ${theme.palette.action.hover}50 0%, transparent 100%)`,
           }}
         >
-          <Button 
-            onClick={onClose} 
+          <Button
+            onClick={onClose}
             startIcon={<FontAwesomeIcon icon={faTimes} />}
             sx={{
               borderRadius: 2,

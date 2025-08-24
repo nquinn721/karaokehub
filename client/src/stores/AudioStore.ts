@@ -65,46 +65,61 @@ export class AudioStore {
         });
       });
 
-      await audio.play();
-
+      // Set state before playing
       runInAction(() => {
         this.currentlyPlaying = song.id;
         this.audioElement = audio;
-        this.isPlaying = true;
+        this.isPlaying = false; // Will be set to true by the 'play' event
         this.currentSong = song;
       });
+
+      await audio.play();
     } catch (error) {
       console.error('Error playing audio:', error);
+      // Clean up on error
+      runInAction(() => {
+        this.currentlyPlaying = null;
+        this.audioElement = null;
+        this.isPlaying = false;
+        this.currentSong = null;
+      });
     }
   }
 
-  stopAudio() {
-    if (this.audioElement) {
-      this.audioElement.pause();
-      this.audioElement.src = '';
-    }
-
+  stopAudio = () => {
     runInAction(() => {
+      if (this.audioElement) {
+        this.audioElement.pause();
+        this.audioElement.currentTime = 0;
+        this.audioElement.src = '';
+        this.audioElement = null;
+      }
+      
       this.currentlyPlaying = null;
-      this.audioElement = null;
       this.isPlaying = false;
       this.currentSong = null;
     });
   }
 
-  pauseAudio() {
-    if (this.audioElement && this.isPlaying) {
-      this.audioElement.pause();
-    }
+  pauseAudio = () => {
+    runInAction(() => {
+      if (this.audioElement && this.isPlaying) {
+        this.audioElement.pause();
+        this.isPlaying = false;
+      }
+    });
   }
 
-  resumeAudio() {
-    if (this.audioElement && !this.isPlaying) {
-      this.audioElement.play();
-    }
+  resumeAudio = () => {
+    runInAction(() => {
+      if (this.audioElement && !this.isPlaying) {
+        this.audioElement.play();
+        this.isPlaying = true;
+      }
+    });
   }
 
-  togglePlayPause() {
+  togglePlayPause = () => {
     if (this.isPlaying) {
       this.pauseAudio();
     } else {

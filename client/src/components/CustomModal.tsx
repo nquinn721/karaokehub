@@ -96,8 +96,8 @@ const CustomModal: React.FC<CustomModalProps> = ({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent 
-        sx={{ 
+      <DialogContent
+        sx={{
           px: 3,
           py: 2,
           '&::-webkit-scrollbar': {
