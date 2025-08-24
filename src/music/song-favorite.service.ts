@@ -90,6 +90,9 @@ export class SongFavoriteService {
           genre: songData.genre?.trim() || null,
           duration: songData.duration || null,
           spotifyId: songId, // Use the songId as Spotify ID
+          albumArtSmall: songData.albumArtSmall || null,
+          albumArtMedium: songData.albumArtMedium || null,
+          albumArtLarge: songData.albumArtLarge || null,
         });
 
         console.log('Created song:', song);

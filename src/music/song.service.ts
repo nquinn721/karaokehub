@@ -24,6 +24,9 @@ export interface UpdateSongDto {
   duration?: number;
   spotifyId?: string;
   youtubeId?: string;
+  albumArtSmall?: string;
+  albumArtMedium?: string;
+  albumArtLarge?: string;
 }
 
 @Injectable()

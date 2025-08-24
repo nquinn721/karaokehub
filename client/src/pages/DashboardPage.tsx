@@ -40,7 +40,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { authStore, audioStore, songFavoriteStore, subscriptionStore } from '@stores/index';
+import { audioStore, authStore, songFavoriteStore, subscriptionStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -530,15 +530,11 @@ const DashboardPage: React.FC = observer(() => {
       await audioStore.playPreview(songForAudio);
     };
 
-    // Generate album art URL from Spotify ID if available
-    const getAlbumArtUrl = (spotifyId: string) => {
-      if (!spotifyId) return null;
-      // This is a common pattern for Spotify album art URLs
-      // In a real implementation, you'd want to fetch this from the Spotify API
-      return `https://i.scdn.co/image/${spotifyId.substring(0, 32)}`;
-    };
-
-    const albumArtUrl = songFavorite.song?.spotifyId ? getAlbumArtUrl(songFavorite.song.spotifyId) : null;
+    // Use stored album art from the database
+    const albumArtUrl =
+      songFavorite.song?.albumArtSmall ||
+      songFavorite.song?.albumArtMedium ||
+      songFavorite.song?.albumArtLarge;
 
     return (
       <Card
@@ -621,11 +617,11 @@ const DashboardPage: React.FC = observer(() => {
 
             {/* Song Info */}
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography 
-                variant="subtitle1" 
-                fontWeight={600} 
-                sx={{ 
-                  fontSize: '1rem', 
+              <Typography
+                variant="subtitle1"
+                fontWeight={600}
+                sx={{
+                  fontSize: '1rem',
                   lineHeight: 1.3,
                   mb: 0.5,
                   overflow: 'hidden',
@@ -635,10 +631,10 @@ const DashboardPage: React.FC = observer(() => {
               >
                 {songFavorite.song?.title || 'Unknown Title'}
               </Typography>
-              <Typography 
-                variant="body2" 
-                color="text.secondary" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
                   fontSize: '0.875rem',
                   mb: 1,
                   overflow: 'hidden',
@@ -660,10 +656,10 @@ const DashboardPage: React.FC = observer(() => {
                   />
                 )}
                 {songFavorite.song?.genre && (
-                  <Chip 
-                    label={songFavorite.song.genre} 
-                    size="small" 
-                    variant="outlined" 
+                  <Chip
+                    label={songFavorite.song.genre}
+                    size="small"
+                    variant="outlined"
                     sx={{ fontSize: '0.65rem', height: '18px' }}
                   />
                 )}
@@ -681,12 +677,20 @@ const DashboardPage: React.FC = observer(() => {
               {(songFavorite.song?.spotifyId || songFavorite.song?.youtubeId) && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   {songFavorite.song?.spotifyId && (
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontSize: '0.7rem' }}
+                    >
                       🎵 Spotify
                     </Typography>
                   )}
                   {songFavorite.song?.youtubeId && (
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontSize: '0.7rem' }}
+                    >
                       📺 YouTube
                     </Typography>
                   )}
@@ -703,19 +707,21 @@ const DashboardPage: React.FC = observer(() => {
                 bgcolor: !songFavorite.song?.spotifyId
                   ? theme.palette.grey[400]
                   : !subscriptionStore.canUseSongPreview()
-                  ? theme.palette.warning.main // Orange/yellow for paywall
-                  : audioStore.currentlyPlaying === songFavorite.song.spotifyId && audioStore.isPlaying
-                  ? theme.palette.success.main // Green for pause
-                  : theme.palette.info.main, // Blue for play
+                    ? theme.palette.warning.main // Orange/yellow for paywall
+                    : audioStore.currentlyPlaying === songFavorite.song.spotifyId &&
+                        audioStore.isPlaying
+                      ? theme.palette.success.main // Green for pause
+                      : theme.palette.info.main, // Blue for play
                 color: 'white',
                 '&:hover': {
                   bgcolor: !songFavorite.song?.spotifyId
                     ? theme.palette.grey[500]
                     : !subscriptionStore.canUseSongPreview()
-                    ? theme.palette.warning.dark
-                    : audioStore.currentlyPlaying === songFavorite.song.spotifyId && audioStore.isPlaying
-                    ? theme.palette.success.dark
-                    : theme.palette.info.dark,
+                      ? theme.palette.warning.dark
+                      : audioStore.currentlyPlaying === songFavorite.song.spotifyId &&
+                          audioStore.isPlaying
+                        ? theme.palette.success.dark
+                        : theme.palette.info.dark,
                 },
                 '&:disabled': {
                   bgcolor: theme.palette.grey[300],
@@ -732,7 +738,8 @@ const DashboardPage: React.FC = observer(() => {
             >
               <FontAwesomeIcon
                 icon={
-                  audioStore.currentlyPlaying === songFavorite.song?.spotifyId && audioStore.isPlaying
+                  audioStore.currentlyPlaying === songFavorite.song?.spotifyId &&
+                  audioStore.isPlaying
                     ? faPause
                     : faPlay
                 }
