@@ -17,6 +17,31 @@ export class AudioStore {
     }
   }
 
+  // Event handler methods
+  private handleAudioEnded = () => {
+    console.log('🎵 Audio ended for song:', this.currentlyPlaying);
+    runInAction(() => {
+      this.currentlyPlaying = null;
+      this.audioElement = null;
+      this.isPlaying = false;
+      this.currentSong = null;
+    });
+  };
+
+  private handleAudioPause = () => {
+    console.log('⏸️ Audio paused for song:', this.currentlyPlaying);
+    runInAction(() => {
+      this.isPlaying = false;
+    });
+  };
+
+  private handleAudioPlay = () => {
+    console.log('▶️ Audio play event for song:', this.currentlyPlaying);
+    runInAction(() => {
+      this.isPlaying = true;
+    });
+  };
+
   setVolume(volume: number) {
     runInAction(() => {
       this.volume = Math.max(0, Math.min(1, volume)); // Clamp between 0 and 1
@@ -29,41 +54,42 @@ export class AudioStore {
   }
 
   async playPreview(song: any) {
-    if (!song.previewUrl) return;
+    console.log('🎵 playPreview called:', {
+      songId: song.id,
+      title: song.title,
+      currentlyPlaying: this.currentlyPlaying,
+    });
+
+    if (!song.previewUrl) {
+      console.warn('❌ No preview URL for song:', song.id);
+      return;
+    }
 
     // If clicking the same song that's currently playing, toggle play/pause
     if (this.currentlyPlaying === song.id && this.audioElement) {
+      console.log('🔄 Toggling play/pause for current song:', song.id);
       this.togglePlayPause();
       return;
     }
 
     // Stop current audio if playing a different song
-    this.stopAudio();
+    if (this.currentlyPlaying && this.currentlyPlaying !== song.id) {
+      console.log('🛑 Stopping current song to play new one:', {
+        from: this.currentlyPlaying,
+        to: song.id,
+      });
+      this.stopAudio();
+    }
 
     try {
+      console.log('🚀 Creating new audio element for song:', song.id);
       const audio = new Audio(song.previewUrl);
       audio.volume = this.volume;
 
-      audio.addEventListener('ended', () => {
-        runInAction(() => {
-          this.currentlyPlaying = null;
-          this.audioElement = null;
-          this.isPlaying = false;
-          this.currentSong = null;
-        });
-      });
-
-      audio.addEventListener('pause', () => {
-        runInAction(() => {
-          this.isPlaying = false;
-        });
-      });
-
-      audio.addEventListener('play', () => {
-        runInAction(() => {
-          this.isPlaying = true;
-        });
-      });
+      // Add event listeners
+      audio.addEventListener('ended', this.handleAudioEnded);
+      audio.addEventListener('pause', this.handleAudioPause);
+      audio.addEventListener('play', this.handleAudioPlay);
 
       // Set state before playing
       runInAction(() => {
@@ -73,9 +99,11 @@ export class AudioStore {
         this.currentSong = song;
       });
 
+      console.log('▶️ Starting audio playback for song:', song.id);
       await audio.play();
+      console.log('✅ Audio playback started successfully for song:', song.id);
     } catch (error) {
-      console.error('Error playing audio:', error);
+      console.error('❌ Error playing audio:', error);
       // Clean up on error
       runInAction(() => {
         this.currentlyPlaying = null;
@@ -87,8 +115,14 @@ export class AudioStore {
   }
 
   stopAudio = () => {
+    console.log('🛑 Stopping audio for song:', this.currentlyPlaying);
     runInAction(() => {
       if (this.audioElement) {
+        // Remove all event listeners to prevent race conditions
+        this.audioElement.removeEventListener('ended', this.handleAudioEnded);
+        this.audioElement.removeEventListener('pause', this.handleAudioPause);
+        this.audioElement.removeEventListener('play', this.handleAudioPlay);
+
         this.audioElement.pause();
         this.audioElement.currentTime = 0;
         this.audioElement.src = '';
@@ -102,24 +136,34 @@ export class AudioStore {
   };
 
   pauseAudio = () => {
+    console.log('⏸️ pauseAudio called for song:', this.currentlyPlaying);
     runInAction(() => {
       if (this.audioElement && this.isPlaying) {
         this.audioElement.pause();
-        this.isPlaying = false;
+        // Note: isPlaying will be set to false by the 'pause' event handler
       }
     });
   };
 
   resumeAudio = () => {
+    console.log('▶️ resumeAudio called for song:', this.currentlyPlaying);
     runInAction(() => {
-      if (this.audioElement && !this.isPlaying) {
-        this.audioElement.play();
-        this.isPlaying = true;
+      if (this.audioElement && !this.isPlaying && this.currentlyPlaying !== null) {
+        this.audioElement.play().catch((error) => {
+          console.error('Error resuming audio:', error);
+          // Clean up on error
+          this.stopAudio();
+        });
+        // Note: isPlaying will be set to true by the 'play' event handler
       }
     });
   };
 
   togglePlayPause = () => {
+    console.log('🔄 togglePlayPause called, current state:', {
+      isPlaying: this.isPlaying,
+      currentlyPlaying: this.currentlyPlaying,
+    });
     if (this.isPlaying) {
       this.pauseAudio();
     } else {

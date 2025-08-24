@@ -59,12 +59,13 @@ export class MusicController {
   @Get('category')
   async getCategoryMusic(
     @Query('queries') queries: string,
+    @Query('category') category?: string,
     @Query('limit') limit?: string,
     @Query('targetCount') targetCount?: string,
   ): Promise<MusicSearchResult[]> {
     const searchLimit = limit ? parseInt(limit, 10) : 15;
     const targetSongCount = targetCount ? parseInt(targetCount, 10) : 50;
     const queryArray = queries.split(',').map((q) => q.trim());
-    return this.musicService.getCategoryMusic(queryArray, searchLimit, targetSongCount);
+    return this.musicService.getCategoryMusic(queryArray, searchLimit, targetSongCount, category);
   }
 }

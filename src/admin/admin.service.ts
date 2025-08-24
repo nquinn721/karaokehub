@@ -273,14 +273,23 @@ export class AdminService {
   async getVenues(page = 1, limit = 10, search?: string) {
     const query = this.vendorRepository
       .createQueryBuilder('vendor')
-      .leftJoin('vendor.shows', 'shows')
-      .leftJoin('vendor.djs', 'djs')
+      .leftJoin('vendor.djs', 'djs', 'djs.isActive = :djActive', { djActive: true })
+      .leftJoin(
+        'djs.shows',
+        'shows',
+        'shows.isActive = :showActive AND shows.isValid = :showValid',
+        {
+          showActive: true,
+          showValid: true,
+        },
+      )
       .addSelect('COUNT(DISTINCT shows.id)', 'showCount')
       .addSelect('COUNT(DISTINCT djs.id)', 'djCount')
+      .where('vendor.isActive = :vendorActive', { vendorActive: true })
       .groupBy('vendor.id');
 
     if (search) {
-      query.where('vendor.name LIKE :search', {
+      query.andWhere('vendor.name LIKE :search', {
         search: `%${search}%`,
       });
     }
@@ -299,9 +308,11 @@ export class AdminService {
     }));
 
     // Get total count separately for pagination
-    const totalQuery = this.vendorRepository.createQueryBuilder('vendor');
+    const totalQuery = this.vendorRepository
+      .createQueryBuilder('vendor')
+      .where('vendor.isActive = :vendorActive', { vendorActive: true });
     if (search) {
-      totalQuery.where('vendor.name LIKE :search', {
+      totalQuery.andWhere('vendor.name LIKE :search', {
         search: `%${search}%`,
       });
     }
@@ -319,23 +330,43 @@ export class AdminService {
   async getShows(page = 1, limit = 10, search?: string) {
     const query = this.showRepository
       .createQueryBuilder('show')
-      .leftJoinAndSelect('show.vendor', 'vendor')
-      .leftJoinAndSelect('show.dj', 'dj');
+      .leftJoinAndSelect('show.dj', 'dj')
+      .leftJoinAndSelect('dj.vendor', 'vendor')
+      .where('show.isActive = :isActive AND show.isValid = :isValid', {
+        isActive: true,
+        isValid: true,
+      });
 
     if (search) {
-      query.where('vendor.name LIKE :search OR show.day LIKE :search OR dj.name LIKE :search', {
-        search: `%${search}%`,
-      });
+      query.andWhere(
+        '(vendor.name LIKE :search OR show.day LIKE :search OR dj.name LIKE :search OR show.venue LIKE :search)',
+        {
+          search: `%${search}%`,
+        },
+      );
     }
 
+    console.log('Admin getShows query SQL:', query.getQuery());
+
     const [items, total] = await query
-      .orderBy('show.createdAt', 'DESC')
+      .orderBy('show.venue', 'ASC')
+      .addOrderBy('show.day', 'ASC')
+      .addOrderBy('show.startTime', 'ASC')
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
 
+    console.log('Admin getShows results:', items.length, 'items found');
+    console.log('First item DJ:', items[0]?.dj?.name, 'Vendor:', items[0]?.dj?.vendor?.name);
+
+    // Map items to include readableSource
+    const mappedItems = items.map((show) => ({
+      ...show,
+      readableSource: show.readableSource,
+    }));
+
     return {
-      items,
+      items: mappedItems,
       total,
       page,
       limit,
@@ -378,7 +409,8 @@ export class AdminService {
       .createQueryBuilder('favorite')
       .leftJoinAndSelect('favorite.user', 'user')
       .leftJoinAndSelect('favorite.show', 'show')
-      .leftJoinAndSelect('show.vendor', 'vendor');
+      .leftJoinAndSelect('show.dj', 'dj')
+      .leftJoinAndSelect('dj.vendor', 'vendor');
 
     if (search) {
       query.where('user.name LIKE :search OR user.email LIKE :search OR vendor.name LIKE :search', {

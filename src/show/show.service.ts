@@ -162,14 +162,14 @@ export class ShowService {
   async findInvalidShows(): Promise<Show[]> {
     return await this.showRepository.find({
       where: { isValid: false },
-      relations: ['dj', 'favoriteShows'],
+      relations: ['dj', 'dj.vendor', 'favoriteShows'],
     });
   }
 
   async findAll(): Promise<Show[]> {
     return await this.showRepository.find({
       where: { isActive: true, isValid: true },
-      relations: ['dj', 'favoriteShows'],
+      relations: ['dj', 'dj.vendor', 'favoriteShows'],
     });
   }
 
@@ -198,7 +198,7 @@ export class ShowService {
   async findByDJ(djId: string): Promise<Show[]> {
     return await this.showRepository.find({
       where: { djId, isActive: true, isValid: true },
-      relations: ['dj', 'favoriteShows'],
+      relations: ['dj', 'dj.vendor', 'favoriteShows'],
     });
   }
 
@@ -277,7 +277,7 @@ export class ShowService {
   async findByDay(day: DayOfWeek): Promise<Show[]> {
     return await this.showRepository.find({
       where: { day, isActive: true, isValid: true },
-      relations: ['dj', 'favoriteShows'],
+      relations: ['dj', 'dj.vendor', 'favoriteShows'],
     });
   }
 
@@ -329,6 +329,7 @@ export class ShowService {
       const nearbyShows: GeocodedShow[] = results.entities.map((entity, index) => ({
         ...entity,
         distance: parseFloat(results.raw[index].distance) || 0,
+        readableSource: entity.readableSource,
       }));
 
       this.logger.log(

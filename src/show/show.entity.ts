@@ -97,4 +97,49 @@ export class Show {
 
   @OneToMany(() => FavoriteShow, (favoriteShow) => favoriteShow.show)
   favoriteShows: FavoriteShow[];
+
+  // Computed properties
+  get readableSource(): string {
+    if (!this.source) return 'Unknown';
+
+    const url = this.source.toLowerCase();
+
+    if (url.includes('facebook.com') || url.includes('fbcdn.net') || url.includes('scontent')) {
+      return 'Facebook CDN';
+    } else if (url.includes('instagram.com') || url.includes('cdninstagram.com')) {
+      return 'Instagram';
+    } else if (url.includes('twitter.com') || url.includes('t.co')) {
+      return 'Twitter/X';
+    } else if (url.includes('googleapis.com')) {
+      return 'Google APIs';
+    } else if (url.includes('cloudinary.com')) {
+      return 'Cloudinary';
+    } else if (url.includes('amazonaws.com') || url.includes('s3.')) {
+      return 'Amazon S3';
+    } else if (url.includes('dropbox.com')) {
+      return 'Dropbox';
+    } else if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      return 'YouTube';
+    } else if (url.includes('vimeo.com')) {
+      return 'Vimeo';
+    } else if (url.includes('eventbrite.com')) {
+      return 'Eventbrite';
+    } else if (url.includes('meetup.com')) {
+      return 'Meetup';
+    } else if (url.includes('bandsintown.com')) {
+      return 'Bandsintown';
+    } else if (url.includes('songkick.com')) {
+      return 'Songkick';
+    } else if (url.startsWith('http://') || url.startsWith('https://')) {
+      // Extract domain name for unknown URLs
+      try {
+        const domain = new URL(this.source).hostname.replace('www.', '');
+        return domain.charAt(0).toUpperCase() + domain.slice(1);
+      } catch {
+        return 'Web Source';
+      }
+    } else {
+      return 'Manual Entry';
+    }
+  }
 }

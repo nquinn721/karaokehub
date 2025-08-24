@@ -125,7 +125,12 @@ export class MusicService {
   private readonly userAgent = 'KaraokeRatingsApp/1.0.0';
   private readonly rateLimiter = new ApiRateLimiter();
 
-  // Spotify configuration
+  // Music API Strategy:
+  // - localhost/development: Use iTunes (Spotify doesn't support localhost callbacks)
+  // - Cloud Run/production: Use Spotify as primary, iTunes as fallback
+  // - Automatically detects based on SPOTIFY_CLIENT_ID/SPOTIFY_CLIENT_SECRET presence
+
+  // Spotify configuration (only available in production/Cloud Run)
   private readonly spotifyClientId = process.env.SPOTIFY_CLIENT_ID;
   private readonly spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET;
   private spotifyAccessToken: string | null = null;
@@ -231,19 +236,35 @@ export class MusicService {
   private mapSpotifyTracks(data: any): MusicSearchResult[] {
     if (!data?.tracks?.items) return [];
 
-    return data.tracks.items.map((track: any) => ({
-      title: track.name,
-      artist: track.artists?.[0]?.name || 'Unknown Artist',
-      album: track.album?.name || '',
-      releaseDate: track.album?.release_date || '',
-      duration: track.duration_ms ? Math.round(track.duration_ms / 1000) : 0,
-      previewUrl: track.preview_url || null,
-      spotifyId: track.id,
-      popularity: track.popularity || 0,
-      imageUrl: track.album?.images?.[0]?.url || null,
-      source: 'spotify' as const,
-      spotifyUrl: track.external_urls?.spotify || null,
-    }));
+    return data.tracks.items.map((track: any) => {
+      const releaseDate = track.album?.release_date || '';
+      const year = releaseDate ? releaseDate.split('-')[0] : '';
+
+      return {
+        id: track.id, // Use Spotify track ID as the general ID
+        title: track.name,
+        artist: track.artists?.[0]?.name || 'Unknown Artist',
+        album: track.album?.name || '',
+        releaseDate,
+        year,
+        duration: track.duration_ms ? Math.round(track.duration_ms / 1000) : 0,
+        previewUrl: track.preview_url || null,
+        spotifyId: track.id,
+        popularity: track.popularity || 0,
+        imageUrl: track.album?.images?.[0]?.url || null, // Backward compatibility
+        albumArt: {
+          small:
+            track.album?.images?.[2]?.url ||
+            track.album?.images?.[1]?.url ||
+            track.album?.images?.[0]?.url ||
+            null,
+          medium: track.album?.images?.[1]?.url || track.album?.images?.[0]?.url || null,
+          large: track.album?.images?.[0]?.url || null,
+        },
+        source: 'spotify' as const,
+        spotifyUrl: track.external_urls?.spotify || null,
+      };
+    });
   }
 
   private mapSpotifyArtists(data: any): ArtistSearchResult[] {
@@ -297,19 +318,34 @@ export class MusicService {
 
     return data.results
       .filter((item: any) => item.kind === 'song')
-      .map((track: any) => ({
-        title: track.trackName || '',
-        artist: track.artistName || 'Unknown Artist',
-        album: track.collectionName || '',
-        releaseDate: track.releaseDate ? track.releaseDate.split('T')[0] : '',
-        duration: track.trackTimeMillis ? Math.round(track.trackTimeMillis / 1000) : 0,
-        previewUrl: track.previewUrl || null,
-        itunesId: track.trackId,
-        popularity: 0, // iTunes doesn't provide popularity scores
-        imageUrl: track.artworkUrl100 || track.artworkUrl60 || null,
-        source: 'itunes' as const,
-        itunesUrl: track.trackViewUrl || null,
-      }));
+      .map((track: any) => {
+        const releaseDate = track.releaseDate ? track.releaseDate.split('T')[0] : '';
+        const year = releaseDate ? releaseDate.split('-')[0] : '';
+
+        return {
+          id: track.trackId.toString(), // Use iTunes track ID as the general ID
+          title: track.trackName || '',
+          artist: track.artistName || 'Unknown Artist',
+          album: track.collectionName || '',
+          releaseDate,
+          year,
+          duration: track.trackTimeMillis ? Math.round(track.trackTimeMillis / 1000) : 0,
+          previewUrl: track.previewUrl || null,
+          itunesId: track.trackId,
+          popularity: 0, // iTunes doesn't provide popularity scores
+          imageUrl: track.artworkUrl100 || track.artworkUrl60 || null, // Backward compatibility
+          albumArt: {
+            small: track.artworkUrl60 || null,
+            medium: track.artworkUrl100 || null,
+            large:
+              track.artworkUrl100?.replace('100x100bb', '600x600bb') ||
+              track.artworkUrl100?.replace('100x100bb', '300x300bb') ||
+              null,
+          },
+          source: 'itunes' as const,
+          itunesUrl: track.trackViewUrl || null,
+        };
+      });
   }
 
   private mapItunesArtists(data: any): ArtistSearchResult[] {
@@ -340,11 +376,10 @@ export class MusicService {
     const variants = this.generateQueryVariants(query);
 
     try {
-      // Use Spotify in production, iTunes in development
-      const isProduction = process.env.NODE_ENV === 'production';
-
-      if (isProduction && this.spotifyClientId && this.spotifyClientSecret) {
-        // Try Spotify first in production
+      // Primary: Use Spotify when credentials are available (production/Cloud Run)
+      // Note: Spotify doesn't support localhost, so this only works in production
+      if (this.spotifyClientId && this.spotifyClientSecret) {
+        // Try Spotify first
         for (const variant of variants) {
           try {
             const spotifyData = await this.fetchSpotify(variant, 'track', limit);
@@ -358,7 +393,8 @@ export class MusicService {
         }
       }
 
-      // Fallback to iTunes (or primary in development)
+      // Fallback: Use iTunes (works on localhost and production)
+      // This is the primary source for localhost development
       for (const variant of variants) {
         try {
           const itunesData = await this.fetchItunes(variant, 'song', limit);
@@ -391,11 +427,9 @@ export class MusicService {
     const variants = this.generateQueryVariants(query);
 
     try {
-      // Use Spotify in production, iTunes in development
-      const isProduction = process.env.NODE_ENV === 'production';
-
-      if (isProduction && this.spotifyClientId && this.spotifyClientSecret) {
-        // Try Spotify first in production
+      // Primary: Use Spotify when credentials are available (production/Cloud Run)
+      if (this.spotifyClientId && this.spotifyClientSecret) {
+        // Try Spotify first
         for (const variant of variants) {
           try {
             const spotifyData = await this.fetchSpotify(variant, 'artist', limit);
@@ -409,7 +443,7 @@ export class MusicService {
         }
       }
 
-      // Fallback to iTunes (or primary in development)
+      // Fallback to iTunes when Spotify is not available or fails
       for (const variant of variants) {
         try {
           const itunesData = await this.fetchItunes(variant, 'musicArtist', limit);

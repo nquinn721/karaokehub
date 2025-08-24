@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ArtistSearchResult, MusicSearchResult } from './music.interface';
 
 // Rate limiter for iTunes and Spotify APIs
@@ -122,8 +122,70 @@ class ApiRateLimiter {
 
 @Injectable()
 export class MusicService {
+  private readonly logger = new Logger(MusicService.name);
   private readonly userAgent = 'KaraokeRatingsApp/1.0.0';
   private readonly rateLimiter = new ApiRateLimiter();
+
+  // Helper method to create albumArt object from image arrays
+  private createAlbumArtObject(
+    images?: any[],
+  ): { small?: string; medium?: string; large?: string } | undefined {
+    if (!images || !Array.isArray(images) || images.length === 0) {
+      return undefined;
+    }
+
+    // Spotify images are sorted by size (largest first)
+    // Try to map to small (100px), medium (300px), large (600px+)
+    const result: { small?: string; medium?: string; large?: string } = {};
+
+    // Find the best image for each size
+    for (const image of images) {
+      const size = image.width || 0;
+
+      if (size >= 600 && !result.large) {
+        result.large = image.url;
+      } else if (size >= 300 && size < 600 && !result.medium) {
+        result.medium = image.url;
+      } else if (size >= 100 && size < 300 && !result.small) {
+        result.small = image.url;
+      }
+    }
+
+    // If we don't have perfect matches, use fallbacks
+    if (!result.small && images.length > 0) {
+      result.small = images[images.length - 1]?.url; // smallest available
+    }
+    if (!result.medium && images.length > 1) {
+      result.medium = images[Math.floor(images.length / 2)]?.url; // middle size
+    }
+    if (!result.large && images.length > 0) {
+      result.large = images[0]?.url; // largest available
+    }
+
+    return Object.keys(result).length > 0 ? result : undefined;
+  }
+
+  // Helper method to create albumArt object from iTunes track data
+  private createAlbumArtObjectFromItunes(
+    track: any,
+  ): { small?: string; medium?: string; large?: string } | undefined {
+    if (!track) return undefined;
+
+    const result: { small?: string; medium?: string; large?: string } = {};
+
+    // iTunes provides different sizes: artworkUrl30, artworkUrl60, artworkUrl100, artworkUrl600
+    if (track.artworkUrl600) {
+      result.large = track.artworkUrl600;
+    }
+    if (track.artworkUrl100) {
+      result.medium = track.artworkUrl100.replace('100x100bb', '300x300bb');
+      result.small = track.artworkUrl100;
+    } else if (track.artworkUrl60) {
+      result.small = track.artworkUrl60;
+    }
+
+    return Object.keys(result).length > 0 ? result : undefined;
+  }
 
   // Spotify configuration
   private readonly spotifyClientId = process.env.SPOTIFY_CLIENT_ID;
@@ -231,19 +293,27 @@ export class MusicService {
   private mapSpotifyTracks(data: any): MusicSearchResult[] {
     if (!data?.tracks?.items) return [];
 
-    return data.tracks.items.map((track: any) => ({
-      title: track.name,
-      artist: track.artists?.[0]?.name || 'Unknown Artist',
-      album: track.album?.name || '',
-      releaseDate: track.album?.release_date || '',
-      duration: track.duration_ms ? Math.round(track.duration_ms / 1000) : 0,
-      previewUrl: track.preview_url || null,
-      spotifyId: track.id,
-      popularity: track.popularity || 0,
-      imageUrl: track.album?.images?.[0]?.url || null,
-      source: 'spotify' as const,
-      spotifyUrl: track.external_urls?.spotify || null,
-    }));
+    return data.tracks.items.map((track: any) => {
+      const releaseDate = track.album?.release_date || '';
+      const year = releaseDate ? releaseDate.split('-')[0] : '';
+
+      return {
+        id: track.id, // Use Spotify track ID as the general ID
+        title: track.name,
+        artist: track.artists?.[0]?.name || 'Unknown Artist',
+        album: track.album?.name || '',
+        releaseDate,
+        year,
+        duration: track.duration_ms ? Math.round(track.duration_ms / 1000) : 0,
+        previewUrl: track.preview_url || null,
+        spotifyId: track.id,
+        popularity: track.popularity || 0,
+        albumArt: this.createAlbumArtObject(track.album?.images),
+        imageUrl: track.album?.images?.[0]?.url || null, // Keep for backward compatibility
+        source: 'spotify' as const,
+        spotifyUrl: track.external_urls?.spotify || null,
+      };
+    });
   }
 
   private mapSpotifyArtists(data: any): ArtistSearchResult[] {
@@ -297,19 +367,27 @@ export class MusicService {
 
     return data.results
       .filter((item: any) => item.kind === 'song')
-      .map((track: any) => ({
-        title: track.trackName || '',
-        artist: track.artistName || 'Unknown Artist',
-        album: track.collectionName || '',
-        releaseDate: track.releaseDate ? track.releaseDate.split('T')[0] : '',
-        duration: track.trackTimeMillis ? Math.round(track.trackTimeMillis / 1000) : 0,
-        previewUrl: track.previewUrl || null,
-        itunesId: track.trackId,
-        popularity: 0, // iTunes doesn't provide popularity scores
-        imageUrl: track.artworkUrl100 || track.artworkUrl60 || null,
-        source: 'itunes' as const,
-        itunesUrl: track.trackViewUrl || null,
-      }));
+      .map((track: any) => {
+        const releaseDate = track.releaseDate ? track.releaseDate.split('T')[0] : '';
+        const year = releaseDate ? releaseDate.split('-')[0] : '';
+
+        return {
+          id: track.trackId.toString(), // Use iTunes track ID as the general ID
+          title: track.trackName || '',
+          artist: track.artistName || 'Unknown Artist',
+          album: track.collectionName || '',
+          releaseDate,
+          year,
+          duration: track.trackTimeMillis ? Math.round(track.trackTimeMillis / 1000) : 0,
+          previewUrl: track.previewUrl || null,
+          itunesId: track.trackId,
+          popularity: 0, // iTunes doesn't provide popularity scores
+          albumArt: this.createAlbumArtObjectFromItunes(track),
+          imageUrl: track.artworkUrl100 || track.artworkUrl60 || null, // Keep for backward compatibility
+          source: 'itunes' as const,
+          itunesUrl: track.trackViewUrl || null,
+        };
+      });
   }
 
   private mapItunesArtists(data: any): ArtistSearchResult[] {
@@ -473,22 +551,568 @@ export class MusicService {
     queries: string[],
     limit: number = 15,
     targetCount: number = 50,
+    categoryId?: string,
   ): Promise<MusicSearchResult[]> {
     const allResults: MusicSearchResult[] = [];
 
-    for (const query of queries) {
-      try {
-        const results = await this.searchSongs(query, limit, 0);
-        allResults.push(...results);
+    // If categoryId is provided, use it for smart detection
+    let isDecadeCategory = false;
+    let isCountryCategory = false;
+    let isRBHipHopCategory = false;
+    let isOneHitWondersCategory = false;
+    let isDuetsCategory = false;
+    let isFeelGoodCategory = false;
 
-        if (allResults.length >= targetCount) {
-          break;
+    if (categoryId) {
+      isDecadeCategory =
+        categoryId.includes('70s') ||
+        categoryId.includes('80s') ||
+        categoryId.includes('90s') ||
+        categoryId.includes('2000s') ||
+        categoryId.includes('best-of-70s') ||
+        categoryId.includes('best-of-80s') ||
+        categoryId.includes('best-of-90s') ||
+        categoryId.includes('best-of-2000s');
+      isCountryCategory = categoryId.includes('country');
+      isRBHipHopCategory = categoryId.includes('rb-hiphop') || categoryId.includes('r&b');
+      isOneHitWondersCategory = categoryId.includes('one-hit-wonders');
+      isDuetsCategory = categoryId.includes('duets');
+      isFeelGoodCategory = categoryId.includes('feel-good');
+    } else {
+      // Fallback to query-based detection
+      isDecadeCategory = queries.some(
+        (q) =>
+          q.includes('1970') ||
+          q.includes('1980') ||
+          q.includes('1990') ||
+          q.includes('2000') ||
+          q.includes('2010'),
+      );
+      isCountryCategory = queries.some(
+        (q) => q.includes('country') || q.includes('garth brooks') || q.includes('shania twain'),
+      );
+      isRBHipHopCategory = queries.some(
+        (q) => q.includes('r&b') || q.includes('hip hop') || q.includes('rap'),
+      );
+      isOneHitWondersCategory = queries.some((q) => q.includes('one hit') || q.includes('wonders'));
+      isDuetsCategory = queries.some((q) => q.includes('duets') || q.includes('love songs'));
+      isFeelGoodCategory = queries.some((q) => q.includes('feel good') || q.includes('upbeat'));
+    }
+
+    // Check for additional categories
+    const isRockCategory = categoryId?.includes('rock') || queries.some((q) => q.includes('rock'));
+    const isPopCategory = categoryId?.includes('pop') || queries.some((q) => q.includes('pop'));
+    const isKaraokeCategory =
+      categoryId?.includes('karaoke') || queries.some((q) => q.includes('karaoke'));
+
+    // Special handling for decade categories
+    if (isDecadeCategory) {
+      // For decade categories, use popular artists and songs from that era
+      const decadeQueries = this.getDecadeSpecificQueries(categoryId || queries[0] || '90s');
+
+      for (const query of decadeQueries.slice(0, 10)) {
+        // Limit to first 10 for performance
+        try {
+          const results = await this.searchSongs(query, Math.ceil(limit / 3), 0);
+          // Filter results by year if available
+          const filteredResults = this.filterByDecade(results, categoryId || queries[0] || '');
+          allResults.push(...filteredResults);
+
+          if (allResults.length >= targetCount) {
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to search for decade query: ${query}`, error);
         }
-      } catch (error) {
-        console.warn(`Failed to search for category query: ${query}`, error);
+      }
+    } else if (isCountryCategory) {
+      // For country categories, use specific country artists and hits
+      const countryQueries = this.getCountrySpecificQueries();
+
+      for (const query of countryQueries) {
+        try {
+          const results = await this.searchSongs(query, Math.ceil(limit / 2), 0);
+          allResults.push(...results);
+
+          if (allResults.length >= targetCount) {
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to search for country query: ${query}`, error);
+        }
+      }
+    } else if (isRBHipHopCategory) {
+      const rbHipHopQueries = this.getRBHipHopSpecificQueries();
+
+      for (const query of rbHipHopQueries) {
+        try {
+          const results = await this.searchSongs(query, Math.ceil(limit / 2), 0);
+          allResults.push(...results);
+
+          if (allResults.length >= targetCount) {
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to search for R&B/Hip-Hop query: ${query}`, error);
+        }
+      }
+    } else if (isOneHitWondersCategory) {
+      const oneHitQueries = this.getOneHitWonderQueries();
+
+      for (const query of oneHitQueries) {
+        try {
+          const results = await this.searchSongs(query, Math.ceil(limit / 2), 0);
+          allResults.push(...results);
+
+          if (allResults.length >= targetCount) {
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to search for one-hit wonder query: ${query}`, error);
+        }
+      }
+    } else if (isDuetsCategory) {
+      const duetsQueries = this.getDuetsSpecificQueries();
+
+      for (const query of duetsQueries) {
+        try {
+          const results = await this.searchSongs(query, Math.ceil(limit / 2), 0);
+          allResults.push(...results);
+
+          if (allResults.length >= targetCount) {
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to search for duets query: ${query}`, error);
+        }
+      }
+    } else if (isFeelGoodCategory) {
+      const feelGoodQueries = this.getFeelGoodSpecificQueries();
+
+      for (const query of feelGoodQueries) {
+        try {
+          const results = await this.searchSongs(query, Math.ceil(limit / 2), 0);
+          allResults.push(...results);
+
+          if (allResults.length >= targetCount) {
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to search for feel-good query: ${query}`, error);
+        }
+      }
+    } else if (isRockCategory) {
+      const rockQueries = this.getRockSpecificQueries();
+
+      for (const query of rockQueries) {
+        try {
+          const results = await this.searchSongs(query, Math.ceil(limit / 2), 0);
+          allResults.push(...results);
+
+          if (allResults.length >= targetCount) {
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to search for rock query: ${query}`, error);
+        }
+      }
+    } else if (isPopCategory) {
+      const popQueries = this.getPopSpecificQueries();
+
+      for (const query of popQueries) {
+        try {
+          const results = await this.searchSongs(query, Math.ceil(limit / 2), 0);
+          allResults.push(...results);
+
+          if (allResults.length >= targetCount) {
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to search for pop query: ${query}`, error);
+        }
+      }
+    } else if (isKaraokeCategory) {
+      const karaokeQueries = this.getKaraokeSpecificQueries();
+
+      for (const query of karaokeQueries) {
+        try {
+          const results = await this.searchSongs(query, Math.ceil(limit / 2), 0);
+          allResults.push(...results);
+
+          if (allResults.length >= targetCount) {
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to search for karaoke query: ${query}`, error);
+        }
+      }
+    } else {
+      // Regular category handling
+      for (const query of queries) {
+        try {
+          const results = await this.searchSongs(query, limit, 0);
+          allResults.push(...results);
+
+          if (allResults.length >= targetCount) {
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to search for category query: ${query}`, error);
+        }
       }
     }
 
-    return allResults.slice(0, targetCount);
+    // Apply diversity and deduplication filters
+    let finalResults = this.deduplicateResults(allResults);
+    finalResults = this.diversifyByArtist(finalResults, 2); // Max 2 songs per artist
+    finalResults = this.shuffleArray(finalResults); // Randomize order
+
+    return finalResults.slice(0, targetCount);
+  }
+
+  private getDecadeSpecificQueries(originalQuery: string): string[] {
+    if (
+      originalQuery.includes('70s') ||
+      originalQuery.includes('best-of-70s') ||
+      originalQuery.includes('1970')
+    ) {
+      return [
+        'Queen Bohemian Rhapsody',
+        'Led Zeppelin Stairway to Heaven',
+        'Fleetwood Mac Go Your Own Way',
+        'Eagles Hotel California',
+        'Bee Gees Stayin Alive',
+        'ABBA Dancing Queen',
+        'Elton John Rocket Man',
+        'David Bowie Heroes',
+        'Pink Floyd Another Brick in the Wall',
+        'Stevie Wonder Superstition',
+        'Diana Ross Love Hangover',
+        'Wings Band on the Run',
+        'Donna Summer I Feel Love',
+        'The Rolling Stones Miss You',
+        'Billy Joel Piano Man',
+        'Deep Purple Smoke on the Water',
+        'Black Sabbath Paranoid',
+        "The Who Won't Get Fooled Again",
+        'Lynyrd Skynyrd Sweet Home Alabama',
+        "Carole King It's Too Late",
+      ];
+    } else if (
+      originalQuery.includes('80s') ||
+      originalQuery.includes('best-of-80s') ||
+      originalQuery.includes('1980')
+    ) {
+      return [
+        'Michael Jackson Billie Jean',
+        'Prince Purple Rain',
+        'Madonna Like a Virgin',
+        'Bon Jovi Livin on a Prayer',
+        "Journey Don't Stop Believin'",
+        'Guns N Roses Sweet Child O Mine',
+        'Whitney Houston I Wanna Dance with Somebody',
+        'Queen Another One Bites the Dust',
+        'Blondie Call Me',
+        'Duran Duran Hungry Like the Wolf',
+        'Cyndi Lauper Time After Time',
+        'Hall & Oates Private Eyes',
+        'Def Leppard Pour Some Sugar on Me',
+        'Van Halen Jump',
+        'AC DC You Shook Me All Night Long',
+        'The Police Every Breath You Take',
+        'Culture Club Karma Chameleon',
+        'Tears for Fears Everybody Wants to Rule the World',
+        "Dexy's Midnight Runners Come on Eileen",
+        'A-ha Take On Me',
+      ];
+    } else if (
+      originalQuery.includes('90s') ||
+      originalQuery.includes('best-of-90s') ||
+      originalQuery.includes('1990')
+    ) {
+      return [
+        'Nirvana Smells Like Teen Spirit',
+        'Whitney Houston I Will Always Love You',
+        'Alanis Morissette You Oughta Know',
+        'Red Hot Chili Peppers Under the Bridge',
+        'Backstreet Boys I Want It That Way',
+        'TLC Waterfalls',
+        'Boyz II Men End of the Road',
+        'Green Day Basket Case',
+        'Pearl Jam Alive',
+        'Mariah Carey Vision of Love',
+        'R.E.M. Losing My Religion',
+        'Metallica Enter Sandman',
+        'Oasis Wonderwall',
+        'Soundgarden Black Hole Sun',
+        'Stone Temple Pilots Interstate Love Song',
+        'Alice in Chains Man in the Box',
+        "No Doubt Don't Speak",
+        'Bush Glycerine',
+        'Blind Melon No Rain',
+        'Smashing Pumpkins Tonight Tonight',
+      ];
+    } else if (
+      originalQuery.includes('2000s') ||
+      originalQuery.includes('best-of-2000s') ||
+      originalQuery.includes('2000')
+    ) {
+      return [
+        'OutKast Hey Ya',
+        'Eminem Lose Yourself',
+        'Beyonce Crazy in Love',
+        'Black Eyed Peas I Gotta Feeling',
+        'Usher Yeah',
+        'Gnarls Barkley Crazy',
+        'Kelly Clarkson Since U Been Gone',
+        'Green Day American Idiot',
+        'Coldplay Yellow',
+        'Linkin Park In the End',
+        '50 Cent In Da Club',
+        'Alicia Keys Fallin',
+        'Justin Timberlake SexyBack',
+        'Nelly Hot in Herre',
+        'The White Stripes Seven Nation Army',
+        'The Killers Mr. Brightside',
+        'Franz Ferdinand Take Me Out',
+        'Maroon 5 This Love',
+        'Jet Are You Gonna Be My Girl',
+        'System of a Down Chop Suey!',
+      ];
+    } else {
+      return [originalQuery];
+    }
+  }
+
+  private getCountrySpecificQueries(): string[] {
+    return [
+      'Garth Brooks Friends in Low Places',
+      'Shania Twain Man I Feel Like a Woman',
+      "Keith Urban Blue Ain't Your Color",
+      'Carrie Underwood Before He Cheats',
+      'Tim McGraw Live Like You Were Dying',
+      'Faith Hill This Kiss',
+      'Alan Jackson Chattahoochee',
+      'Reba McEntire Fancy',
+      'George Strait All My Exes Live in Texas',
+      'Dolly Parton Jolene',
+      "Kenny Chesney She Thinks My Tractor's Sexy",
+      'Brad Paisley Mud on the Tires',
+      'Martina McBride Independence Day',
+      'Blake Shelton Austin',
+      'Miranda Lambert Gunpowder Lead',
+    ];
+  }
+
+  private getRBHipHopSpecificQueries(): string[] {
+    return [
+      'Lauryn Hill Doo Wop That Thing',
+      'OutKast Ms Jackson',
+      'Alicia Keys No One',
+      'Jay-Z Empire State of Mind',
+      'Beyonce Single Ladies',
+      'Drake Hotline Bling',
+      'Kendrick Lamar HUMBLE',
+      'Mary J Blige Family Affair',
+      'Usher U Remind Me',
+      'TLC No Scrubs',
+      "Destiny's Child Say My Name",
+      'Nelly Country Grammar',
+      'Missy Elliott Work It',
+      'Kanye West Gold Digger',
+      'John Legend All of Me',
+    ];
+  }
+
+  private getOneHitWonderQueries(): string[] {
+    return [
+      'Dexys Midnight Runners Come on Eileen',
+      'A-ha Take On Me',
+      'Toni Basil Mickey',
+      'Mambo No 5 Lou Bega',
+      'Chumbawamba Tubthumping',
+      'OMC How Bizarre',
+      'Vanilla Ice Ice Ice Baby',
+      "Right Said Fred I'm Too Sexy",
+      'Snow Informer',
+      'House of Pain Jump Around',
+      'Marky Mark Good Vibrations',
+      'Deep Blue Something Breakfast at Tiffanys',
+      'Spacehog In the Meantime',
+      'Primitive Radio Gods Standing Outside',
+      'Len Steal My Sunshine',
+    ];
+  }
+
+  private getDuetsSpecificQueries(): string[] {
+    return [
+      'Islands in the Stream Kenny Rogers Dolly Parton',
+      "Don't Go Breaking My Heart Elton John Kiki Dee",
+      'The Boy Is Mine Brandy Monica',
+      'Under Pressure Queen David Bowie',
+      'I Got You Babe Sonny Cher',
+      'Shallow Lady Gaga Bradley Cooper',
+      'Beauty and the Beast Celine Dion Peabo Bryson',
+      'Up Where We Belong Joe Cocker Jennifer Warnes',
+      'Nobody Wants to Be Lonely Ricky Martin Christina Aguilera',
+      'All I Want for Christmas Mariah Carey Justin Bieber',
+      'Say Say Say Paul McCartney Michael Jackson',
+      'Cruisin Huey Lewis Gwyneth Paltrow',
+      'Picture Kid Rock Sheryl Crow',
+      'Just Give Me a Reason Pink Nate Ruess',
+      'Love Song for a Vampire Annie Lennox',
+    ];
+  }
+
+  private getFeelGoodSpecificQueries(): string[] {
+    return [
+      'Pharrell Williams Happy',
+      'Katrina and the Waves Walking on Sunshine',
+      "Bobby McFerrin Don't Worry Be Happy",
+      'Bill Withers Lovely Day',
+      'Earth Wind Fire September',
+      'Stevie Wonder Signed Sealed Delivered',
+      'The Temptations My Girl',
+      'James Brown I Got You',
+      'Jackie Wilson Higher and Higher',
+      'Kool and the Gang Celebration',
+      'Sister Sledge We Are Family',
+      "Queen Don't Stop Me Now",
+      'The Beatles Here Comes the Sun',
+      'Stevie Wonder Sir Duke',
+      'Van Morrison Brown Eyed Girl',
+    ];
+  }
+
+  private getRockSpecificQueries(): string[] {
+    return [
+      'Queen We Will Rock You',
+      'Led Zeppelin Black Dog',
+      'AC DC Thunderstruck',
+      'Guns N Roses Welcome to the Jungle',
+      'Van Halen Runnin with the Devil',
+      'Deep Purple Smoke on the Water',
+      "The Who Won't Get Fooled Again",
+      'Black Sabbath Iron Man',
+      'Metallica Master of Puppets',
+      'Pink Floyd Comfortably Numb',
+      'The Rolling Stones Paint It Black',
+      'Aerosmith Dream On',
+      'Def Leppard Rock of Ages',
+      'Rush Tom Sawyer',
+      'Heart Barracuda',
+    ];
+  }
+
+  private getPopSpecificQueries(): string[] {
+    return [
+      'Michael Jackson Beat It',
+      'Madonna Material Girl',
+      'Prince Kiss',
+      'Whitney Houston I Want to Dance with Somebody',
+      'Cyndi Lauper Girls Just Want to Have Fun',
+      'George Michael Faith',
+      'Duran Duran Rio',
+      'Blondie Heart of Glass',
+      'ABBA Mamma Mia',
+      'The Bangles Walk Like an Egyptian',
+      'Culture Club Karma Chameleon',
+      'Wham! Wake Me Up Before You Go-Go',
+      'Hall & Oates Rich Girl',
+      'Tears for Fears Everybody Wants to Rule the World',
+      'Eurythmics Sweet Dreams',
+    ];
+  }
+
+  private getKaraokeSpecificQueries(): string[] {
+    return [
+      "Journey Don't Stop Believin'",
+      "Bon Jovi Livin' on a Prayer",
+      'Queen Bohemian Rhapsody',
+      'Sweet Caroline Neil Diamond',
+      'Piano Man Billy Joel',
+      'My Way Frank Sinatra',
+      'I Will Survive Gloria Gaynor',
+      'Respect Aretha Franklin',
+      'Dancing Queen ABBA',
+      'Love Shack B-52s',
+      'Come On Eileen Dexys Midnight Runners',
+      'Mr. Brightside The Killers',
+      'Closing Time Semisonic',
+      'Friends in Low Places Garth Brooks',
+      'Sweet Home Alabama Lynyrd Skynyrd',
+    ];
+  }
+
+  private filterByDecade(results: MusicSearchResult[], originalQuery: string): MusicSearchResult[] {
+    // Determine target decade from category ID or query
+    let targetDecadeStart = '';
+    let targetDecadeEnd = '';
+
+    if (originalQuery.includes('70s') || originalQuery.includes('best-of-70s')) {
+      targetDecadeStart = '1970';
+      targetDecadeEnd = '1979';
+    } else if (originalQuery.includes('80s') || originalQuery.includes('best-of-80s')) {
+      targetDecadeStart = '1980';
+      targetDecadeEnd = '1989';
+    } else if (originalQuery.includes('90s') || originalQuery.includes('best-of-90s')) {
+      targetDecadeStart = '1990';
+      targetDecadeEnd = '1999';
+    } else if (originalQuery.includes('2000s') || originalQuery.includes('best-of-2000s')) {
+      targetDecadeStart = '2000';
+      targetDecadeEnd = '2009';
+    } else {
+      // No decade filtering needed
+      return results;
+    }
+
+    return results.filter((song) => {
+      if (!song.year) return false; // Exclude songs without year info for decade categories
+      const year = parseInt(song.year, 10);
+      const startYear = parseInt(targetDecadeStart, 10);
+      const endYear = parseInt(targetDecadeEnd, 10);
+      return year >= startYear && year <= endYear;
+    });
+  }
+
+  private deduplicateResults(results: MusicSearchResult[]): MusicSearchResult[] {
+    const seen = new Set<string>();
+    return results.filter((song) => {
+      const key = `${song.title.toLowerCase()}-${song.artist?.toLowerCase()}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  }
+
+  private diversifyByArtist(
+    results: MusicSearchResult[],
+    maxPerArtist: number = 2,
+  ): MusicSearchResult[] {
+    const artistCounts = new Map<string, number>();
+    const diversified: MusicSearchResult[] = [];
+
+    for (const song of results) {
+      const artist = song.artist?.toLowerCase() || 'unknown';
+      const currentCount = artistCounts.get(artist) || 0;
+
+      if (currentCount < maxPerArtist) {
+        diversified.push(song);
+        artistCounts.set(artist, currentCount + 1);
+      }
+    }
+
+    return diversified;
+  }
+
+  private shuffleArray<T>(array: T[]): T[] {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
   }
 }

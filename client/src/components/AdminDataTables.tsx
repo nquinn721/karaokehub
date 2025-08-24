@@ -43,7 +43,7 @@ import {
   useTheme,
 } from '@mui/material';
 import type { AdminDJ, AdminFeedback, AdminShow, AdminUser, AdminVenue } from '@stores/AdminStore';
-import { adminStore, uiStore } from '@stores/index';
+import { adminStore, authStore, uiStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import { UserFeatureOverrideModal } from './UserFeatureOverrideModal';
@@ -120,6 +120,11 @@ const AdminDataTables: React.FC = observer(() => {
   };
 
   const fetchData = async (table: string, page: number, search?: string) => {
+    // Don't fetch if not authenticated or not admin
+    if (!authStore.isAuthenticated || !authStore.user?.isAdmin) {
+      return;
+    }
+
     switch (table) {
       case 'users':
         await adminStore.fetchUsers(page + 1, rowsPerPage, search);
@@ -241,6 +246,11 @@ const AdminDataTables: React.FC = observer(() => {
   };
 
   useEffect(() => {
+    // Only fetch data if user is authenticated and is admin
+    if (!authStore.isAuthenticated || !authStore.user?.isAdmin) {
+      return;
+    }
+
     // Load statistics to show counts in tabs
     if (!adminStore.statistics) {
       adminStore.fetchStatistics();
@@ -671,7 +681,7 @@ const AdminDataTables: React.FC = observer(() => {
               ) : (
                 adminStore.shows?.items.map((show: AdminShow) => (
                   <TableRow key={show.id}>
-                    <TableCell>{show.vendor?.name || 'N/A'}</TableCell>
+                    <TableCell>{show.dj?.vendor?.name || 'N/A'}</TableCell>
                     <TableCell>
                       <Box>
                         <Typography variant="subtitle2">{show.venue || 'N/A'}</Typography>
@@ -764,8 +774,14 @@ const AdminDataTables: React.FC = observer(() => {
                       />
                     </TableCell>
                     <TableCell>
-                      {show.source ? (
-                        <Chip label={show.source} size="small" color="info" variant="outlined" />
+                      {show.readableSource || show.source ? (
+                        <Chip
+                          label={show.readableSource || show.source}
+                          size="small"
+                          color="info"
+                          variant="outlined"
+                          title={show.source} // Show full URL on hover
+                        />
                       ) : (
                         'Manual'
                       )}

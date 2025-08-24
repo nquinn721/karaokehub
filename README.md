@@ -265,17 +265,28 @@ Set these in your GitHub repository secrets:
 
 ### Environment Variables
 
-| Variable               | Description         | Default                 |
-| ---------------------- | ------------------- | ----------------------- |
-| `NODE_ENV`             | Environment         | `development`           |
-| `PORT`                 | Server port         | `3001`                  |
-| `JWT_SECRET`           | JWT signing key     | Required                |
-| `JWT_EXPIRES_IN`       | Token expiry        | `7d`                    |
-| `GOOGLE_CLIENT_ID`     | Google OAuth ID     | Optional                |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth secret | Optional                |
-| `GITHUB_CLIENT_ID`     | GitHub OAuth ID     | Optional                |
-| `GITHUB_CLIENT_SECRET` | GitHub OAuth secret | Optional                |
-| `ALLOWED_ORIGINS`      | CORS origins        | `http://localhost:3000` |
+| Variable                | Description         | Default                   |
+| ----------------------- | ------------------- | ------------------------- |
+| `NODE_ENV`              | Environment         | `development`             |
+| `PORT`                  | Server port         | `3001`                    |
+| `JWT_SECRET`            | JWT signing key     | Required                  |
+| `JWT_EXPIRES_IN`        | Token expiry        | `7d`                      |
+| `GOOGLE_CLIENT_ID`      | Google OAuth ID     | Optional                  |
+| `GOOGLE_CLIENT_SECRET`  | Google OAuth secret | Optional                  |
+| `GITHUB_CLIENT_ID`      | GitHub OAuth ID     | Optional                  |
+| `GITHUB_CLIENT_SECRET`  | GitHub OAuth secret | Optional                  |
+| `SPOTIFY_CLIENT_ID`     | Spotify API ID      | Optional (Cloud Run only) |
+| `SPOTIFY_CLIENT_SECRET` | Spotify API secret  | Optional (Cloud Run only) |
+| `ALLOWED_ORIGINS`       | CORS origins        | `http://localhost:3000`   |
+
+### Music API Configuration
+
+The application uses different music APIs for different environments:
+
+- **localhost/development**: iTunes API (Spotify doesn't support localhost callbacks)
+- **Cloud Run/production**: Spotify as primary, iTunes as fallback
+
+When `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` are available, Spotify will be used as the primary music source. iTunes is always available as a fallback.
 
 ### OAuth Setup
 
@@ -290,6 +301,14 @@ Set these in your GitHub repository secrets:
 1. Go to GitHub Settings > Developer settings > OAuth Apps
 2. Create new OAuth App
 3. Set callback URL: `http://localhost:3001/api/auth/github/callback`
+
+#### Spotify Web API (Production only)
+
+1. Go to [Spotify for Developers](https://developer.spotify.com/dashboard)
+2. Create a new app
+3. Get your Client ID and Client Secret
+4. Note: Only set these credentials in production/Cloud Run environment
+5. Localhost development automatically uses iTunes API instead
 
 ## 🛠️ Development
 

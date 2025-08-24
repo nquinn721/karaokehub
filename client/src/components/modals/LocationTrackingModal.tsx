@@ -62,7 +62,9 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
     setError(null);
 
     // Try high accuracy first, then fallback to lower accuracy
-    const getLocationWithOptions = async (options: PositionOptions): Promise<GeolocationPosition> => {
+    const getLocationWithOptions = async (
+      options: PositionOptions,
+    ): Promise<GeolocationPosition> => {
       return new Promise((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, options);
       });
@@ -70,26 +72,21 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
 
     try {
       let position: GeolocationPosition;
-      
+
       try {
         // First attempt: High accuracy with shorter timeout
-        console.log('📍 Attempting high accuracy location...');
         position = await getLocationWithOptions({
           enableHighAccuracy: true,
           timeout: 10000, // Reduced from 15000
           maximumAge: 30000, // Allow cached positions up to 30 seconds old
         });
-        console.log('✅ High accuracy location successful');
       } catch (highAccuracyError) {
-        console.log('📍 High accuracy failed, trying standard accuracy...');
-        
         // Fallback: Standard accuracy with longer timeout
         position = await getLocationWithOptions({
           enableHighAccuracy: false,
           timeout: 15000,
           maximumAge: 60000, // Allow older cached positions for fallback
         });
-        console.log('✅ Standard accuracy location successful');
       }
 
       const userLocation: UserLocation = {
@@ -124,18 +121,13 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
         setMapImageUrl(mapUrl);
       }
     } catch (err: any) {
-      // Log error for debugging but don't show to user for common location issues
-      console.log('📍 Location error:', err.message || err);
-      
       // Only show user-facing errors for critical issues
       if (err.message && err.message.includes('not supported')) {
         setError('Geolocation is not supported by this browser');
       } else if (err.message && err.message.includes('denied')) {
         setError('Location access denied. Please enable location services.');
-      } else {
-        // For other errors (like accuracy issues), just log them
-        console.warn('🎯 Location tracking issue (continuing in background):', err.message || err);
       }
+      // All other errors are silently handled (location still works with fallback)
     } finally {
       setLoading(false);
     }
@@ -469,9 +461,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                   All Shows By Distance
                 </Typography>
                 {allShows.length === 0 ? (
-                  <Typography color="text.secondary">
-                    No shows found for today.
-                  </Typography>
+                  <Typography color="text.secondary">No shows found for today.</Typography>
                 ) : (
                   <List>
                     {allShows.map((show, index) => (

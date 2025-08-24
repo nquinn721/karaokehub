@@ -3,18 +3,19 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Avatar,
   Box,
+  CircularProgress,
   InputAdornment,
   List,
   ListItem,
   ListItemAvatar,
   ListItemButton,
   ListItemText,
-  Skeleton,
   TextField,
   Typography,
   useTheme,
 } from '@mui/material';
 import { friendsStore } from '@stores/index';
+import { getUserDisplayName, getUserSecondaryName } from '@utils/userUtils';
 import { observer } from 'mobx-react-lite';
 import React, { useState } from 'react';
 import CustomModal from './CustomModal';
@@ -73,7 +74,7 @@ const SendFriendRequestModal: React.FC<SendFriendRequestModalProps> = observer(
           <TextField
             fullWidth
             size="small"
-            placeholder="Search by stage name..."
+            placeholder="Search by stage name or full name..."
             value={searchQuery}
             onChange={handleSearchChange}
             sx={{ mb: 3 }}
@@ -83,17 +84,15 @@ const SendFriendRequestModal: React.FC<SendFriendRequestModalProps> = observer(
                   <FontAwesomeIcon icon={faSearch} size="sm" />
                 </InputAdornment>
               ),
+              endAdornment: friendsStore.searchLoading && (
+                <InputAdornment position="end">
+                  <CircularProgress size={20} thickness={4} />
+                </InputAdornment>
+              ),
             }}
           />
 
-          {/* Search Results */}
-          {friendsStore.searchLoading && (
-            <Box sx={{ mb: 2 }}>
-              <Skeleton variant="rectangular" height={60} />
-              <Skeleton variant="rectangular" height={60} sx={{ mt: 1 }} />
-            </Box>
-          )}
-
+          {/* Search Results - Remove the loading box entirely */}
           {searchQuery.length >= 1 &&
             !friendsStore.searchLoading &&
             friendsStore.safeSearchResults.length === 0 && (
@@ -129,7 +128,7 @@ const SendFriendRequestModal: React.FC<SendFriendRequestModalProps> = observer(
               </Box>
             )}
 
-          {friendsStore.safeSearchResults.length > 0 && (
+          {friendsStore.safeSearchResults.length > 0 && !friendsStore.searchLoading && (
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
                 <Box
@@ -204,19 +203,27 @@ const SendFriendRequestModal: React.FC<SendFriendRequestModalProps> = observer(
                             color: theme.palette.primary.contrastText,
                           }}
                         >
-                          {user.stageName?.charAt(0).toUpperCase() || '?'}
+                          {getUserDisplayName(user)?.charAt(0).toUpperCase() ||
+                            user.name?.charAt(0).toUpperCase() ||
+                            '?'}
                         </Avatar>
                       </ListItemAvatar>
                       <ListItemText
                         primary={
                           <Typography variant="body1" fontWeight={500}>
-                            {user.stageName || 'No Stage Name'}
+                            {getUserDisplayName(user)}
                           </Typography>
                         }
                         secondary={
-                          <Typography variant="body2" color="text.secondary">
-                            Click to send friend request
-                          </Typography>
+                          getUserSecondaryName(user) ? (
+                            <Typography variant="body2" color="text.secondary">
+                              {getUserSecondaryName(user)}
+                            </Typography>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              Click to send friend request
+                            </Typography>
+                          )
                         }
                       />
                       <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>

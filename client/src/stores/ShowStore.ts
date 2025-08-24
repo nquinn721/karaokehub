@@ -13,7 +13,6 @@ export enum DayOfWeek {
 
 export interface Show {
   id: string;
-  vendorId: string;
   djId: string;
   address: string;
   city?: string; // City component of address
@@ -29,14 +28,14 @@ export interface Show {
   description?: string;
   lat?: number; // Latitude coordinate
   lng?: number; // Longitude coordinate
-  vendor?: {
-    id: string;
-    name: string;
-    owner: string;
-  };
   dj?: {
     id: string;
     name: string;
+    vendor?: {
+      id: string;
+      name: string;
+      owner?: string;
+    };
   };
   favorites?: Array<{
     id: string;
@@ -54,7 +53,6 @@ export interface CitySummary {
 }
 
 export interface CreateShowData {
-  vendorId: string;
   djId: string;
   address: string;
   day: string;
@@ -143,7 +141,7 @@ export class ShowStore {
 
   // Get unique vendors for filtering
   get uniqueVendors() {
-    return Array.from(new Set(this.shows.map((show) => show.vendor?.name).filter(Boolean)));
+    return Array.from(new Set(this.shows.map((show) => show.dj?.vendor?.name).filter(Boolean)));
   }
 
   // ============ UI STATE METHODS ============
@@ -210,7 +208,7 @@ export class ShowStore {
   get filteredShows() {
     return this.shows.filter((show) => {
       // Vendor filter
-      if (this._vendorFilter && show.vendor?.name !== this._vendorFilter) {
+      if (this._vendorFilter && show.dj?.vendor?.name !== this._vendorFilter) {
         return false;
       }
 

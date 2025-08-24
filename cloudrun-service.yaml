@@ -107,6 +107,9 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_GOOGLE_MAPS_API_KEY
                   key: latest
+            # Music API Configuration
+            # Spotify is used as primary music source in production (Cloud Run only)
+            # iTunes is used as fallback and for localhost development (Spotify doesn't support localhost)
             - name: SPOTIFY_CLIENT_ID
               valueFrom:
                 secretKeyRef:

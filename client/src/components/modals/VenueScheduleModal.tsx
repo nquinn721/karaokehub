@@ -191,9 +191,9 @@ export const VenueScheduleModal: React.FC<VenueScheduleModalProps> = observer(
                             )}
 
                             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                              {show.vendor?.name && (
+                              {show.dj?.vendor?.name && (
                                 <Chip
-                                  label={show.vendor.name}
+                                  label={show.dj.vendor.name}
                                   size="small"
                                   variant="outlined"
                                   sx={{ fontSize: '0.7rem' }}

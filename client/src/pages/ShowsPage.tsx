@@ -396,7 +396,7 @@ const ShowsPage: React.FC = observer(() => {
                                         whiteSpace: 'nowrap',
                                       }}
                                     >
-                                      {show.venue || show.vendor?.name || 'Unknown Venue'}
+                                      {show.venue || show.dj?.vendor?.name || 'Unknown Venue'}
                                     </Typography>
 
                                     {/* Time badge */}
@@ -506,9 +506,9 @@ const ShowsPage: React.FC = observer(() => {
                                       sx={{ mt: 0.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}
                                     >
                                       {/* Vendor chip */}
-                                      {show.vendor?.name && (
+                                      {show.dj?.vendor?.name && (
                                         <Chip
-                                          label={show.vendor.name}
+                                          label={show.dj.vendor.name}
                                           size="small"
                                           sx={{
                                             height: '22px',
@@ -859,7 +859,7 @@ const ShowsPage: React.FC = observer(() => {
                                       whiteSpace: 'nowrap',
                                     }}
                                   >
-                                    {show.venue || show.vendor?.name || 'Unknown Venue'}
+                                    {show.venue || show.dj?.vendor?.name || 'Unknown Venue'}
                                   </Typography>
 
                                   {/* Time badge */}
@@ -959,9 +959,9 @@ const ShowsPage: React.FC = observer(() => {
                                     sx={{ mt: 0.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}
                                   >
                                     {/* Vendor chip */}
-                                    {show.vendor?.name && (
+                                    {show.dj?.vendor?.name && (
                                       <Chip
-                                        label={show.vendor.name}
+                                        label={show.dj.vendor.name}
                                         size="small"
                                         sx={{
                                           height: '22px',

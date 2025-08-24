@@ -216,10 +216,10 @@ export const DJScheduleModal: React.FC<DJScheduleModalProps> = observer(
                                 </Typography>
                               )}
 
-                              {show.vendor?.name && (
+                              {show.dj?.vendor?.name && (
                                 <Box sx={{ mt: 1 }}>
                                   <Chip
-                                    label={show.vendor.name}
+                                    label={show.dj.vendor.name}
                                     size="small"
                                     variant="outlined"
                                     sx={{ fontSize: '0.7rem' }}

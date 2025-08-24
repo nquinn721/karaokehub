@@ -106,7 +106,6 @@ export interface AdminVenue {
 
 export interface AdminShow {
   id: string;
-  vendorId: string;
   djId?: string;
   address?: string;
   city?: string;
@@ -121,10 +120,10 @@ export interface AdminShow {
   venuePhone?: string;
   venueWebsite?: string;
   source?: string;
+  readableSource?: string;
   lat?: number;
   lng?: number;
   isActive: boolean;
-  vendor?: AdminVenue;
   dj?: AdminDJ;
   createdAt: Date;
   updatedAt: Date;
@@ -381,6 +380,10 @@ export class AdminStore {
         };
       });
     } catch (error: any) {
+      // Don't show error for authentication issues since they're handled by interceptor
+      if (error.response?.status === 401) {
+        return;
+      }
       const errorMessage = error.response?.data?.message || 'Failed to fetch users';
       this.setTableError(errorMessage);
     } finally {
@@ -414,6 +417,10 @@ export class AdminStore {
         };
       });
     } catch (error: any) {
+      // Don't show error for authentication issues since they're handled by interceptor
+      if (error.response?.status === 401) {
+        return;
+      }
       const errorMessage = error.response?.data?.message || 'Failed to fetch venues';
       this.setTableError(errorMessage);
     } finally {
@@ -447,6 +454,10 @@ export class AdminStore {
         };
       });
     } catch (error: any) {
+      // Don't show error for authentication issues since they're handled by interceptor
+      if (error.response?.status === 401) {
+        return;
+      }
       const errorMessage = error.response?.data?.message || 'Failed to fetch shows';
       this.setTableError(errorMessage);
     } finally {
@@ -480,6 +491,10 @@ export class AdminStore {
         };
       });
     } catch (error: any) {
+      // Don't show error for authentication issues since they're handled by interceptor
+      if (error.response?.status === 401) {
+        return;
+      }
       const errorMessage = error.response?.data?.message || 'Failed to fetch DJs';
       this.setTableError(errorMessage);
     } finally {
@@ -525,6 +540,10 @@ export class AdminStore {
         };
       });
     } catch (error: any) {
+      // Don't show error for authentication issues since they're handled by interceptor
+      if (error.response?.status === 401) {
+        return;
+      }
       const errorMessage = error.response?.data?.message || 'Failed to fetch favorites';
       this.setTableError(errorMessage);
     } finally {
@@ -558,6 +577,10 @@ export class AdminStore {
         };
       });
     } catch (error: any) {
+      // Don't show error for authentication issues since they're handled by interceptor
+      if (error.response?.status === 401) {
+        return;
+      }
       const errorMessage = error.response?.data?.message || 'Failed to fetch songs';
       this.setTableError(errorMessage);
     } finally {
@@ -593,6 +616,10 @@ export class AdminStore {
         };
       });
     } catch (error: any) {
+      // Don't show error for authentication issues since they're handled by interceptor
+      if (error.response?.status === 401) {
+        return;
+      }
       const errorMessage = error.response?.data?.message || 'Failed to fetch feedback';
       this.setTableError(errorMessage);
     } finally {

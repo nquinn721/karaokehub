@@ -93,43 +93,85 @@ export class MusicStore {
       id: 'karaoke-classics',
       title: 'Karaoke Classics',
       image: '/images/music/karaoke-classics.png',
-      spotifyQuery: 'karaoke classics hits most popular sing along',
+      spotifyQuery: 'karaoke sing along crowd favorites piano bar classics',
       description: 'Top 100 karaoke classics that everyone loves to sing',
+    },
+    {
+      id: 'best-of-70s',
+      title: 'Best of 70s',
+      image: '/images/music/best-of-70s.png',
+      spotifyQuery: 'hits 1970 1971 1972 1973 1974 1975 1976 1977 1978 1979',
+      description: 'Top 100 best songs from the 1970s decade',
     },
     {
       id: 'best-of-80s',
       title: 'Best of 80s',
       image: '/images/music/best-of-80s.png',
-      spotifyQuery: '80s hits decade classics top songs 1980s',
+      spotifyQuery: 'hits 1980 1981 1982 1983 1984 1985 1986 1987 1988 1989',
       description: 'Top 100 best songs from the 1980s decade',
     },
     {
       id: 'best-of-90s',
       title: 'Best of 90s',
       image: '/images/music/best-of-90s.png',
-      spotifyQuery: '90s hits decade classics top songs 1990s',
+      spotifyQuery: 'hits 1990 1991 1992 1993 1994 1995 1996 1997 1998 1999',
       description: 'Top 100 best songs from the 1990s decade',
+    },
+    {
+      id: 'best-of-2000s',
+      title: 'Best of 2000s',
+      image: '/images/music/best-of-2000s.png',
+      spotifyQuery: 'hits 2000 2001 2002 2003 2004 2005 2006 2007 2008 2009',
+      description: 'Top 100 best songs from the 2000s decade',
     },
     {
       id: 'rock-hits',
       title: 'Rock Hits',
       image: '/images/music/rock-hits.png',
-      spotifyQuery: 'rock hits classics greatest rock songs all time',
+      spotifyQuery: 'classic rock hard rock alternative guitar driven anthems',
       description: 'Top 100 greatest rock hits of all time',
     },
     {
       id: 'pop-hits',
       title: 'Pop Hits',
       image: '/images/music/pop-hits.png',
-      spotifyQuery: 'pop hits top 40 mainstream popular songs',
+      spotifyQuery: 'pop radio chart toppers billboard hot 100 mainstream dance',
       description: 'Top 100 pop hits and chart toppers',
     },
     {
       id: 'country-favorites',
       title: 'Country Favorites',
       image: '/images/music/country-favorites.png',
-      spotifyQuery: 'country hits favorites classics top country songs',
+      spotifyQuery: 'country classics garth brooks shania twain keith urban carrie underwood',
       description: 'Top 100 country favorites and classics',
+    },
+    {
+      id: 'rb-hiphop-hits',
+      title: 'R&B & Hip-Hop Hits',
+      image: '/images/music/rnb-hip-hop-hits.png',
+      spotifyQuery: 'r&b hip hop classics soul rap hits urban contemporary',
+      description: 'Top R&B and Hip-Hop hits perfect for showcasing vocal skills',
+    },
+    {
+      id: 'one-hit-wonders',
+      title: 'One-Hit Wonders',
+      image: '/images/music/one-hit-wonders.714Z.png',
+      spotifyQuery: 'one hit wonders 90s 2000s novelty songs viral hits',
+      description: 'Nostalgic crowd-pleasers and unforgettable one-hit wonders',
+    },
+    {
+      id: 'duets-love-songs',
+      title: 'Duets & Love Songs',
+      image: '/images/music/duets-and-love-songs.409Z.png',
+      spotifyQuery: 'duets love songs romantic ballads couples karaoke',
+      description: 'Perfect duets and romantic songs for couples and friends',
+    },
+    {
+      id: 'feel-good-classics',
+      title: 'Feel Good Classics',
+      image: '/images/music/feel-good-classics.429Z.png',
+      spotifyQuery: 'feel good upbeat happy songs mood lifters classics',
+      description: 'Upbeat classics guaranteed to lift your spirits and get you singing',
     },
   ];
 
@@ -328,14 +370,6 @@ export class MusicStore {
       const response = await apiStore.get(
         `/music/search?q=${encodeURIComponent(searchQuery)}&limit=${limit}`,
       );
-
-      console.log('🎵 Music search response:', {
-        query: searchQuery,
-        resultCount: response?.length || 0,
-        firstResult: response?.[0],
-        hasPreviewUrls:
-          response?.filter((song: MusicSearchResult) => !!song.previewUrl).length || 0,
-      });
 
       runInAction(() => {
         this.songs = response || [];
@@ -547,7 +581,7 @@ export class MusicStore {
 
       // Split the spotify query into multiple search terms for better results
       const queries = category.spotifyQuery.split(' ').join(',');
-      const apiUrl = `/music/category?queries=${encodeURIComponent(queries)}&limit=${limit}&targetCount=${limit}`;
+      const apiUrl = `/music/category?queries=${encodeURIComponent(queries)}&category=${encodeURIComponent(categoryId)}&limit=${limit}&targetCount=${limit}`;
       console.log('🌐 Making API request to:', apiUrl);
 
       const response = await apiStore.get(apiUrl);

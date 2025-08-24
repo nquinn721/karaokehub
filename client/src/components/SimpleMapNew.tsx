@@ -108,7 +108,7 @@ const PopupContent: React.FC<{
               whiteSpace: 'nowrap',
             }}
           >
-            {show.venue || show.vendor?.name || 'Unknown Venue'}
+            {show.venue || show.dj?.vendor?.name || 'Unknown Venue'}
           </Typography>
 
           {/* Time Information */}

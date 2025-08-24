@@ -74,7 +74,7 @@ const PopupContent: React.FC<{
           mb: 1,
         }}
       >
-        {show.venue || show.vendor?.name || 'Unknown Venue'}
+        {show.venue || show.dj?.vendor?.name || 'Unknown Venue'}
       </Typography>
 
       {/* Time Information */}

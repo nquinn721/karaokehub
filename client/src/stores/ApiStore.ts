@@ -68,10 +68,7 @@ class ApiStore {
 
   // Method to ensure axios is initialized
   private ensureInitialized(): void {
-    console.log('ensureInitialized called, axiosInstance:', this.axiosInstance);
-
     if (!this.axiosInstance) {
-      console.log('axiosInstance is null, calling initializeAxios');
       this.initializeAxios();
     }
 
@@ -79,8 +76,6 @@ class ApiStore {
       console.error('Still no axiosInstance after initialization attempt');
       throw new Error('Unable to initialize axios instance');
     }
-
-    console.log('axiosInstance verified, has get method:', typeof this.axiosInstance.get);
   }
 
   // Check if interceptors are working (simplified)
@@ -101,8 +96,6 @@ class ApiStore {
 
     try {
       // Create axios instance with standard configuration
-      console.log('Creating axios instance...');
-
       // Use direct axios import to ensure we have a clean instance
       const axiosInstance = axios.create({
         baseURL: this.baseURL,
@@ -113,14 +106,9 @@ class ApiStore {
         },
       });
 
-      console.log('Axios instance created:', axiosInstance);
-      console.log('Axios instance has get method:', typeof axiosInstance.get);
-      console.log('Axios instance methods:', Object.keys(axiosInstance));
-
       // Only assign if we have a working instance
       if (axiosInstance && typeof axiosInstance.get === 'function') {
         this.axiosInstance = axiosInstance;
-        console.log('Axios instance successfully assigned');
 
         // Try to set up interceptors if available
         this.setupInterceptors();
@@ -132,7 +120,6 @@ class ApiStore {
       console.error('Error initializing axios:', error);
 
       // Fallback: create most basic instance possible
-      console.log('Creating fallback axios instance...');
       try {
         const fallbackInstance = axios.create({
           baseURL: this.baseURL,
@@ -142,7 +129,6 @@ class ApiStore {
 
         if (fallbackInstance && typeof fallbackInstance.get === 'function') {
           this.axiosInstance = fallbackInstance;
-          console.log('Fallback axios instance created successfully');
         } else {
           console.error('Fallback axios instance also invalid');
           throw new Error('Cannot create any working axios instance');
@@ -259,9 +245,7 @@ class ApiStore {
     }
 
     try {
-      console.log('Making GET request to:', this.baseURL + url);
       const response = await this.axiosInstance.get<T>(url, config);
-      console.log('GET response received:', response);
 
       if (!hasInterceptors) {
         runInAction(() => {
@@ -460,7 +444,6 @@ class ApiStore {
         this.clientConfig = preloadedConfig;
         this.configLoaded = true;
       });
-      console.log('Using preloaded config for faster map loading');
       return;
     }
 

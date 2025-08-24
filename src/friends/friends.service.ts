@@ -56,13 +56,13 @@ export class FriendsService {
     ]);
 
     const excludeIds = [
-      // userId, // Allow self in search for testing
-      // ...friends.map((f) => f.id),
-      // ...sentRequests.map((r) => r.recipientId),
-      // ...receivedRequests.map((r) => r.requesterId),
+      userId, // Exclude self from search results
+      ...friends.map((f) => f.id),
+      ...sentRequests.map((r) => r.recipientId),
+      ...receivedRequests.map((r) => r.requesterId),
     ];
 
-    console.log('🔍 Exclude IDs (testing - minimal excludes):', excludeIds);
+    console.log('🔍 Exclude IDs:', excludeIds);
 
     // Create fuzzy search query with multiple field matching
     const fuzzyQuery = `%${query.toLowerCase()}%`;
@@ -74,7 +74,9 @@ export class FriendsService {
       .where('user.isActive = :isActive', { isActive: true })
       .andWhere(
         "(LOWER(COALESCE(user.stageName, '')) LIKE :query OR " +
-          "LOWER(COALESCE(user.stageName, '')) LIKE :startQuery)",
+          "LOWER(COALESCE(user.stageName, '')) LIKE :startQuery OR " +
+          "LOWER(COALESCE(user.name, '')) LIKE :query OR " +
+          "LOWER(COALESCE(user.name, '')) LIKE :startQuery)",
         {
           query: fuzzyQuery,
           startQuery: startQuery,
@@ -83,11 +85,14 @@ export class FriendsService {
       .select(['user.id', 'user.email', 'user.name', 'user.stageName', 'user.avatar'])
       .orderBy(
         "CASE WHEN LOWER(COALESCE(user.stageName, '')) = :exactQuery THEN 0 " +
-          "WHEN LOWER(COALESCE(user.stageName, '')) LIKE :startQuery THEN 1 " +
-          'ELSE 2 END',
+          "WHEN LOWER(COALESCE(user.name, '')) = :exactQuery THEN 1 " +
+          "WHEN LOWER(COALESCE(user.stageName, '')) LIKE :startQuery THEN 2 " +
+          "WHEN LOWER(COALESCE(user.name, '')) LIKE :startQuery THEN 3 " +
+          'ELSE 4 END',
         'ASC',
       )
       .addOrderBy('user.stageName', 'ASC')
+      .addOrderBy('user.name', 'ASC')
       .limit(limit);
 
     // Add exact query parameter for ordering

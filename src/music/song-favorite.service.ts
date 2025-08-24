@@ -91,9 +91,11 @@ export class SongFavoriteService {
           duration: songData.duration || null,
           spotifyId: songId, // Use the songId as Spotify ID
           previewUrl: songData.previewUrl || null,
-          albumArtSmall: songData.albumArtSmall || null,
-          albumArtMedium: songData.albumArtMedium || null,
-          albumArtLarge: songData.albumArtLarge || null,
+          // Map from both old and new album art structures
+          albumArtSmall:
+            songData.albumArtSmall || songData.albumArt?.small || songData.imageUrl || null,
+          albumArtMedium: songData.albumArtMedium || songData.albumArt?.medium || null,
+          albumArtLarge: songData.albumArtLarge || songData.albumArt?.large || null,
         });
 
         console.log('Created song:', song);

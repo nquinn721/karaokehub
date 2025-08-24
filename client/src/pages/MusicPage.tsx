@@ -3,6 +3,7 @@ import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
+  faBookmark,
   faChevronRight,
   faCompactDisc,
   faHeart as faHeartSolid,
@@ -113,31 +114,19 @@ export const MusicPage: React.FC = observer(() => {
     // Fetch subscription status if user is logged in
     subscriptionStore.fetchSubscriptionStatus();
 
-    console.log('🎵 MusicPage useEffect triggered:', {
-      currentView,
-      urlSearchQuery,
-      categoryId: params.categoryId,
-      path: location.pathname,
-      songsLength: musicStore.sortedSongs.length,
-      isLoading: musicStore.isLoading,
-    });
-
     // Handle initial load based on route
     if (currentView === 'search' && urlSearchQuery) {
-      console.log('🔍 Loading search results for:', urlSearchQuery);
       // Clear previous results for search
       musicStore.clearResults();
       setSearchQuery(urlSearchQuery);
       musicStore.searchSongs(urlSearchQuery);
     } else if (currentView === 'category' && params.categoryId) {
-      console.log('📂 Loading category music progressively for:', params.categoryId);
       // Clear previous results for category
       musicStore.clearResults();
       // Scroll to top immediately when loading category
       window.scrollTo(0, 0);
       musicStore.loadCategoryMusicProgressive(params.categoryId);
     } else {
-      console.log('🏠 Showing home view - Featured Categories');
       // Only clear results when showing home view
       musicStore.clearResults();
     }
@@ -181,7 +170,6 @@ export const MusicPage: React.FC = observer(() => {
 
         // Load more when user scrolls to 85% of the page (more conservative threshold)
         if (scrollTop + clientHeight >= scrollHeight * 0.85) {
-          console.log('🔄 Triggering loadMore - scroll at 85%');
           musicStore.loadMore();
         }
       }, 500); // Increased debounce delay to 500ms to prevent rapid firing
@@ -262,7 +250,6 @@ export const MusicPage: React.FC = observer(() => {
   };
 
   const handleCategoryClick = (categoryId: string) => {
-    console.log('🔗 Category clicked:', categoryId);
     navigate(`/music/category/${categoryId}`);
   };
 
@@ -300,18 +287,6 @@ export const MusicPage: React.FC = observer(() => {
   const handleFavorite = async (song: any) => {
     const isFavorited = isSongFavorited(song.id);
 
-    console.log('🎵 handleFavorite called:', {
-      songId: song.id,
-      songTitle: song.title,
-      isFavorited,
-      allFavorites: songFavoriteStore.songFavorites.map((fav) => ({
-        id: fav.id,
-        songId: fav.songId,
-        spotifyId: fav.song?.spotifyId,
-        title: fav.song?.title,
-      })),
-    });
-
     // If trying to add a favorite, check paywall limits
     if (!isFavorited) {
       const currentFavoriteCount = songFavoriteStore.getSongFavoriteCount();
@@ -324,14 +299,8 @@ export const MusicPage: React.FC = observer(() => {
 
     try {
       if (isFavorited) {
-        console.log('🎵 Removing favorite for song ID:', song.id);
         await songFavoriteStore.removeSongFavorite(song.id);
       } else {
-        // Log the original song object first to see what we have
-        console.log('🎵 Adding favorite - Original song object:', song);
-        console.log('🎵 Song title type:', typeof song.title, 'value:', song.title);
-        console.log('🎵 Song artist type:', typeof song.artist, 'value:', song.artist);
-
         // Pass song data to create the song in the database if it doesn't exist
         const songData = {
           title: song.title,
@@ -344,7 +313,6 @@ export const MusicPage: React.FC = observer(() => {
           albumArtMedium: song.albumArt?.medium,
           albumArtLarge: song.albumArt?.large,
         };
-        console.log('🎵 Sending song data to backend:', songData);
         await songFavoriteStore.addSongFavorite(song.id, songData);
       }
     } catch (error) {
@@ -365,23 +333,12 @@ export const MusicPage: React.FC = observer(() => {
   };
 
   const handlePreviewPlay = async (song: any) => {
-    console.log('🎵 handlePreviewPlay called with:', song);
-
     // Check if user can use song previews
     if (!subscriptionStore.canUseSongPreview()) {
-      console.log('🎵 User cannot use song preview - showing paywall');
       setPaywallFeature('music_preview');
       setPaywallOpen(true);
       return;
     }
-
-    console.log('🎵 Playing preview for song:', {
-      id: song.id,
-      title: song.title,
-      previewUrl: song.previewUrl,
-      hasPreviewUrl: !!song.previewUrl,
-      fullSongObject: song, // Debug: log the full song object
-    });
 
     // Use the previewUrl from the song data (should come from Spotify/iTunes API)
     if (!song.previewUrl) {
@@ -598,13 +555,6 @@ export const MusicPage: React.FC = observer(() => {
           {(() => {
             const shouldShowFeatured =
               currentView === 'home' && musicStore.songs.length === 0 && !musicStore.isLoading;
-            console.log('🏠 Featured Categories condition check:', {
-              songsLength: musicStore.sortedSongs.length,
-              isLoading: musicStore.isLoading,
-              shouldShow: shouldShowFeatured,
-              currentView,
-              categoryId: params.categoryId,
-            });
             return shouldShowFeatured;
           })() && (
             <Box sx={{ mb: 6, px: 3 }}>
@@ -673,58 +623,132 @@ export const MusicPage: React.FC = observer(() => {
           {/* Search Results */}
           {musicStore.sortedSongs.length > 0 && (
             <Box sx={{ px: 3 }}>
-              {/* Information about music features */}
+              {/* Quick Start Guide */}
               <Box
                 sx={{
                   mb: 3,
-                  p: 2.5,
+                  p: 3,
                   bgcolor: 'background.paper',
                   borderRadius: 2,
                   border: `1px solid ${theme.palette.divider}`,
-                  boxShadow: theme.shadows[1],
+                  boxShadow: theme.shadows[2],
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
                 }}
               >
                 <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                  variant="h6"
+                  sx={{
+                    mb: 2,
+                    fontWeight: 600,
+                    color: 'primary.main',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                  }}
                 >
-                  <FontAwesomeIcon icon={faPlay} style={{ fontSize: '14px' }} />
-                  Click the play button to listen to a 30-second preview of any song. Free users get
-                  10 previews, then premium subscription required for unlimited music previews.
-                  {authStore.isAuthenticated && !subscriptionStore.isSubscribed && (
-                    <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>
-                      ({subscriptionStore.getRemainingPreviews()} remaining)
-                    </span>
-                  )}
+                  <Box
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      bgcolor: 'primary.main',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faMusic} style={{ fontSize: '14px' }} />
+                  </Box>
+                  Quick Start Guide
                 </Typography>
-              </Box>
 
-              {/* Information about favorites */}
-              <Box
-                sx={{
-                  mb: 3,
-                  p: 2.5,
-                  bgcolor: 'background.paper',
-                  borderRadius: 2,
-                  border: `1px solid ${theme.palette.divider}`,
-                  boxShadow: theme.shadows[1],
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-                >
-                  <FontAwesomeIcon icon={faHeartSolid} style={{ fontSize: '14px' }} />
-                  Save songs to your favorites for quick access. Free users can save up to 5 songs,
-                  premium subscribers get unlimited favorites.
-                  {authStore.isAuthenticated && !subscriptionStore.isSubscribed && (
-                    <span style={{ marginLeft: '8px', fontWeight: 'bold' }}>
-                      ({songFavoriteStore.getSongFavoriteCount()}/5 saved)
-                    </span>
-                  )}
-                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {/* Play Button Instruction */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                    <Box
+                      sx={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        bgcolor: alpha(theme.palette.success.main, 0.1),
+                        border: `2px solid ${theme.palette.success.main}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        mt: 0.2,
+                      }}
+                    >
+                      <FontAwesomeIcon
+                        icon={faPlay}
+                        style={{
+                          fontSize: '10px',
+                          color: theme.palette.success.main,
+                          marginLeft: '1px', // Slight offset for visual balance
+                        }}
+                      />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Listen to Previews:</strong> Click the play button to hear a 30-second
+                      preview of any song. Free users get 10 previews, then premium subscription
+                      required for unlimited music previews.
+                      {authStore.isAuthenticated && !subscriptionStore.isSubscribed && (
+                        <span
+                          style={{
+                            marginLeft: '8px',
+                            fontWeight: 'bold',
+                            color: theme.palette.primary.main,
+                          }}
+                        >
+                          ({subscriptionStore.getRemainingPreviews()} remaining)
+                        </span>
+                      )}
+                    </Typography>
+                  </Box>
+
+                  {/* Save Songs Instruction */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                    <Box
+                      sx={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        bgcolor: alpha(theme.palette.error.main, 0.1),
+                        border: `2px solid ${theme.palette.error.main}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        mt: 0.2,
+                      }}
+                    >
+                      <FontAwesomeIcon
+                        icon={faBookmark}
+                        style={{
+                          fontSize: '10px',
+                          color: theme.palette.error.main,
+                        }}
+                      />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      <strong>Save Favorites:</strong> Save songs to your favorites for quick
+                      access. Free users can save up to 5 songs, premium subscribers get unlimited
+                      favorites.
+                      {authStore.isAuthenticated && !subscriptionStore.isSubscribed && (
+                        <span
+                          style={{
+                            marginLeft: '8px',
+                            fontWeight: 'bold',
+                            color: theme.palette.primary.main,
+                          }}
+                        >
+                          ({songFavoriteStore.getSongFavoriteCount()}/5 saved)
+                        </span>
+                      )}
+                    </Typography>
+                  </Box>
+                </Box>
               </Box>
 
               <Box
@@ -767,9 +791,7 @@ export const MusicPage: React.FC = observer(() => {
                 {musicStore.sortedSongs.map((song, index) => {
                   // Create a more explicit check for the currently playing song
                   const isThisSongPlaying =
-                    audioStore.currentlyPlaying === song.id &&
-                    audioStore.isPlaying &&
-                    audioStore.currentlyPlaying !== null;
+                    audioStore.currentlyPlaying === song.id && audioStore.isPlaying;
 
                   return (
                     <React.Fragment key={`${song.id}-${index}`}>
@@ -778,16 +800,18 @@ export const MusicPage: React.FC = observer(() => {
                           onClick={() => musicStore.setSelectedSong(song)}
                           selected={musicStore.selectedSong?.id === song.id}
                           sx={{
-                            py: 1,
+                            py: 1.5,
                             px: 2,
                             borderRadius: '8px',
-                            backgroundColor: 'transparent',
-                            border: 'none',
+                            backgroundColor: '#222',
+                            border: `1px solid ${theme.palette.divider}`,
                             '&.Mui-selected': {
-                              backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                              backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                              borderColor: theme.palette.primary.main,
                             },
                             '&:hover': {
-                              backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                              backgroundColor: '#333',
+                              borderColor: theme.palette.primary.main,
                             },
                             transition: 'all 0.2s ease-in-out',
                             mb: 0.5,
@@ -914,11 +938,23 @@ export const MusicPage: React.FC = observer(() => {
                               <Chip
                                 label={song.year}
                                 size="small"
-                                variant="outlined"
+                                variant="filled"
                                 sx={{
                                   fontSize: '0.75rem',
                                   height: '24px',
+                                  fontWeight: 600,
+                                  backgroundColor:
+                                    theme.palette.mode === 'dark'
+                                      ? 'rgba(255, 255, 255, 0.1)'
+                                      : 'rgba(0, 0, 0, 0.08)',
+                                  color: theme.palette.text.secondary,
                                   display: { xs: 'none', sm: 'flex' },
+                                  '&:hover': {
+                                    backgroundColor:
+                                      theme.palette.mode === 'dark'
+                                        ? 'rgba(255, 255, 255, 0.15)'
+                                        : 'rgba(0, 0, 0, 0.12)',
+                                  },
                                 }}
                               />
                             )}
@@ -967,13 +1003,6 @@ export const MusicPage: React.FC = observer(() => {
                                 // disabled={!song.previewUrl} // Temporarily removed to test clicking
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  console.log('🎵 Play button clicked:', {
-                                    songId: song.id,
-                                    title: song.title,
-                                    hasPreviewUrl: !!song.previewUrl,
-                                    previewUrl: song.previewUrl,
-                                    disabled: !song.previewUrl,
-                                  });
                                   if (song.previewUrl) {
                                     handlePreviewPlay(song);
                                   } else {

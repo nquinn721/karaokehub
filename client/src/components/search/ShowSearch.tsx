@@ -48,7 +48,7 @@ export const ShowSearch: React.FC<ShowSearchProps> = observer(
             show.address,
             show.city,
             show.state,
-            show.vendor?.name,
+            show.dj?.vendor?.name,
             show.dj?.name,
           ]
             .filter(Boolean)
@@ -169,7 +169,7 @@ export const ShowSearch: React.FC<ShowSearchProps> = observer(
     const formatShowSecondary = (show: Show): string => {
       const parts = [];
 
-      if (show.vendor?.name) parts.push(show.vendor.name);
+      if (show.dj?.vendor?.name) parts.push(show.dj.vendor.name);
       if (show.day) {
         const dayCapitalized = show.day.charAt(0).toUpperCase() + show.day.slice(1).toLowerCase();
         parts.push(dayCapitalized);
@@ -261,9 +261,7 @@ export const ShowSearch: React.FC<ShowSearchProps> = observer(
         )}
         onChange={(_, value) => handleSelectShow(value)}
         noOptionsText={
-          searchQuery.length < 1 ? 
-            "Focus and start typing to search..." : 
-            "No shows found"
+          searchQuery.length < 1 ? 'Focus and start typing to search...' : 'No shows found'
         }
         filterOptions={(x) => x} // Disable built-in filtering since we handle it client-side
         sx={{ width: '100%' }}

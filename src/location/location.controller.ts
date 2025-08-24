@@ -139,12 +139,10 @@ export class LocationController {
       .sort((a, b) => a.distance - b.distance);
 
     // Find shows within specified radius (default 10 meters)
-    const nearbyShows = allShowsWithDistance
-      .filter((show) => show.distance <= radiusMeters);
+    const nearbyShows = allShowsWithDistance.filter((show) => show.distance <= radiusMeters);
 
     // Find shows within 100 meters
-    const showsWithin100m = allShowsWithDistance
-      .filter((show) => show.distance <= 100);
+    const showsWithin100m = allShowsWithDistance.filter((show) => show.distance <= 100);
 
     // Get address for current location
     const currentAddress = await this.geocodingService.reverseGeocode(latitude, longitude);
