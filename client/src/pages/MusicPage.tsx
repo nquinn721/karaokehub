@@ -117,7 +117,7 @@ export const MusicPage: React.FC = observer(() => {
       urlSearchQuery,
       categoryId: params.categoryId,
       path: location.pathname,
-      songsLength: musicStore.songs.length,
+      songsLength: musicStore.sortedSongs.length,
       isLoading: musicStore.isLoading,
     });
 
@@ -346,16 +346,12 @@ export const MusicPage: React.FC = observer(() => {
     });
   };
 
-  const formatDuration = (duration?: number): string => {
-    if (!duration) return '';
-    const minutes = Math.floor(duration / 60);
-    const seconds = duration % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  const isPreviewAvailable = (song: any): boolean => {
+    // Check if song has direct preview URL or has an ID we can use for Spotify preview
+    return !!(song.previewUrl || song.id);
   };
 
   const handlePreviewPlay = async (song: any) => {
-    if (!song.previewUrl) return;
-
     // Check if user can use song previews
     if (!subscriptionStore.canUseSongPreview()) {
       setPaywallFeature('music_preview');
@@ -363,11 +359,29 @@ export const MusicPage: React.FC = observer(() => {
       return;
     }
 
+    // Create preview URL from Spotify ID if available, or use existing previewUrl
+    let previewUrl = song.previewUrl;
+    if (!previewUrl && song.id) {
+      // Construct Spotify preview URL using the song ID (which is often the Spotify track ID)
+      previewUrl = `https://p.scdn.co/mp3-preview/${song.id}`;
+    }
+
+    if (!previewUrl) {
+      console.warn('No preview URL available for song:', song);
+      return;
+    }
+
     // Use the song preview (this will increment the counter)
     subscriptionStore.useSongPreview();
 
+    // Create song object with preview URL for audio store
+    const songWithPreview = {
+      ...song,
+      previewUrl: previewUrl,
+    };
+
     // Use the global audio store
-    await audioStore.playPreview(song);
+    await audioStore.playPreview(songWithPreview);
   };
 
   return (
@@ -563,7 +577,7 @@ export const MusicPage: React.FC = observer(() => {
             const shouldShowFeatured =
               currentView === 'home' && musicStore.songs.length === 0 && !musicStore.isLoading;
             console.log('🏠 Featured Categories condition check:', {
-              songsLength: musicStore.songs.length,
+              songsLength: musicStore.sortedSongs.length,
               isLoading: musicStore.isLoading,
               shouldShow: shouldShowFeatured,
               currentView,
@@ -635,7 +649,7 @@ export const MusicPage: React.FC = observer(() => {
           )}
 
           {/* Search Results */}
-          {musicStore.songs.length > 0 && (
+          {musicStore.sortedSongs.length > 0 && (
             <Box sx={{ px: 3 }}>
               {/* Information about music features */}
               <Box
@@ -728,61 +742,56 @@ export const MusicPage: React.FC = observer(() => {
                   },
                 }}
               >
-                {musicStore.songs.map((song, index) => (
+                {musicStore.sortedSongs.map((song, index) => (
                   <React.Fragment key={`${song.id}-${index}`}>
                     <ListItem disablePadding>
                       <ListItemButton
                         onClick={() => musicStore.setSelectedSong(song)}
                         selected={musicStore.selectedSong?.id === song.id}
                         sx={{
-                          py: 2.5,
+                          py: 1,
                           px: 2,
-                          borderRadius: 2,
-                          border: `1px solid ${theme.palette.divider}`,
-                          backgroundColor: theme.palette.background.default,
+                          borderRadius: '8px',
+                          backgroundColor: 'transparent',
+                          border: 'none',
                           '&.Mui-selected': {
-                            backgroundColor: theme.palette.primary.light + '15',
-                            borderColor: theme.palette.primary.light,
+                            backgroundColor: alpha(theme.palette.primary.main, 0.08),
                           },
                           '&:hover': {
-                            backgroundColor: theme.palette.action.hover,
-                            borderColor: theme.palette.primary.light,
-                            transform: 'translateY(-1px)',
-                            boxShadow: theme.shadows[2],
+                            backgroundColor: alpha(theme.palette.primary.main, 0.04),
                           },
                           transition: 'all 0.2s ease-in-out',
+                          mb: 0.5,
                         }}
                       >
-                        <ListItemIcon sx={{ mr: 2 }}>
+                        <ListItemIcon sx={{ mr: 2, minWidth: 'auto' }}>
                           {song.albumArt?.small ? (
                             <img
                               src={song.albumArt.small}
                               alt={`${song.album} cover`}
                               style={{
-                                width: '56px',
-                                height: '56px',
-                                borderRadius: '8px',
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: '4px',
                                 objectFit: 'cover',
-                                boxShadow: theme.shadows[2],
                               }}
                             />
                           ) : (
                             <Box
                               sx={{
-                                width: '56px',
-                                height: '56px',
-                                borderRadius: '8px',
-                                bgcolor: theme.palette.grey[200],
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: '4px',
+                                bgcolor: theme.palette.grey[300],
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                boxShadow: theme.shadows[1],
                               }}
                             >
                               <FontAwesomeIcon
                                 icon={faMusic}
                                 style={{
-                                  fontSize: '28px',
+                                  fontSize: '20px',
                                   color: theme.palette.grey[500],
                                 }}
                               />
@@ -790,95 +799,144 @@ export const MusicPage: React.FC = observer(() => {
                           )}
                         </ListItemIcon>
 
-                        {/* Custom layout instead of ListItemText to avoid div-in-p nesting */}
-                        <Box sx={{ py: 1, px: 0, flex: 1 }}>
-                          {/* Primary content */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+                        {/* Song Info - Spotify-like layout */}
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
                             <Typography
-                              variant="h6"
+                              variant="body1"
                               component="span"
-                              fontWeight={600}
+                              fontWeight={500}
                               sx={{
-                                fontSize: '1.1rem',
-                                lineHeight: 1.3,
+                                fontSize: '1rem',
+                                lineHeight: 1.4,
+                                color: theme.palette.text.primary,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                maxWidth: '300px',
                               }}
                             >
                               {song.title}
                             </Typography>
                             {isSongFavorited(song.id) && (
-                              <Chip
-                                label="♥ Favorite"
-                                size="small"
-                                color="error"
-                                sx={{
-                                  fontSize: '0.70rem',
-                                  height: '20px',
-                                  fontWeight: 600,
-                                  '& .MuiChip-label': {
-                                    px: 1,
-                                  },
-                                }}
-                              />
-                            )}
-                            {song.year && (
-                              <Chip
-                                label={song.year}
-                                size="small"
-                                variant="outlined"
-                                sx={{
-                                  fontSize: '0.75rem',
-                                  height: '22px',
-                                  '& .MuiChip-label': {
-                                    px: 1,
-                                  },
+                              <FontAwesomeIcon
+                                icon={faHeartSolid}
+                                style={{
+                                  color: theme.palette.success.main,
+                                  fontSize: '14px',
                                 }}
                               />
                             )}
                           </Box>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                              fontSize: '0.875rem',
+                              lineHeight: 1.3,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '250px',
+                            }}
+                          >
+                            {song.artist}
+                          </Typography>
+                        </Box>
 
-                          {/* Secondary content */}
-                          <Box sx={{ mt: 0.5 }}>
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
+                        {/* Album Info */}
+                        <Box sx={{ flex: 1, minWidth: 0, display: { xs: 'none', md: 'block' } }}>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                              fontSize: '0.875rem',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {song.album || '—'}
+                          </Typography>
+                        </Box>
+
+                        {/* Duration and Actions */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {song.year && (
+                            <Chip
+                              label={song.year}
+                              size="small"
+                              variant="outlined"
                               sx={{
-                                fontSize: '0.9rem',
-                                lineHeight: 1.4,
+                                fontSize: '0.75rem',
+                                height: '24px',
+                                display: { xs: 'none', sm: 'flex' },
+                              }}
+                            />
+                          )}
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                              fontSize: '0.875rem',
+                              minWidth: '40px',
+                              textAlign: 'right',
+                              display: { xs: 'none', sm: 'block' },
+                            }}
+                          >
+                            {song.duration ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : '—'}
+                          </Typography>
+
+                          {/* Action Buttons */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            {/* Favorite Button */}
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleFavorite(song);
+                              }}
+                              sx={{
+                                color: isSongFavorited(song.id)
+                                  ? theme.palette.success.main
+                                  : theme.palette.grey[500],
+                                '&:hover': {
+                                  color: theme.palette.success.main,
+                                },
                               }}
                             >
-                              {[
-                                song.artist,
-                                song.album,
-                                song.duration ? formatDuration(song.duration) : null,
-                                song.country,
-                                song.previewUrl ? '🎵 Preview Available' : null,
-                              ]
-                                .filter(Boolean)
-                                .join(' • ')}
-                            </Typography>
-                            {song.tags && song.tags.length > 0 && (
-                              <Box sx={{ mt: 1.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                                {song.tags.slice(0, 3).map((tag) => (
-                                  <Chip
-                                    key={tag}
-                                    label={tag}
-                                    size="small"
-                                    variant="outlined"
-                                    sx={{
-                                      fontSize: '0.7rem',
-                                      height: '22px',
-                                      '& .MuiChip-label': {
-                                        px: 1,
-                                      },
-                                      borderColor: theme.palette.primary.light,
-                                      color: theme.palette.primary.main,
-                                      '&:hover': {
-                                        backgroundColor: theme.palette.primary.light + '10',
-                                      },
-                                    }}
-                                  />
-                                ))}
-                              </Box>
+                              <FontAwesomeIcon
+                                icon={isSongFavorited(song.id) ? faHeartSolid : faHeartRegular}
+                                style={{ fontSize: '16px' }}
+                              />
+                            </IconButton>
+
+                            {/* Play Preview Button */}
+                            {(song.previewUrl || song.id) && (
+                              <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePreviewPlay(song);
+                                }}
+                                sx={{
+                                  color: audioStore.currentlyPlaying === song.id && audioStore.isPlaying
+                                    ? theme.palette.success.main
+                                    : theme.palette.primary.main,
+                                  '&:hover': {
+                                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                  },
+                                }}
+                              >
+                                <FontAwesomeIcon
+                                  icon={
+                                    audioStore.currentlyPlaying === song.id && audioStore.isPlaying
+                                      ? faPause
+                                      : faPlay
+                                  }
+                                  style={{ fontSize: '14px' }}
+                                />
+                              </IconButton>
                             )}
                           </Box>
                         </Box>
@@ -925,9 +983,9 @@ export const MusicPage: React.FC = observer(() => {
                                   e.stopPropagation();
                                   handlePreviewPlay(song);
                                 }}
-                                disabled={!song.previewUrl}
+                                disabled={!isPreviewAvailable(song)}
                                 sx={{
-                                  bgcolor: song.previewUrl
+                                  bgcolor: isPreviewAvailable(song)
                                     ? audioStore.currentlyPlaying === song.id &&
                                       audioStore.isPlaying
                                       ? theme.palette.success.main // Green for pause
@@ -935,7 +993,7 @@ export const MusicPage: React.FC = observer(() => {
                                     : theme.palette.grey[400],
                                   color: 'white',
                                   '&:hover': {
-                                    bgcolor: song.previewUrl
+                                    bgcolor: isPreviewAvailable(song)
                                       ? audioStore.currentlyPlaying === song.id &&
                                         audioStore.isPlaying
                                         ? theme.palette.success.dark // Darker green for pause hover
@@ -1011,7 +1069,7 @@ export const MusicPage: React.FC = observer(() => {
                     {/* Ad between songs - show after every 10th song if not ad-free */}
                     {!subscriptionStore.hasAdFreeAccess &&
                       (index + 1) % 10 === 0 &&
-                      index !== musicStore.songs.length - 1 && (
+                      index !== musicStore.sortedSongs.length - 1 && (
                         <ListItem sx={{ px: 0, py: 1 }}>
                           <Box sx={{ width: '100%' }}>
                             <WideAdWithUpgrade showUpgradePrompt={index === 9} />
@@ -1033,7 +1091,7 @@ export const MusicPage: React.FC = observer(() => {
               )}
 
               {/* End of Results Indicator */}
-              {!musicStore.hasMoreSongs && musicStore.songs.length > 0 && (
+              {!musicStore.hasMoreSongs && musicStore.sortedSongs.length > 0 && (
                 <Box sx={{ textAlign: 'center', py: 3 }}>
                   <Typography variant="body2" color="text.secondary">
                     That's all the songs we found! 🎵
@@ -1041,7 +1099,7 @@ export const MusicPage: React.FC = observer(() => {
                 </Box>
               )}
 
-              {musicStore.songs.length === 0 &&
+              {musicStore.sortedSongs.length === 0 &&
                 (musicStore.searchQuery || currentView === 'category') &&
                 !musicStore.isLoading && (
                   <Box sx={{ textAlign: 'center', py: 8 }}>

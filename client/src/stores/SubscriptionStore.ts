@@ -2,6 +2,26 @@ import { makeAutoObservable, runInAction } from 'mobx';
 import { apiStore } from './ApiStore';
 import { localSubscriptionStore } from './LocalSubscriptionStore';
 
+// Helper function to check if user is admin
+const isCurrentUserAdmin = (): boolean => {
+  try {
+    // Try to access the auth store from the global window if available
+    if (typeof window !== 'undefined' && (window as any).authStore) {
+      return (window as any).authStore.isAdmin;
+    }
+    // Fallback: check if there's a user in localStorage
+    const storedAuth = localStorage.getItem('AuthStore');
+    if (storedAuth) {
+      const authData = JSON.parse(storedAuth);
+      return authData?.user?.isAdmin === true || authData?.user?.isAdmin === 1;
+    }
+    return false;
+  } catch (error) {
+    console.warn('Failed to check admin status:', error);
+    return false;
+  }
+};
+
 export interface SubscriptionStatus {
   subscription: {
     id: string;
@@ -194,11 +214,17 @@ export class SubscriptionStore {
 
   // Getters for easy access to subscription features
   get hasAdFreeAccess(): boolean {
+    // Admins get all premium features
+    if (isCurrentUserAdmin()) return true;
+
     // Check account subscription first, then local subscription
     return this.subscriptionStatus?.features?.adFree || localSubscriptionStore.hasAdFree;
   }
 
   get hasPremiumAccess(): boolean {
+    // Admins get all premium features
+    if (isCurrentUserAdmin()) return true;
+
     // Check account subscription first, then local subscription
     return this.subscriptionStatus?.features?.premium || localSubscriptionStore.hasPremium;
   }
@@ -232,6 +258,9 @@ export class SubscriptionStore {
 
   // Check if user can use song preview
   canUseSongPreview(): boolean {
+    // Admins get unlimited song previews
+    if (isCurrentUserAdmin()) return true;
+
     const features = this.subscriptionStatus?.features?.songPreviews;
     if (features?.unlimited) return true;
 
@@ -241,6 +270,9 @@ export class SubscriptionStore {
 
   // Use a song preview (increments counter)
   useSongPreview(): boolean {
+    // Admins get unlimited song previews
+    if (isCurrentUserAdmin()) return true;
+
     const features = this.subscriptionStatus?.features?.songPreviews;
     if (features?.unlimited) return true;
 
@@ -253,6 +285,9 @@ export class SubscriptionStore {
 
   // Get remaining preview count
   getRemainingPreviews(): number {
+    // Admins get unlimited previews
+    if (isCurrentUserAdmin()) return Infinity;
+
     const features = this.subscriptionStatus?.features?.songPreviews;
     if (features?.unlimited) return Infinity;
 
@@ -262,6 +297,9 @@ export class SubscriptionStore {
 
   // Check if user can favorite songs (requires backend data)
   canFavoriteSongs(currentFavoriteCount: number): boolean {
+    // Admins get unlimited song favorites
+    if (isCurrentUserAdmin()) return true;
+
     const features = this.subscriptionStatus?.features?.songFavorites;
     if (features?.unlimited) return true;
 
@@ -271,6 +309,9 @@ export class SubscriptionStore {
 
   // Check if user can favorite shows (requires backend data)
   canFavoriteShows(currentFavoriteCount: number): boolean {
+    // Admins get unlimited show favorites
+    if (isCurrentUserAdmin()) return true;
+
     const features = this.subscriptionStatus?.features?.showFavorites;
     if (features?.unlimited) return true;
 
@@ -283,6 +324,9 @@ export class SubscriptionStore {
     feature: 'favorites' | 'ad_removal' | 'music_preview' | 'song_favorites' | 'show_favorites',
     currentFavoriteCount?: number,
   ): boolean {
+    // Admins never see paywalls
+    if (isCurrentUserAdmin()) return false;
+
     switch (feature) {
       case 'music_preview':
         return !this.canUseSongPreview();

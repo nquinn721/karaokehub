@@ -55,6 +55,38 @@ export class MusicStore {
   isLoadingSuggestions = false;
   showSuggestions = false;
 
+  // Computed getter to return songs sorted with favorites first
+  get sortedSongs(): MusicSearchResult[] {
+    if (!this.songs.length) return [];
+
+    const favoriteSongs = songFavoriteStore.getFavoriteSongsForCategory(this.selectedCategory);
+    
+    // Create a more comprehensive matching system
+    const isMatchingFavorite = (song: MusicSearchResult, favSong: any) => {
+      // Direct ID match
+      if (song.id === favSong.id || song.id === favSong.spotifyId) return true;
+
+      // Title and artist match (fuzzy matching)
+      const songTitle = song.title?.toLowerCase().trim();
+      const songArtist = song.artist?.toLowerCase().trim();
+      const favTitle = favSong.title?.toLowerCase().trim();
+      const favArtist = favSong.artist?.toLowerCase().trim();
+
+      return songTitle === favTitle && songArtist === favArtist;
+    };
+
+    // Separate favorites and non-favorites
+    const favorites = this.songs.filter((song) =>
+      favoriteSongs.some((favSong) => isMatchingFavorite(song, favSong)),
+    );
+    const nonFavorites = this.songs.filter(
+      (song) => !favoriteSongs.some((favSong) => isMatchingFavorite(song, favSong)),
+    );
+
+    // Return favorites first, then non-favorites
+    return [...favorites, ...nonFavorites];
+  }
+
   // Featured categories - now using dynamic Spotify playlists
   featuredCategories = [
     {

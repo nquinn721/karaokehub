@@ -1,13 +1,14 @@
 import {
   faAngleDown,
   faBars,
-  faCalendarDays,
   faCog,
   faComments,
   faHome,
+  faMapLocationDot,
   faMusic,
   faPlus,
   faSignOutAlt,
+  faTachometerAlt,
   faTimes,
   faUser,
   faUserShield,
@@ -292,7 +293,7 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                 variant="text"
                 size="medium"
                 onClick={() => navigate('/shows')}
-                startIcon={<FontAwesomeIcon icon={faCalendarDays} size="sm" />}
+                startIcon={<FontAwesomeIcon icon={faMapLocationDot} size="sm" />}
                 sx={{
                   color: theme.palette.mode === 'light' ? 'white' : 'inherit',
                   fontWeight: isActivePath('/shows') ? 600 : 400,
@@ -539,6 +540,7 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   variant="text"
                   size="medium"
                   onClick={() => navigate('/dashboard')}
+                  startIcon={<FontAwesomeIcon icon={faTachometerAlt} size="sm" />}
                   sx={{
                     color: theme.palette.mode === 'light' ? 'white' : 'inherit',
                     fontWeight: isActivePath('/dashboard') ? 600 : 400,
@@ -979,7 +981,7 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                 }}
               >
                 <ListItemIcon sx={{ color: 'inherit' }}>
-                  <FontAwesomeIcon icon={faCalendarDays} />
+                  <FontAwesomeIcon icon={faMapLocationDot} />
                 </ListItemIcon>
                 <ListItemText
                   primary="Shows"
@@ -1139,7 +1141,7 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                     }}
                   >
                     <ListItemIcon sx={{ color: 'inherit' }}>
-                      <FontAwesomeIcon icon={faUser} />
+                      <FontAwesomeIcon icon={faTachometerAlt} />
                     </ListItemIcon>
                     <ListItemText
                       primary="Dashboard"
