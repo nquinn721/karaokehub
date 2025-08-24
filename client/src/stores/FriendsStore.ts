@@ -52,44 +52,65 @@ class FriendsStore {
   loading = false;
   searchLoading = false;
   error: string | null = null;
+  private searchTimeout: NodeJS.Timeout | null = null;
 
   constructor() {
     makeAutoObservable(this);
   }
 
-  // Search for users
-  async searchUsers(query: string) {
+  // Search for users with debouncing for better UX
+  async searchUsers(query: string, immediate = false) {
+    // Clear existing timeout
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = null;
+    }
+
     if (!query || query.length < 2) {
       runInAction(() => {
         this.searchResults = [];
+        this.searchLoading = false;
       });
       return;
     }
 
-    console.log('🔍 Friends search started:', { query, length: query.length });
+    // Set loading state immediately for responsiveness
+    runInAction(() => {
+      this.searchLoading = true;
+    });
 
-    this.searchLoading = true;
-    this.error = null;
+    const performSearch = async () => {
+      console.log('🔍 Friends search started:', { query, length: query.length });
 
-    try {
-      const response = await apiStore.get('/friends/search', { params: { query, limit: 10 } });
+      this.error = null;
 
-      console.log('🔍 Friends search response:', { 
-        data: response.data, 
-        length: response.data?.length 
-      });
+      try {
+        const response = await apiStore.get('/friends/search', { params: { query, limit: 15 } });
 
-      runInAction(() => {
-        this.searchResults = Array.isArray(response.data) ? response.data : [];
-        this.searchLoading = false;
-      });
-    } catch (error: any) {
-      console.error('🔍 Friends search error:', error);
-      runInAction(() => {
-        this.error = error.response?.data?.message || 'Failed to search users';
-        this.searchLoading = false;
-        this.searchResults = [];
-      });
+        console.log('🔍 Friends search response:', { 
+          data: response.data, 
+          length: response.data?.length 
+        });
+
+        runInAction(() => {
+          this.searchResults = Array.isArray(response.data) ? response.data : [];
+          this.searchLoading = false;
+        });
+      } catch (error: any) {
+        console.error('🔍 Friends search error:', error);
+        runInAction(() => {
+          this.error = error.response?.data?.message || 'Failed to search users';
+          this.searchLoading = false;
+          this.searchResults = [];
+        });
+      }
+    };
+
+    // Use debouncing for better UX (wait 300ms after user stops typing)
+    if (immediate) {
+      await performSearch();
+    } else {
+      this.searchTimeout = setTimeout(performSearch, 300);
     }
   }
 
@@ -282,7 +303,12 @@ class FriendsStore {
 
   // Clear search results
   clearSearchResults() {
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = null;
+    }
     this.searchResults = [];
+    this.searchLoading = false;
   }
 
   // Clear error

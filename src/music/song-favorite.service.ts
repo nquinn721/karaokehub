@@ -90,6 +90,7 @@ export class SongFavoriteService {
           genre: songData.genre?.trim() || null,
           duration: songData.duration || null,
           spotifyId: songId, // Use the songId as Spotify ID
+          previewUrl: songData.previewUrl || null,
           albumArtSmall: songData.albumArtSmall || null,
           albumArtMedium: songData.albumArtMedium || null,
           albumArtLarge: songData.albumArtLarge || null,

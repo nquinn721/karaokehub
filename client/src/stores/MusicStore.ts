@@ -60,7 +60,7 @@ export class MusicStore {
     if (!this.songs.length) return [];
 
     const favoriteSongs = songFavoriteStore.getFavoriteSongsForCategory(this.selectedCategory);
-    
+
     // Create a more comprehensive matching system
     const isMatchingFavorite = (song: MusicSearchResult, favSong: any) => {
       // Direct ID match

@@ -506,8 +506,6 @@ const DashboardPage: React.FC = observer(() => {
 
   const FavoriteSongCard = ({ songFavorite }: { songFavorite: any }) => {
     const handlePreviewPlay = async () => {
-      if (!songFavorite.song?.spotifyId) return;
-
       // Check if user can use song previews
       if (!subscriptionStore.canUseSongPreview()) {
         setPaywallFeature('music_preview');
@@ -515,19 +513,41 @@ const DashboardPage: React.FC = observer(() => {
         return;
       }
 
+      console.log('🎵 Dashboard preview play:', {
+        songId: songFavorite.song?.id,
+        title: songFavorite.song?.title,
+        spotifyId: songFavorite.song?.spotifyId,
+        hasSpotifyId: !!songFavorite.song?.spotifyId,
+      });
+
+      // Check if we have a Spotify ID to construct preview URL
+      if (!songFavorite.song?.spotifyId) {
+        console.warn('❌ No Spotify ID available for favorited song');
+        alert('Sorry, no preview is available for this song.');
+        return;
+      }
+
       // Use the song preview (this will increment the counter)
       subscriptionStore.useSongPreview();
 
-      // Create a song object for the audio store
+      // Create a song object for the audio store with constructed preview URL
       const songForAudio = {
         id: songFavorite.song.spotifyId,
         title: songFavorite.song.title,
         artist: songFavorite.song.artist,
-        previewUrl: `https://p.scdn.co/mp3-preview/${songFavorite.song.spotifyId}`, // Spotify preview URL pattern
+        previewUrl: `https://p.scdn.co/mp3-preview/${songFavorite.song.spotifyId}`,
       };
 
       // Use the global audio store
       await audioStore.playPreview(songForAudio);
+    };
+
+    const handleFavorite = async () => {
+      try {
+        await songFavoriteStore.removeSongFavorite(songFavorite.song.id);
+      } catch (error) {
+        console.error('Error removing favorite:', error);
+      }
     };
 
     // Use stored album art from the database
@@ -536,219 +556,187 @@ const DashboardPage: React.FC = observer(() => {
       songFavorite.song?.albumArtMedium ||
       songFavorite.song?.albumArtLarge;
 
+    const formatDuration = (duration?: number): string => {
+      if (!duration) return '';
+      const minutes = Math.floor(duration / 60);
+      const seconds = duration % 60;
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
+
     return (
-      <Card
-        sx={{
-          mb: 1,
-          border: `1px solid ${alpha(theme.palette.secondary.main, 0.1)}`,
-          '&:hover': {
-            boxShadow: theme.shadows[3],
-            transform: 'translateY(-1px)',
-          },
-          transition: 'all 0.2s ease-in-out',
-        }}
-      >
-        <CardContent sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {/* Album Art */}
-            <Box
-              sx={{
-                width: 56,
-                height: 56,
-                borderRadius: '8px',
-                overflow: 'hidden',
-                boxShadow: theme.shadows[2],
-                flexShrink: 0,
-              }}
-            >
-              {albumArtUrl ? (
-                <img
-                  src={albumArtUrl}
-                  alt={`${songFavorite.song?.album || 'Album'} cover`}
+      <ListItem key={songFavorite.id} disablePadding>
+        <ListItemButton
+          sx={{
+            py: 1,
+            px: 2,
+            borderRadius: '8px',
+            backgroundColor: 'transparent',
+            border: 'none',
+            '&:hover': {
+              backgroundColor: alpha(theme.palette.primary.main, 0.04),
+            },
+            transition: 'all 0.2s ease-in-out',
+            mb: 0.5,
+          }}
+        >
+          <ListItemIcon sx={{ mr: 2, minWidth: 'auto' }}>
+            {albumArtUrl ? (
+              <img
+                src={albumArtUrl}
+                alt={`${songFavorite.song?.album || 'Album'} cover`}
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '4px',
+                  objectFit: 'cover',
+                }}
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '4px',
+                  bgcolor: theme.palette.grey[300],
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <FontAwesomeIcon
+                  icon={faMusic}
                   style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                  }}
-                  onError={(e) => {
-                    // Fallback to default music icon if image fails to load
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent) {
-                      parent.innerHTML = `
-                        <div style="
-                          width: 100%; 
-                          height: 100%; 
-                          background: ${theme.palette.grey[200]}; 
-                          display: flex; 
-                          align-items: center; 
-                          justify-content: center;
-                        ">
-                          <svg style="width: 28px; height: 28px; color: ${theme.palette.grey[500]}" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 3a1 1 0 00-1.196-.98L8 3.75V9.5a3 3 0 11-1-2.25V3a1 1 0 01.804-.98l10-1.75A1 1 0 0119 1.25V9.5a3 3 0 11-1-2.25V3z" clip-rule="evenodd" />
-                          </svg>
-                        </div>
-                      `;
-                    }
+                    fontSize: '20px',
+                    color: theme.palette.grey[500],
                   }}
                 />
-              ) : (
-                <Box
-                  sx={{
-                    width: '100%',
-                    height: '100%',
-                    bgcolor: theme.palette.grey[200],
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <FontAwesomeIcon
-                    icon={faMusic}
-                    style={{
-                      fontSize: '28px',
-                      color: theme.palette.grey[500],
-                    }}
-                  />
-                </Box>
-              )}
-            </Box>
+              </Box>
+            )}
+          </ListItemIcon>
 
-            {/* Song Info */}
-            <Box sx={{ flex: 1, minWidth: 0 }}>
+          {/* Song Info - Spotify-like layout */}
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
               <Typography
-                variant="subtitle1"
-                fontWeight={600}
+                variant="body1"
+                component="span"
+                fontWeight={500}
                 sx={{
                   fontSize: '1rem',
-                  lineHeight: 1.3,
-                  mb: 0.5,
+                  lineHeight: 1.4,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
+                  maxWidth: '300px',
                 }}
               >
                 {songFavorite.song?.title || 'Unknown Title'}
               </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography
                 variant="body2"
                 color="text.secondary"
                 sx={{
                   fontSize: '0.875rem',
-                  mb: 1,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
+                  maxWidth: '250px',
                 }}
               >
                 {songFavorite.song?.artist || 'Unknown Artist'}
               </Typography>
-
-              <Stack direction="row" spacing={0.5} sx={{ mb: 0.5 }}>
-                {songFavorite.song?.album && (
-                  <Chip
-                    label={songFavorite.song.album}
-                    size="small"
-                    color="secondary"
-                    variant="outlined"
-                    sx={{ fontSize: '0.65rem', height: '18px' }}
-                  />
-                )}
-                {songFavorite.song?.genre && (
-                  <Chip
-                    label={songFavorite.song.genre}
-                    size="small"
-                    variant="outlined"
-                    sx={{ fontSize: '0.65rem', height: '18px' }}
-                  />
-                )}
-                {songFavorite.song?.duration && (
-                  <Chip
-                    icon={<FontAwesomeIcon icon={faClock} size="xs" />}
-                    label={`${Math.floor(songFavorite.song.duration / 60)}:${(songFavorite.song.duration % 60).toString().padStart(2, '0')}`}
-                    size="small"
-                    variant="outlined"
-                    sx={{ fontSize: '0.65rem', height: '18px' }}
-                  />
-                )}
-              </Stack>
-
-              {(songFavorite.song?.spotifyId || songFavorite.song?.youtubeId) && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  {songFavorite.song?.spotifyId && (
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ fontSize: '0.7rem' }}
-                    >
-                      🎵 Spotify
-                    </Typography>
-                  )}
-                  {songFavorite.song?.youtubeId && (
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ fontSize: '0.7rem' }}
-                    >
-                      📺 YouTube
-                    </Typography>
-                  )}
-                </Box>
-              )}
             </Box>
-
-            {/* Play 30-second snippet button */}
-            <IconButton
-              size="small"
-              onClick={handlePreviewPlay}
-              disabled={!songFavorite.song?.spotifyId}
-              sx={{
-                bgcolor: !songFavorite.song?.spotifyId
-                  ? theme.palette.grey[400]
-                  : !subscriptionStore.canUseSongPreview()
-                    ? theme.palette.warning.main // Orange/yellow for paywall
-                    : audioStore.currentlyPlaying === songFavorite.song.spotifyId &&
-                        audioStore.isPlaying
-                      ? theme.palette.success.main // Green for pause
-                      : theme.palette.info.main, // Blue for play
-                color: 'white',
-                '&:hover': {
-                  bgcolor: !songFavorite.song?.spotifyId
-                    ? theme.palette.grey[500]
-                    : !subscriptionStore.canUseSongPreview()
-                      ? theme.palette.warning.dark
-                      : audioStore.currentlyPlaying === songFavorite.song.spotifyId &&
-                          audioStore.isPlaying
-                        ? theme.palette.success.dark
-                        : theme.palette.info.dark,
-                },
-                '&:disabled': {
-                  bgcolor: theme.palette.grey[300],
-                  color: theme.palette.grey[500],
-                },
-              }}
-              title={
-                !songFavorite.song?.spotifyId
-                  ? 'Preview not available'
-                  : !subscriptionStore.canUseSongPreview()
-                    ? `Preview limit reached (${subscriptionStore.getRemainingPreviews()} remaining) - Upgrade for unlimited`
-                    : 'Play 30-second preview'
-              }
-            >
-              <FontAwesomeIcon
-                icon={
-                  audioStore.currentlyPlaying === songFavorite.song?.spotifyId &&
-                  audioStore.isPlaying
-                    ? faPause
-                    : faPlay
-                }
-                size="xs"
-              />
-            </IconButton>
           </Box>
-        </CardContent>
-      </Card>
+
+          {/* Album Info */}
+          <Box sx={{ flex: 1, minWidth: 0, display: { xs: 'none', md: 'block' } }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                fontSize: '0.875rem',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {songFavorite.song?.album || '—'}
+            </Typography>
+          </Box>
+
+          {/* Duration and Actions */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {songFavorite.song?.duration && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  fontSize: '0.875rem',
+                  minWidth: '40px',
+                  textAlign: 'right',
+                  display: { xs: 'none', sm: 'block' },
+                }}
+              >
+                {formatDuration(songFavorite.song.duration)}
+              </Typography>
+            )}
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              {/* Favorite Button */}
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFavorite();
+                }}
+                sx={{
+                  color: theme.palette.success.main, // Always green since it's favorited
+                  '&:hover': {
+                    color: theme.palette.success.dark,
+                  },
+                }}
+              >
+                <FontAwesomeIcon
+                  icon={faHeartSolid}
+                  style={{ fontSize: '16px' }}
+                />
+              </IconButton>
+
+              {/* Play Preview Button */}
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePreviewPlay();
+                }}
+                disabled={!songFavorite.song?.spotifyId}
+                sx={{
+                  color: audioStore.currentlyPlaying === songFavorite.song?.spotifyId && audioStore.isPlaying
+                    ? theme.palette.success.main
+                    : theme.palette.grey[600],
+                  '&:hover': {
+                    color: theme.palette.primary.main,
+                  },
+                  '&:disabled': {
+                    color: theme.palette.grey[400],
+                  },
+                }}
+              >
+                <FontAwesomeIcon
+                  icon={
+                    audioStore.currentlyPlaying === songFavorite.song?.spotifyId && audioStore.isPlaying
+                      ? faPause
+                      : faPlay
+                  }
+                  style={{ fontSize: '14px' }}
+                />
+              </IconButton>
+            </Box>
+          </Box>
+        </ListItemButton>
+      </ListItem>
     );
   };
 

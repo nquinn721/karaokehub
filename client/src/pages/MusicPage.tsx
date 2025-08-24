@@ -299,6 +299,18 @@ export const MusicPage: React.FC = observer(() => {
   const handleFavorite = async (song: any) => {
     const isFavorited = isSongFavorited(song.id);
 
+    console.log('🎵 handleFavorite called:', {
+      songId: song.id,
+      songTitle: song.title,
+      isFavorited,
+      allFavorites: songFavoriteStore.songFavorites.map(fav => ({
+        id: fav.id,
+        songId: fav.songId,
+        spotifyId: fav.song?.spotifyId,
+        title: fav.song?.title
+      }))
+    });
+
     // If trying to add a favorite, check paywall limits
     if (!isFavorited) {
       const currentFavoriteCount = songFavoriteStore.getSongFavoriteCount();
@@ -311,12 +323,13 @@ export const MusicPage: React.FC = observer(() => {
 
     try {
       if (isFavorited) {
+        console.log('🎵 Removing favorite for song ID:', song.id);
         await songFavoriteStore.removeSongFavorite(song.id);
       } else {
         // Log the original song object first to see what we have
-        console.log('Original song object:', song);
-        console.log('Song title type:', typeof song.title, 'value:', song.title);
-        console.log('Song artist type:', typeof song.artist, 'value:', song.artist);
+        console.log('🎵 Adding favorite - Original song object:', song);
+        console.log('🎵 Song title type:', typeof song.title, 'value:', song.title);
+        console.log('🎵 Song artist type:', typeof song.artist, 'value:', song.artist);
 
         // Pass song data to create the song in the database if it doesn't exist
         const songData = {
@@ -325,12 +338,16 @@ export const MusicPage: React.FC = observer(() => {
           album: song.album,
           genre: song.tags?.[0],
           duration: song.duration,
+          previewUrl: song.previewUrl,
+          albumArtSmall: song.albumArt?.small,
+          albumArtMedium: song.albumArt?.medium,
+          albumArtLarge: song.albumArt?.large,
         };
-        console.log('Sending song data to backend:', songData);
+        console.log('🎵 Sending song data to backend:', songData);
         await songFavoriteStore.addSongFavorite(song.id, songData);
       }
     } catch (error) {
-      console.error('Error toggling favorite:', error);
+      console.error('❌ Error toggling favorite:', error);
     }
   };
 
@@ -346,11 +363,6 @@ export const MusicPage: React.FC = observer(() => {
     });
   };
 
-  const isPreviewAvailable = (song: any): boolean => {
-    // Check if song has direct preview URL or has an ID we can use for Spotify preview
-    return !!(song.previewUrl || song.id);
-  };
-
   const handlePreviewPlay = async (song: any) => {
     // Check if user can use song previews
     if (!subscriptionStore.canUseSongPreview()) {
@@ -359,29 +371,30 @@ export const MusicPage: React.FC = observer(() => {
       return;
     }
 
-    // Create preview URL from Spotify ID if available, or use existing previewUrl
-    let previewUrl = song.previewUrl;
-    if (!previewUrl && song.id) {
-      // Construct Spotify preview URL using the song ID (which is often the Spotify track ID)
-      previewUrl = `https://p.scdn.co/mp3-preview/${song.id}`;
-    }
+    console.log('🎵 Playing preview for song:', {
+      id: song.id,
+      title: song.title,
+      previewUrl: song.previewUrl,
+      hasPreviewUrl: !!song.previewUrl
+    });
 
-    if (!previewUrl) {
-      console.warn('No preview URL available for song:', song);
+    // Use the previewUrl from the song data (should come from Spotify/iTunes API)
+    if (!song.previewUrl) {
+      console.warn('❌ No preview URL available for song:', {
+        id: song.id,
+        title: song.title,
+        artist: song.artist
+      });
+      // Show a user-friendly message
+      alert('Sorry, no preview is available for this song.');
       return;
     }
 
     // Use the song preview (this will increment the counter)
     subscriptionStore.useSongPreview();
 
-    // Create song object with preview URL for audio store
-    const songWithPreview = {
-      ...song,
-      previewUrl: previewUrl,
-    };
-
-    // Use the global audio store
-    await audioStore.playPreview(songWithPreview);
+    // Use the global audio store with the actual preview URL
+    await audioStore.playPreview(song);
   };
 
   return (
@@ -884,7 +897,7 @@ export const MusicPage: React.FC = observer(() => {
                               display: { xs: 'none', sm: 'block' },
                             }}
                           >
-                            {song.duration ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : '—'}
+                            {song.duration ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : ''}
                           </Typography>
 
                           {/* Action Buttons */}
@@ -922,9 +935,9 @@ export const MusicPage: React.FC = observer(() => {
                                 sx={{
                                   color: audioStore.currentlyPlaying === song.id && audioStore.isPlaying
                                     ? theme.palette.success.main
-                                    : theme.palette.primary.main,
+                                    : theme.palette.grey[600],
                                   '&:hover': {
-                                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                    color: theme.palette.primary.main,
                                   },
                                 }}
                               >
@@ -939,129 +952,6 @@ export const MusicPage: React.FC = observer(() => {
                               </IconButton>
                             )}
                           </Box>
-                        </Box>
-
-                        {/* Action buttons - Play button (left) and Favorite button (right) */}
-                        <Box
-                          sx={{
-                            ml: 'auto',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1.5,
-                            pr: 1,
-                          }}
-                        >
-                          {/* Play button - gated for preview limits */}
-                          {authStore.isAuthenticated ? (
-                            !subscriptionStore.canUseSongPreview() ? (
-                              <IconButton
-                                size="small"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPaywallFeature('music_preview');
-                                  setPaywallOpen(true);
-                                }}
-                                sx={{
-                                  bgcolor: theme.palette.warning.main,
-                                  color: 'white',
-                                  '&:hover': {
-                                    bgcolor: theme.palette.warning.dark,
-                                  },
-                                }}
-                                title={
-                                  subscriptionStore.isSubscribed
-                                    ? 'Play 30-second preview'
-                                    : `${subscriptionStore.getRemainingPreviews()} preview${subscriptionStore.getRemainingPreviews() === 1 ? '' : 's'} remaining - Upgrade for unlimited`
-                                }
-                              >
-                                <FontAwesomeIcon icon={faPlay} size="sm" />
-                              </IconButton>
-                            ) : (
-                              <IconButton
-                                size="small"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePreviewPlay(song);
-                                }}
-                                disabled={!isPreviewAvailable(song)}
-                                sx={{
-                                  bgcolor: isPreviewAvailable(song)
-                                    ? audioStore.currentlyPlaying === song.id &&
-                                      audioStore.isPlaying
-                                      ? theme.palette.success.main // Green for pause
-                                      : theme.palette.info.main // Cyan/Blue for play
-                                    : theme.palette.grey[400],
-                                  color: 'white',
-                                  '&:hover': {
-                                    bgcolor: isPreviewAvailable(song)
-                                      ? audioStore.currentlyPlaying === song.id &&
-                                        audioStore.isPlaying
-                                        ? theme.palette.success.dark // Darker green for pause hover
-                                        : theme.palette.info.dark // Darker cyan for play hover
-                                      : theme.palette.grey[500],
-                                  },
-                                  '&:disabled': {
-                                    bgcolor: theme.palette.grey[300],
-                                    color: theme.palette.grey[500],
-                                  },
-                                  transition: 'all 0.2s ease-in-out',
-                                }}
-                              >
-                                <FontAwesomeIcon
-                                  icon={audioStore.currentlyPlaying === song.id ? faPause : faPlay}
-                                  size="sm"
-                                />
-                              </IconButton>
-                            )
-                          ) : (
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setLoginModalOpen(true);
-                              }}
-                              sx={{
-                                bgcolor: theme.palette.grey[400],
-                                color: 'white',
-                                '&:hover': {
-                                  bgcolor: theme.palette.grey[500],
-                                },
-                              }}
-                              title="Sign in to play previews"
-                            >
-                              <FontAwesomeIcon icon={faPlay} size="sm" />
-                            </IconButton>
-                          )}{' '}
-                          {/* Favorite button */}
-                          <IconButton
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleFavorite(song);
-                            }}
-                            sx={{
-                              color: isSongFavorited(song.id)
-                                ? theme.palette.secondary.main // Purple/Pink for favorited
-                                : theme.palette.grey[400], // Grey for not favorited
-                              '&:hover': {
-                                backgroundColor: isSongFavorited(song.id)
-                                  ? theme.palette.secondary.main + '20'
-                                  : theme.palette.grey[400] + '20',
-                                color: isSongFavorited(song.id)
-                                  ? theme.palette.secondary.dark
-                                  : theme.palette.grey[600],
-                              },
-                              transition: 'all 0.2s ease-in-out',
-                            }}
-                          >
-                            <FontAwesomeIcon
-                              icon={isSongFavorited(song.id) ? faHeartSolid : faHeartRegular}
-                              size="sm"
-                              style={{
-                                fontSize: '18px',
-                              }}
-                            />
-                          </IconButton>
                         </Box>
                       </ListItemButton>
                     </ListItem>

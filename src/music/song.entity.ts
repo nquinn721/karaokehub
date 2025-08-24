@@ -35,6 +35,9 @@ export class Song {
   youtubeId: string;
 
   @Column({ nullable: true })
+  previewUrl: string;
+
+  @Column({ nullable: true })
   albumArtSmall: string;
 
   @Column({ nullable: true })

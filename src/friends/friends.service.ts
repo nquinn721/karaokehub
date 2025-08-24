@@ -59,15 +59,36 @@ export class FriendsService {
       ...receivedRequests.map((r) => r.requesterId),
     ];
 
+    // Create fuzzy search query with multiple field matching
+    const fuzzyQuery = `%${query.toLowerCase()}%`;
+    
     const queryBuilder = this.userRepository
       .createQueryBuilder('user')
       .where('user.isActive = :isActive', { isActive: true })
       .andWhere(
-        '(LOWER(user.stageName) LIKE :query OR LOWER(user.name) LIKE :query OR LOWER(user.email) LIKE :query)',
-        { query: `%${query.toLowerCase()}%` }
+        '(LOWER(COALESCE(user.stageName, \'\')) LIKE :query OR ' +
+        'LOWER(COALESCE(user.name, \'\')) LIKE :query OR ' +
+        'LOWER(COALESCE(user.email, \'\')) LIKE :query OR ' +
+        // Add fuzzy matching for partial word matches
+        'LOWER(COALESCE(user.stageName, \'\')) LIKE :startQuery OR ' +
+        'LOWER(COALESCE(user.name, \'\')) LIKE :startQuery)',
+        { 
+          query: fuzzyQuery,
+          startQuery: `${query.toLowerCase()}%` // Match from start of words
+        }
       )
       .select(['user.id', 'user.email', 'user.name', 'user.stageName', 'user.avatar'])
+      // Order by relevance: exact matches first, then partial matches
+      .orderBy('CASE WHEN LOWER(COALESCE(user.stageName, \'\')) = :exactQuery THEN 0 ' +
+               'WHEN LOWER(COALESCE(user.name, \'\')) = :exactQuery THEN 1 ' +
+               'WHEN LOWER(COALESCE(user.stageName, \'\')) LIKE :startQuery THEN 2 ' +
+               'WHEN LOWER(COALESCE(user.name, \'\')) LIKE :startQuery THEN 3 ' +
+               'ELSE 4 END', 'ASC')
+      .addOrderBy('user.stageName', 'ASC')
       .limit(limit);
+
+    // Add exact query parameter for ordering
+    queryBuilder.setParameter('exactQuery', query.toLowerCase());
 
     // Only add the excludeIds condition if there are IDs to exclude
     if (excludeIds.length > 0) {

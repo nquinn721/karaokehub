@@ -56,10 +56,18 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
     const query = event.target.value;
     setSearchQuery(query);
 
-    if (query.length >= 2) {
+    if (query.length >= 1) {
+      // Start searching with just 1 character for better UX
       friendsStore.searchUsers(query);
     } else {
       friendsStore.clearSearchResults();
+    }
+  };
+
+  const handleSearchKeyPress = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' && searchQuery.length >= 1) {
+      // Immediate search on Enter key
+      friendsStore.searchUsers(searchQuery, true);
     }
   };
 
@@ -157,9 +165,10 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
             <TextField
               fullWidth
               size="small"
-              placeholder="Search by stage name..."
+              placeholder="Search by stage name, name, or email..."
               value={searchQuery}
               onChange={handleSearchChange}
+              onKeyPress={handleSearchKeyPress}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -174,14 +183,19 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
             {friendsStore.searchLoading && (
               <Box sx={{ p: 1 }}>
                 <Skeleton variant="rectangular" height={40} />
+                <Skeleton variant="rectangular" height={40} sx={{ mt: 1 }} />
               </Box>
             )}
 
-            {searchQuery.length >= 2 &&
+            {searchQuery.length >= 1 &&
               !friendsStore.searchLoading &&
               (!friendsStore.searchResults || friendsStore.searchResults.length === 0) && (
-                <Typography variant="body2" color="text.secondary" sx={{ p: 1 }}>
-                  No users found
+                <Typography variant="body2" color="text.secondary" sx={{ p: 1, textAlign: 'center' }}>
+                  No users found matching "{searchQuery}"
+                  <br />
+                  <Typography variant="caption" color="text.secondary">
+                    Try searching by stage name, real name, or email
+                  </Typography>
                 </Typography>
               )}
 
@@ -197,7 +211,7 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
                   '&:hover': { backgroundColor: theme.palette.action.hover },
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   <Avatar sx={{ width: 32, height: 32 }}>
                     {user.avatar ? (
                       <img src={user.avatar} alt={getDisplayName(user)} />
@@ -205,12 +219,23 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
                       getAvatarInitials(user)
                     )}
                   </Avatar>
-                  <Box>
-                    <Typography variant="body2" fontWeight={500}>
-                      {getDisplayName(user)}
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="body2" fontWeight={500} sx={{ lineHeight: 1.2 }}>
+                      {user.stageName && user.stageName !== user.name ? user.stageName : user.name}
                     </Typography>
+                    {user.stageName && user.stageName !== user.name && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.1 }}>
+                        {user.name}
+                      </Typography>
+                    )}
                     {user.email && (
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" sx={{ 
+                        display: 'block', 
+                        lineHeight: 1.1,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
                         {user.email}
                       </Typography>
                     )}

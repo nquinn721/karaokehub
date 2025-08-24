@@ -11,6 +11,7 @@ export interface CreateSongDto {
   duration?: number;
   spotifyId?: string;
   youtubeId?: string;
+  previewUrl?: string;
   albumArtSmall?: string;
   albumArtMedium?: string;
   albumArtLarge?: string;
@@ -24,6 +25,7 @@ export interface UpdateSongDto {
   duration?: number;
   spotifyId?: string;
   youtubeId?: string;
+  previewUrl?: string;
   albumArtSmall?: string;
   albumArtMedium?: string;
   albumArtLarge?: string;

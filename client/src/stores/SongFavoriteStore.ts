@@ -10,6 +10,9 @@ export interface Song {
   duration?: number;
   spotifyId?: string;
   youtubeId?: string;
+  albumArtSmall?: string;
+  albumArtMedium?: string;
+  albumArtLarge?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -86,16 +89,36 @@ export class SongFavoriteStore {
     try {
       this.setError(null);
 
+      console.log('🎵 SongFavoriteStore.removeSongFavorite called with:', songId);
+      console.log('🎵 Current favorites before removal:', this.songFavorites.map(fav => ({
+        id: fav.id,
+        songId: fav.songId,
+        spotifyId: fav.song?.spotifyId,
+        title: fav.song?.title
+      })));
+
       const response = await apiStore.delete(`/song-favorites/${songId}`);
 
       if (response.success) {
         runInAction(() => {
-          // Remove from local state
-          this.songFavorites = this.songFavorites.filter((fav) => fav.songId !== songId);
+          // Remove from local state - check both songId and spotifyId
+          this.songFavorites = this.songFavorites.filter((fav) => {
+            const matchesSongId = fav.songId === songId;
+            const matchesSpotifyId = fav.song?.spotifyId === songId;
+            return !(matchesSongId || matchesSpotifyId);
+          });
+          
+          console.log('🎵 Favorites after removal:', this.songFavorites.map(fav => ({
+            id: fav.id,
+            songId: fav.songId,
+            spotifyId: fav.song?.spotifyId,
+            title: fav.song?.title
+          })));
         });
         return true;
       }
     } catch (error: any) {
+      console.error('❌ Error removing song favorite:', error);
       runInAction(() => {
         this.setError(error.message || 'Failed to remove song favorite');
       });
