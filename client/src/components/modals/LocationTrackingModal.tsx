@@ -73,13 +73,15 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
       
       try {
         // First attempt: High accuracy with shorter timeout
+        console.log('📍 Attempting high accuracy location...');
         position = await getLocationWithOptions({
           enableHighAccuracy: true,
           timeout: 10000, // Reduced from 15000
           maximumAge: 30000, // Allow cached positions up to 30 seconds old
         });
+        console.log('✅ High accuracy location successful');
       } catch (highAccuracyError) {
-        console.log('High accuracy location failed, trying standard accuracy...');
+        console.log('📍 High accuracy failed, trying standard accuracy...');
         
         // Fallback: Standard accuracy with longer timeout
         position = await getLocationWithOptions({
@@ -87,6 +89,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
           timeout: 15000,
           maximumAge: 60000, // Allow older cached positions for fallback
         });
+        console.log('✅ Standard accuracy location successful');
       }
 
       const userLocation: UserLocation = {
@@ -121,7 +124,18 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
         setMapImageUrl(mapUrl);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to get location');
+      // Log error for debugging but don't show to user for common location issues
+      console.log('📍 Location error:', err.message || err);
+      
+      // Only show user-facing errors for critical issues
+      if (err.message && err.message.includes('not supported')) {
+        setError('Geolocation is not supported by this browser');
+      } else if (err.message && err.message.includes('denied')) {
+        setError('Location access denied. Please enable location services.');
+      } else {
+        // For other errors (like accuracy issues), just log them
+        console.warn('🎯 Location tracking issue (continuing in background):', err.message || err);
+      }
     } finally {
       setLoading(false);
     }
