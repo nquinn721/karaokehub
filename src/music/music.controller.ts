@@ -44,6 +44,18 @@ export class MusicController {
     return this.musicService.getRateLimitStats();
   }
 
+  @Get('debug/config')
+  async getDebugConfig(): Promise<Record<string, any>> {
+    return {
+      nodeEnv: process.env.NODE_ENV,
+      hasSpotifyClientId: !!process.env.SPOTIFY_CLIENT_ID,
+      hasSpotifyClientSecret: !!process.env.SPOTIFY_CLIENT_SECRET,
+      spotifyClientIdLength: process.env.SPOTIFY_CLIENT_ID?.length || 0,
+      spotifyClientSecretLength: process.env.SPOTIFY_CLIENT_SECRET?.length || 0,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   @Get('category')
   async getCategoryMusic(
     @Query('queries') queries: string,
