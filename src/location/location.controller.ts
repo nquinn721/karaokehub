@@ -1,0 +1,183 @@
+import { Controller, Get, Query } from '@nestjs/common';
+import { GeocodingService } from '../geocoding/geocoding.service';
+import { DayOfWeek } from '../show/show.entity';
+import { ShowService } from '../show/show.service';
+
+@Controller('location')
+export class LocationController {
+  constructor(
+    private readonly showService: ShowService,
+    private readonly geocodingService: GeocodingService,
+  ) {}
+
+  /**
+   * Test endpoint to verify location services are working
+   */
+  @Get('test')
+  async testLocation() {
+    return {
+      message: 'Location services are working',
+      timestamp: new Date().toISOString(),
+      services: {
+        showService: !!this.showService,
+        geocodingService: !!this.geocodingService,
+      },
+    };
+  }
+
+  /**
+   * Get address from coordinates using reverse geocoding
+   */
+  @Get('reverse-geocode')
+  async reverseGeocode(@Query('lat') lat: string, @Query('lng') lng: string) {
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+
+    if (isNaN(latitude) || isNaN(longitude)) {
+      throw new Error('Invalid latitude or longitude');
+    }
+
+    const address = await this.geocodingService.reverseGeocode(latitude, longitude);
+
+    return {
+      latitude,
+      longitude,
+      address: address || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+    };
+  }
+
+  /**
+   * Get shows for today with proximity calculation from current location
+   */
+  @Get('nearby-shows')
+  async getNearbyShows(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('maxDistance') maxDistance?: string,
+    @Query('day') day?: DayOfWeek,
+  ) {
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+    const maxDistanceMeters = maxDistance ? parseFloat(maxDistance) : 1000; // Default 1km
+
+    if (isNaN(latitude) || isNaN(longitude)) {
+      throw new Error('Invalid latitude or longitude');
+    }
+
+    // Get today's day if not specified
+    const targetDay = day || this.getTodayDay();
+
+    // Get shows for the day
+    const shows = await this.showService.findByDay(targetDay);
+
+    // Filter shows with coordinates and calculate distances
+    const showsWithDistances = shows
+      .filter((show) => show.lat && show.lng)
+      .map((show) => {
+        const distanceMeters =
+          this.geocodingService.calculateDistance(latitude, longitude, show.lat!, show.lng!) *
+          1609.34; // Convert miles to meters
+
+        return {
+          ...show,
+          distance: Math.round(distanceMeters),
+        };
+      })
+      .filter((show) => show.distance <= maxDistanceMeters)
+      .sort((a, b) => a.distance - b.distance);
+
+    // Get address for current location
+    const currentAddress = await this.geocodingService.reverseGeocode(latitude, longitude);
+
+    return {
+      location: {
+        latitude,
+        longitude,
+        address: currentAddress || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+      },
+      shows: showsWithDistances,
+      totalShows: showsWithDistances.length,
+      maxDistance: maxDistanceMeters,
+      day: targetDay,
+    };
+  }
+
+  /**
+   * Get shows within specific radius for location tracking
+   */
+  @Get('proximity-check')
+  async checkProximity(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('radius') radius?: string, // in meters, default 10
+  ) {
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+    const radiusMeters = radius ? parseFloat(radius) : 10; // Default 10 meters
+
+    if (isNaN(latitude) || isNaN(longitude)) {
+      throw new Error('Invalid latitude or longitude');
+    }
+
+    // Get today's shows
+    const today = this.getTodayDay();
+    const shows = await this.showService.findByDay(today);
+
+    // Find shows within radius
+    const nearbyShows = shows
+      .filter((show) => show.lat && show.lng)
+      .map((show) => {
+        const distanceMeters =
+          this.geocodingService.calculateDistance(latitude, longitude, show.lat!, show.lng!) *
+          1609.34; // Convert miles to meters
+
+        return {
+          ...show,
+          distance: Math.round(distanceMeters),
+        };
+      })
+      .filter((show) => show.distance <= radiusMeters)
+      .sort((a, b) => a.distance - b.distance);
+
+    // Find closest show (regardless of radius)
+    const allShowsWithDistance = shows
+      .filter((show) => show.lat && show.lng)
+      .map((show) => {
+        const distanceMeters =
+          this.geocodingService.calculateDistance(latitude, longitude, show.lat!, show.lng!) *
+          1609.34; // Convert miles to meters
+
+        return {
+          ...show,
+          distance: Math.round(distanceMeters),
+        };
+      })
+      .sort((a, b) => a.distance - b.distance);
+
+    const closestShow = allShowsWithDistance.length > 0 ? allShowsWithDistance[0] : null;
+
+    // Get address for current location
+    const currentAddress = await this.geocodingService.reverseGeocode(latitude, longitude);
+
+    return {
+      location: {
+        latitude,
+        longitude,
+        address: currentAddress || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+      },
+      withinRadius: nearbyShows,
+      closestShow,
+      radius: radiusMeters,
+      day: today,
+    };
+  }
+
+  /**
+   * Get current day as DayOfWeek enum
+   */
+  private getTodayDay(): DayOfWeek {
+    const today = new Date();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return dayNames[today.getDay()] as DayOfWeek;
+  }
+}

@@ -145,6 +145,38 @@ export class GeocodingService {
   }
 
   /**
+   * Reverse geocode coordinates to address using Google Maps API
+   */
+  async reverseGeocode(lat: number, lng: number): Promise<string | null> {
+    if (!this.googleMapsApiKey) {
+      this.logger.warn('Google Maps API key not configured for reverse geocoding');
+      return null;
+    }
+
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${this.googleMapsApiKey}`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status === 'OK' && data.results && data.results.length > 0) {
+        return data.results[0].formatted_address;
+      } else {
+        this.logger.warn(`Reverse geocoding failed with status: ${data.status}`);
+        return null;
+      }
+    } catch (error) {
+      this.logger.error('Error during reverse geocoding:', error);
+      return null;
+    }
+  }
+
+  /**
    * Extract city and state from address string using regex patterns
    * Fallback when geocoding is not available
    */

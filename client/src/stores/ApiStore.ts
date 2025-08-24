@@ -559,6 +559,24 @@ class ApiStore {
       citySummary: (day?: string) => `/shows/city-summary${day ? `?day=${day}` : ''}`,
     },
 
+    // Location endpoints
+    location: {
+      test: '/location/test',
+      reverseGeocode: (lat: number, lng: number) =>
+        `/location/reverse-geocode?lat=${lat}&lng=${lng}`,
+      nearbyShows: (lat: number, lng: number, maxDistance?: number, day?: string) => {
+        let url = `/location/nearby-shows?lat=${lat}&lng=${lng}`;
+        if (maxDistance) url += `&maxDistance=${maxDistance}`;
+        if (day) url += `&day=${day}`;
+        return url;
+      },
+      proximityCheck: (lat: number, lng: number, radius?: number) => {
+        let url = `/location/proximity-check?lat=${lat}&lng=${lng}`;
+        if (radius) url += `&radius=${radius}`;
+        return url;
+      },
+    },
+
     // Favorite endpoints
     favorites: {
       base: '/favorites',

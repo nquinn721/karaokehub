@@ -14,6 +14,7 @@ import { DJModule } from './dj/dj.module';
 import { FavoriteModule } from './favorite/favorite.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { FriendsModule } from './friends/friends.module';
+import { LocationModule } from './location/location.module';
 import { MusicModule } from './music/music.module';
 import { ParserModule } from './parser/parser.module';
 import { ProductionUploadModule } from './production-upload/production-upload.module';
@@ -67,6 +68,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     FavoriteModule,
     FeedbackModule,
     FriendsModule,
+    LocationModule,
     ParserModule,
     MusicModule,
     SubscriptionModule,

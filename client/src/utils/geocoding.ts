@@ -192,6 +192,37 @@ class GeocodingService {
     }
   }
 
+  async reverseGeocode(lat: number, lng: number): Promise<string> {
+    // Check if API key is available
+    if (!this.apiKey) {
+      console.warn('Google Maps API key not available for reverse geocoding');
+      return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    }
+
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${this.apiKey}`,
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status === 'OK' && data.results && data.results.length > 0) {
+        return data.results[0].formatted_address;
+      } else {
+        console.warn(`Reverse geocoding failed with status: ${data.status}`);
+      }
+    } catch (error) {
+      console.error('Error during reverse geocoding:', error);
+    }
+
+    // Return coordinates if reverse geocoding fails
+    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  }
+
   getCacheStats(): { totalEntries: number; cacheSize: string } {
     const totalEntries = Object.keys(this.cache).length;
     const cacheString = JSON.stringify(this.cache);

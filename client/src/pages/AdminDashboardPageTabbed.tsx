@@ -1,6 +1,7 @@
 import AdminBreadcrumb from '@components/AdminBreadcrumb';
 import AdminDataTables from '@components/AdminDataTables';
 import DataUploadModal from '@components/DataUploadModal';
+import LocationTrackingModal from '@components/modals/LocationTrackingModal';
 import UrlApprovalComponent from '@components/UrlApprovalComponent';
 import {
   faBars,
@@ -8,6 +9,7 @@ import {
   faDatabase,
   faGlobe,
   faHome,
+  faLocationArrow,
   faPlus,
   faSync,
   faTimes,
@@ -73,6 +75,7 @@ const AdminDashboardPageTabbed = observer(() => {
   const [tabValue, setTabValue] = useState(0);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [locationTrackingModalOpen, setLocationTrackingModalOpen] = useState(false);
 
   useEffect(() => {
     if (!authStore.isAuthenticated || !authStore.user?.isAdmin) {
@@ -382,6 +385,21 @@ const AdminDashboardPageTabbed = observer(() => {
                     variant="outlined"
                     size="small"
                     fullWidth
+                    startIcon={<FontAwesomeIcon icon={faLocationArrow} />}
+                    onClick={() => {
+                      setLocationTrackingModalOpen(true);
+                      setMobileDrawerOpen(false);
+                    }}
+                    sx={{ py: 1.5, fontSize: '0.75rem' }}
+                  >
+                    Location
+                  </Button>
+                </Grid>
+                <Grid item xs={6}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    fullWidth
                     startIcon={<FontAwesomeIcon icon={faUpload} />}
                     onClick={() => {
                       setUploadModalOpen(true);
@@ -392,7 +410,7 @@ const AdminDashboardPageTabbed = observer(() => {
                     Upload
                   </Button>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid item xs={6}>
                   <Button
                     variant="contained"
                     size="small"
@@ -578,6 +596,18 @@ const AdminDashboardPageTabbed = observer(() => {
                   </Button>
                   <Button
                     variant="outlined"
+                    startIcon={<FontAwesomeIcon icon={faLocationArrow} />}
+                    onClick={() => setLocationTrackingModalOpen(true)}
+                    sx={{
+                      borderRadius: 2,
+                      px: 3,
+                      py: 1.5,
+                    }}
+                  >
+                    Location Tracking
+                  </Button>
+                  <Button
+                    variant="outlined"
                     startIcon={<FontAwesomeIcon icon={faUpload} />}
                     onClick={() => setUploadModalOpen(true)}
                     sx={{
@@ -667,6 +697,12 @@ const AdminDashboardPageTabbed = observer(() => {
 
       {/* Data Upload Modal */}
       <DataUploadModal open={uploadModalOpen} onClose={() => setUploadModalOpen(false)} />
+
+      {/* Location Tracking Modal */}
+      <LocationTrackingModal
+        open={locationTrackingModalOpen}
+        onClose={() => setLocationTrackingModalOpen(false)}
+      />
     </Box>
   );
 });
