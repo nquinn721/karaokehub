@@ -15,6 +15,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  TextField,
   Typography,
   useTheme,
 } from '@mui/material';
@@ -46,6 +47,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
   const [nearbyShows, setNearbyShows] = useState<ShowWithDistance[]>([]);
   const [showsWithin100m, setShowsWithin100m] = useState<ShowWithDistance[]>([]);
   const [allShows, setAllShows] = useState<ShowWithDistance[]>([]);
+  const [maxMiles, setMaxMiles] = useState<number>(100); // Default 100 miles
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mapImageUrl, setMapImageUrl] = useState<string>('');
@@ -104,6 +106,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
           userLocation.latitude,
           userLocation.longitude,
           10,
+          maxMiles,
         ),
       );
 
@@ -131,7 +134,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
     } finally {
       setLoading(false);
     }
-  }, []); // No dependencies to prevent recreation
+  }, [maxMiles]); // Add maxMiles as dependency to refresh when changed
 
   // Start tracking location every 30 seconds
   const startTracking = useCallback(() => {
@@ -457,11 +460,39 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
             {/* All Shows By Distance */}
             <Card variant="outlined" sx={{ bgcolor: theme.palette.primary.main + '08' }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  All Shows By Distance
-                </Typography>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 2,
+                  }}
+                >
+                  <Typography variant="h6">All Shows By Distance</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Within
+                    </Typography>
+                    <TextField
+                      type="number"
+                      value={maxMiles}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setMaxMiles(Number(e.target.value))
+                      }
+                      onBlur={() => getCurrentLocation()} // Refresh data when changed
+                      size="small"
+                      sx={{ width: 80 }}
+                      inputProps={{ min: 1, max: 500 }}
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      miles
+                    </Typography>
+                  </Box>
+                </Box>
                 {allShows.length === 0 ? (
-                  <Typography color="text.secondary">No shows found for today.</Typography>
+                  <Typography color="text.secondary">
+                    No shows found within {maxMiles} miles for today.
+                  </Typography>
                 ) : (
                   <List>
                     {allShows.map((show, index) => (

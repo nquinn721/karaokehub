@@ -110,10 +110,12 @@ export class LocationController {
     @Query('lat') lat: string,
     @Query('lng') lng: string,
     @Query('radius') radius?: string, // in meters, default 10
+    @Query('maxMiles') maxMiles?: string, // in miles, default 100
   ) {
     const latitude = parseFloat(lat);
     const longitude = parseFloat(lng);
     const radiusMeters = radius ? parseFloat(radius) : 10; // Default 10 meters
+    const maxMilesDistance = maxMiles ? parseFloat(maxMiles) : 100; // Default 100 miles
 
     if (isNaN(latitude) || isNaN(longitude)) {
       throw new Error('Invalid latitude or longitude');
@@ -127,13 +129,18 @@ export class LocationController {
     const allShowsWithDistance = shows
       .filter((show) => show.lat && show.lng)
       .map((show) => {
-        const distanceMeters =
-          this.geocodingService.calculateDistance(latitude, longitude, show.lat!, show.lng!) *
-          1609.34; // Convert miles to meters
+        const distanceMiles = this.geocodingService.calculateDistance(
+          latitude,
+          longitude,
+          show.lat!,
+          show.lng!,
+        );
+        const distanceMeters = distanceMiles * 1609.34; // Convert miles to meters
 
         return {
           ...show,
           distance: Math.round(distanceMeters),
+          distanceMiles: Math.round(distanceMiles * 100) / 100, // Round to 2 decimal places
         };
       })
       .sort((a, b) => a.distance - b.distance);
@@ -143,6 +150,11 @@ export class LocationController {
 
     // Find shows within 100 meters
     const showsWithin100m = allShowsWithDistance.filter((show) => show.distance <= 100);
+
+    // Filter all shows by maximum miles distance
+    const showsWithinMaxDistance = allShowsWithDistance.filter(
+      (show) => show.distanceMiles <= maxMilesDistance,
+    );
 
     // Get address for current location
     const currentAddress = await this.geocodingService.reverseGeocode(latitude, longitude);
@@ -155,8 +167,9 @@ export class LocationController {
       },
       withinRadius: nearbyShows,
       within100m: showsWithin100m,
-      allShowsByDistance: allShowsWithDistance,
+      allShowsByDistance: showsWithinMaxDistance,
       radius: radiusMeters,
+      maxMiles: maxMilesDistance,
       day: today,
     };
   }

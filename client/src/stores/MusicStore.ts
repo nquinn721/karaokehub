@@ -320,7 +320,6 @@ export class MusicStore {
           }
         } catch (apiError: any) {
           // API failed - use basic query-based suggestions
-          console.log('Music API unavailable for suggestions');
 
           // If we still don't have many suggestions, add some basic karaoke classics
           if (suggestions.length < 4) {
@@ -351,7 +350,7 @@ export class MusicStore {
         this.setSuggestions(suggestions.slice(0, 8));
         this.setShowSuggestions(suggestions.length > 0);
       } catch (error) {
-        console.error('Error fetching suggestions:', error);
+        // Error fetching suggestions - fall back to basic suggestions
         this.setSuggestions([]);
         this.setShowSuggestions(false);
         this.setLoadingSuggestions(false);
@@ -464,27 +463,12 @@ export class MusicStore {
               (song.year && !existingSong.year)));
 
         if (shouldReplace) {
-          console.log(
-            `Replacing "${existingSong.title}" with "${song.title}" (score: ${existingScore} -> ${currentScore}, original: ${existingIsOriginal} -> ${currentIsOriginal})`,
-          );
           songMap.set(normalizedTitle, song);
-        } else {
-          console.log(
-            `Keeping "${existingSong.title}" over "${song.title}" (score: ${existingScore} vs ${currentScore}, original: ${existingIsOriginal} vs ${currentIsOriginal})`,
-          );
         }
       }
     });
 
-    if (duplicatesFound.length > 0) {
-      console.log(
-        `🎵 Deduplication removed ${duplicatesFound.length} duplicate songs:`,
-        duplicatesFound,
-      );
-    }
-
     const result = Array.from(songMap.values());
-    console.log(`🎵 Deduplication: ${songs.length} input songs -> ${result.length} unique songs`);
 
     return result;
   }
@@ -519,7 +503,6 @@ export class MusicStore {
           // Check if we've reached the maximum song limit
           if (this.songs.length >= this.maxSongs) {
             this.hasMoreSongs = false;
-            console.log(`🎵 Reached maximum song limit of ${this.maxSongs} songs in search`);
           }
         } else {
           // For new search, deduplicate the results

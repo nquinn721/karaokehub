@@ -92,21 +92,28 @@ export const useVenueDetection = ({
 
       console.log(`Found ${proximities.length} nearby venues:`, proximities);
     } catch (err) {
-      console.error('Failed to get location:', err);
+      // Only log location errors in development or for legitimate issues
       const error = err as GeolocationPositionError;
 
       if (error.code === 1) {
-        // PERMISSION_DENIED
+        // PERMISSION_DENIED - user explicitly denied
+        console.log('📍 Location access denied by user (expected on desktop)');
         setError('Location access denied');
         setPermissionStatus('denied');
       } else if (error.code === 2) {
-        // POSITION_UNAVAILABLE
+        // POSITION_UNAVAILABLE - no GPS/network location
+        console.log('📍 Location unavailable (expected on desktop without GPS)');
         setError('Location unavailable');
       } else if (error.code === 3) {
-        // TIMEOUT
+        // TIMEOUT - took too long
+        console.log('📍 Location request timed out (expected on some devices)');
         setError('Location request timed out');
       } else {
-        setError('Failed to get location');
+        // Only log unexpected errors
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('📍 Location detection failed:', err);
+        }
+        setError('Location not available on this device');
       }
     }
   }, [shows]);
@@ -127,7 +134,10 @@ export const useVenueDetection = ({
         try {
           await checkCurrentLocation();
         } catch (err) {
-          console.warn('Tracking location update failed:', err);
+          // Silently handle tracking failures - common on desktop
+          if (process.env.NODE_ENV === 'development') {
+            console.log('📍 Location tracking update skipped (expected on desktop)');
+          }
         }
       }, trackingInterval);
 

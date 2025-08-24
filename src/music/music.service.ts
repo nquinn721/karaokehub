@@ -418,43 +418,27 @@ export class MusicService {
     const variants = this.generateQueryVariants(query);
 
     try {
-      // Use Spotify in production, iTunes in development
-      const isProduction = process.env.NODE_ENV === 'production';
-
-      if (isProduction && this.spotifyClientId && this.spotifyClientSecret) {
-        // Try Spotify first in production
-        for (const variant of variants) {
-          try {
-            const spotifyData = await this.fetchSpotify(variant, 'track', limit);
-            const spotifyResults = this.mapSpotifyTracks(spotifyData);
-            if (spotifyResults.length > 0) {
-              return spotifyResults.slice(offset, offset + limit);
-            }
-          } catch (error) {
-            console.warn(`Spotify search failed for variant: ${variant}`, error);
-          }
-        }
-      }
-
-      // Fallback to iTunes (or primary in development)
+      // Use iTunes exclusively for better preview availability
+      // iTunes has ~90% preview availability vs Spotify's ~5%
       for (const variant of variants) {
         try {
           const itunesData = await this.fetchItunes(variant, 'song', limit);
           const itunesResults = this.mapItunesTracks(itunesData);
           if (itunesResults.length > 0) {
+            this.rateLimiter.recordSuccess('itunes');
             return itunesResults.slice(offset, offset + limit);
           }
         } catch (error) {
+          this.rateLimiter.recordFailure('itunes');
           console.warn(`iTunes search failed for variant: ${variant}`, error);
         }
       }
 
       return [];
     } catch (error) {
-      console.error('Song search error:', error);
       throw new HttpException(
-        'Music search service temporarily unavailable',
-        HttpStatus.SERVICE_UNAVAILABLE,
+        `Music search failed: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -469,43 +453,26 @@ export class MusicService {
     const variants = this.generateQueryVariants(query);
 
     try {
-      // Use Spotify in production, iTunes in development
-      const isProduction = process.env.NODE_ENV === 'production';
-
-      if (isProduction && this.spotifyClientId && this.spotifyClientSecret) {
-        // Try Spotify first in production
-        for (const variant of variants) {
-          try {
-            const spotifyData = await this.fetchSpotify(variant, 'artist', limit);
-            const spotifyResults = this.mapSpotifyArtists(spotifyData);
-            if (spotifyResults.length > 0) {
-              return spotifyResults.slice(offset, offset + limit);
-            }
-          } catch (error) {
-            console.warn(`Spotify artist search failed for variant: ${variant}`, error);
-          }
-        }
-      }
-
-      // Fallback to iTunes (or primary in development)
+      // Use iTunes exclusively for consistency
       for (const variant of variants) {
         try {
           const itunesData = await this.fetchItunes(variant, 'musicArtist', limit);
           const itunesResults = this.mapItunesArtists(itunesData);
           if (itunesResults.length > 0) {
+            this.rateLimiter.recordSuccess('itunes');
             return itunesResults.slice(offset, offset + limit);
           }
         } catch (error) {
+          this.rateLimiter.recordFailure('itunes');
           console.warn(`iTunes artist search failed for variant: ${variant}`, error);
         }
       }
 
       return [];
     } catch (error) {
-      console.error('Artist search error:', error);
       throw new HttpException(
-        'Music search service temporarily unavailable',
-        HttpStatus.SERVICE_UNAVAILABLE,
+        `Artist search failed: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -513,12 +480,9 @@ export class MusicService {
   // Health check method
   async healthCheck(): Promise<{ status: string; providers: any }> {
     const providers = {
-      spotify: {
-        available: !!(this.spotifyClientId && this.spotifyClientSecret),
-        authenticated: !!this.spotifyAccessToken,
-      },
       itunes: {
         available: true, // iTunes API doesn't require authentication
+        primary: true,
       },
     };
 
