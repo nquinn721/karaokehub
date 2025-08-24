@@ -94,12 +94,12 @@ export class AudioStore {
         this.audioElement.src = '';
         this.audioElement = null;
       }
-      
+
       this.currentlyPlaying = null;
       this.isPlaying = false;
       this.currentSong = null;
     });
-  }
+  };
 
   pauseAudio = () => {
     runInAction(() => {
@@ -108,7 +108,7 @@ export class AudioStore {
         this.isPlaying = false;
       }
     });
-  }
+  };
 
   resumeAudio = () => {
     runInAction(() => {
@@ -117,7 +117,7 @@ export class AudioStore {
         this.isPlaying = true;
       }
     });
-  }
+  };
 
   togglePlayPause = () => {
     if (this.isPlaying) {
@@ -125,7 +125,7 @@ export class AudioStore {
     } else {
       this.resumeAudio();
     }
-  }
+  };
 }
 
 export const audioStore = new AudioStore();

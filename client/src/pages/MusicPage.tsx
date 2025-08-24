@@ -766,9 +766,10 @@ export const MusicPage: React.FC = observer(() => {
               >
                 {musicStore.sortedSongs.map((song, index) => {
                   // Create a more explicit check for the currently playing song
-                  const isThisSongPlaying = audioStore.currentlyPlaying === song.id && 
-                                          audioStore.isPlaying && 
-                                          audioStore.currentlyPlaying !== null;
+                  const isThisSongPlaying =
+                    audioStore.currentlyPlaying === song.id &&
+                    audioStore.isPlaying &&
+                    audioStore.currentlyPlaying !== null;
 
                   return (
                     <React.Fragment key={`${song.id}-${index}`}>
