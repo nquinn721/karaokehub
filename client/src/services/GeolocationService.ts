@@ -215,10 +215,7 @@ export class GeolocationService {
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       } catch (error) {
-        // Only log location sampling errors in development
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`📍 Location sample ${i + 1} failed (expected on desktop)`);
-        }
+        console.log(`📍 Location sample ${i + 1} failed (expected on desktop)`);
       }
     }
 

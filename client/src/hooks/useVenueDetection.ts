@@ -109,10 +109,8 @@ export const useVenueDetection = ({
         console.log('📍 Location request timed out (expected on some devices)');
         setError('Location request timed out');
       } else {
-        // Only log unexpected errors
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('📍 Location detection failed:', err);
-        }
+        // Log unexpected errors
+        console.warn('📍 Location detection failed:', err);
         setError('Location not available on this device');
       }
     }
@@ -135,9 +133,7 @@ export const useVenueDetection = ({
           await checkCurrentLocation();
         } catch (err) {
           // Silently handle tracking failures - common on desktop
-          if (process.env.NODE_ENV === 'development') {
-            console.log('📍 Location tracking update skipped (expected on desktop)');
-          }
+          console.log('📍 Location tracking update skipped (expected on desktop)');
         }
       }, trackingInterval);
 
