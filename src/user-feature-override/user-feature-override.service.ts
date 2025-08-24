@@ -83,7 +83,13 @@ export class UserFeatureOverrideService {
     page: number = 1,
     limit: number = 20,
     search?: string,
-  ): Promise<{ items: UserFeatureOverride[]; total: number; page: number; limit: number; totalPages: number }> {
+  ): Promise<{
+    items: UserFeatureOverride[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
     const query = this.overrideRepository
       .createQueryBuilder('override')
       .leftJoinAndSelect('override.user', 'user')

@@ -24,8 +24,8 @@ export class MusicController {
     @Query('offset') offset?: string,
   ): Promise<ArtistSearchResult[]> {
     const searchLimit = limit ? parseInt(limit, 10) : 10;
-    // Note: offset is not supported by the searchArtists method yet
-    return this.musicService.searchArtists(query, searchLimit);
+    const searchOffset = offset ? parseInt(offset, 10) : 0;
+    return this.musicService.searchArtists(query, searchLimit, searchOffset);
   }
 
   @Get('search/combined')
@@ -35,7 +35,7 @@ export class MusicController {
     @Query('offset') offset?: string,
   ): Promise<MusicSearchResult[]> {
     const searchLimit = limit ? parseInt(limit, 10) : 10;
-    // Note: offset is not supported by the searchCombined method yet
+    const searchOffset = offset ? parseInt(offset, 10) : 0;
     return this.musicService.searchCombined(query, searchLimit);
   }
 

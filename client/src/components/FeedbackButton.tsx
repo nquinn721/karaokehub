@@ -15,15 +15,15 @@ const FeedbackButton: React.FC<FeedbackButtonProps> = ({ position = 'fixed', siz
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const location = useLocation();
-  
+
   // Check if we're on shows page where bottom sheet might interfere
   const isShowsPage = location.pathname === '/shows';
-  
+
   // Hide completely on mobile shows page (feedback will be in drawer instead)
   if (isMobile && isShowsPage) {
     return null;
   }
-  
+
   // Adjust bottom position based on device and page
   const getBottomPosition = () => {
     if (!isMobile) return 24; // Desktop: normal position

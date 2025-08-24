@@ -151,16 +151,31 @@ export class ShowService {
     return await this.showRepository.save(show);
   }
 
+  async markAsInvalid(id: string): Promise<void> {
+    await this.showRepository.update(id, { isValid: false });
+  }
+
+  async markAsValid(id: string): Promise<void> {
+    await this.showRepository.update(id, { isValid: true });
+  }
+
+  async findInvalidShows(): Promise<Show[]> {
+    return await this.showRepository.find({
+      where: { isValid: false },
+      relations: ['dj', 'favoriteShows'],
+    });
+  }
+
   async findAll(): Promise<Show[]> {
     return await this.showRepository.find({
-      where: { isActive: true },
-      relations: ['vendor', 'dj', 'favoriteShows'],
+      where: { isActive: true, isValid: true },
+      relations: ['dj', 'favoriteShows'],
     });
   }
 
   async findOne(id: string): Promise<Show> {
     return await this.showRepository.findOne({
-      where: { id, isActive: true },
+      where: { id, isActive: true, isValid: true },
       relations: ['dj', 'dj.vendor', 'favoriteShows'],
     });
   }
@@ -174,6 +189,7 @@ export class ShowService {
           },
         },
         isActive: true,
+        isValid: true,
       },
       relations: ['dj', 'dj.vendor', 'favoriteShows'],
     });
@@ -181,8 +197,8 @@ export class ShowService {
 
   async findByDJ(djId: string): Promise<Show[]> {
     return await this.showRepository.find({
-      where: { djId, isActive: true },
-      relations: ['vendor', 'dj', 'favoriteShows'],
+      where: { djId, isActive: true, isValid: true },
+      relations: ['dj', 'favoriteShows'],
     });
   }
 
@@ -232,6 +248,7 @@ export class ShowService {
       .leftJoinAndSelect('dj.vendor', 'vendor')
       .leftJoinAndSelect('show.favoriteShows', 'favoriteShows')
       .where('show.isActive = :isActive', { isActive: true })
+      .andWhere('show.isValid = :isValid', { isValid: true })
       .andWhere('LOWER(show.venue) IN (:...venues)', {
         venues: venueVariations.map((v) => v.toLowerCase()),
       })
@@ -259,8 +276,8 @@ export class ShowService {
 
   async findByDay(day: DayOfWeek): Promise<Show[]> {
     return await this.showRepository.find({
-      where: { day, isActive: true },
-      relations: ['vendor', 'dj', 'favoriteShows'],
+      where: { day, isActive: true, isValid: true },
+      relations: ['dj', 'favoriteShows'],
     });
   }
 
@@ -284,6 +301,7 @@ export class ShowService {
           'distance',
         )
         .where('show.isActive = :isActive', { isActive: true })
+        .andWhere('show.isValid = :isValid', { isValid: true })
         .andWhere('show.lat IS NOT NULL')
         .andWhere('show.lng IS NOT NULL')
         .having(
@@ -295,6 +313,8 @@ export class ShowService {
           centerLat,
           centerLng,
           radiusMiles,
+          isActive: true,
+          isValid: true,
         })
         .orderBy('distance', 'ASC');
 
@@ -492,6 +512,7 @@ export class ShowService {
         .leftJoinAndSelect('show.dj', 'dj')
         .leftJoinAndSelect('dj.vendor', 'vendor')
         .where('show.isActive = :isActive', { isActive: true })
+        .andWhere('show.isValid = :isValid', { isValid: true })
         .andWhere('show.city IS NOT NULL')
         .andWhere('show.state IS NOT NULL');
 
@@ -637,6 +658,7 @@ export class ShowService {
         .leftJoinAndSelect('dj.vendor', 'vendor')
         .leftJoinAndSelect('show.favoriteShows', 'favoriteShows')
         .where('show.isActive = :isActive', { isActive: true })
+        .andWhere('show.isValid = :isValid', { isValid: true })
         .andWhere(
           new Brackets((qb) => {
             searchTerms.forEach((term, index) => {
@@ -679,6 +701,8 @@ export class ShowService {
           exactDJ: `%${query.trim().toLowerCase()}%`,
           exactVendor: `%${query.trim().toLowerCase()}%`,
           exactCity: `%${query.trim().toLowerCase()}%`,
+          isActive: true,
+          isValid: true,
         })
         .take(limit)
         .getMany();

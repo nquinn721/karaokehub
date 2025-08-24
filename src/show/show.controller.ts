@@ -70,10 +70,10 @@ export class ShowController {
   @Get('venue-test/:venueName')
   testVenueRoute(@Param('venueName') venueName: string) {
     console.log('🧪 Test venue endpoint hit with:', venueName);
-    return { 
-      message: 'Venue test route working', 
-      venueName, 
-      decoded: decodeURIComponent(venueName) 
+    return {
+      message: 'Venue test route working',
+      venueName,
+      decoded: decodeURIComponent(venueName),
     };
   }
 
@@ -100,5 +100,20 @@ export class ShowController {
   @Post('re-geocode-invalid')
   reGeocodeInvalidShows() {
     return this.showService.reGeocodeInvalidShows();
+  }
+
+  @Patch(':id/mark-invalid')
+  markAsInvalid(@Param('id') id: string) {
+    return this.showService.markAsInvalid(id);
+  }
+
+  @Patch(':id/mark-valid')
+  markAsValid(@Param('id') id: string) {
+    return this.showService.markAsValid(id);
+  }
+
+  @Get('invalid/list')
+  getInvalidShows() {
+    return this.showService.findInvalidShows();
   }
 }

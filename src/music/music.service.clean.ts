@@ -449,46 +449,4 @@ export class MusicService {
       providers,
     };
   }
-
-  // Legacy methods for controller compatibility
-  async searchCombined(query: string, limit: number = 20): Promise<MusicSearchResult[]> {
-    // Just use searchSongs for now
-    return this.searchSongs(query, limit, 0);
-  }
-
-  async getRateLimitStats(): Promise<Record<string, any>> {
-    return {
-      spotify: {
-        available: !!(this.spotifyClientId && this.spotifyClientSecret),
-        circuitBreaker: 'closed',
-      },
-      itunes: {
-        available: true,
-        circuitBreaker: 'closed',
-      },
-    };
-  }
-
-  async getCategoryMusic(
-    queries: string[],
-    limit: number = 15,
-    targetCount: number = 50,
-  ): Promise<MusicSearchResult[]> {
-    const allResults: MusicSearchResult[] = [];
-
-    for (const query of queries) {
-      try {
-        const results = await this.searchSongs(query, limit, 0);
-        allResults.push(...results);
-
-        if (allResults.length >= targetCount) {
-          break;
-        }
-      } catch (error) {
-        console.warn(`Failed to search for category query: ${query}`, error);
-      }
-    }
-
-    return allResults.slice(0, targetCount);
-  }
 }

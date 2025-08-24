@@ -28,8 +28,8 @@ interface MapComponentProps {
 }
 
 // PopupContent component for InfoWindow
-const PopupContent: React.FC<{ 
-  show: any; 
+const PopupContent: React.FC<{
+  show: any;
   onScheduleModalOpen?: (show: any) => void;
 }> = ({ show, onScheduleModalOpen }) => {
   const theme = useTheme();
@@ -364,6 +364,7 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
 
       const isSelected = mapStore.selectedShow?.id === show.id;
       const iconColor = isSelected ? '#ff5722' : '#f44336'; // Red colors
+      const size = isSelected ? 36 : 32;
 
       return (
         <Marker
@@ -372,7 +373,7 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
           onClick={() => mapStore.handleMarkerClick(show)}
           icon={{
             url: `data:image/svg+xml,${encodeURIComponent(`
-              <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+              <svg width="${size}" height="${size}" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="16" cy="16" r="14" fill="${iconColor}" stroke="white" stroke-width="2"/>
                 <!-- Microphone body -->
                 <rect x="14" y="8" width="4" height="10" rx="2" fill="white"/>
@@ -383,8 +384,6 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
                 <line x1="12" y1="24" x2="20" y2="24" stroke="white" stroke-width="1.5"/>
               </svg>
             `)}`,
-            scaledSize: new google.maps.Size(isSelected ? 36 : 32, isSelected ? 36 : 32),
-            anchor: new google.maps.Point(isSelected ? 18 : 16, isSelected ? 18 : 16),
           }}
         />
       );
@@ -502,8 +501,8 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
               pixelOffset={[0, -10]}
               maxWidth={400}
             >
-              <PopupContent 
-                show={mapStore.selectedShow} 
+              <PopupContent
+                show={mapStore.selectedShow}
                 onScheduleModalOpen={onScheduleModalOpen}
               />
             </InfoWindow>

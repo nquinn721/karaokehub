@@ -91,7 +91,15 @@ const RegisterPage: React.FC = observer(() => {
 
   return (
     <Container maxWidth="sm">
-      <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Box
+        sx={{
+          mt: 8,
+          mb: { xs: 4, sm: 8 },
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
         <Paper
           elevation={0}
           sx={{

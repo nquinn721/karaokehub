@@ -13,6 +13,7 @@ import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { UrlToParse } from '../parser/url-to-parse.entity';
 import { Show } from '../show/show.entity';
 import { Subscription } from '../subscription/subscription.entity';
+import { UserFeatureOverride } from '../user-feature-override/user-feature-override.entity';
 import { Vendor } from '../vendor/vendor.entity';
 
 export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => {
@@ -40,6 +41,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       SongFavorite,
       FriendRequest,
       Friendship,
+      UserFeatureOverride,
     ],
     synchronize: true, // Enable sync if explicitly set or in development
     logging: false, // Turn off SQL logging completely

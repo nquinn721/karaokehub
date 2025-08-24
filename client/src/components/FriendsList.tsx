@@ -1,5 +1,6 @@
 import {
   faCheck,
+  faClock,
   faPlus,
   faSearch,
   faTimes,
@@ -35,6 +36,7 @@ import {
 import { authStore, friendsStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
+import SendFriendRequestModal from './SendFriendRequestModal';
 
 interface FriendsListProps {
   onUserSelect?: (userId: string) => void;
@@ -45,6 +47,8 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
+  const [showSentRequests, setShowSentRequests] = useState(false);
+  const [showSendRequestModal, setShowSendRequestModal] = useState(false);
 
   useEffect(() => {
     if (authStore.isAuthenticated) {
@@ -55,27 +59,8 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const query = event.target.value;
     setSearchQuery(query);
-
-    if (query.length >= 1) {
-      // Start searching with just 1 character for better UX
-      friendsStore.searchUsers(query);
-    } else {
-      friendsStore.clearSearchResults();
-    }
-  };
-
-  const handleSearchKeyPress = (event: React.KeyboardEvent) => {
-    if (event.key === 'Enter' && searchQuery.length >= 1) {
-      // Immediate search on Enter key
-      friendsStore.searchUsers(searchQuery, true);
-    }
-  };
-
-  const handleSendRequest = async (userId: string) => {
-    const result = await friendsStore.sendFriendRequest(userId);
-    if (result.success) {
-      // Success is handled in the store
-    }
+    // This search is for filtering existing friends only
+    // For adding new friends, use the + button
   };
 
   const handleAcceptRequest = async (requestId: string) => {
@@ -99,6 +84,20 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
       .toUpperCase()
       .slice(0, 2);
   };
+
+  // Filter friends based on search query
+  const filteredFriends = React.useMemo(() => {
+    if (!searchQuery || !friendsStore.friends) {
+      return friendsStore.friends;
+    }
+    const query = searchQuery.toLowerCase();
+    return friendsStore.friends.filter(
+      (friend) =>
+        friend.stageName?.toLowerCase().includes(query) ||
+        friend.name?.toLowerCase().includes(query) ||
+        friend.email?.toLowerCase().includes(query),
+    );
+  }, [searchQuery, friendsStore.friends]);
 
   if (!authStore.isAuthenticated) {
     return (
@@ -134,7 +133,16 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
             />
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Tooltip title="Find Friends">
+            <Tooltip title="Send Friend Request">
+              <IconButton
+                size="small"
+                color="primary"
+                onClick={() => setShowSendRequestModal(true)}
+              >
+                <FontAwesomeIcon icon={faPlus} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Search Friends">
               <IconButton
                 size="small"
                 color={showSearch ? 'primary' : 'default'}
@@ -156,6 +164,19 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
                 </IconButton>
               </Tooltip>
             )}
+            {(friendsStore.sentRequests || []).length > 0 && (
+              <Tooltip title="Sent Requests">
+                <IconButton
+                  size="small"
+                  color={showSentRequests ? 'primary' : 'default'}
+                  onClick={() => setShowSentRequests(!showSentRequests)}
+                >
+                  <Badge badgeContent={(friendsStore.sentRequests || []).length} color="warning">
+                    <FontAwesomeIcon icon={faClock} />
+                  </Badge>
+                </IconButton>
+              </Tooltip>
+            )}
           </Box>
         </Box>
 
@@ -165,10 +186,9 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
             <TextField
               fullWidth
               size="small"
-              placeholder="Search by stage name, name, or email..."
+              placeholder="Search your friends..."
               value={searchQuery}
               onChange={handleSearchChange}
-              onKeyPress={handleSearchKeyPress}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -178,79 +198,6 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
               }}
               sx={{ mb: 1 }}
             />
-
-            {/* Search Results */}
-            {friendsStore.searchLoading && (
-              <Box sx={{ p: 1 }}>
-                <Skeleton variant="rectangular" height={40} />
-                <Skeleton variant="rectangular" height={40} sx={{ mt: 1 }} />
-              </Box>
-            )}
-
-            {searchQuery.length >= 1 &&
-              !friendsStore.searchLoading &&
-              (!friendsStore.searchResults || friendsStore.searchResults.length === 0) && (
-                <Typography variant="body2" color="text.secondary" sx={{ p: 1, textAlign: 'center' }}>
-                  No users found matching "{searchQuery}"
-                  <br />
-                  <Typography variant="caption" color="text.secondary">
-                    Try searching by stage name, real name, or email
-                  </Typography>
-                </Typography>
-              )}
-
-            {friendsStore.safeSearchResults.map((user) => (
-              <Box
-                key={user.id}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  p: 1,
-                  borderRadius: 1,
-                  '&:hover': { backgroundColor: theme.palette.action.hover },
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Avatar sx={{ width: 32, height: 32 }}>
-                    {user.avatar ? (
-                      <img src={user.avatar} alt={getDisplayName(user)} />
-                    ) : (
-                      getAvatarInitials(user)
-                    )}
-                  </Avatar>
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography variant="body2" fontWeight={500} sx={{ lineHeight: 1.2 }}>
-                      {user.stageName && user.stageName !== user.name ? user.stageName : user.name}
-                    </Typography>
-                    {user.stageName && user.stageName !== user.name && (
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.1 }}>
-                        {user.name}
-                      </Typography>
-                    )}
-                    {user.email && (
-                      <Typography variant="caption" color="text.secondary" sx={{ 
-                        display: 'block', 
-                        lineHeight: 1.1,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {user.email}
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
-                <IconButton
-                  size="small"
-                  color="primary"
-                  onClick={() => handleSendRequest(user.id)}
-                  disabled={friendsStore.loading}
-                >
-                  <FontAwesomeIcon icon={faPlus} />
-                </IconButton>
-              </Box>
-            ))}
           </Box>
         </Collapse>
 
@@ -276,7 +223,11 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
                   <Avatar sx={{ width: 32, height: 32 }}>
                     {request.requester.avatar ? (
-                      <img src={request.requester.avatar} alt={getDisplayName(request.requester)} />
+                      <img
+                        src={request.requester.avatar}
+                        style={{ width: '100%', height: '100%' }}
+                        alt={getDisplayName(request.requester)}
+                      />
                     ) : (
                       getAvatarInitials(request.requester)
                     )}
@@ -309,6 +260,61 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
                   >
                     <FontAwesomeIcon icon={faTimes} />
                   </IconButton>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </Collapse>
+
+        {/* Sent Requests Section */}
+        <Collapse in={showSentRequests}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Sent Requests ({(friendsStore.sentRequests || []).length})
+            </Typography>
+            {(friendsStore.sentRequests || []).map((request) => (
+              <Box
+                key={request.id}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  p: 1,
+                  borderRadius: 1,
+                  border: `1px solid ${theme.palette.divider}`,
+                  mb: 1,
+                  backgroundColor: theme.palette.action.hover,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                  <Avatar sx={{ width: 32, height: 32 }}>
+                    {request.recipient.avatar ? (
+                      <img
+                        src={request.recipient.avatar}
+                        style={{ width: '100%', height: '100%' }}
+                        alt={getDisplayName(request.recipient)}
+                      />
+                    ) : (
+                      getAvatarInitials(request.recipient)
+                    )}
+                  </Avatar>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" fontWeight={500} noWrap>
+                      {getDisplayName(request.recipient)}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap>
+                      Request sent • Waiting for approval
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Chip
+                    label="Pending"
+                    size="small"
+                    color="warning"
+                    variant="outlined"
+                    icon={<FontAwesomeIcon icon={faClock} style={{ fontSize: '12px' }} />}
+                  />
                 </Box>
               </Box>
             ))}
@@ -353,7 +359,7 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
           </Box>
         ) : (
           <List dense sx={{ p: 0 }}>
-            {(friendsStore.friends || []).slice(0, 8).map((friend) => (
+            {(filteredFriends || []).slice(0, 8).map((friend) => (
               <ListItem key={friend.id} disablePadding>
                 <ListItemButton
                   onClick={() => onUserSelect?.(friend.id)}
@@ -386,16 +392,22 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
               </ListItem>
             ))}
 
-            {friendsStore.friends && friendsStore.friends.length > 8 && (
+            {filteredFriends && filteredFriends.length > 8 && (
               <ListItem>
                 <Button fullWidth variant="text" size="small" sx={{ justifyContent: 'center' }}>
-                  View all {friendsStore.friends?.length || 0} friends
+                  View all {filteredFriends?.length || 0} friends
                 </Button>
               </ListItem>
             )}
           </List>
         )}
       </CardContent>
+
+      {/* Send Friend Request Modal */}
+      <SendFriendRequestModal
+        open={showSendRequestModal}
+        onClose={() => setShowSendRequestModal(false)}
+      />
     </Card>
   );
 });

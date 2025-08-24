@@ -26,6 +26,7 @@ import React, { useEffect, useState } from 'react';
 import { BottomSheet } from '../components/BottomSheet';
 import { DayOfWeek } from '../components/DayPicker/DayPicker';
 import MapComponent from '../components/MapComponent';
+import { AuthRequiredModal } from '../components/modals/AuthRequiredModal';
 import { CombinedScheduleModal } from '../components/modals/CombinedScheduleModal';
 import { DJScheduleModal } from '../components/modals/DJScheduleModal';
 import { ShowSearch } from '../components/search/ShowSearch';
@@ -41,6 +42,7 @@ const ShowsPage: React.FC = observer(() => {
   // Modal states
   const [djModalOpen, setDjModalOpen] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [selectedDJ, setSelectedDJ] = useState<{ id: string; name: string } | null>(null);
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
 
@@ -1105,6 +1107,8 @@ const ShowsPage: React.FC = observer(() => {
           show={selectedShow}
         />
       )}
+
+      <AuthRequiredModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </>
   );
 });

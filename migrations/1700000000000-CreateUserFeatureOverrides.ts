@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, Table, TableIndex, TableForeignKey } from 'typeorm';
+import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
 
 export class CreateUserFeatureOverrides1700000000000 implements MigrationInterface {
   name = 'CreateUserFeatureOverrides1700000000000';
@@ -24,7 +24,13 @@ export class CreateUserFeatureOverrides1700000000000 implements MigrationInterfa
           {
             name: 'featureType',
             type: 'enum',
-            enum: ['song_previews', 'song_favorites', 'show_favorites', 'ad_free', 'premium_access'],
+            enum: [
+              'song_previews',
+              'song_favorites',
+              'show_favorites',
+              'ad_free',
+              'premium_access',
+            ],
           },
           {
             name: 'isEnabled',

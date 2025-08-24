@@ -90,12 +90,15 @@ export class SongFavoriteStore {
       this.setError(null);
 
       console.log('🎵 SongFavoriteStore.removeSongFavorite called with:', songId);
-      console.log('🎵 Current favorites before removal:', this.songFavorites.map(fav => ({
-        id: fav.id,
-        songId: fav.songId,
-        spotifyId: fav.song?.spotifyId,
-        title: fav.song?.title
-      })));
+      console.log(
+        '🎵 Current favorites before removal:',
+        this.songFavorites.map((fav) => ({
+          id: fav.id,
+          songId: fav.songId,
+          spotifyId: fav.song?.spotifyId,
+          title: fav.song?.title,
+        })),
+      );
 
       const response = await apiStore.delete(`/song-favorites/${songId}`);
 
@@ -107,13 +110,16 @@ export class SongFavoriteStore {
             const matchesSpotifyId = fav.song?.spotifyId === songId;
             return !(matchesSongId || matchesSpotifyId);
           });
-          
-          console.log('🎵 Favorites after removal:', this.songFavorites.map(fav => ({
-            id: fav.id,
-            songId: fav.songId,
-            spotifyId: fav.song?.spotifyId,
-            title: fav.song?.title
-          })));
+
+          console.log(
+            '🎵 Favorites after removal:',
+            this.songFavorites.map((fav) => ({
+              id: fav.id,
+              songId: fav.songId,
+              spotifyId: fav.song?.spotifyId,
+              title: fav.song?.title,
+            })),
+          );
         });
         return true;
       }

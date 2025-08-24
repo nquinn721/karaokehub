@@ -35,8 +35,11 @@ export class FriendsService {
   async searchUsers(userId: string, searchDto: FriendSearchDto) {
     const { query, limit = 10 } = searchDto;
 
-    if (!query || query.length < 2) {
-      throw new BadRequestException('Search query must be at least 2 characters');
+    console.log('🔍 Backend search starting:', { userId, query, limit, searchDto });
+
+    if (!query || query.length < 1) {
+      console.log('🔍 Backend search rejected: query too short');
+      throw new BadRequestException('Search query must be at least 1 character');
     }
 
     // Get current user's friends and pending requests to exclude them from results
@@ -53,49 +56,63 @@ export class FriendsService {
     ]);
 
     const excludeIds = [
-      userId, // Exclude self
-      ...friends.map((f) => f.id),
-      ...sentRequests.map((r) => r.recipientId),
-      ...receivedRequests.map((r) => r.requesterId),
+      // userId, // Allow self in search for testing
+      // ...friends.map((f) => f.id),
+      // ...sentRequests.map((r) => r.recipientId),
+      // ...receivedRequests.map((r) => r.requesterId),
     ];
+
+    console.log('🔍 Exclude IDs (testing - minimal excludes):', excludeIds);
 
     // Create fuzzy search query with multiple field matching
     const fuzzyQuery = `%${query.toLowerCase()}%`;
-    
+    const startQuery = `${query.toLowerCase()}%`;
+    const exactQuery = query.toLowerCase();
+
     const queryBuilder = this.userRepository
       .createQueryBuilder('user')
       .where('user.isActive = :isActive', { isActive: true })
       .andWhere(
-        '(LOWER(COALESCE(user.stageName, \'\')) LIKE :query OR ' +
-        'LOWER(COALESCE(user.name, \'\')) LIKE :query OR ' +
-        'LOWER(COALESCE(user.email, \'\')) LIKE :query OR ' +
-        // Add fuzzy matching for partial word matches
-        'LOWER(COALESCE(user.stageName, \'\')) LIKE :startQuery OR ' +
-        'LOWER(COALESCE(user.name, \'\')) LIKE :startQuery)',
-        { 
+        "(LOWER(COALESCE(user.stageName, '')) LIKE :query OR " +
+          "LOWER(COALESCE(user.stageName, '')) LIKE :startQuery)",
+        {
           query: fuzzyQuery,
-          startQuery: `${query.toLowerCase()}%` // Match from start of words
-        }
+          startQuery: startQuery,
+        },
       )
       .select(['user.id', 'user.email', 'user.name', 'user.stageName', 'user.avatar'])
-      // Order by relevance: exact matches first, then partial matches
-      .orderBy('CASE WHEN LOWER(COALESCE(user.stageName, \'\')) = :exactQuery THEN 0 ' +
-               'WHEN LOWER(COALESCE(user.name, \'\')) = :exactQuery THEN 1 ' +
-               'WHEN LOWER(COALESCE(user.stageName, \'\')) LIKE :startQuery THEN 2 ' +
-               'WHEN LOWER(COALESCE(user.name, \'\')) LIKE :startQuery THEN 3 ' +
-               'ELSE 4 END', 'ASC')
+      .orderBy(
+        "CASE WHEN LOWER(COALESCE(user.stageName, '')) = :exactQuery THEN 0 " +
+          "WHEN LOWER(COALESCE(user.stageName, '')) LIKE :startQuery THEN 1 " +
+          'ELSE 2 END',
+        'ASC',
+      )
       .addOrderBy('user.stageName', 'ASC')
       .limit(limit);
 
     // Add exact query parameter for ordering
-    queryBuilder.setParameter('exactQuery', query.toLowerCase());
+    queryBuilder.setParameter('exactQuery', exactQuery);
 
     // Only add the excludeIds condition if there are IDs to exclude
     if (excludeIds.length > 0) {
       queryBuilder.andWhere('user.id NOT IN (:...excludeIds)', { excludeIds });
     }
 
+    console.log('🔍 Final query SQL:', queryBuilder.getSql());
+    console.log('🔍 Query parameters:', queryBuilder.getParameters());
+
     const users = await queryBuilder.getMany();
+
+    console.log(
+      '🔍 Found users:',
+      users.length,
+      users.map((u) => ({
+        id: u.id,
+        name: u.name,
+        stageName: u.stageName,
+        email: u.email,
+      })),
+    );
 
     return users;
   }

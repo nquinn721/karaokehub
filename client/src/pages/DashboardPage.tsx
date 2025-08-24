@@ -7,7 +7,7 @@ import {
   faCalendar,
   faChartLine,
   faClock,
-  faHeart,
+  faHeart as faHeartSolid,
   faMapMarkerAlt,
   faMicrophone,
   faMusic,
@@ -32,6 +32,10 @@ import {
   Grid,
   IconButton,
   LinearProgress,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
   Paper,
   Skeleton,
   Stack,
@@ -40,7 +44,13 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { audioStore, authStore, songFavoriteStore, subscriptionStore } from '@stores/index';
+import {
+  audioStore,
+  authStore,
+  songFavoriteStore,
+  subscriptionStore,
+  uiStore,
+} from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -342,7 +352,7 @@ const DashboardPage: React.FC = observer(() => {
                   minHeight: 44,
                 }}
               >
-                <FontAwesomeIcon icon={faHeart} size="sm" color="white" />
+                <FontAwesomeIcon icon={faHeartSolid} size="sm" color="white" />
               </Box>
               <Typography variant="h5" fontWeight={700} color="primary.main">
                 {showStats.weekCount}
@@ -516,26 +526,29 @@ const DashboardPage: React.FC = observer(() => {
       console.log('🎵 Dashboard preview play:', {
         songId: songFavorite.song?.id,
         title: songFavorite.song?.title,
-        spotifyId: songFavorite.song?.spotifyId,
-        hasSpotifyId: !!songFavorite.song?.spotifyId,
+        previewUrl: songFavorite.song?.previewUrl,
+        hasPreviewUrl: !!songFavorite.song?.previewUrl,
       });
 
-      // Check if we have a Spotify ID to construct preview URL
-      if (!songFavorite.song?.spotifyId) {
-        console.warn('❌ No Spotify ID available for favorited song');
-        alert('Sorry, no preview is available for this song.');
+      // Check if we have a preview URL (from Spotify API when the song was favorited)
+      if (!songFavorite.song?.previewUrl) {
+        console.warn('❌ No preview URL available for favorited song');
+        uiStore.addNotification(
+          'Preview not available for this favorited song. Try re-adding it to get the latest preview data.',
+          'warning',
+        );
         return;
       }
 
       // Use the song preview (this will increment the counter)
       subscriptionStore.useSongPreview();
 
-      // Create a song object for the audio store with constructed preview URL
+      // Create a song object for the audio store with the stored preview URL
       const songForAudio = {
-        id: songFavorite.song.spotifyId,
+        id: songFavorite.song.id,
         title: songFavorite.song.title,
         artist: songFavorite.song.artist,
-        previewUrl: `https://p.scdn.co/mp3-preview/${songFavorite.song.spotifyId}`,
+        previewUrl: songFavorite.song.previewUrl,
       };
 
       // Use the global audio store
@@ -632,6 +645,23 @@ const DashboardPage: React.FC = observer(() => {
               >
                 {songFavorite.song?.title || 'Unknown Title'}
               </Typography>
+              {songFavorite.song?.previewUrl && (
+                <Chip
+                  icon={<FontAwesomeIcon icon={faPlay} style={{ fontSize: '10px' }} />}
+                  label="Preview"
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    height: '20px',
+                    fontSize: '0.65rem',
+                    color: theme.palette.info.main,
+                    borderColor: theme.palette.info.main,
+                    '& .MuiChip-icon': {
+                      fontSize: '10px',
+                    },
+                  }}
+                />
+              )}
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography
@@ -698,10 +728,7 @@ const DashboardPage: React.FC = observer(() => {
                   },
                 }}
               >
-                <FontAwesomeIcon
-                  icon={faHeartSolid}
-                  style={{ fontSize: '16px' }}
-                />
+                <FontAwesomeIcon icon={faHeartSolid} style={{ fontSize: '16px' }} />
               </IconButton>
 
               {/* Play Preview Button */}
@@ -711,11 +738,12 @@ const DashboardPage: React.FC = observer(() => {
                   e.stopPropagation();
                   handlePreviewPlay();
                 }}
-                disabled={!songFavorite.song?.spotifyId}
+                disabled={!songFavorite.song?.previewUrl}
                 sx={{
-                  color: audioStore.currentlyPlaying === songFavorite.song?.spotifyId && audioStore.isPlaying
-                    ? theme.palette.success.main
-                    : theme.palette.grey[600],
+                  color:
+                    audioStore.currentlyPlaying === songFavorite.song?.id && audioStore.isPlaying
+                      ? theme.palette.success.main
+                      : theme.palette.grey[600],
                   '&:hover': {
                     color: theme.palette.primary.main,
                   },
@@ -726,7 +754,7 @@ const DashboardPage: React.FC = observer(() => {
               >
                 <FontAwesomeIcon
                   icon={
-                    audioStore.currentlyPlaying === songFavorite.song?.spotifyId && audioStore.isPlaying
+                    audioStore.currentlyPlaying === songFavorite.song?.id && audioStore.isPlaying
                       ? faPause
                       : faPlay
                   }
@@ -840,7 +868,7 @@ const DashboardPage: React.FC = observer(() => {
                 </Grid>
                 <Grid item xs={12} sm={6} lg={3}>
                   <StatCard
-                    icon={faHeart}
+                    icon={faHeartSolid}
                     title="Favorite Shows"
                     value={showStats.weekCount}
                     subtitle="Total shows in your favorites"
@@ -903,7 +931,7 @@ const DashboardPage: React.FC = observer(() => {
                             justifyContent: 'center',
                           }}
                         >
-                          <FontAwesomeIcon icon={faHeart} color="white" size="lg" />
+                          <FontAwesomeIcon icon={faHeartSolid} color="white" size="lg" />
                         </Box>
                         <Box>
                           <Typography variant="h5" component="h2" fontWeight={600}>
@@ -1063,14 +1091,14 @@ const DashboardPage: React.FC = observer(() => {
                                 No favorite songs yet. Start building your music library!
                               </Typography>
                             ) : (
-                              songFavoriteStore.songFavorites
-                                .slice(0, 5)
-                                .map((songFavorite) => (
+                              <List sx={{ p: 0 }}>
+                                {songFavoriteStore.songFavorites.slice(0, 5).map((songFavorite) => (
                                   <FavoriteSongCard
                                     key={songFavorite.id}
                                     songFavorite={songFavorite}
                                   />
-                                ))
+                                ))}
+                              </List>
                             )}
 
                             {songFavoriteStore.songFavorites.length > 5 && (

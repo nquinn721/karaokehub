@@ -227,7 +227,10 @@ export class SubscriptionService {
   }
 
   // New methods for feature-specific checks with overrides
-  async canUseSongPreviews(userId: string, currentCount: number): Promise<{ allowed: boolean; limit: number | null }> {
+  async canUseSongPreviews(
+    userId: string,
+    currentCount: number,
+  ): Promise<{ allowed: boolean; limit: number | null }> {
     // Check for unlimited override
     const hasUnlimited = await this.userFeatureOverrideService.hasUnlimitedSongPreviews(userId);
     if (hasUnlimited) {
@@ -250,7 +253,10 @@ export class SubscriptionService {
     return { allowed: currentCount < defaultLimit, limit: defaultLimit };
   }
 
-  async canFavoriteSongs(userId: string, currentCount: number): Promise<{ allowed: boolean; limit: number | null }> {
+  async canFavoriteSongs(
+    userId: string,
+    currentCount: number,
+  ): Promise<{ allowed: boolean; limit: number | null }> {
     // Check for unlimited override
     const hasUnlimited = await this.userFeatureOverrideService.hasUnlimitedSongFavorites(userId);
     if (hasUnlimited) {
@@ -273,7 +279,10 @@ export class SubscriptionService {
     return { allowed: currentCount < defaultLimit, limit: defaultLimit };
   }
 
-  async canFavoriteShows(userId: string, currentCount: number): Promise<{ allowed: boolean; limit: number | null }> {
+  async canFavoriteShows(
+    userId: string,
+    currentCount: number,
+  ): Promise<{ allowed: boolean; limit: number | null }> {
     // Check for unlimited override
     const hasUnlimited = await this.userFeatureOverrideService.hasUnlimitedShowFavorites(userId);
     if (hasUnlimited) {

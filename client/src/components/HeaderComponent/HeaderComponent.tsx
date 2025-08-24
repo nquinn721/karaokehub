@@ -766,29 +766,9 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   <>
                     <Button
                       color="primary"
-                      variant={theme.palette.mode === 'light' ? 'contained' : 'outlined'}
-                      size="small"
-                      onClick={() => navigate('/login')}
-                      sx={
-                        theme.palette.mode === 'light'
-                          ? {
-                              backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                              color: theme.palette.primary.contrastText,
-                              borderColor: 'rgba(255, 255, 255, 0.3)',
-                              '&:hover': {
-                                backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                              },
-                            }
-                          : {}
-                      }
-                    >
-                      Login
-                    </Button>
-                    <Button
-                      color="primary"
                       variant="contained"
                       size="small"
-                      onClick={() => navigate('/register')}
+                      onClick={() => navigate('/login')}
                       sx={
                         theme.palette.mode === 'light'
                           ? {
@@ -801,7 +781,7 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                           : {}
                       }
                     >
-                      Get Started
+                      Login/Register
                     </Button>
                   </>
                 )}
@@ -1391,23 +1371,13 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
 
                 <Divider sx={{ my: 1 }} />
 
-                {/* Login */}
+                {/* Login/Register */}
                 <ListItem disablePadding>
                   <ListItemButton onClick={() => handleMobileNavigation('/login')}>
                     <ListItemIcon>
                       <FontAwesomeIcon icon={faUser} />
                     </ListItemIcon>
-                    <ListItemText primary="Login" />
-                  </ListItemButton>
-                </ListItem>
-
-                {/* Register */}
-                <ListItem disablePadding>
-                  <ListItemButton onClick={() => handleMobileNavigation('/register')}>
-                    <ListItemIcon>
-                      <FontAwesomeIcon icon={faUser} />
-                    </ListItemIcon>
-                    <ListItemText primary="Get Started" />
+                    <ListItemText primary="Login/Register" />
                   </ListItemButton>
                 </ListItem>
               </>

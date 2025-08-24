@@ -11,6 +11,7 @@ import {
   faUserShield,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CalendarToday } from '@mui/icons-material';
 import {
   Box,
   Button,
@@ -23,6 +24,7 @@ import {
   FormControl,
   FormControlLabel,
   IconButton,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Select,
@@ -86,7 +88,7 @@ export const UserFeatureOverrideModal: React.FC<UserFeatureOverrideModalProps> =
 
     const loadUserOverrides = async () => {
       if (!user) return;
-      
+
       try {
         const data = await adminStore.getUserFeatureOverrides(user.id);
         setOverrides(data);
@@ -129,7 +131,7 @@ export const UserFeatureOverrideModal: React.FC<UserFeatureOverrideModalProps> =
           });
           uiStore.addNotification('Feature override created successfully', 'success');
         }
-        
+
         resetForm();
         loadUserOverrides();
       } catch (error) {
@@ -166,35 +168,127 @@ export const UserFeatureOverrideModal: React.FC<UserFeatureOverrideModalProps> =
     if (!user) return null;
 
     return (
-      <Dialog 
-        open={open} 
-        onClose={onClose} 
-        maxWidth="lg" 
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="lg"
         fullWidth
         PaperProps={{
-          sx: { minHeight: '70vh' }
+          sx: {
+            borderRadius: 3,
+            minHeight: '70vh',
+            maxHeight: '90vh',
+            background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+          },
         }}
       >
-        <DialogTitle>
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            pb: 2,
+            px: 3,
+            pt: 3,
+            borderBottom: `1px solid ${theme.palette.divider}`,
+            background: `linear-gradient(135deg, ${theme.palette.primary.main}10 0%, transparent 100%)`,
+          }}
+        >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <FontAwesomeIcon icon={faUserShield} style={{ color: theme.palette.primary.main }} />
+            <Box
+              sx={{
+                p: 1,
+                borderRadius: 2,
+                backgroundColor: theme.palette.primary.main + '15',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <FontAwesomeIcon
+                icon={faUserShield}
+                style={{ color: theme.palette.primary.main, fontSize: '20px' }}
+              />
+            </Box>
             <Box>
-              <Typography variant="h6">Feature Overrides</Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="h5" component="div" fontWeight={600}>
+                Feature Overrides
+              </Typography>
+              <Typography variant="body2" component="div" color="text.secondary">
                 {user.name} ({user.email})
               </Typography>
             </Box>
           </Box>
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{
+              backgroundColor: theme.palette.action.hover,
+              '&:hover': {
+                backgroundColor: theme.palette.action.selected,
+              },
+            }}
+          >
+            <FontAwesomeIcon icon={faTimes} style={{ fontSize: '16px' }} />
+          </IconButton>
         </DialogTitle>
 
-        <DialogContent>
+        <DialogContent
+          sx={{
+            px: 3,
+            py: 2,
+            '&::-webkit-scrollbar': {
+              width: 8,
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: theme.palette.action.hover,
+              borderRadius: 4,
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: theme.palette.action.selected,
+              borderRadius: 4,
+            },
+          }}
+        >
           {/* Add/Edit Form */}
-          <Box sx={{ mb: 3, p: 2, border: 1, borderColor: 'divider', borderRadius: 1 }}>
-            <Typography variant="h6" gutterBottom>
-              {editingOverride ? 'Edit Override' : 'Add New Override'}
-            </Typography>
-            
-            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+          <Box 
+            sx={{ 
+              mt: 3,
+              mb: 3, 
+              p: 3, 
+              borderRadius: 2,
+              background: `linear-gradient(135deg, ${theme.palette.primary.main}08 0%, transparent 100%)`,
+              border: `1px solid ${theme.palette.divider}`,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+              <Box
+                sx={{
+                  p: 1,
+                  borderRadius: 2,
+                  backgroundColor: theme.palette.primary.main + '15',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <FontAwesomeIcon
+                  icon={editingOverride ? faCog : faUserShield}
+                  style={{ color: theme.palette.primary.main, fontSize: '16px' }}
+                />
+              </Box>
+              <Typography variant="h6" fontWeight={600}>
+                {editingOverride ? 'Edit Override' : 'Add New Override'}
+              </Typography>
+            </Box>
+
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              }}
+            >
               <FormControl fullWidth disabled={!!editingOverride}>
                 <InputLabel>Feature Type</InputLabel>
                 <Select
@@ -205,8 +299,8 @@ export const UserFeatureOverrideModal: React.FC<UserFeatureOverrideModalProps> =
                   {Object.entries(featureTypeLabels).map(([value, label]) => (
                     <MenuItem key={value} value={value}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <FontAwesomeIcon 
-                          icon={featureTypeIcons[value as keyof typeof featureTypeIcons]} 
+                        <FontAwesomeIcon
+                          icon={featureTypeIcons[value as keyof typeof featureTypeIcons]}
                           style={{ fontSize: '14px' }}
                         />
                         {label}
@@ -220,10 +314,12 @@ export const UserFeatureOverrideModal: React.FC<UserFeatureOverrideModalProps> =
                 label="Custom Limit"
                 type="number"
                 value={formData.customLimit || ''}
-                onChange={(e) => setFormData({ 
-                  ...formData, 
-                  customLimit: e.target.value ? parseInt(e.target.value) : null 
-                })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    customLimit: e.target.value ? parseInt(e.target.value) : null,
+                  })
+                }
                 helperText="Leave empty for unlimited"
               />
 
@@ -231,12 +327,36 @@ export const UserFeatureOverrideModal: React.FC<UserFeatureOverrideModalProps> =
                 label="Expiration Date"
                 type="datetime-local"
                 value={formData.expiresAt ? formData.expiresAt.toISOString().slice(0, 16) : ''}
-                onChange={(e) => setFormData({ 
-                  ...formData, 
-                  expiresAt: e.target.value ? new Date(e.target.value) : null 
-                })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    expiresAt: e.target.value ? new Date(e.target.value) : null,
+                  })
+                }
                 InputLabelProps={{ shrink: true }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <CalendarToday 
+                        sx={{ 
+                          color: theme.palette.primary.main,
+                          fontSize: '20px' 
+                        }} 
+                      />
+                    </InputAdornment>
+                  ),
+                }}
                 helperText="Leave empty for no expiration"
+                sx={{
+                  '& input[type="datetime-local"]::-webkit-calendar-picker-indicator': {
+                    opacity: 0,
+                    position: 'absolute',
+                    right: 0,
+                    width: '100%',
+                    height: '100%',
+                    cursor: 'pointer',
+                  },
+                }}
               />
             </Box>
 
@@ -283,22 +403,79 @@ export const UserFeatureOverrideModal: React.FC<UserFeatureOverrideModalProps> =
             </Box>
           </Box>
 
-          <Divider sx={{ my: 2 }} />
+          <Divider sx={{ my: 3 }} />
 
           {/* Existing Overrides */}
-          <Typography variant="h6" gutterBottom>
-            Current Overrides
-          </Typography>
-          
-          {overrides.length === 0 ? (
-            <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-              No feature overrides configured for this user
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+            <Box
+              sx={{
+                p: 1,
+                borderRadius: 2,
+                backgroundColor: theme.palette.secondary.main + '15',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <FontAwesomeIcon
+                icon={faCog}
+                style={{ color: theme.palette.secondary.main, fontSize: '16px' }}
+              />
+            </Box>
+            <Typography variant="h6" fontWeight={600}>
+              Current Overrides
             </Typography>
+          </Box>
+
+          {overrides.length === 0 ? (
+            <Box
+              sx={{
+                textAlign: 'center',
+                py: 8,
+                px: 4,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2,
+                borderRadius: 2,
+                backgroundColor: theme.palette.action.hover,
+              }}
+            >
+              <FontAwesomeIcon
+                icon={faUserShield}
+                style={{
+                  fontSize: '48px',
+                  color: theme.palette.text.disabled,
+                  opacity: 0.5,
+                }}
+              />
+              <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                No Overrides Found
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 300 }}>
+                No feature overrides configured for this user
+              </Typography>
+            </Box>
           ) : (
-            <TableContainer>
+            <TableContainer
+              sx={{
+                borderRadius: 2,
+                border: `1px solid ${theme.palette.divider}`,
+                overflow: 'hidden',
+              }}
+            >
               <Table size="small">
                 <TableHead>
-                  <TableRow>
+                  <TableRow
+                    sx={{
+                      backgroundColor: theme.palette.action.hover,
+                      '& .MuiTableCell-head': {
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        borderBottom: `1px solid ${theme.palette.divider}`,
+                      },
+                    }}
+                  >
                     <TableCell>Feature</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Limit</TableCell>
@@ -312,8 +489,8 @@ export const UserFeatureOverrideModal: React.FC<UserFeatureOverrideModalProps> =
                     <TableRow key={override.id}>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <FontAwesomeIcon 
-                            icon={featureTypeIcons[override.featureType]} 
+                          <FontAwesomeIcon
+                            icon={featureTypeIcons[override.featureType]}
                             style={{ fontSize: '14px' }}
                           />
                           {featureTypeLabels[override.featureType]}
@@ -370,8 +547,23 @@ export const UserFeatureOverrideModal: React.FC<UserFeatureOverrideModalProps> =
           )}
         </DialogContent>
 
-        <DialogActions>
-          <Button onClick={onClose} startIcon={<FontAwesomeIcon icon={faTimes} />}>
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            borderTop: `1px solid ${theme.palette.divider}`,
+            background: `linear-gradient(135deg, ${theme.palette.action.hover}50 0%, transparent 100%)`,
+          }}
+        >
+          <Button 
+            onClick={onClose} 
+            startIcon={<FontAwesomeIcon icon={faTimes} />}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 3,
+            }}
+          >
             Close
           </Button>
         </DialogActions>

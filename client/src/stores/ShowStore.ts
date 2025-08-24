@@ -529,12 +529,18 @@ export class ShowStore {
   /**
    * Handle favorite toggle with store updates
    */
-  async handleFavoriteToggle(show: any) {
+  async handleFavoriteToggle(show: any, onAuthRequired?: () => void) {
     try {
       // Import from index to get the singleton instances
       const { authStore, favoriteStore } = await import('./index');
 
-      if (!authStore.isAuthenticated) return;
+      if (!authStore.isAuthenticated) {
+        // Call the auth required callback if provided
+        if (onAuthRequired) {
+          onAuthRequired();
+        }
+        return;
+      }
 
       const isFavorited = show.favorites?.some((fav: any) => fav.userId === authStore.user?.id);
 

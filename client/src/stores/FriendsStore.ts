@@ -66,7 +66,7 @@ class FriendsStore {
       this.searchTimeout = null;
     }
 
-    if (!query || query.length < 2) {
+    if (!query || query.length < 1) {
       runInAction(() => {
         this.searchResults = [];
         this.searchLoading = false;
@@ -82,18 +82,15 @@ class FriendsStore {
     const performSearch = async () => {
       console.log('🔍 Friends search started:', { query, length: query.length });
 
-      this.error = null;
+      runInAction(() => {
+        this.error = null;
+      });
 
       try {
         const response = await apiStore.get('/friends/search', { params: { query, limit: 15 } });
 
-        console.log('🔍 Friends search response:', { 
-          data: response.data, 
-          length: response.data?.length 
-        });
-
         runInAction(() => {
-          this.searchResults = Array.isArray(response.data) ? response.data : [];
+          this.searchResults = Array.isArray(response) ? response : [];
           this.searchLoading = false;
         });
       } catch (error: any) {
@@ -226,7 +223,7 @@ class FriendsStore {
       const response = await apiStore.get('/friends');
 
       runInAction(() => {
-        this.friends = response.data;
+        this.friends = Array.isArray(response) ? response : [];
         this.loading = false;
       });
     } catch (error: any) {
@@ -243,7 +240,7 @@ class FriendsStore {
       const response = await apiStore.get('/friends/requests/pending');
 
       runInAction(() => {
-        this.pendingRequests = response.data;
+        this.pendingRequests = Array.isArray(response) ? response : [];
       });
     } catch (error: any) {
       runInAction(() => {
@@ -258,7 +255,7 @@ class FriendsStore {
       const response = await apiStore.get('/friends/requests/sent');
 
       runInAction(() => {
-        this.sentRequests = response.data;
+        this.sentRequests = Array.isArray(response) ? response : [];
       });
     } catch (error: any) {
       runInAction(() => {
@@ -273,7 +270,7 @@ class FriendsStore {
       const response = await apiStore.get('/friends/stats');
 
       runInAction(() => {
-        this.stats = response.data;
+        this.stats = response || { friendsCount: 0, pendingRequestsCount: 0 };
       });
     } catch (error: any) {
       console.error('Failed to fetch friends stats:', error);

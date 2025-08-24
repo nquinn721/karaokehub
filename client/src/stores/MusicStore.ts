@@ -329,6 +329,14 @@ export class MusicStore {
         `/music/search?q=${encodeURIComponent(searchQuery)}&limit=${limit}`,
       );
 
+      console.log('🎵 Music search response:', {
+        query: searchQuery,
+        resultCount: response?.length || 0,
+        firstResult: response?.[0],
+        hasPreviewUrls:
+          response?.filter((song: MusicSearchResult) => !!song.previewUrl).length || 0,
+      });
+
       runInAction(() => {
         this.songs = response || [];
         this.isLoading = false;
