@@ -66,17 +66,25 @@ class FriendsStore {
       return;
     }
 
+    console.log('🔍 Friends search started:', { query, length: query.length });
+
     this.searchLoading = true;
     this.error = null;
 
     try {
       const response = await apiStore.get('/friends/search', { params: { query, limit: 10 } });
 
+      console.log('🔍 Friends search response:', { 
+        data: response.data, 
+        length: response.data?.length 
+      });
+
       runInAction(() => {
         this.searchResults = Array.isArray(response.data) ? response.data : [];
         this.searchLoading = false;
       });
     } catch (error: any) {
+      console.error('🔍 Friends search error:', error);
       runInAction(() => {
         this.error = error.response?.data?.message || 'Failed to search users';
         this.searchLoading = false;

@@ -34,6 +34,15 @@ export class Song {
   @Column({ nullable: true })
   youtubeId: string;
 
+  @Column({ nullable: true })
+  albumArtSmall: string;
+
+  @Column({ nullable: true })
+  albumArtMedium: string;
+
+  @Column({ nullable: true })
+  albumArtLarge: string;
+
   @Column({ default: true })
   isActive: boolean;
 

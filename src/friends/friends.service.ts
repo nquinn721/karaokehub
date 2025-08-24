@@ -59,14 +59,22 @@ export class FriendsService {
       ...receivedRequests.map((r) => r.requesterId),
     ];
 
-    const users = await this.userRepository
+    const queryBuilder = this.userRepository
       .createQueryBuilder('user')
-      .where('user.id NOT IN (:...excludeIds)', { excludeIds })
-      .andWhere('user.isActive = :isActive', { isActive: true })
-      .andWhere('LOWER(user.stageName) LIKE :query', { query: `%${query.toLowerCase()}%` })
+      .where('user.isActive = :isActive', { isActive: true })
+      .andWhere(
+        '(LOWER(user.stageName) LIKE :query OR LOWER(user.name) LIKE :query OR LOWER(user.email) LIKE :query)',
+        { query: `%${query.toLowerCase()}%` }
+      )
       .select(['user.id', 'user.email', 'user.name', 'user.stageName', 'user.avatar'])
-      .limit(limit)
-      .getMany();
+      .limit(limit);
+
+    // Only add the excludeIds condition if there are IDs to exclude
+    if (excludeIds.length > 0) {
+      queryBuilder.andWhere('user.id NOT IN (:...excludeIds)', { excludeIds });
+    }
+
+    const users = await queryBuilder.getMany();
 
     return users;
   }
