@@ -44,7 +44,8 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
   const [location, setLocation] = useState<UserLocation | null>(null);
   const [address, setAddress] = useState<string>('');
   const [nearbyShows, setNearbyShows] = useState<ShowWithDistance[]>([]);
-  const [closestShow, setClosestShow] = useState<ShowWithDistance | null>(null);
+  const [showsWithin100m, setShowsWithin100m] = useState<ShowWithDistance[]>([]);
+  const [allShows, setAllShows] = useState<ShowWithDistance[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mapImageUrl, setMapImageUrl] = useState<string>('');
@@ -90,7 +91,8 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
       if (response) {
         setAddress(response.location.address);
         setNearbyShows(response.withinRadius || []);
-        setClosestShow(response.closestShow);
+        setShowsWithin100m(response.within100m || []);
+        setAllShows(response.allShowsByDistance || []);
       }
 
       // Generate Google Maps static image URL
@@ -374,47 +376,111 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
               </CardContent>
             </Card>
 
-            {/* Closest Show */}
-            {closestShow && (
-              <Card variant="outlined" sx={{ bgcolor: theme.palette.primary.main + '08' }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Closest Show
+            {/* Shows within 100 meters */}
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Shows Within 100 Meters
+                </Typography>
+                {showsWithin100m.length === 0 ? (
+                  <Typography color="text.secondary">
+                    No shows found within 100 meters of your location.
                   </Typography>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
-                        {closestShow.venue}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                        {closestShow.address}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        DJ: {closestShow.dj?.name || 'Unknown'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Time: {formatTime(closestShow.startTime)} -{' '}
-                        {formatTime(closestShow.endTime || '23:59')}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ textAlign: 'right' }}>
-                      <Typography variant="h6" color="primary" fontWeight={600}>
-                        {formatDistance(closestShow.distance || 0)}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        away
-                      </Typography>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <List>
+                    {showsWithin100m.map((show, index) => (
+                      <React.Fragment key={show.id}>
+                        <ListItem sx={{ px: 0 }}>
+                          <ListItemText
+                            primary={
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <Typography variant="subtitle1" fontWeight={600}>
+                                  {show.venue}
+                                </Typography>
+                                <Typography variant="body2" color="primary">
+                                  {formatDistance(show.distance || 0)}
+                                </Typography>
+                              </Box>
+                            }
+                            secondary={
+                              <Box>
+                                <Typography variant="body2" color="text.secondary">
+                                  {show.address}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  DJ: {show.dj?.name || 'Unknown'} • {formatTime(show.startTime)} -{' '}
+                                  {formatTime(show.endTime || '23:59')}
+                                </Typography>
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                        {index < showsWithin100m.length - 1 && <Divider />}
+                      </React.Fragment>
+                    ))}
+                  </List>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* All Shows By Distance */}
+            <Card variant="outlined" sx={{ bgcolor: theme.palette.primary.main + '08' }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  All Shows By Distance
+                </Typography>
+                {allShows.length === 0 ? (
+                  <Typography color="text.secondary">
+                    No shows found for today.
+                  </Typography>
+                ) : (
+                  <List>
+                    {allShows.map((show, index) => (
+                      <React.Fragment key={show.id}>
+                        <ListItem sx={{ px: 0 }}>
+                          <ListItemText
+                            primary={
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <Typography variant="subtitle1" fontWeight={600}>
+                                  {show.venue}
+                                </Typography>
+                                <Typography variant="body2" color="primary" fontWeight={600}>
+                                  {formatDistance(show.distance || 0)}
+                                </Typography>
+                              </Box>
+                            }
+                            secondary={
+                              <Box>
+                                <Typography variant="body2" color="text.secondary">
+                                  {show.address}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  DJ: {show.dj?.name || 'Unknown'} • {formatTime(show.startTime)} -{' '}
+                                  {formatTime(show.endTime || '23:59')}
+                                </Typography>
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                        {index < allShows.length - 1 && <Divider />}
+                      </React.Fragment>
+                    ))}
+                  </List>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Manual Refresh Button */}
             <Box sx={{ textAlign: 'center', pt: 2 }}>

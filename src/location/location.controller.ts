@@ -123,23 +123,7 @@ export class LocationController {
     const today = this.getTodayDay();
     const shows = await this.showService.findByDay(today);
 
-    // Find shows within radius
-    const nearbyShows = shows
-      .filter((show) => show.lat && show.lng)
-      .map((show) => {
-        const distanceMeters =
-          this.geocodingService.calculateDistance(latitude, longitude, show.lat!, show.lng!) *
-          1609.34; // Convert miles to meters
-
-        return {
-          ...show,
-          distance: Math.round(distanceMeters),
-        };
-      })
-      .filter((show) => show.distance <= radiusMeters)
-      .sort((a, b) => a.distance - b.distance);
-
-    // Find closest show (regardless of radius)
+    // Calculate distances for all shows
     const allShowsWithDistance = shows
       .filter((show) => show.lat && show.lng)
       .map((show) => {
@@ -154,7 +138,13 @@ export class LocationController {
       })
       .sort((a, b) => a.distance - b.distance);
 
-    const closestShow = allShowsWithDistance.length > 0 ? allShowsWithDistance[0] : null;
+    // Find shows within specified radius (default 10 meters)
+    const nearbyShows = allShowsWithDistance
+      .filter((show) => show.distance <= radiusMeters);
+
+    // Find shows within 100 meters
+    const showsWithin100m = allShowsWithDistance
+      .filter((show) => show.distance <= 100);
 
     // Get address for current location
     const currentAddress = await this.geocodingService.reverseGeocode(latitude, longitude);
@@ -166,7 +156,8 @@ export class LocationController {
         address: currentAddress || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
       },
       withinRadius: nearbyShows,
-      closestShow,
+      within100m: showsWithin100m,
+      allShowsByDistance: allShowsWithDistance,
       radius: radiusMeters,
       day: today,
     };
