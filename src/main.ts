@@ -38,6 +38,7 @@ async function bootstrap() {
           imgSrc: ["'self'", 'data:', 'https:'],
           scriptSrc: ["'self'", 'https://maps.googleapis.com', 'https://maps.gstatic.com'],
           connectSrc: ["'self'", 'https://maps.googleapis.com', 'https://maps.gstatic.com'],
+          mediaSrc: ["'self'", 'https://audio-ssl.itunes.apple.com'],
         },
       },
       crossOriginEmbedderPolicy: false,
