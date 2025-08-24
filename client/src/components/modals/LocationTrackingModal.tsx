@@ -51,7 +51,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
   const [mapImageUrl, setMapImageUrl] = useState<string>('');
   const [isTracking, setIsTracking] = useState(false);
 
-  // Get current location
+  // Get current location with fallback strategy
   const getCurrentLocation = useCallback(async () => {
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by this browser');
@@ -61,14 +61,33 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
     setLoading(true);
     setError(null);
 
-    try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 0,
-        });
+    // Try high accuracy first, then fallback to lower accuracy
+    const getLocationWithOptions = async (options: PositionOptions): Promise<GeolocationPosition> => {
+      return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, options);
       });
+    };
+
+    try {
+      let position: GeolocationPosition;
+      
+      try {
+        // First attempt: High accuracy with shorter timeout
+        position = await getLocationWithOptions({
+          enableHighAccuracy: true,
+          timeout: 10000, // Reduced from 15000
+          maximumAge: 30000, // Allow cached positions up to 30 seconds old
+        });
+      } catch (highAccuracyError) {
+        console.log('High accuracy location failed, trying standard accuracy...');
+        
+        // Fallback: Standard accuracy with longer timeout
+        position = await getLocationWithOptions({
+          enableHighAccuracy: false,
+          timeout: 15000,
+          maximumAge: 60000, // Allow older cached positions for fallback
+        });
+      }
 
       const userLocation: UserLocation = {
         latitude: position.coords.latitude,
