@@ -160,7 +160,7 @@ class ApiStore {
             });
 
             // Add auth token if available
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('token');
             if (token) {
               config.headers.Authorization = `Bearer ${token}`;
             }
@@ -210,7 +210,7 @@ class ApiStore {
 
             // Handle auth errors
             if (error.response?.status === 401) {
-              localStorage.removeItem('auth_token');
+              localStorage.removeItem('token');
               window.location.href = '/login';
             }
           } catch {
@@ -609,7 +609,7 @@ class ApiStore {
   }
 
   setToken(token: string) {
-    localStorage.setItem('auth_token', token);
+    localStorage.setItem('token', token);
     // Update default headers if axios instance is available
     if (
       globalAxiosInstance &&
@@ -621,10 +621,10 @@ class ApiStore {
   }
 
   clearToken() {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('token'); // Also clear 'token' key for compatibility
-    sessionStorage.removeItem('auth_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('auth_token'); // Also clear 'auth_token' key for compatibility
     sessionStorage.removeItem('token');
+    sessionStorage.removeItem('auth_token');
     // Remove default headers if axios instance is available
     if (
       globalAxiosInstance &&

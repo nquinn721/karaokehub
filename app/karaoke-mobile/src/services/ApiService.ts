@@ -48,6 +48,10 @@ class ApiService {
     }
   }
 
+  async setAuthToken(token: string) {
+    await this.saveToken(token);
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     try {
       const url = `${API_BASE_URL}${endpoint}`;

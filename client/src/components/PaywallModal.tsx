@@ -130,9 +130,24 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
       if (response.url) {
         window.location.href = response.url;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Subscription error:', error);
-      // Handle error (show toast, etc.)
+      console.error('Error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          data: error.config?.data,
+          headers: error.config?.headers
+        }
+      });
+      
+      // Show user-friendly error message
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create checkout session';
+      alert(`Subscription Error: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

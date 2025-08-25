@@ -1,5 +1,6 @@
 import { createStackNavigator } from '@react-navigation/stack';
 import React from 'react';
+import AuthGuard from '../components/AuthGuard';
 
 // Import screens
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
@@ -14,32 +15,34 @@ const Stack = createStackNavigator<ProfileStackParamList>();
 
 const ProfileNavigator = () => {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#007AFF',
-        },
-        headerTintColor: '#FFFFFF',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      <Stack.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          title: 'Profile',
+    <AuthGuard routeName="your profile">
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#007AFF',
+          },
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
         }}
-      />
-      <Stack.Screen
-        name="EditProfile"
-        component={EditProfileScreen}
-        options={{
-          title: 'Edit Profile',
-        }}
-      />
-    </Stack.Navigator>
+      >
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{
+            title: 'Profile',
+          }}
+        />
+        <Stack.Screen
+          name="EditProfile"
+          component={EditProfileScreen}
+          options={{
+            title: 'Edit Profile',
+          }}
+        />
+      </Stack.Navigator>
+    </AuthGuard>
   );
 };
 

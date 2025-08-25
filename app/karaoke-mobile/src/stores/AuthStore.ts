@@ -164,6 +164,20 @@ export class AuthStore {
     }
   }
 
+  async handleSocialAuthSuccess(token: string, user: User): Promise<void> {
+    try {
+      // Store the JWT token in the API service
+      await apiService.setAuthToken(token);
+      
+      runInAction(() => {
+        this.setUser(user);
+      });
+    } catch (error) {
+      console.error('Social auth success handling failed:', error);
+      throw error;
+    }
+  }
+
   // Getters
   get displayName(): string {
     if (!this.user) return 'Guest';

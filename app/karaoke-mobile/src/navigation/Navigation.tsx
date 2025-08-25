@@ -19,10 +19,19 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
+// Auth Stack for when user needs to login
 const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="Register" component={RegisterScreen} />
+  </Stack.Navigator>
+);
+
+// Main App Stack - includes both MainTabs and Auth screens
+const AppStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="MainTabs" component={MainTabs} />
+    <Stack.Screen name="Auth" component={AuthStack} />
   </Stack.Navigator>
 );
 
@@ -100,7 +109,7 @@ const MainTabs = () => (
 const Navigation = observer(() => {
   return (
     <NavigationContainer>
-      {authStore.isAuthenticated ? <MainTabs /> : <AuthStack />}
+      <AppStack />
     </NavigationContainer>
   );
 });

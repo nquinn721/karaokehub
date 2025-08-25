@@ -1,5 +1,6 @@
 import { createStackNavigator } from '@react-navigation/stack';
 import React from 'react';
+import AuthGuard from '../components/AuthGuard';
 
 // Import screens
 import FriendRequestsScreen from '../screens/friends/FriendRequestsScreen';
@@ -14,32 +15,34 @@ const Stack = createStackNavigator<FriendsStackParamList>();
 
 const FriendsNavigator = () => {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#007AFF',
-        },
-        headerTintColor: '#FFFFFF',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      <Stack.Screen
-        name="FriendsList"
-        component={FriendsListScreen}
-        options={{
-          title: 'Friends',
+    <AuthGuard routeName="friends">
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#007AFF',
+          },
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
         }}
-      />
-      <Stack.Screen
-        name="FriendRequests"
-        component={FriendRequestsScreen}
-        options={{
-          title: 'Friend Requests',
-        }}
-      />
-    </Stack.Navigator>
+      >
+        <Stack.Screen
+          name="FriendsList"
+          component={FriendsListScreen}
+          options={{
+            title: 'Friends',
+          }}
+        />
+        <Stack.Screen
+          name="FriendRequests"
+          component={FriendRequestsScreen}
+          options={{
+            title: 'Friend Requests',
+          }}
+        />
+      </Stack.Navigator>
+    </AuthGuard>
   );
 };
 
