@@ -260,8 +260,8 @@ export class ShowStore {
     try {
       this.setLoading(true);
 
-      // DEBUG: Add 1 second delay to see loading state behavior
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // DEBUG: Add 3 second delay to see loading state behavior
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       let endpoint: string;
 
@@ -359,8 +359,8 @@ export class ShowStore {
     try {
       this.setLoading(true);
 
-      // DEBUG: Add 1 second delay to see loading state behavior
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // DEBUG: Add 3 second delay to see loading state behavior
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       const response = await apiStore.get(apiStore.endpoints.shows.byId(id));
 
