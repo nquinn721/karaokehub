@@ -63,16 +63,10 @@ export class SongFavoriteService {
     // First try to find song by internal ID
     song = await this.songRepository.findOne({ where: { id: songId } });
 
-    // If not found, try to find by Spotify ID
-    if (!song && songData) {
-      song = await this.songRepository.findOne({ where: { spotifyId: songId } });
-    }
-
     // If still not found, create the song using the provided data
     if (!song && songData) {
       try {
         console.log('Creating new song with data:', songData);
-        console.log('Using songId as spotifyId:', songId);
 
         // Validate required fields
         if (!songData.title || !songData.artist) {
@@ -89,7 +83,8 @@ export class SongFavoriteService {
           album: songData.album?.trim() || null,
           genre: songData.genre?.trim() || null,
           duration: songData.duration || null,
-          spotifyId: songId, // Use the songId as Spotify ID
+          itunesId: songData.itunesId || null,
+          youtubeId: songData.youtubeId || null,
           previewUrl: songData.previewUrl || null,
           // Map from both old and new album art structures
           albumArtSmall:
@@ -132,20 +127,10 @@ export class SongFavoriteService {
   }
 
   async removeFavorite(userId: string, songId: string): Promise<void> {
-    // First try to find by internal song ID
-    let favorite = await this.songFavoriteRepository.findOne({
+    // Find by internal song ID
+    const favorite = await this.songFavoriteRepository.findOne({
       where: { userId, songId },
     });
-
-    // If not found, try to find by song's Spotify ID
-    if (!favorite) {
-      const song = await this.songRepository.findOne({ where: { spotifyId: songId } });
-      if (song) {
-        favorite = await this.songFavoriteRepository.findOne({
-          where: { userId, songId: song.id },
-        });
-      }
-    }
 
     if (!favorite) {
       throw new NotFoundException('Favorite not found');
@@ -215,11 +200,6 @@ export class SongFavoriteService {
     // First try to find song by internal ID
     song = await this.songRepository.findOne({ where: { id: songId } });
 
-    // If not found, try to find by Spotify ID
-    if (!song && songData) {
-      song = await this.songRepository.findOne({ where: { spotifyId: songId } });
-    }
-
     // If still not found, create the song using the provided data
     if (!song && songData) {
       try {
@@ -230,7 +210,8 @@ export class SongFavoriteService {
           album: songData.album?.trim() || null,
           genre: songData.genre?.trim() || null,
           duration: songData.duration || null,
-          spotifyId: songId,
+          itunesId: songData.itunesId || null,
+          youtubeId: songData.youtubeId || null,
           previewUrl: songData.previewUrl || null,
           albumArtSmall:
             songData.albumArtSmall || songData.albumArt?.small || songData.imageUrl || null,

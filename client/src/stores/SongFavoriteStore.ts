@@ -8,7 +8,7 @@ export interface Song {
   album?: string;
   genre?: string;
   duration?: number;
-  spotifyId?: string;
+  itunesId?: string;
   youtubeId?: string;
   albumArtSmall?: string;
   albumArtMedium?: string;
@@ -110,7 +110,7 @@ export class SongFavoriteStore {
           id: fav.id,
           songId: fav.songId,
           category: fav.category,
-          spotifyId: fav.song?.spotifyId,
+          itunesId: fav.song?.itunesId,
           title: fav.song?.title,
         })),
       );
@@ -123,17 +123,16 @@ export class SongFavoriteStore {
 
       if (response.success) {
         runInAction(() => {
-          // Remove from local state - check both songId and spotifyId
+          // Remove from local state - check songId only
           this.songFavorites = this.songFavorites.filter((fav) => {
             const matchesSongId = fav.songId === songId;
-            const matchesSpotifyId = fav.song?.spotifyId === songId;
 
             // If category is specified, only remove if it matches
             if (category && fav.category !== category) {
               return true; // Keep this favorite
             }
 
-            return !(matchesSongId || matchesSpotifyId);
+            return !matchesSongId;
           });
 
           console.log(
@@ -142,7 +141,7 @@ export class SongFavoriteStore {
               id: fav.id,
               songId: fav.songId,
               category: fav.category,
-              spotifyId: fav.song?.spotifyId,
+              itunesId: fav.song?.itunesId,
               title: fav.song?.title,
             })),
           );

@@ -51,7 +51,6 @@ import {
   faGithub,
   faGoogle,
   faInstagram,
-  faSpotify,
   faTwitter,
   faYoutube,
 } from '@fortawesome/free-brands-svg-icons';
@@ -109,5 +108,4 @@ library.add(
   faTwitter,
   faInstagram,
   faYoutube,
-  faSpotify,
 );

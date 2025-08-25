@@ -332,9 +332,6 @@ export const MusicPage: React.FC = observer(() => {
       // Check if the favorite matches by songId (internal ID)
       if (fav.songId === songId) return true;
 
-      // Check if the favorite's song has a spotifyId that matches
-      if (fav.song?.spotifyId === songId) return true;
-
       return false;
     });
   };
@@ -347,7 +344,7 @@ export const MusicPage: React.FC = observer(() => {
       return;
     }
 
-    // Use the previewUrl from the song data (should come from Spotify/iTunes API)
+    // Use the previewUrl from the song data (should come from iTunes API)
     if (!song.previewUrl) {
       console.warn('❌ No preview URL available for song:', {
         id: song.id,
@@ -859,7 +856,7 @@ export const MusicPage: React.FC = observer(() => {
                             )}
                           </ListItemIcon>
 
-                          {/* Song Info - Spotify-like layout */}
+                          {/* Song Info - Music player layout */}
                           <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
                               <Typography

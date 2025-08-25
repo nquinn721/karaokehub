@@ -27,7 +27,6 @@ export interface MusicSearchResult {
 export interface ArtistSearchResult {
   id: string;
   name: string;
-  type?: string;
   country?: string;
   area?: string;
   disambiguation?: string;
@@ -64,7 +63,7 @@ export class MusicStore {
     // Create a more comprehensive matching system
     const isMatchingFavorite = (song: MusicSearchResult, favSong: any) => {
       // Direct ID match
-      if (song.id === favSong.id || song.id === favSong.spotifyId) return true;
+      if (song.id === favSong.id) return true;
 
       // Title and artist match (fuzzy matching)
       const songTitle = song.title?.toLowerCase().trim();
@@ -566,7 +565,7 @@ export class MusicStore {
             // Create a more comprehensive matching system
             const isMatchingFavorite = (song: any, favSong: any) => {
               // Direct ID match
-              if (song.id === favSong.id || song.id === favSong.spotifyId) return true;
+              if (song.id === favSong.id) return true;
 
               // Title and artist match (fuzzy matching)
               const songTitle = song.title?.toLowerCase().trim();
@@ -607,7 +606,7 @@ export class MusicStore {
             // Create a more comprehensive matching system
             const isMatchingFavorite = (song: any, favSong: any) => {
               // Direct ID match
-              if (song.id === favSong.id || song.id === favSong.spotifyId) return true;
+              if (song.id === favSong.id) return true;
 
               // Title and artist match (fuzzy matching)
               const songTitle = song.title?.toLowerCase().trim();
@@ -701,7 +700,7 @@ export class MusicStore {
           // Create a more comprehensive matching system
           const isMatchingFavorite = (song: any, favSong: any) => {
             // Direct ID match
-            if (song.id === favSong.id || song.id === favSong.spotifyId) return true;
+            if (song.id === favSong.id) return true;
 
             // Title and artist match (fuzzy matching)
             const songTitle = song.title?.toLowerCase().trim();
@@ -754,7 +753,7 @@ export class MusicStore {
                   // Create a more comprehensive matching system
                   const isMatchingFavorite = (song: any, favSong: any) => {
                     // Direct ID match
-                    if (song.id === favSong.id || song.id === favSong.spotifyId) return true;
+                    if (song.id === favSong.id) return true;
 
                     // Title and artist match (fuzzy matching)
                     const songTitle = song.title?.toLowerCase().trim();

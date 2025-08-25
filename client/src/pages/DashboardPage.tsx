@@ -530,7 +530,7 @@ const DashboardPage: React.FC = observer(() => {
         hasPreviewUrl: !!songFavorite.song?.previewUrl,
       });
 
-      // Check if we have a preview URL (from Spotify API when the song was favorited)
+      // Check if we have a preview URL (from iTunes API when the song was favorited)
       if (!songFavorite.song?.previewUrl) {
         console.warn('❌ No preview URL available for favorited song');
         uiStore.addNotification(
@@ -627,7 +627,7 @@ const DashboardPage: React.FC = observer(() => {
             )}
           </ListItemIcon>
 
-          {/* Song Info - Spotify-like layout */}
+          {/* Song Info - Music player layout */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
               <Typography

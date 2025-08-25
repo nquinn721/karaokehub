@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ArtistSearchResult, MusicSearchResult } from './music.interface';
 
-// Rate limiter for iTunes and Spotify APIs
+// Rate limiter for iTunes API
 class ApiRateLimiter {
   private lastRequests: Map<string, number> = new Map();
   private requestCounts: Map<string, { count: number; resetTime: number }> = new Map();
@@ -11,7 +11,6 @@ class ApiRateLimiter {
   // Rate limits per API (requests per minute)
   private readonly limits = {
     itunes: { delay: 50, maxPerMinute: 300 },
-    spotify: { delay: 100, maxPerMinute: 500 },
   };
 
   // Circuit breaker config
@@ -134,7 +133,7 @@ export class MusicService {
       return undefined;
     }
 
-    // Spotify images are sorted by size (largest first)
+    // Images are sorted by size (largest first)
     // Try to map to small (100px), medium (300px), large (600px+)
     const result: { small?: string; medium?: string; large?: string } = {};
 
@@ -187,12 +186,6 @@ export class MusicService {
     return Object.keys(result).length > 0 ? result : undefined;
   }
 
-  // Spotify configuration
-  private readonly spotifyClientId = process.env.SPOTIFY_CLIENT_ID;
-  private readonly spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-  private spotifyAccessToken: string | null = null;
-  private spotifyTokenExpiry: number = 0;
-
   // Normalization & Variants
   private normalizeQuery(q: string): string {
     let s = q.toLowerCase().trim();
@@ -222,115 +215,6 @@ export class MusicService {
     return Array.from(variants).slice(0, 3);
   }
 
-  // Spotify Authentication
-  private async getSpotifyAccessToken(): Promise<string> {
-    if (this.spotifyAccessToken && Date.now() < this.spotifyTokenExpiry) {
-      return this.spotifyAccessToken;
-    }
-
-    if (!this.spotifyClientId || !this.spotifyClientSecret) {
-      throw new Error('Spotify credentials not configured');
-    }
-
-    try {
-      const response = await fetch('https://accounts.spotify.com/api/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: `Basic ${Buffer.from(`${this.spotifyClientId}:${this.spotifyClientSecret}`).toString('base64')}`,
-        },
-        body: 'grant_type=client_credentials',
-      });
-
-      if (!response.ok) {
-        throw new Error(`Spotify auth failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      this.spotifyAccessToken = data.access_token;
-      this.spotifyTokenExpiry = Date.now() + data.expires_in * 1000 - 60000; // 1 minute buffer
-
-      return this.spotifyAccessToken;
-    } catch (error) {
-      console.error('Failed to get Spotify access token:', error);
-      throw error;
-    }
-  }
-
-  // Spotify API calls
-  private async fetchSpotify(
-    query: string,
-    type: 'track' | 'artist',
-    limit: number = 20,
-  ): Promise<any> {
-    try {
-      await this.rateLimiter.waitForRateLimit('spotify');
-      const token = await this.getSpotifyAccessToken();
-
-      const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=${limit}`;
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'User-Agent': this.userAgent,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Spotify API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      this.rateLimiter.recordSuccess('spotify');
-      return data;
-    } catch (error) {
-      this.rateLimiter.recordFailure('spotify');
-      console.error('Spotify fetch error:', error);
-      throw error;
-    }
-  }
-
-  private mapSpotifyTracks(data: any): MusicSearchResult[] {
-    if (!data?.tracks?.items) return [];
-
-    return data.tracks.items.map((track: any) => {
-      const releaseDate = track.album?.release_date || '';
-      const year = releaseDate ? releaseDate.split('-')[0] : '';
-
-      return {
-        id: track.id, // Use Spotify track ID as the general ID
-        title: track.name,
-        artist: track.artists?.[0]?.name || 'Unknown Artist',
-        album: track.album?.name || '',
-        releaseDate,
-        year,
-        duration: track.duration_ms ? Math.round(track.duration_ms / 1000) : 0,
-        previewUrl: track.preview_url || null,
-        spotifyId: track.id,
-        popularity: track.popularity || 0,
-        albumArt: this.createAlbumArtObject(track.album?.images),
-        imageUrl: track.album?.images?.[0]?.url || null, // Keep for backward compatibility
-        source: 'spotify' as const,
-        spotifyUrl: track.external_urls?.spotify || null,
-      };
-    });
-  }
-
-  private mapSpotifyArtists(data: any): ArtistSearchResult[] {
-    if (!data?.artists?.items) return [];
-
-    return data.artists.items.map((artist: any) => ({
-      name: artist.name,
-      spotifyId: artist.id,
-      popularity: artist.popularity || 0,
-      imageUrl: artist.images?.[0]?.url || null,
-      followers: artist.followers?.total || 0,
-      genres: artist.genres || [],
-      source: 'spotify' as const,
-      spotifyUrl: artist.external_urls?.spotify || null,
-    }));
-  }
-
   // iTunes API calls
   private async fetchItunes(
     query: string,
@@ -342,13 +226,24 @@ export class MusicService {
 
       const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=${entity}&limit=${limit}&media=music`;
 
+      console.log(`Fetching iTunes API: ${url}`);
+
       const response = await fetch(url, {
         headers: {
           'User-Agent': this.userAgent,
         },
+        signal: AbortSignal.timeout(10000), // 10 second timeout
       });
 
       if (!response.ok) {
+        console.error(`iTunes API error: ${response.status} - ${response.statusText}`);
+
+        // If iTunes API is down, return a mock response for development
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('iTunes API unavailable, returning mock data for development');
+          return this.getMockItunesResponse(query, entity);
+        }
+
         throw new Error(`iTunes API error: ${response.status}`);
       }
 
@@ -358,7 +253,114 @@ export class MusicService {
     } catch (error) {
       this.rateLimiter.recordFailure('itunes');
       console.error('iTunes fetch error:', error);
+
+      // Fallback to mock data in development
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('iTunes API failed, using mock data for development');
+        return this.getMockItunesResponse(query, entity);
+      }
+
       throw error;
+    }
+  }
+
+  private getMockItunesResponse(query: string, entity: string): any {
+    if (entity === 'song') {
+      return {
+        resultCount: 2,
+        results: [
+          {
+            wrapperType: 'track',
+            kind: 'song',
+            artistId: 1419227,
+            collectionId: 1440888262,
+            trackId: 1440888504,
+            artistName: 'The Beatles',
+            collectionName: '1',
+            trackName: `${query} Song 1`,
+            collectionCensoredName: '1',
+            trackCensoredName: `${query} Song 1`,
+            artistViewUrl: 'https://music.apple.com/us/artist/the-beatles/136975',
+            collectionViewUrl: 'https://music.apple.com/us/album/1/1440888262',
+            trackViewUrl:
+              'https://music.apple.com/us/album/all-you-need-is-love/1440888262?i=1440888504',
+            previewUrl:
+              'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/ec/90/7e/ec907e9c-2e9a-4a49-2cb4-0e8c6f49d9b8/mzaf_1234567890123456789.plus.aac.p.m4a',
+            artworkUrl30:
+              'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/28/8d/8c/288d8cb2-0ae4-8cdb-57c4-4b85842b22fa/source/30x30bb.jpg',
+            artworkUrl60:
+              'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/28/8d/8c/288d8cb2-0ae4-8cdb-57c4-4b85842b22fa/source/60x60bb.jpg',
+            artworkUrl100:
+              'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/28/8d/8c/288d8cb2-0ae4-8cdb-57c4-4b85842b22fa/source/100x100bb.jpg',
+            collectionPrice: 12.99,
+            trackPrice: 1.29,
+            releaseDate: '2000-11-13T12:00:00Z',
+            collectionExplicitness: 'notExplicit',
+            trackExplicitness: 'notExplicit',
+            discCount: 1,
+            discNumber: 1,
+            trackCount: 27,
+            trackNumber: 19,
+            trackTimeMillis: 227733,
+            country: 'USA',
+            currency: 'USD',
+            primaryGenreName: 'Rock',
+            isStreamable: true,
+          },
+          {
+            wrapperType: 'track',
+            kind: 'song',
+            artistId: 2715720,
+            collectionId: 1440888263,
+            trackId: 1440888505,
+            artistName: 'Ed Sheeran',
+            collectionName: '÷ (Deluxe)',
+            trackName: `${query} Song 2`,
+            collectionCensoredName: '÷ (Deluxe)',
+            trackCensoredName: `${query} Song 2`,
+            artistViewUrl: 'https://music.apple.com/us/artist/ed-sheeran/183313439',
+            collectionViewUrl: 'https://music.apple.com/us/album/divide-deluxe/1193701079',
+            trackViewUrl: 'https://music.apple.com/us/album/perfect/1193701079?i=1193701590',
+            previewUrl:
+              'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/ec/90/7e/ec907e9c-2e9a-4a49-2cb4-0e8c6f49d9b8/mzaf_1234567890123456789.plus.aac.p.m4a',
+            artworkUrl30:
+              'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/28/8d/8c/288d8cb2-0ae4-8cdb-57c4-4b85842b22fa/source/30x30bb.jpg',
+            artworkUrl60:
+              'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/28/8d/8c/288d8cb2-0ae4-8cdb-57c4-4b85842b22fa/source/60x60bb.jpg',
+            artworkUrl100:
+              'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/28/8d/8c/288d8cb2-0ae4-8cdb-57c4-4b85842b22fa/source/100x100bb.jpg',
+            collectionPrice: 11.99,
+            trackPrice: 1.29,
+            releaseDate: '2017-03-03T12:00:00Z',
+            collectionExplicitness: 'notExplicit',
+            trackExplicitness: 'notExplicit',
+            discCount: 1,
+            discNumber: 1,
+            trackCount: 16,
+            trackNumber: 4,
+            trackTimeMillis: 263400,
+            country: 'USA',
+            currency: 'USD',
+            primaryGenreName: 'Pop',
+            isStreamable: true,
+          },
+        ],
+      };
+    } else {
+      return {
+        resultCount: 1,
+        results: [
+          {
+            wrapperType: 'artist',
+            artistType: 'Artist',
+            artistId: 1419227,
+            artistName: `${query} Artist`,
+            artistLinkUrl: 'https://music.apple.com/us/artist/the-beatles/136975',
+            primaryGenreName: 'Rock',
+            primaryGenreId: 21,
+          },
+        ],
+      };
     }
   }
 
@@ -419,7 +421,7 @@ export class MusicService {
 
     try {
       // Use iTunes exclusively for better preview availability
-      // iTunes has ~90% preview availability vs Spotify's ~5%
+      // iTunes has excellent preview availability
       for (const variant of variants) {
         try {
           const itunesData = await this.fetchItunes(variant, 'song', limit);
@@ -481,8 +483,9 @@ export class MusicService {
   async healthCheck(): Promise<{ status: string; providers: any }> {
     const providers = {
       itunes: {
-        available: true, // iTunes API doesn't require authentication
+        available: true, // iTunes API available with fallback
         primary: true,
+        fallbackEnabled: process.env.NODE_ENV === 'development',
       },
     };
 
@@ -500,10 +503,6 @@ export class MusicService {
 
   async getRateLimitStats(): Promise<Record<string, any>> {
     return {
-      spotify: {
-        available: !!(this.spotifyClientId && this.spotifyClientSecret),
-        circuitBreaker: 'closed',
-      },
       itunes: {
         available: true,
         circuitBreaker: 'closed',
