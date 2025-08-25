@@ -260,6 +260,9 @@ export class ShowStore {
     try {
       this.setLoading(true);
 
+      // DEBUG: Add 1 second delay to see loading state behavior
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       let endpoint: string;
 
       if (mapCenter) {
@@ -355,6 +358,9 @@ export class ShowStore {
   async fetchShow(id: string) {
     try {
       this.setLoading(true);
+
+      // DEBUG: Add 1 second delay to see loading state behavior
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       const response = await apiStore.get(apiStore.endpoints.shows.byId(id));
 
