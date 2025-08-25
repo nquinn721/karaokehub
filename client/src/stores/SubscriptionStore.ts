@@ -118,6 +118,13 @@ export class SubscriptionStore {
   }
 
   async fetchSubscriptionStatus() {
+    // Prevent subscription fetch during auth initialization to avoid loops
+    const authStore = (window as any).authStore;
+    if (authStore?.isInitializing) {
+      console.log('SubscriptionStore: Skipping fetch during auth initialization');
+      return { success: false, error: 'Auth initializing' };
+    }
+
     try {
       this.setLoading(true);
       const response = await apiStore.get(apiStore.endpoints.subscription.status);
@@ -153,6 +160,16 @@ export class SubscriptionStore {
         // Keep default structure even on error
         this.initializeDefaultStatus();
       });
+
+      // Handle 401 errors gracefully to prevent auth loops
+      if (error?.response?.status === 401 || error?.status === 401) {
+        console.log(
+          'SubscriptionStore: 401 error, user not authenticated - using default subscription',
+        );
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      console.warn('SubscriptionStore: Failed to fetch subscription status:', error);
       return {
         success: false,
         error: error.response?.data?.message || 'Failed to fetch subscription status',
@@ -180,9 +197,22 @@ export class SubscriptionStore {
       runInAction(() => {
         this.isLoading = false;
       });
+
+      console.error('SubscriptionStore: Failed to create checkout session:', error);
+
+      // More detailed error message for checkout failures
+      let errorMessage = 'Failed to create checkout session';
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.status === 401) {
+        errorMessage = 'Please log in to subscribe';
+      } else if (error?.message?.includes('Network Error')) {
+        errorMessage = 'Network error - please check your connection';
+      }
+
       return {
         success: false,
-        error: error.response?.data?.message || 'Failed to create checkout session',
+        error: errorMessage,
       };
     }
   }

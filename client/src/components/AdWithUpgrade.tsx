@@ -38,11 +38,19 @@ export const AdWithUpgrade: React.FC<AdWithUpgradeProps> = observer(
     const theme = useTheme();
     const [showPrompt, setShowPrompt] = useState(showUpgradePrompt);
     const [upgradeExpanded, setUpgradeExpanded] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleUpgrade = async () => {
+      setError(null);
+      console.log('AdWithUpgrade: Starting checkout session...');
+      
       const result = await subscriptionStore.createCheckoutSession('ad_free');
       if (!result.success) {
         console.error('Failed to create checkout session:', result.error);
+        setError(result.error || 'Failed to start checkout. Please try again.');
+        
+        // Show error for a few seconds then hide it
+        setTimeout(() => setError(null), 5000);
       }
     };
 
@@ -94,6 +102,13 @@ export const AdWithUpgrade: React.FC<AdWithUpgradeProps> = observer(
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                   Upgrade to enjoy KaraokePal without any advertisements and support our platform.
                 </Typography>
+                
+                {/* Error Display */}
+                {error && (
+                  <Typography variant="caption" color="error" sx={{ mb: 1, display: 'block' }}>
+                    {error}
+                  </Typography>
+                )}
               </CardContent>
 
               <CardActions sx={{ pt: 0, justifyContent: 'space-between' }}>
