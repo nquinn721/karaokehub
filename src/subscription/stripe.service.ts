@@ -36,21 +36,53 @@ export class StripeService {
     successUrl: string,
     cancelUrl: string,
   ): Promise<Stripe.Checkout.Session> {
-    return this.stripe.checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ['card', 'paypal'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      mode: 'subscription',
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      allow_promotion_codes: true,
-      billing_address_collection: 'auto',
-    });
+    try {
+      console.log('🛒 [STRIPE_SERVICE] Creating checkout session with parameters:', {
+        customerId,
+        priceId,
+        successUrl,
+        cancelUrl,
+      });
+
+      const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+        customer: customerId,
+        payment_method_types: ['card', 'paypal'],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        allow_promotion_codes: true,
+        billing_address_collection: 'auto',
+      };
+
+      console.log('📝 [STRIPE_SERVICE] Session configuration:', JSON.stringify(sessionConfig, null, 2));
+
+      const session = await this.stripe.checkout.sessions.create(sessionConfig);
+
+      console.log('✅ [STRIPE_SERVICE] Checkout session created successfully:', {
+        sessionId: session.id,
+        mode: session.mode,
+        status: session.status,
+      });
+
+      return session;
+    } catch (error) {
+      console.error('❌ [STRIPE_SERVICE] Error creating checkout session:', {
+        customerId,
+        priceId,
+        error: error.message,
+        type: error.type,
+        code: error.code,
+        statusCode: error.statusCode,
+        stack: error.stack,
+      });
+      throw error;
+    }
   }
 
   async createPortalSession(

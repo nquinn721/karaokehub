@@ -50,8 +50,37 @@ export class SubscriptionController {
   @Post('create-checkout-session')
   @UseGuards(JwtAuthGuard)
   async createCheckoutSession(@CurrentUser() user: User, @Body() body: { plan: SubscriptionPlan }) {
-    const session = await this.subscriptionService.createCheckoutSession(user.id, body.plan);
-    return { url: session.url };
+    try {
+      console.log('🛒 [SUBSCRIPTION] Create checkout session request:', {
+        userId: user.id,
+        userEmail: user.email,
+        plan: body.plan,
+        planType: typeof body.plan,
+      });
+
+      // Validate the plan
+      if (!Object.values(SubscriptionPlan).includes(body.plan)) {
+        console.error('❌ [SUBSCRIPTION] Invalid subscription plan:', body.plan);
+        throw new Error(`Invalid subscription plan: ${body.plan}. Valid plans: ${Object.values(SubscriptionPlan).join(', ')}`);
+      }
+
+      const session = await this.subscriptionService.createCheckoutSession(user.id, body.plan);
+      
+      console.log('✅ [SUBSCRIPTION] Checkout session created:', {
+        sessionId: session.id,
+        url: session.url?.substring(0, 50) + '...',
+      });
+      
+      return { url: session.url };
+    } catch (error) {
+      console.error('❌ [SUBSCRIPTION] Checkout session creation failed:', {
+        userId: user.id,
+        plan: body.plan,
+        error: error.message,
+        stack: error.stack,
+      });
+      throw error;
+    }
   }
 
   @Post('create-portal-session')

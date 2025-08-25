@@ -10,6 +10,7 @@ import {
   faPlay,
   faPlus,
   faRefresh,
+  faStop,
   faTimes,
   faTrash,
   faUserShield,
@@ -65,7 +66,7 @@ const AdminParserPage: React.FC = observer(() => {
   const [selectedUrl, setSelectedUrl] = useState('');
   const [customUrl, setCustomUrl] = useState('');
   const [showCustomUrl, setShowCustomUrl] = useState(false);
-  const [parseMethod, setParseMethod] = useState<'html' | 'screenshot'>('screenshot');
+  const [parseMethod, setParseMethod] = useState<'html' | 'screenshot' | 'deepseek'>('screenshot');
   const [isParsingUrl, setIsParsingUrl] = useState(false);
   const [parseResult, setParseResult] = useState<any>(null);
   const [selectedReview, setSelectedReview] = useState<any>(null);
@@ -266,7 +267,17 @@ const AdminParserPage: React.FC = observer(() => {
     setParseResult(null);
 
     try {
-      const result = await parserStore.parseAndSaveWebsite(urlToParse, parseMethod);
+      let result;
+      
+      if (parseMethod === 'deepseek') {
+        // Use experimental DeepSeek parsing
+        const parseType = isCurrentUrlFacebook ? 'facebook' : 'karaoke';
+        result = await parserStore.parseWithDeepSeek(urlToParse, parseType);
+      } else {
+        // Use traditional parsing methods
+        result = await parserStore.parseAndSaveWebsite(urlToParse, parseMethod);
+      }
+      
       setParseResult(result);
 
       // Only refresh pending reviews if parsing was successful
@@ -278,6 +289,22 @@ const AdminParserPage: React.FC = observer(() => {
       // The error will be shown via parserStore.error from the store
     } finally {
       setIsParsingUrl(false);
+    }
+  };
+
+  /**
+   * Handle cancellation of active parsing operation
+   * Calls the emergency cancel endpoint to stop all workers and browsers
+   */
+  const handleCancelParsing = async () => {
+    try {
+      const result = await parserStore.cancelParsing();
+      if (result.success) {
+        setIsParsingUrl(false);
+        setParseResult(null);
+      }
+    } catch (error) {
+      console.error('Error cancelling parsing:', error);
     }
   };
 
@@ -723,7 +750,7 @@ const AdminParserPage: React.FC = observer(() => {
                         <RadioGroup
                           row
                           value={parseMethod}
-                          onChange={(e) => setParseMethod(e.target.value as 'html' | 'screenshot')}
+                          onChange={(e) => setParseMethod(e.target.value as 'html' | 'screenshot' | 'deepseek')}
                         >
                           <FormControlLabel
                             value="screenshot"
@@ -731,11 +758,18 @@ const AdminParserPage: React.FC = observer(() => {
                             label="Screenshot Parsing (Recommended)"
                           />
                           <FormControlLabel value="html" control={<Radio />} label="HTML Parsing" />
+                          <FormControlLabel 
+                            value="deepseek" 
+                            control={<Radio />} 
+                            label="🧪 DeepSeek-V3.1 (Experimental)" 
+                          />
                         </RadioGroup>
                         <Typography variant="caption" color="text.secondary">
                           {parseMethod === 'screenshot'
                             ? 'Take a full-page screenshot and parse visually (recommended - finds all shows)'
-                            : 'Parse the HTML content with data attributes (may miss complex layouts)'}
+                            : parseMethod === 'deepseek'
+                              ? '🧪 Experimental AI parsing using DeepSeek-V3.1 - advanced reasoning and understanding'
+                              : 'Parse the HTML content with data attributes (may miss complex layouts)'}
                         </Typography>
                       </>
                     )}
@@ -754,15 +788,40 @@ const AdminParserPage: React.FC = observer(() => {
                         <FontAwesomeIcon icon={faPlay} />
                       )
                     }
+                    sx={{ mb: isParsingUrl ? 1 : 0 }}
                   >
                     {isParsingUrl
                       ? `Parsing... (${parserStore.getFormattedElapsedTime()})`
-                      : isCurrentUrlFacebook
-                        ? 'Parse Facebook'
-                        : isCurrentUrlInstagram
-                          ? 'Parse Instagram'
-                          : 'Parse Website'}
+                      : parseMethod === 'deepseek'
+                        ? '🧪 Parse with DeepSeek-V3.1'
+                        : isCurrentUrlFacebook
+                          ? 'Parse Facebook'
+                          : isCurrentUrlInstagram
+                            ? 'Parse Instagram'
+                            : 'Parse Website'}
                   </Button>
+
+                  {/* Cancel Button - only show when parsing is active */}
+                  {isParsingUrl && (
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      size="large"
+                      onClick={handleCancelParsing}
+                      startIcon={<FontAwesomeIcon icon={faStop} />}
+                      sx={{
+                        borderColor: 'error.main',
+                        color: 'error.main',
+                        '&:hover': {
+                          backgroundColor: 'error.main',
+                          color: 'white',
+                          borderColor: 'error.main',
+                        },
+                      }}
+                    >
+                      Cancel Parsing
+                    </Button>
+                  )}
                 </Box>
 
                 {/* Parsing Status */}

@@ -27,30 +27,61 @@ export class SubscriptionService {
   }
 
   async createCheckoutSession(userId: string, plan: SubscriptionPlan) {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found');
+    try {
+      console.log('🔄 [SUBSCRIPTION_SERVICE] Creating checkout session:', { userId, plan });
+
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+      if (!user) {
+        console.error('❌ [SUBSCRIPTION_SERVICE] User not found:', userId);
+        throw new NotFoundException('User not found');
+      }
+
+      console.log('👤 [SUBSCRIPTION_SERVICE] User found:', {
+        userId: user.id,
+        email: user.email,
+        stripeCustomerId: user.stripeCustomerId,
+      });
+
+      // Create Stripe customer if not exists
+      let stripeCustomerId = user.stripeCustomerId;
+      if (!stripeCustomerId) {
+        console.log('🆕 [SUBSCRIPTION_SERVICE] Creating new Stripe customer...');
+        const customer = await this.stripeService.createCustomer(user.email, user.name);
+        stripeCustomerId = customer.id;
+        await this.userRepository.update(userId, { stripeCustomerId });
+        console.log('✅ [SUBSCRIPTION_SERVICE] Stripe customer created:', stripeCustomerId);
+      }
+
+      console.log('💰 [SUBSCRIPTION_SERVICE] Getting price ID for plan:', plan);
+      const priceId = this.stripeService.getPriceId(plan);
+      console.log('💰 [SUBSCRIPTION_SERVICE] Price ID:', priceId);
+
+      const subscriptionUrls = this.urlService.getSubscriptionUrls();
+      console.log('🔗 [SUBSCRIPTION_SERVICE] Subscription URLs:', subscriptionUrls);
+
+      console.log('🛒 [SUBSCRIPTION_SERVICE] Creating Stripe checkout session...');
+      const session = await this.stripeService.createCheckoutSession(
+        stripeCustomerId,
+        priceId,
+        subscriptionUrls.success,
+        subscriptionUrls.cancel,
+      );
+
+      console.log('✅ [SUBSCRIPTION_SERVICE] Checkout session created successfully:', {
+        sessionId: session.id,
+        url: session.url?.substring(0, 50) + '...',
+      });
+
+      return session;
+    } catch (error) {
+      console.error('❌ [SUBSCRIPTION_SERVICE] Error creating checkout session:', {
+        userId,
+        plan,
+        error: error.message,
+        stack: error.stack,
+      });
+      throw error;
     }
-
-    // Create Stripe customer if not exists
-    let stripeCustomerId = user.stripeCustomerId;
-    if (!stripeCustomerId) {
-      const customer = await this.stripeService.createCustomer(user.email, user.name);
-      stripeCustomerId = customer.id;
-      await this.userRepository.update(userId, { stripeCustomerId });
-    }
-
-    const priceId = this.stripeService.getPriceId(plan);
-    const subscriptionUrls = this.urlService.getSubscriptionUrls();
-
-    const session = await this.stripeService.createCheckoutSession(
-      stripeCustomerId,
-      priceId,
-      subscriptionUrls.success,
-      subscriptionUrls.cancel,
-    );
-
-    return session;
   }
 
   async createPortalSession(userId: string) {

@@ -17,6 +17,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Repository } from 'typeorm';
 import { Worker } from 'worker_threads';
+import { CancellationService } from '../services/cancellation.service';
 import { KaraokeWebSocketGateway } from '../websocket/websocket.gateway';
 import { ParsedSchedule, ParseStatus } from './parsed-schedule.entity';
 import { UrlToParse } from './url-to-parse.entity';
@@ -62,10 +63,16 @@ export class FacebookParserService {
     private urlToParseRepository: Repository<UrlToParse>,
     private webSocketGateway: KaraokeWebSocketGateway,
     private urlToParseService: UrlToParseService,
+    private cancellationService: CancellationService,
   ) {
     this.logAndBroadcast(
       `🚀 [INIT] Configured for ${this.maxWorkers} parallel enhanced image parsing workers`,
     );
+
+    // Listen for global cancellation events
+    this.cancellationService.on('cancel-all', () => {
+      this.logAndBroadcast('🛑 [CANCEL] Received global cancellation signal');
+    });
   }
 
   /**
@@ -143,10 +150,23 @@ export class FacebookParserService {
     let urls: string[] = [];
     let pageName = '';
 
+    // Register this parsing operation for cancellation
+    const parsingTaskId = `parsing-${Date.now()}`;
+    this.cancellationService.registerTask({
+      id: parsingTaskId,
+      type: 'parsing',
+      resource: null,
+      description: `Facebook parsing: ${url}`,
+      startTime: new Date(),
+    });
+
     this.logAndBroadcast(`🚀 [START] Facebook parsing for: ${url}`);
     this.logAndBroadcast(`📊 [INIT] Starting at ${new Date().toISOString()}`);
 
     try {
+      // Check for cancellation before starting
+      this.cancellationService.throwIfCancelled('parsing start');
+
       // ========================================
       // STEP 1: PUPPETEER WORKER - Get URLs and pageName
       // ========================================
@@ -286,6 +306,16 @@ export class FacebookParserService {
       const workerPath = path.join(__dirname, 'facebookParser', 'facebook-group-parser.js');
       const worker = new Worker(workerPath);
 
+      // Register worker for cancellation
+      const workerId = `fb-worker-${Date.now()}`;
+      this.cancellationService.registerTask({
+        id: workerId,
+        type: 'worker',
+        resource: worker,
+        description: `Facebook group parser worker: ${url}`,
+        startTime: new Date(),
+      });
+
       worker.on('message', async (message) => {
         if (message.type === 'progress') {
           this.logAndBroadcast(`🔄 [WORKER] ${message.message}`);
@@ -306,13 +336,16 @@ export class FacebookParserService {
               });
             } else {
               this.logAndBroadcast('❌ [LOGIN] No credentials received, login timeout');
+              this.cancellationService.unregisterTask(workerId);
               reject(new Error('Facebook login credentials timeout'));
             }
           } catch (error) {
             this.logAndBroadcast(`❌ [LOGIN] Error requesting credentials: ${error.message}`);
+            this.cancellationService.unregisterTask(workerId);
             reject(new Error(`Facebook login failed: ${error.message}`));
           }
         } else if (message.type === 'complete') {
+          this.cancellationService.unregisterTask(workerId);
           if (message.data.success) {
             resolve({
               imageUrls: message.data.imageUrls,
@@ -322,15 +355,18 @@ export class FacebookParserService {
             reject(new Error(message.data.error || 'Worker failed'));
           }
         } else if (message.type === 'error') {
+          this.cancellationService.unregisterTask(workerId);
           reject(new Error(message.error));
         }
       });
 
       worker.on('error', (error) => {
+        this.cancellationService.unregisterTask(workerId);
         reject(error);
       });
 
       worker.on('exit', (code) => {
+        this.cancellationService.unregisterTask(workerId);
         if (code !== 0) {
           reject(new Error(`Worker stopped with exit code ${code}`));
         }

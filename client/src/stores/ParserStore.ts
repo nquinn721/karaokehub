@@ -547,6 +547,145 @@ export class ParserStore {
     }
   }
 
+  /**
+   * Cancel the current parsing operation
+   */
+  async cancelParsing(): Promise<{
+    success: boolean;
+    error?: string;
+    message?: string;
+  }> {
+    try {
+      this.addLogEntry('🛑 Cancellation requested by user...', 'warning');
+      
+      // Call the emergency cancel endpoint
+      const result = await apiStore.post('/parser/emergency-cancel');
+      
+      if (result.success) {
+        this.addLogEntry('✅ Parsing operation cancelled successfully', 'success');
+        this.stopParsingTimer();
+        this.setLoading(false);
+        
+        return {
+          success: true,
+          message: 'Parsing operation cancelled successfully',
+        };
+      } else {
+        this.addLogEntry('❌ Failed to cancel parsing operation', 'error');
+        return {
+          success: false,
+          error: 'Failed to cancel parsing operation',
+        };
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to cancel parsing operation';
+      this.addLogEntry(`❌ Cancel error: ${errorMessage}`, 'error');
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  }
+
+  /**
+   * Parse website using experimental DeepSeek-V3.1 AI model
+   */
+  async parseWithDeepSeek(
+    url: string,
+    parseType: 'karaoke' | 'facebook' = 'karaoke'
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    data?: any;
+    parsedScheduleId?: string;
+  }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+      this.clearLog();
+
+      this.startParsingTimer();
+
+      this.addLogEntry(`🧪 Starting experimental DeepSeek-V3.1 parsing for: ${url}`, 'info');
+      this.addLogEntry(`🤖 Using DeepSeek-V3.1 AI model for enhanced parsing`, 'info');
+
+      const result = await apiStore.post('/parser/parse-deepseek', {
+        url,
+        parseType,
+      });
+
+      if (result.success) {
+        this.addLogEntry('✅ DeepSeek parsing completed successfully!', 'success');
+        
+        if (result.stats) {
+          this.addLogEntry(
+            `📊 Found: ${result.stats.shows || 0} shows, ${result.stats.djs || 0} DJs, ${result.stats.vendors || 0} vendors`,
+            'success'
+          );
+        }
+
+        return {
+          success: true,
+          data: result.data,
+          parsedScheduleId: result.parsedScheduleId,
+        };
+      } else {
+        this.addLogEntry(`❌ DeepSeek parsing failed: ${result.error}`, 'error');
+        this.setError(result.error || 'DeepSeek parsing failed');
+        return {
+          success: false,
+          error: result.error || 'DeepSeek parsing failed',
+        };
+      }
+    } catch (error: any) {
+      let errorMessage = 'Failed to parse with DeepSeek';
+      
+      if (error.response?.status === 500) {
+        errorMessage = 'DeepSeek API error - check configuration';
+        this.addLogEntry('❌ DeepSeek API error - ensure DEEPSEEK_API_KEY is configured', 'error');
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+        this.addLogEntry(`❌ Server error: ${errorMessage}`, 'error');
+      } else if (error.message) {
+        errorMessage = error.message;
+        this.addLogEntry(`❌ Network error: ${errorMessage}`, 'error');
+      } else {
+        this.addLogEntry('❌ Unknown error during DeepSeek parsing', 'error');
+      }
+
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.stopParsingTimer();
+      this.setLoading(false);
+    }
+  }
+
+  /**
+   * Get DeepSeek status and test connection
+   */
+  async getDeepSeekStatus(): Promise<{
+    success: boolean;
+    status?: any;
+    connectionTest?: any;
+    error?: string;
+  }> {
+    try {
+      const result = await apiStore.get('/parser/deepseek-status');
+      return {
+        success: true,
+        status: result.status,
+        connectionTest: result.connectionTest,
+      };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to get DeepSeek status';
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  }
+
   // Get a specific pending review by ID
   getPendingReviewById(id: string): ParsedScheduleItem | undefined {
     return this.pendingReviews.find((item) => item.id === id);

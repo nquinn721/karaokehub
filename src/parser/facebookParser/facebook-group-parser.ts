@@ -40,25 +40,97 @@ function sendProgress(message: string) {
 }
 
 /**
- * Load Facebook session cookies
+ * Load Facebook session cookies with enhanced validation and error reporting
  */
 async function loadFacebookCookies(page: any, cookiesFilePath: string): Promise<boolean> {
   try {
-    if (fs.existsSync(cookiesFilePath)) {
-      sendProgress('Loading Facebook session cookies...');
-      const cookies = JSON.parse(fs.readFileSync(cookiesFilePath, 'utf8'));
+    let cookies = [];
+    let cookieSource = '';
 
-      if (cookies && cookies.length > 0) {
-        await page.setCookie(...cookies);
-        sendProgress(`Loaded ${cookies.length} Facebook cookies`);
-        return true;
+    // First try to get cookies from environment variable (for production/Cloud Run)
+    const cookiesFromEnv = process.env.FB_SESSION_COOKIES;
+    if (cookiesFromEnv) {
+      try {
+        cookies = JSON.parse(cookiesFromEnv);
+        cookieSource = 'environment variable';
+        sendProgress('📦 Loading Facebook cookies from environment variable...');
+      } catch (parseError) {
+        sendProgress(
+          `❌ Failed to parse FB_SESSION_COOKIES environment variable: ${parseError.message}`,
+        );
+        // Fall back to file loading
       }
     }
 
-    sendProgress('No saved Facebook cookies found');
-    return false;
+    // If no cookies from environment, try loading from file (development)
+    if (cookies.length === 0 && fs.existsSync(cookiesFilePath)) {
+      const cookiesData = fs.readFileSync(cookiesFilePath, 'utf8');
+      cookies = JSON.parse(cookiesData);
+      cookieSource = `file: ${cookiesFilePath}`;
+      sendProgress(`📂 Loading Facebook cookies from file: ${cookiesFilePath}`);
+    }
+
+    if (cookies.length === 0) {
+      sendProgress('❌ No Facebook cookies found (neither environment variable nor file)');
+      if (process.env.NODE_ENV === 'production') {
+        sendProgress('💡 For production, set FB_SESSION_COOKIES environment variable with valid Facebook session cookies');
+      } else {
+        sendProgress('💡 For development, ensure facebook-cookies.json exists in data/ directory');
+      }
+      return false;
+    }
+
+    // Validate cookie structure and freshness
+    const now = Date.now();
+    let validCookies = 0;
+    let expiredCookies = 0;
+
+    for (const cookie of cookies) {
+      // Check if cookie has required fields
+      if (!cookie.name || !cookie.value || !cookie.domain) {
+        sendProgress(`⚠️ Skipping malformed cookie: ${JSON.stringify(cookie)}`);
+        continue;
+      }
+
+      // Check if cookie is expired
+      if (cookie.expires && cookie.expires * 1000 < now) {
+        expiredCookies++;
+        sendProgress(`⏰ Cookie ${cookie.name} is expired (expired: ${new Date(cookie.expires * 1000)})`);
+        continue;
+      }
+
+      // Set valid cookies
+      try {
+        await page.setCookie({
+          name: cookie.name,
+          value: cookie.value,
+          domain: cookie.domain,
+          path: cookie.path || '/',
+          expires: cookie.expires,
+          httpOnly: cookie.httpOnly,
+          secure: cookie.secure,
+          sameSite: cookie.sameSite,
+        });
+        validCookies++;
+      } catch (setCookieError) {
+        sendProgress(`⚠️ Failed to set cookie ${cookie.name}: ${setCookieError.message}`);
+      }
+    }
+
+    if (validCookies === 0) {
+      sendProgress(`❌ No valid cookies could be set (${expiredCookies} expired, ${cookies.length - validCookies - expiredCookies} invalid)`);
+      return false;
+    }
+
+    sendProgress(`✅ Successfully loaded ${validCookies}/${cookies.length} Facebook session cookies from ${cookieSource}`);
+    
+    if (expiredCookies > 0) {
+      sendProgress(`⚠️ Note: ${expiredCookies} cookies were expired and skipped. Consider refreshing your session cookies.`);
+    }
+
+    return true;
   } catch (error) {
-    sendProgress(`Error loading cookies: ${error.message}`);
+    sendProgress(`❌ Failed to load Facebook cookies: ${error.message}`);
     return false;
   }
 }
@@ -77,56 +149,290 @@ async function saveFacebookCookies(page: any, cookiesFilePath: string): Promise<
 }
 
 /**
- * Check if user is logged into Facebook
+ * Check if user is logged into Facebook with detailed analysis
  */
 async function checkIfLoggedIn(page: any): Promise<boolean> {
   try {
-    sendProgress('Checking Facebook login status...');
+    sendProgress('🔍 Checking Facebook login status...');
 
-    // Check for common login indicators
-    const loginIndicators = await page.evaluate(() => {
+    // Wait for page to stabilize
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Check for various login/logout indicators
+    const loginStatus = await page.evaluate(() => {
       // Check for login page elements
-      const loginForm = document.querySelector('#login_form');
-      const emailInput = document.querySelector('#email');
-      const passwordInput = document.querySelector('#pass');
+      const loginForm = document.querySelector('#login_form, [data-testid="login_form"]');
+      const emailInput = document.querySelector('#email, [name="email"]');
+      const passwordInput = document.querySelector('#pass, [name="pass"]');
+      const loginButton = document.querySelector('[data-testid="login_button"], [name="login"]');
 
       // Check for logged-in user elements
       const userNav = document.querySelector('[role="navigation"]');
-      const profileMenu = document.querySelector('[data-click="profile_icon"]');
+      const profileMenu = document.querySelector('[data-click="profile_icon"], [aria-label*="profile"], [aria-label*="account"]');
+      const homeLink = document.querySelector('a[href="/"]');
+      
+      // Check for Facebook navigation elements
+      const fbLogo = document.querySelector('[aria-label="Facebook"]');
+      const notificationIcon = document.querySelector('[aria-label*="notification"], [aria-label*="Notification"]');
+      const messagesIcon = document.querySelector('[aria-label*="message"], [aria-label*="Message"]');
+
+      // Check page URL and title for login indicators
+      const url = window.location.href;
+      const title = document.title;
+      
+      // Look for error messages or login prompts
+      const errorMessages = Array.from(document.querySelectorAll('div, span')).filter(el => 
+        el.textContent && (
+          el.textContent.includes('log in') || 
+          el.textContent.includes('login') ||
+          el.textContent.includes('password') ||
+          el.textContent.includes('email')
+        )
+      );
 
       return {
+        url,
+        title,
         hasLoginForm: !!loginForm,
         hasEmailInput: !!emailInput,
         hasPasswordInput: !!passwordInput,
+        hasLoginButton: !!loginButton,
         hasUserNav: !!userNav,
         hasProfileMenu: !!profileMenu,
+        hasHomeLink: !!homeLink,
+        hasFbLogo: !!fbLogo,
+        hasNotificationIcon: !!notificationIcon,
+        hasMessagesIcon: !!messagesIcon,
+        errorCount: errorMessages.length,
+        errorSample: errorMessages.slice(0, 2).map(el => el.textContent?.trim()).filter(Boolean)
       };
     });
 
-    const isLoggedIn =
-      !loginIndicators.hasLoginForm &&
-      !loginIndicators.hasEmailInput &&
-      (loginIndicators.hasUserNav || loginIndicators.hasProfileMenu);
+    // Detailed logging for debugging
+    sendProgress(`📊 Login analysis:`);
+    sendProgress(`   URL: ${loginStatus.url}`);
+    sendProgress(`   Title: ${loginStatus.title}`);
+    sendProgress(`   Login elements: form=${loginStatus.hasLoginForm}, email=${loginStatus.hasEmailInput}, pass=${loginStatus.hasPasswordInput}`);
+    sendProgress(`   User elements: nav=${loginStatus.hasUserNav}, profile=${loginStatus.hasProfileMenu}, notifications=${loginStatus.hasNotificationIcon}`);
 
-    if (isLoggedIn) {
-      sendProgress('✅ User is logged into Facebook');
-    } else {
-      sendProgress('❌ User is NOT logged into Facebook');
+    // Determine if logged in based on multiple indicators
+    const loginPageIndicators = loginStatus.hasLoginForm || loginStatus.hasEmailInput || loginStatus.hasPasswordInput;
+    const loggedInIndicators = loginStatus.hasUserNav || loginStatus.hasProfileMenu || loginStatus.hasNotificationIcon || loginStatus.hasMessagesIcon;
+    
+    // Check URL patterns
+    const isLoginUrl = loginStatus.url.includes('/login') || loginStatus.url.includes('/checkpoint');
+    const isGroupUrl = loginStatus.url.includes('/groups/');
+
+    if (loginPageIndicators && !loggedInIndicators) {
+      sendProgress('❌ Login page detected - user is NOT logged in');
+      if (loginStatus.errorSample.length > 0) {
+        sendProgress(`   Error messages: ${loginStatus.errorSample.join(', ')}`);
+      }
+      return false;
     }
 
-    return isLoggedIn;
+    if (isLoginUrl) {
+      sendProgress('❌ Login URL detected - user is NOT logged in');
+      return false;
+    }
+
+    if (loggedInIndicators && !loginPageIndicators && !isLoginUrl) {
+      sendProgress('✅ User navigation elements detected - user IS logged in');
+      return true;
+    }
+
+    // If accessing a group URL successfully without login prompts, likely logged in
+    if (isGroupUrl && !loginPageIndicators) {
+      sendProgress('✅ Successfully accessing group page - user IS logged in');
+      return true;
+    }
+
+    // Default to not logged in if unclear
+    sendProgress('⚠️ Login status unclear - defaulting to NOT logged in for safety');
+    return false;
+
   } catch (error) {
-    sendProgress(`Error checking login status: ${error.message}`);
+    sendProgress(`❌ Error checking login status: ${error.message}`);
     return false;
   }
 }
 
 /**
+ * Use Gemini AI to analyze page content and detect blocking popups/overlays
+ */
+async function analyzePageWithGemini(page: any, geminiApiKey: string): Promise<{
+  hasBlockingPopup: boolean;
+  popupDescription: string;
+  suggestedActions: string[];
+}> {
+  try {
+    if (!geminiApiKey) {
+      sendProgress('No Gemini API key for page analysis, using basic detection...');
+      return { hasBlockingPopup: false, popupDescription: '', suggestedActions: [] };
+    }
+
+    sendProgress('🤖 Analyzing page with Gemini AI to detect blocking elements...');
+
+    // Get page screenshot and visible text
+    const pageText = await page.evaluate(() => {
+      // Get all visible text from dialogs, modals, and prominent elements
+      const elements = [
+        ...document.querySelectorAll('[role="dialog"]'),
+        ...document.querySelectorAll('.modal'),
+        ...document.querySelectorAll('[style*="position: fixed"]'),
+        ...document.querySelectorAll('[style*="z-index"]'),
+        ...document.querySelectorAll('button'),
+        ...document.querySelectorAll('[aria-label]'),
+      ];
+
+      const textContent = [];
+      elements.forEach((el) => {
+        const text = el.textContent?.trim();
+        const ariaLabel = el.getAttribute('aria-label');
+        if (text && text.length > 0 && text.length < 200) {
+          textContent.push(`Element: "${text}"`);
+        }
+        if (ariaLabel && ariaLabel.length > 0) {
+          textContent.push(`Button: "${ariaLabel}"`);
+        }
+      });
+
+      // Also get page title and any error messages
+      textContent.push(`Page title: "${document.title}"`);
+      
+      return [...new Set(textContent)].join('\n');
+    });
+
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('facebook') });
+
+    const prompt = `Analyze this Facebook page content to determine if there are any blocking popups, modals, or overlays that would prevent normal browsing. 
+
+Page content:
+${pageText}
+
+Look for:
+1. Notification permission requests
+2. Cookie consent banners  
+3. Login prompts
+4. "Allow notifications" dialogs
+5. Privacy policy modals
+6. Any other blocking overlays
+
+Response format (JSON):
+{
+  "hasBlockingPopup": true/false,
+  "popupDescription": "brief description of what popup is present",
+  "suggestedActions": ["action1", "action2", "action3"]
+}
+
+Focus on elements that would block or interfere with scrolling and content viewing. Return ONLY the JSON, no other text.`;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response.text().trim();
+    
+    try {
+      const analysis = JSON.parse(response);
+      sendProgress(`🧠 Gemini analysis: ${analysis.hasBlockingPopup ? 'Popup detected' : 'No blocking popups'} - ${analysis.popupDescription}`);
+      return analysis;
+    } catch (parseError) {
+      sendProgress(`⚠️ Failed to parse Gemini response, using fallback detection`);
+      return { hasBlockingPopup: false, popupDescription: '', suggestedActions: [] };
+    }
+
+  } catch (error) {
+    sendProgress(`❌ Gemini page analysis failed: ${error.message}`);
+    return { hasBlockingPopup: false, popupDescription: '', suggestedActions: [] };
+  }
+}
+
+/**
+ * Helper function to try clicking buttons with specific text content
+ */
+async function tryClickButtons(page: any, buttonTexts: string[]): Promise<boolean> {
+  for (const text of buttonTexts) {
+    try {
+      // Try multiple approaches to find and click the button
+      const clicked = await page.evaluate((buttonText) => {
+        // Method 1: Find by exact text content
+        const buttons = Array.from(document.querySelectorAll('button, [role="button"], a'));
+        for (const button of buttons) {
+          if (button.textContent?.trim() === buttonText) {
+            (button as HTMLElement).click();
+            return true;
+          }
+        }
+        
+        // Method 2: Find by aria-label
+        for (const button of buttons) {
+          if (button.getAttribute('aria-label') === buttonText) {
+            (button as HTMLElement).click();
+            return true;
+          }
+        }
+        
+        // Method 3: Find by partial text match (case insensitive)
+        for (const button of buttons) {
+          const content = button.textContent?.trim().toLowerCase();
+          if (content && content.includes(buttonText.toLowerCase())) {
+            (button as HTMLElement).click();
+            return true;
+          }
+        }
+        
+        return false;
+      }, text);
+      
+      if (clicked) {
+        sendProgress(`✅ Successfully clicked button: "${text}"`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for action to take effect
+        return true;
+      }
+    } catch (error) {
+      // Continue to next button text
+    }
+  }
+  return false;
+}
+
+/**
  * Close Facebook popups and overlays (notifications, cookies, etc.)
  */
-async function closeFacebookPopups(page: any): Promise<void> {
+async function closeFacebookPopups(page: any, geminiApiKey?: string): Promise<void> {
   try {
     sendProgress('🚫 Checking for Facebook popups and overlays...');
+
+    // First, use Gemini to analyze the page for blocking elements
+    if (geminiApiKey) {
+      const geminiAnalysis = await analyzePageWithGemini(page, geminiApiKey);
+      
+      if (geminiAnalysis.hasBlockingPopup) {
+        sendProgress(`🔍 Gemini detected popup: ${geminiAnalysis.popupDescription}`);
+        
+        // Try Gemini's suggested actions first
+        for (const action of geminiAnalysis.suggestedActions) {
+          sendProgress(`🎯 Trying Gemini suggestion: ${action}`);
+          
+          // Convert suggestions to actionable selectors
+          if (action.toLowerCase().includes('not now') || action.toLowerCase().includes('block')) {
+            await tryClickButtons(page, ['Not now', 'Not Now', 'Block', 'Don\'t allow', 'Don\'t Allow']);
+          } else if (action.toLowerCase().includes('close') || action.toLowerCase().includes('dismiss')) {
+            await tryClickButtons(page, ['Close', 'Dismiss', 'X', '×']);
+          } else if (action.toLowerCase().includes('skip')) {
+            await tryClickButtons(page, ['Skip', 'Maybe later', 'No thanks']);
+          }
+          
+          // Check if popup is gone after each action
+          const stillBlocked = await analyzePageWithGemini(page, geminiApiKey);
+          if (!stillBlocked.hasBlockingPopup) {
+            sendProgress('✅ Gemini confirmed popup was successfully dismissed');
+            return;
+          }
+        }
+      } else {
+        sendProgress('✅ Gemini analysis: No blocking popups detected');
+      }
+    }
 
     // Wait a moment for any popups to appear
     await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -530,24 +836,31 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
     await page.goto(mediaUrl, { waitUntil: 'networkidle0', timeout: 30000 });
 
     // Close any Facebook popups (notifications, overlays, etc.) - do this once after navigation
-    await closeFacebookPopups(page);
+    await closeFacebookPopups(page, geminiApiKey);
 
-    // Check if logged in
+    // Check if logged in and handle production vs development differently
     const isLoggedIn = await checkIfLoggedIn(page);
 
     if (!isLoggedIn) {
-      // Attempt interactive login
-      const loginSuccess = await performInteractiveLogin(page, cookiesFilePath);
-      if (!loginSuccess) {
-        throw new Error('Facebook login required. Please login through admin panel first.');
+      if (process.env.NODE_ENV === 'production') {
+        // In production, we rely entirely on session cookies - no interactive login
+        sendProgress('❌ Not logged in to Facebook. In production mode, this requires valid session cookies.');
+        throw new Error('Facebook authentication failed. Session cookies may be expired or invalid.');
+      } else {
+        // Development mode - attempt interactive login
+        const loginSuccess = await performInteractiveLogin(page, cookiesFilePath);
+        if (!loginSuccess) {
+          throw new Error('Facebook login required. Please login through admin panel first.');
+        }
+
+        // Navigate back to group page after login
+        await page.goto(mediaUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+
+        // Close popups again after re-navigation
+        await closeFacebookPopups(page, geminiApiKey);
       }
-
-      // Navigate back to group page after login
-      await page.goto(mediaUrl, { waitUntil: 'networkidle0', timeout: 30000 });
-
-      // Only close popups again if we had to re-navigate after login
-      // The login process might have triggered new popups
-      await closeFacebookPopups(page);
+    } else {
+      sendProgress('✅ Successfully authenticated with Facebook using session cookies');
     } // Save cookies after successful navigation
     await saveFacebookCookies(page, cookiesFilePath);
 

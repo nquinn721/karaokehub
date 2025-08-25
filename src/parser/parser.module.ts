@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DJ } from '../dj/dj.entity';
 import { DJNickname } from '../entities/dj-nickname.entity';
 import { GeocodingService } from '../geocoding/geocoding.service';
+import { CancellationService } from '../services/cancellation.service';
 import { DJNicknameService } from '../services/dj-nickname.service';
 import { FacebookService } from '../services/facebook.service';
 import { Show } from '../show/show.entity';
@@ -28,6 +29,7 @@ import { UrlToParseService } from './url-to-parse.service';
     DJNicknameService,
     GeocodingService,
     FacebookService,
+    CancellationService,
   ],
   exports: [
     KaraokeParserService,
@@ -35,6 +37,7 @@ import { UrlToParseService } from './url-to-parse.service';
     UrlToParseService,
     DJNicknameService,
     FacebookService,
+    CancellationService,
   ],
 })
 export class ParserModule {}

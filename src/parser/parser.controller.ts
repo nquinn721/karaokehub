@@ -8,6 +8,7 @@ import {
   Param,
   Post,
 } from '@nestjs/common';
+import { CancellationService } from '../services/cancellation.service';
 import { FacebookParserService } from './facebook-parser.service';
 import { KaraokeParserService } from './karaoke-parser.service';
 import { UrlToParse } from './url-to-parse.entity';
@@ -19,6 +20,7 @@ export class ParserController {
     private readonly karaokeParserService: KaraokeParserService,
     private readonly urlToParseService: UrlToParseService,
     private readonly facebookParserService: FacebookParserService,
+    private readonly cancellationService: CancellationService,
   ) {}
 
   /**
@@ -422,6 +424,74 @@ export class ParserController {
       console.error('Error analyzing screenshots:', error);
       throw new HttpException(
         `Failed to analyze screenshots: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * EMERGENCY CANCELLATION ENDPOINT
+   * Immediately stops all parsing operations, workers, and browsers
+   */
+  @Post('emergency-cancel')
+  async emergencyCancel() {
+    try {
+      console.log('🛑 EMERGENCY CANCEL requested via API endpoint');
+      await this.cancellationService.cancelAll();
+
+      return {
+        success: true,
+        message: 'All parsing operations have been cancelled',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Emergency cancellation failed:', error);
+      throw new HttpException(
+        `Failed to cancel operations: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * GET CANCELLATION STATUS
+   * Returns current status of cancellation service and active tasks
+   */
+  @Get('cancellation-status')
+  getCancellationStatus() {
+    try {
+      const status = this.cancellationService.getStatus();
+      return {
+        success: true,
+        data: status,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Failed to get cancellation status:', error);
+      throw new HttpException(
+        `Failed to get cancellation status: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * RESET CANCELLATION SERVICE
+   * Resets the cancellation service for new operations
+   */
+  @Post('reset-cancellation')
+  resetCancellation() {
+    try {
+      this.cancellationService.reset();
+      return {
+        success: true,
+        message: 'Cancellation service has been reset',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Failed to reset cancellation service:', error);
+      throw new HttpException(
+        `Failed to reset cancellation service: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
