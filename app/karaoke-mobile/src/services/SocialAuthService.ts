@@ -45,7 +45,7 @@ export class SocialAuthService {
       const codeChallenge = await Crypto.digestStringAsync(
         Crypto.CryptoDigestAlgorithm.SHA256,
         redirectUri,
-        { encoding: Crypto.CryptoEncoding.BASE64 }
+        { encoding: Crypto.CryptoEncoding.BASE64 },
       );
 
       const request = new AuthSession.AuthRequest({

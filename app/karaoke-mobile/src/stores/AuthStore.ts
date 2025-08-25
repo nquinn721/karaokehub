@@ -168,7 +168,7 @@ export class AuthStore {
     try {
       // Store the JWT token in the API service
       await apiService.setAuthToken(token);
-      
+
       runInAction(() => {
         this.setUser(user);
       });

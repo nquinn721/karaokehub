@@ -321,14 +321,19 @@ export class AuthController {
 
   // Mobile OAuth endpoints
   @Post('google/mobile')
-  async googleMobileAuth(@Body() body: { code: string; redirectUri: string; codeVerifier?: string }) {
+  async googleMobileAuth(
+    @Body() body: { code: string; redirectUri: string; codeVerifier?: string },
+  ) {
     try {
       console.log('🟢 [GOOGLE_MOBILE_AUTH] Starting mobile OAuth flow');
-      
+
       const { code, redirectUri, codeVerifier } = body;
 
       if (!code || !redirectUri) {
-        throw new HttpException('Authorization code and redirect URI are required', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'Authorization code and redirect URI are required',
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       // Exchange authorization code for tokens
@@ -348,14 +353,19 @@ export class AuthController {
       });
 
       if (!tokenResponse.ok) {
-        throw new HttpException('Failed to exchange authorization code for tokens', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'Failed to exchange authorization code for tokens',
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       const tokens = await tokenResponse.json();
 
       // Get user info from Google
-      const userResponse = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokens.access_token}`);
-      
+      const userResponse = await fetch(
+        `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokens.access_token}`,
+      );
+
       if (!userResponse.ok) {
         throw new HttpException('Failed to get user info from Google', HttpStatus.BAD_REQUEST);
       }
@@ -398,11 +408,14 @@ export class AuthController {
   async facebookMobileAuth(@Body() body: { code: string; redirectUri: string }) {
     try {
       console.log('🟢 [FACEBOOK_MOBILE_AUTH] Starting mobile OAuth flow');
-      
+
       const { code, redirectUri } = body;
 
       if (!code || !redirectUri) {
-        throw new HttpException('Authorization code and redirect URI are required', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'Authorization code and redirect URI are required',
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       // Exchange authorization code for tokens
@@ -420,14 +433,19 @@ export class AuthController {
       });
 
       if (!tokenResponse.ok) {
-        throw new HttpException('Failed to exchange authorization code for tokens', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'Failed to exchange authorization code for tokens',
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       const tokens = await tokenResponse.json();
 
       // Get user info from Facebook
-      const userResponse = await fetch(`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${tokens.access_token}`);
-      
+      const userResponse = await fetch(
+        `https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${tokens.access_token}`,
+      );
+
       if (!userResponse.ok) {
         throw new HttpException('Failed to get user info from Facebook', HttpStatus.BAD_REQUEST);
       }

@@ -1,40 +1,74 @@
 export const colors = {
   dark: {
-    primary: '#FF6B35',
-    secondary: '#FFA726',
-    accent: '#29B6F6',
-    background: '#121212',
-    surface: '#1E1E1E',
-    card: '#2C2C2C',
+    // Primary colors - iOS blue
+    primary: '#007AFF',
+    primaryDark: '#0056B3',
+    secondary: '#5856D6',
+    accent: '#007AFF',
+
+    // Dark backgrounds
+    background: '#000000',
+    surface: '#1C1C1E',
+    card: '#2C2C2E',
+    surfaceElevated: '#3A3A3C',
+
+    // Text colors
     text: '#FFFFFF',
-    textSecondary: '#B0B0B0',
-    textMuted: '#757575',
-    border: '#333333',
-    divider: '#2C2C2C',
-    success: '#4CAF50',
-    warning: '#FF9800',
-    error: '#F44336',
-    info: '#2196F3',
-    disabled: '#424242',
-    placeholder: '#757575',
+    textSecondary: '#98989D',
+    textMuted: '#636366',
+
+    // Border and divider colors
+    border: '#38383A',
+    divider: '#48484A',
+
+    // Status colors
+    success: '#34C759',
+    warning: '#FF9500',
+    error: '#FF3B30',
+    info: '#007AFF',
+    disabled: '#48484A',
+    placeholder: '#98989D',
 
     // Music specific colors
-    playButton: '#1DB954',
-    favoriteActive: '#E91E63',
-    favoriteInactive: '#757575',
-    waveform: '#29B6F6',
+    playButton: '#34C759',
+    favoriteActive: '#FF3B30',
+    favoriteInactive: '#98989D',
+    waveform: '#007AFF',
 
     // Gradient colors
-    gradientStart: '#FF6B35',
-    gradientEnd: '#FFA726',
+    gradientStart: '#007AFF',
+    gradientEnd: '#5856D6',
 
     // Navigation
-    tabBarActive: '#FF6B35',
-    tabBarInactive: '#757575',
-    tabBarBackground: '#1E1E1E',
+    tabBarActive: '#007AFF',
+    tabBarInactive: '#98989D',
+    tabBarBackground: '#1C1C1E',
+    tabBarBorder: '#38383A',
 
     // Status bar
     statusBar: '#000000',
+
+    // Button colors
+    buttonPrimary: '#007AFF',
+    buttonPrimaryText: '#FFFFFF',
+    buttonSecondary: '#2C2C2E',
+    buttonSecondaryText: '#007AFF',
+    buttonDanger: '#FF3B30',
+    buttonDangerText: '#FFFFFF',
+
+    // Social button colors
+    googleButton: '#DB4437',
+    facebookButton: '#1877F2',
+
+    // Input colors
+    inputBackground: '#2C2C2E',
+    inputBorder: '#48484A',
+    inputText: '#FFFFFF',
+    inputPlaceholder: '#98989D',
+
+    // Overlay colors
+    overlay: 'rgba(0, 0, 0, 0.5)',
+    overlayLight: 'rgba(0, 0, 0, 0.3)',
   },
 };
 

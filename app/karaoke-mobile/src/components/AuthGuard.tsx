@@ -32,7 +32,7 @@ const AuthGuard: React.FC<AuthGuardProps> = observer(({ children, routeName = 't
               navigation.navigate('Auth' as never);
             },
           },
-        ]
+        ],
       );
     }
   }, [authStore.isAuthenticated, navigation, routeName]);

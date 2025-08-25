@@ -2,11 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { createStackNavigator } from '@react-navigation/stack';
 import React from 'react';
 import { TouchableOpacity } from 'react-native';
+import { colors } from '../theme';
 
 // Import screens
 import FavoriteShowsScreen from '../screens/shows/FavoriteShowsScreen';
 import ShowDetailScreen from '../screens/shows/ShowDetailScreen';
-import ShowsListScreen from '../screens/shows/ShowsListScreen';
+import ShowsMapScreen from '../screens/shows/ShowsMapScreen';
 
 export type ShowsStackParamList = {
   ShowsList: undefined;
@@ -21,9 +22,9 @@ const ShowsNavigator = () => {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#007AFF',
+          backgroundColor: colors.dark.surface,
         },
-        headerTintColor: '#FFFFFF',
+        headerTintColor: colors.dark.text,
         headerTitleStyle: {
           fontWeight: 'bold',
         },
@@ -31,7 +32,7 @@ const ShowsNavigator = () => {
     >
       <Stack.Screen
         name="ShowsList"
-        component={ShowsListScreen}
+        component={ShowsMapScreen}
         options={({ navigation }) => ({
           title: 'Karaoke Shows',
           headerRight: () => (
@@ -39,7 +40,7 @@ const ShowsNavigator = () => {
               onPress={() => navigation.navigate('FavoriteShows')}
               style={{ marginRight: 16, padding: 4 }}
             >
-              <Ionicons name="heart" size={24} color="#FFFFFF" />
+              <Ionicons name="heart" size={24} color={colors.dark.text} />
             </TouchableOpacity>
           ),
         })}

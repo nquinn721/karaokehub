@@ -17,6 +17,7 @@ import {
 
 import { SocialAuthService } from '../../services/SocialAuthService';
 import { authStore } from '../../stores';
+import { colors } from '../../theme';
 
 type AuthStackParamList = {
   Login: undefined;
@@ -54,7 +55,7 @@ const LoginScreen = observer(() => {
     setSocialLoading('google');
     try {
       const result = await SocialAuthService.authenticateWithGoogle();
-      
+
       if (result.success && result.token && result.user) {
         await authStore.handleSocialAuthSuccess(result.token, result.user);
       } else {
@@ -72,7 +73,7 @@ const LoginScreen = observer(() => {
     setSocialLoading('facebook');
     try {
       const result = await SocialAuthService.authenticateWithFacebook();
-      
+
       if (result.success && result.token && result.user) {
         await authStore.handleSocialAuthSuccess(result.token, result.user);
       } else {
@@ -97,7 +98,7 @@ const LoginScreen = observer(() => {
     >
       <View style={styles.content}>
         <View style={styles.header}>
-          <Ionicons name="musical-notes" size={60} color="#007AFF" />
+          <Ionicons name="musical-notes" size={60} color={colors.dark.primary} />
           <Text style={styles.appTitle}>KaraokeHub</Text>
           <Text style={styles.subtitle}>Find karaoke shows near you</Text>
         </View>
@@ -110,10 +111,15 @@ const LoginScreen = observer(() => {
             disabled={socialLoading !== null || authStore.isLoading}
           >
             {socialLoading === 'google' ? (
-              <ActivityIndicator color="#FFF" size="small" />
+              <ActivityIndicator color={colors.dark.buttonPrimaryText} size="small" />
             ) : (
               <>
-                <Ionicons name="logo-google" size={20} color="#FFF" style={styles.socialIcon} />
+                <Ionicons
+                  name="logo-google"
+                  size={20}
+                  color={colors.dark.buttonPrimaryText}
+                  style={styles.socialIcon}
+                />
                 <Text style={styles.socialButtonText}>Continue with Google</Text>
               </>
             )}
@@ -125,10 +131,15 @@ const LoginScreen = observer(() => {
             disabled={socialLoading !== null || authStore.isLoading}
           >
             {socialLoading === 'facebook' ? (
-              <ActivityIndicator color="#FFF" size="small" />
+              <ActivityIndicator color={colors.dark.buttonPrimaryText} size="small" />
             ) : (
               <>
-                <Ionicons name="logo-facebook" size={20} color="#FFF" style={styles.socialIcon} />
+                <Ionicons
+                  name="logo-facebook"
+                  size={20}
+                  color={colors.dark.buttonPrimaryText}
+                  style={styles.socialIcon}
+                />
                 <Text style={styles.socialButtonText}>Continue with Facebook</Text>
               </>
             )}
@@ -143,10 +154,16 @@ const LoginScreen = observer(() => {
 
           {/* Email/Password Form */}
           <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+            <Ionicons
+              name="mail-outline"
+              size={20}
+              color={colors.dark.textSecondary}
+              style={styles.inputIcon}
+            />
             <TextInput
               style={styles.input}
               placeholder="Email"
+              placeholderTextColor={colors.dark.placeholder}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -156,10 +173,16 @@ const LoginScreen = observer(() => {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+            <Ionicons
+              name="lock-closed-outline"
+              size={20}
+              color={colors.dark.textSecondary}
+              style={styles.inputIcon}
+            />
             <TextInput
               style={styles.input}
               placeholder="Password"
+              placeholderTextColor={colors.dark.placeholder}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -168,18 +191,21 @@ const LoginScreen = observer(() => {
               <Ionicons
                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                 size={20}
-                color="#666"
+                color={colors.dark.textSecondary}
               />
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
-            style={[styles.loginButton, (authStore.isLoading || socialLoading !== null) && styles.disabledButton]}
+            style={[
+              styles.loginButton,
+              (authStore.isLoading || socialLoading !== null) && styles.disabledButton,
+            ]}
             onPress={handleLogin}
             disabled={authStore.isLoading || socialLoading !== null}
           >
             {authStore.isLoading ? (
-              <ActivityIndicator color="#FFF" />
+              <ActivityIndicator color={colors.dark.buttonPrimaryText} />
             ) : (
               <Text style={styles.loginButtonText}>Login</Text>
             )}
@@ -200,7 +226,7 @@ const LoginScreen = observer(() => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.dark.background,
   },
   content: {
     flex: 1,
@@ -214,12 +240,12 @@ const styles = StyleSheet.create({
   appTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.dark.text,
     marginTop: 16,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: colors.dark.textSecondary,
     marginTop: 8,
     textAlign: 'center',
   },
@@ -239,15 +265,15 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   socialButtonText: {
-    color: '#FFF',
+    color: colors.dark.buttonPrimaryText,
     fontSize: 16,
     fontWeight: '600',
   },
   googleButton: {
-    backgroundColor: '#DB4437',
+    backgroundColor: colors.dark.googleButton,
   },
   facebookButton: {
-    backgroundColor: '#1877F2',
+    backgroundColor: colors.dark.facebookButton,
   },
   divider: {
     flexDirection: 'row',
@@ -257,22 +283,22 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E5E5E5',
+    backgroundColor: colors.dark.border,
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#666',
+    color: colors.dark.textSecondary,
     fontSize: 14,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
+    backgroundColor: colors.dark.inputBackground,
     borderRadius: 12,
     marginBottom: 16,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: colors.dark.inputBorder,
   },
   inputIcon: {
     marginRight: 12,
@@ -281,13 +307,13 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 50,
     fontSize: 16,
-    color: '#333',
+    color: colors.dark.inputText,
   },
   eyeIcon: {
     padding: 4,
   },
   loginButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.dark.buttonPrimary,
     borderRadius: 12,
     height: 50,
     justifyContent: 'center',
@@ -298,7 +324,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   loginButtonText: {
-    color: '#FFF',
+    color: colors.dark.buttonPrimaryText,
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -310,11 +336,11 @@ const styles = StyleSheet.create({
   },
   registerText: {
     fontSize: 16,
-    color: '#666',
+    color: colors.dark.textSecondary,
   },
   registerLink: {
     fontSize: 16,
-    color: '#007AFF',
+    color: colors.dark.primary,
     fontWeight: 'bold',
   },
 });

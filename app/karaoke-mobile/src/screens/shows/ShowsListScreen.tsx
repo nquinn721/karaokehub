@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { observer } from 'mobx-react-lite';
@@ -6,27 +7,70 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
-  RefreshControl,
+  Dimensions,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import MapView, { Marker, Region } from 'react-native-maps';
 
+import { colors } from '../../theme';
 import { ShowsStackParamList } from '../../navigation/ShowsNavigator';
 import { showsStore } from '../../stores';
 import { Show } from '../../types';
 
 type ShowsListScreenNavigationProp = StackNavigationProp<ShowsStackParamList, 'ShowsList'>;
 
+const { width, height } = Dimensions.get('window');
+
 const ShowsListScreen = observer(() => {
   const navigation = useNavigation<ShowsListScreenNavigationProp>();
-  const [refreshing, setRefreshing] = useState(false);
+  const [region, setRegion] = useState<Region>({
+    latitude: 37.7749,
+    longitude: -122.4194,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
+  const [userLocation, setUserLocation] = useState<Location.LocationObjectCoords | null>(null);
+  const [locationPermission, setLocationPermission] = useState<boolean>(false);
+  const [selectedShow, setSelectedShow] = useState<Show | null>(null);
 
   useEffect(() => {
     loadShows();
+    requestLocationPermission();
   }, []);
+
+  const requestLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status === 'granted') {
+        setLocationPermission(true);
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation(location.coords);
+        
+        // Update map region to user's location
+        setRegion({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        });
+      } else {
+        Alert.alert(
+          'Location Permission',
+          'Location permission is needed to show karaoke shows near you.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Settings', onPress: () => Location.requestForegroundPermissionsAsync() }
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error requesting location permission:', error);
+    }
+  };
 
   const loadShows = async () => {
     try {
@@ -37,14 +81,19 @@ const ShowsListScreen = observer(() => {
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadShows();
-    setRefreshing(false);
-  };
-
   const handleShowPress = (show: Show) => {
     navigation.navigate('ShowDetail', { showId: show.id });
+  };
+
+  const handleMarkerPress = (show: Show) => {
+    setSelectedShow(show);
+    // Center map on selected show
+    setRegion({
+      latitude: parseFloat(show.latitude) || region.latitude,
+      longitude: parseFloat(show.longitude) || region.longitude,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    });
   };
 
   const handleFavoritePress = async (show: Show) => {
