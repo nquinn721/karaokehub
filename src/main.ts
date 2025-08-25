@@ -35,9 +35,24 @@ async function bootstrap() {
           styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           fontSrc: ["'self'", 'https://fonts.gstatic.com'],
           imgSrc: ["'self'", 'data:', 'https:'],
-          scriptSrc: ["'self'", 'https://maps.googleapis.com', 'https://maps.gstatic.com'],
-          connectSrc: ["'self'", 'https://maps.googleapis.com', 'https://maps.gstatic.com'],
+          scriptSrc: [
+            "'self'", 
+            "'unsafe-inline'",
+            'https://maps.googleapis.com', 
+            'https://maps.gstatic.com',
+            'https://www.googletagmanager.com',
+            'https://accounts.google.com',
+            'https://pagead2.googlesyndication.com'
+          ],
+          connectSrc: [
+            "'self'", 
+            'https://maps.googleapis.com', 
+            'https://maps.gstatic.com',
+            'https://www.google-analytics.com',
+            'https://analytics.google.com'
+          ],
           mediaSrc: ["'self'", 'https://audio-ssl.itunes.apple.com'],
+          frameSrc: ["'self'", 'https://accounts.google.com'],
         },
       },
       crossOriginEmbedderPolicy: false,
