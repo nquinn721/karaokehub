@@ -127,9 +127,9 @@ spec:
                   name: KARAOKE_HUB_STRIPE_WEBHOOK_SECRET
                   key: latest
             - name: STRIPE_AD_FREE_PRICE_ID
-              value: 'price_1RzrJi2nqFT4wITAlEHi1oOD'
+              value: 'price_1S08ls2lgQyeTycPCNCNAdxD'
             - name: STRIPE_PREMIUM_PRICE_ID
-              value: 'price_1RzrJw2nqFT4wITAe6BFyVMQ'
+              value: 'price_1S08lu2lgQyeTycPfKtS3gAp'
             - name: PUPPETEER_EXECUTABLE_PATH
               value: '/usr/bin/chromium-browser'
             # Ollama configuration (disabled in Cloud Run by default)

@@ -11,8 +11,9 @@ This document outlines the complete Stripe payment integration setup for Karaoke
 STRIPE_SECRET_KEY=sk_test_your_secret_key_here
 STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key_here
 STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
-STRIPE_AD_FREE_PRICE_ID=price_ad_free_monthly
-STRIPE_PREMIUM_PRICE_ID=price_premium_monthly
+# Production Price IDs
+STRIPE_AD_FREE_PRICE_ID=price_1S08ls2lgQyeTycPCNCNAdxD
+STRIPE_PREMIUM_PRICE_ID=price_1S08lu2lgQyeTycPfKtS3gAp
 ```
 
 ### Google Cloud Secrets
