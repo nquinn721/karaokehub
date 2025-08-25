@@ -80,8 +80,6 @@ class FriendsStore {
     });
 
     const performSearch = async () => {
-      console.log('🔍 Friends search started:', { query, length: query.length });
-
       runInAction(() => {
         this.error = null;
       });

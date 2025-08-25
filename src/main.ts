@@ -21,7 +21,6 @@ async function bootstrap() {
 
   // Configure global prefix BEFORE static assets
   app.setGlobalPrefix('api');
-
   // Serve static files (this should come AFTER setting global prefix)
   app.useStaticAssets(join(__dirname, '..', 'public'), {
     prefix: '/',

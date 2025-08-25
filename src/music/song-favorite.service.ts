@@ -197,4 +197,106 @@ export class SongFavoriteService {
 
     return result;
   }
+
+  async addFavoriteWithCategory(
+    userId: string,
+    songId: string,
+    category?: string,
+    songData?: any,
+  ): Promise<SongFavorite> {
+    // Check if user exists
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    let song: Song;
+
+    // First try to find song by internal ID
+    song = await this.songRepository.findOne({ where: { id: songId } });
+
+    // If not found, try to find by Spotify ID
+    if (!song && songData) {
+      song = await this.songRepository.findOne({ where: { spotifyId: songId } });
+    }
+
+    // If still not found, create the song using the provided data
+    if (!song && songData) {
+      try {
+        console.log('Creating new song with data:', songData);
+        song = await this.songService.create({
+          title: songData.title.trim(),
+          artist: songData.artist.trim(),
+          album: songData.album?.trim() || null,
+          genre: songData.genre?.trim() || null,
+          duration: songData.duration || null,
+          spotifyId: songId,
+          previewUrl: songData.previewUrl || null,
+          albumArtSmall:
+            songData.albumArtSmall || songData.albumArt?.small || songData.imageUrl || null,
+          albumArtMedium: songData.albumArtMedium || songData.albumArt?.medium || null,
+          albumArtLarge: songData.albumArtLarge || songData.albumArt?.large || null,
+        });
+      } catch (error) {
+        console.error('Error creating song:', error);
+        throw new Error('Failed to create song');
+      }
+    }
+
+    if (!song) {
+      throw new NotFoundException(`Song with ID ${songId} not found`);
+    }
+
+    // Check if favorite already exists for this user, song, and category
+    const existingFavorite = await this.songFavoriteRepository.findOne({
+      where: { userId, songId: song.id, category },
+    });
+
+    if (existingFavorite) {
+      throw new ConflictException('Song is already in favorites for this category');
+    }
+
+    // Create new favorite with category
+    const favorite = this.songFavoriteRepository.create({
+      userId,
+      songId: song.id,
+      category: category || null,
+      user,
+      song,
+    });
+
+    return await this.songFavoriteRepository.save(favorite);
+  }
+
+  async getUserFavoritesByCategory(userId: string, category?: string): Promise<SongFavorite[]> {
+    const whereCondition: any = { userId };
+
+    if (category) {
+      whereCondition.category = category;
+    }
+
+    return await this.songFavoriteRepository.find({
+      where: whereCondition,
+      relations: ['song'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async removeFavoriteByCategory(userId: string, songId: string, category?: string): Promise<void> {
+    const whereCondition: any = { userId, songId };
+
+    if (category) {
+      whereCondition.category = category;
+    }
+
+    const favorite = await this.songFavoriteRepository.findOne({
+      where: whereCondition,
+    });
+
+    if (!favorite) {
+      throw new NotFoundException('Favorite not found');
+    }
+
+    await this.songFavoriteRepository.remove(favorite);
+  }
 }

@@ -37,7 +37,7 @@ export default new DataSource({
     Subscription,
     UserFeatureOverride,
   ],
-  migrations: ['./migrations/*.ts', './src/migrations/*.ts'],
+  migrations: ['./src/migrations/*.ts'],
   synchronize: false,
   logging: true,
 });

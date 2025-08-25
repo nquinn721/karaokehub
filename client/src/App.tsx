@@ -113,6 +113,31 @@ const AppContent: React.FC = observer(() => {
     }
   }, []);
 
+  // Check for stage name requirement on every route change and app load
+  useEffect(() => {
+    // Force check stage name requirement whenever the user is authenticated and location changes
+    if (authStore.isAuthenticated) {
+      authStore.forceCheckStageNameRequired();
+    }
+  }, [location.pathname, authStore.isAuthenticated, authStore.user]);
+
+  // Additional safety check - ensure stage name modal can't be bypassed
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (
+        authStore.isAuthenticated &&
+        authStore.user &&
+        (!authStore.user.stageName || authStore.user.stageName.trim() === '') &&
+        !authStore.showStageNameModal
+      ) {
+        // Force show the modal if it somehow got closed
+        authStore.setShowStageNameModal(true);
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [authStore.isAuthenticated, authStore.user, authStore.showStageNameModal]);
+
   return (
     <Box
       sx={{

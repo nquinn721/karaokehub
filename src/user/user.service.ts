@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
@@ -30,8 +30,32 @@ export class UserService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
+    // Validate uniqueness before creating
+    await this.validateUniqueness({
+      name: createUserDto.name,
+      stageName: createUserDto.stageName,
+    });
+
     const user = this.userRepository.create(createUserDto);
-    return await this.userRepository.save(user);
+    try {
+      return await this.userRepository.save(user);
+    } catch (error) {
+      // Handle database constraint violations
+      if (error.code === '23505' || error.code === 'ER_DUP_ENTRY') {
+        if (error.detail?.includes('email') || error.message?.includes('email')) {
+          throw new BadRequestException('This email is already registered.');
+        } else if (error.detail?.includes('name') || error.message?.includes('name')) {
+          throw new BadRequestException(
+            'This name is already taken. Please choose a different name.',
+          );
+        } else if (error.detail?.includes('stageName') || error.message?.includes('stageName')) {
+          throw new BadRequestException(
+            'This stage name is already taken. Please choose a different stage name.',
+          );
+        }
+      }
+      throw error;
+    }
   }
 
   async findAll(): Promise<User[]> {
@@ -60,9 +84,75 @@ export class UserService {
     });
   }
 
+  async findByName(name: string): Promise<User> {
+    return await this.userRepository.findOne({
+      where: { name, isActive: true },
+    });
+  }
+
+  async findByStageName(stageName: string): Promise<User> {
+    return await this.userRepository.findOne({
+      where: { stageName, isActive: true },
+    });
+  }
+
+  private async validateUniqueness(
+    data: { name?: string; stageName?: string },
+    excludeUserId?: string,
+  ): Promise<void> {
+    if (data.name) {
+      const existingUserWithName = await this.userRepository.findOne({
+        where: { name: data.name, isActive: true },
+      });
+      if (existingUserWithName && existingUserWithName.id !== excludeUserId) {
+        throw new BadRequestException(
+          'This name is already taken. Please choose a different name.',
+        );
+      }
+    }
+
+    if (data.stageName) {
+      const existingUserWithStageName = await this.userRepository.findOne({
+        where: { stageName: data.stageName, isActive: true },
+      });
+      if (existingUserWithStageName && existingUserWithStageName.id !== excludeUserId) {
+        throw new BadRequestException(
+          'This stage name is already taken. Please choose a different stage name.',
+        );
+      }
+    }
+  }
+
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
-    await this.userRepository.update(id, updateUserDto);
-    return await this.findOne(id);
+    // Validate uniqueness before updating (excluding the current user)
+    await this.validateUniqueness(
+      {
+        name: updateUserDto.name,
+        stageName: updateUserDto.stageName,
+      },
+      id,
+    );
+
+    try {
+      await this.userRepository.update(id, updateUserDto);
+      return await this.findOne(id);
+    } catch (error) {
+      // Handle database constraint violations
+      if (error.code === '23505' || error.code === 'ER_DUP_ENTRY') {
+        if (error.detail?.includes('email') || error.message?.includes('email')) {
+          throw new BadRequestException('This email is already registered.');
+        } else if (error.detail?.includes('name') || error.message?.includes('name')) {
+          throw new BadRequestException(
+            'This name is already taken. Please choose a different name.',
+          );
+        } else if (error.detail?.includes('stageName') || error.message?.includes('stageName')) {
+          throw new BadRequestException(
+            'This stage name is already taken. Please choose a different stage name.',
+          );
+        }
+      }
+      throw error;
+    }
   }
 
   async updateAdminStatus(id: string, isAdmin: boolean): Promise<User> {

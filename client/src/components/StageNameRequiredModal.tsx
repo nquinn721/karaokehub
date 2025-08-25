@@ -1,15 +1,7 @@
 import { LoadingButton } from '@components/LoadingButton';
 import { faMicrophone } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  Alert,
-  Box,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  TextField,
-  Typography,
-} from '@mui/material';
+import { Box, Dialog, DialogContent, DialogTitle, TextField, Typography } from '@mui/material';
 import { authStore, uiStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useState } from 'react';
@@ -21,6 +13,17 @@ interface StageNameRequiredModalProps {
 const StageNameRequiredModal: React.FC<StageNameRequiredModalProps> = observer(({ open }) => {
   const [stageName, setStageName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Debug logging
+  console.log('StageNameRequiredModal render check:', {
+    open,
+    isAuthenticated: authStore.isAuthenticated,
+    hasUser: !!authStore.user,
+    currentStageName: authStore.user?.stageName,
+    stageNameLength: authStore.user?.stageName?.length,
+    stageNameTrimmed: authStore.user?.stageName?.trim(),
+    showStageNameModal: authStore.showStageNameModal,
+  });
 
   const handleSubmitStageName = async () => {
     if (!stageName.trim()) {
@@ -34,7 +37,7 @@ const StageNameRequiredModal: React.FC<StageNameRequiredModalProps> = observer((
     if (result.success) {
       uiStore.addNotification('Stage name set successfully!', 'success');
       setStageName('');
-      authStore.closeStageNameModal();
+      // The updateProfile method will automatically handle modal closing via checkStageNameRequired
     } else {
       uiStore.addNotification(result.error || 'Failed to set stage name', 'error');
     }
@@ -47,6 +50,11 @@ const StageNameRequiredModal: React.FC<StageNameRequiredModalProps> = observer((
     }
   };
 
+  // Don't render if not open
+  if (!open) {
+    return null;
+  }
+
   return (
     <Dialog
       open={open}
@@ -56,46 +64,68 @@ const StageNameRequiredModal: React.FC<StageNameRequiredModalProps> = observer((
       disableEscapeKeyDown
       PaperProps={{
         sx: {
-          borderRadius: '16px',
+          borderRadius: '20px',
           overflow: 'hidden',
+          maxWidth: '480px',
+          background: 'linear-gradient(145deg, rgba(30,41,59,0.98) 0%, rgba(15,23,42,0.98) 100%)',
+          backdropFilter: 'blur(20px)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
+          border: '1px solid rgba(148, 163, 184, 0.1)',
+        },
+      }}
+      sx={{
+        zIndex: 9999,
+        '& .MuiBackdrop-root': {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(12px)',
         },
       }}
     >
-      <DialogTitle sx={{ textAlign: 'center', py: 3 }}>
+      <DialogTitle sx={{ textAlign: 'center', pt: 4, pb: 2, px: 3 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
           <Box
             sx={{
-              background: 'linear-gradient(135deg, #ff6b9d, #c44569)',
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%)',
               borderRadius: '50%',
-              p: 2,
+              p: 2.5,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 64,
-              height: 64,
+              width: 80,
+              height: 80,
+              boxShadow: '0 8px 32px rgba(139, 92, 246, 0.4)',
+              border: '2px solid rgba(139, 92, 246, 0.2)',
             }}
           >
-            <FontAwesomeIcon icon={faMicrophone} size="lg" color="white" />
+            <FontAwesomeIcon icon={faMicrophone} size="xl" color="white" />
           </Box>
-          <Typography variant="h5" component="div" fontWeight={600}>
-            Stage Name Required
+          <Typography
+            variant="h4"
+            component="div"
+            fontWeight={700}
+            sx={{
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              color: 'transparent',
+            }}
+          >
+            Welcome to KaraokeHub!
+          </Typography>
+          <Typography
+            variant="body1"
+            sx={{
+              maxWidth: '360px',
+              color: 'rgba(148, 163, 184, 0.9)',
+              lineHeight: 1.6,
+            }}
+          >
+            Let's get you set up with a stage name so other karaoke enthusiasts can find you
           </Typography>
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ px: 3, pb: 3 }}>
-        <Box sx={{ textAlign: 'center', mb: 3 }}>
-          <Typography variant="body1" color="text.secondary" paragraph>
-            To use KaraokeHub, you need a stage name. This is how other karaoke enthusiasts will
-            know you!
-          </Typography>
-
-          <Alert severity="info" sx={{ mb: 3 }}>
-            Your stage name helps build the karaoke community and makes it easier for friends to
-            find you.
-          </Alert>
-        </Box>
-
+      <DialogContent sx={{ px: 4, pb: 4 }}>
         <TextField
           autoFocus
           fullWidth
@@ -104,10 +134,44 @@ const StageNameRequiredModal: React.FC<StageNameRequiredModalProps> = observer((
           variant="outlined"
           value={stageName}
           onChange={(e) => setStageName(e.target.value)}
-          placeholder="e.g., SingStar, KaraokeKing, MelodyMaker"
+          placeholder="e.g., VocalVirtuoso, MicMaster, SingingStar"
           helperText="Make it memorable and uniquely you!"
           onKeyPress={handleKeyPress}
-          sx={{ mb: 3 }}
+          sx={{
+            mb: 3,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '12px',
+              fontSize: '1.1rem',
+              py: 0.5,
+              backgroundColor: 'rgba(15, 23, 42, 0.6)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(148, 163, 184, 0.2)',
+              '& fieldset': {
+                borderColor: 'rgba(148, 163, 184, 0.3)',
+              },
+              '&:hover fieldset': {
+                borderColor: 'rgba(139, 92, 246, 0.5)',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#8b5cf6',
+                borderWidth: '2px',
+              },
+              '& input': {
+                color: '#f1f5f9',
+                mt: 0.5, // Add margin-top to prevent text cutoff
+              },
+            },
+            '& .MuiInputLabel-root': {
+              color: 'rgba(148, 163, 184, 0.8)',
+              '&.Mui-focused': {
+                color: '#8b5cf6',
+              },
+            },
+            '& .MuiFormHelperText-root': {
+              color: 'rgba(148, 163, 184, 0.7)',
+              fontSize: '0.875rem',
+            },
+          }}
         />
 
         <LoadingButton
@@ -118,23 +182,41 @@ const StageNameRequiredModal: React.FC<StageNameRequiredModalProps> = observer((
           loading={isSubmitting}
           disabled={!stageName.trim()}
           sx={{
-            py: 1.5,
+            py: 1.8,
             borderRadius: '12px',
-            background: 'linear-gradient(135deg, #ff6b9d, #c44569)',
+            fontSize: '1.1rem',
+            fontWeight: 600,
+            background: 'linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%)',
+            boxShadow: '0 4px 15px rgba(139, 92, 246, 0.4)',
+            border: '1px solid rgba(139, 92, 246, 0.3)',
             '&:hover': {
-              background: 'linear-gradient(135deg, #ff5722, #d32f2f)',
+              background: 'linear-gradient(135deg, #7c3aed 0%, #0891b2 100%)',
+              boxShadow: '0 6px 20px rgba(139, 92, 246, 0.6)',
+              transform: 'translateY(-1px)',
+              borderColor: 'rgba(139, 92, 246, 0.5)',
             },
+            '&:disabled': {
+              background: 'rgba(51, 65, 85, 0.4)',
+              color: 'rgba(148, 163, 184, 0.5)',
+              border: '1px solid rgba(51, 65, 85, 0.3)',
+            },
+            transition: 'all 0.3s ease',
           }}
         >
-          {isSubmitting ? 'Setting Stage Name...' : 'Set My Stage Name'}
+          {isSubmitting ? 'Setting Up Your Profile...' : 'Set My Stage Name'}
         </LoadingButton>
 
         <Typography
           variant="caption"
-          color="text.secondary"
-          sx={{ mt: 2, display: 'block', textAlign: 'center' }}
+          sx={{
+            mt: 2,
+            display: 'block',
+            textAlign: 'center',
+            fontSize: '0.875rem',
+            color: 'rgba(148, 163, 184, 0.7)',
+          }}
         >
-          You can change this later in your profile settings
+          💡 Don't worry, you can change this anytime in your profile settings
         </Typography>
       </DialogContent>
     </Dialog>

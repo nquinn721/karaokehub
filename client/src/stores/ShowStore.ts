@@ -260,9 +260,6 @@ export class ShowStore {
     try {
       this.setLoading(true);
 
-      // DEBUG: Add 3 second delay to see loading state behavior
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
       let endpoint: string;
 
       if (mapCenter) {
@@ -273,10 +270,6 @@ export class ShowStore {
         // Fallback to day-based or all shows
         endpoint = day ? apiStore.endpoints.shows.byDay(day) : apiStore.endpoints.shows.base;
       }
-
-      console.log('🔗 Fetching shows from endpoint:', endpoint);
-      console.log('📅 Day parameter:', day);
-      console.log('🗺️ Map center parameter:', mapCenter);
 
       const response = await apiStore.get(endpoint);
 
@@ -294,10 +287,6 @@ export class ShowStore {
           seenIds.add(show.id);
           return true;
         });
-
-        console.log(
-          `📊 Fetched ${uniqueShows.length} shows, after deduplication: ${deduplicatedShows.length}`,
-        );
         this.shows = deduplicatedShows;
         this.isLoading = false;
       });
@@ -322,8 +311,6 @@ export class ShowStore {
         this.isUsingCityView = true;
       });
 
-      console.log(`🏙️ Fetching city summaries for ${day || 'all days'}`);
-
       const endpoint = apiStore.endpoints.shows.citySummary(day);
       const response = await apiStore.get(endpoint);
 
@@ -332,7 +319,6 @@ export class ShowStore {
         this.isLoadingCitySummaries = false;
       });
 
-      console.log(`📊 Received ${this.citySummaries.length} city summaries`);
       return { success: true };
     } catch (error: any) {
       runInAction(() => {
@@ -352,15 +338,11 @@ export class ShowStore {
       this.isUsingCityView = false;
       this.citySummaries = [];
     });
-    console.log('🎯 Switched to individual show view');
   }
 
   async fetchShow(id: string) {
     try {
       this.setLoading(true);
-
-      // DEBUG: Add 3 second delay to see loading state behavior
-      await new Promise(resolve => setTimeout(resolve, 3000));
 
       const response = await apiStore.get(apiStore.endpoints.shows.byId(id));
 
@@ -582,10 +564,6 @@ export class ShowStore {
         this.isUsingCityView = false;
       });
 
-      console.log(
-        `🌍 Fetching all shows for ${day || 'all days'}${vendor ? ` and vendor ${vendor}` : ''}`,
-      );
-
       // Use the regular /shows endpoint with filters
       let endpoint = '/shows';
       const params = new URLSearchParams();
@@ -603,7 +581,6 @@ export class ShowStore {
         this.isLoading = false;
       });
 
-      console.log(`📍 Received ${this.shows.length} shows from all cities`);
       return { success: true };
     } catch (error: any) {
       runInAction(() => {
@@ -630,10 +607,6 @@ export class ShowStore {
         this.isUsingCityView = false;
       });
 
-      console.log(
-        `📍 Fetching nearby shows within ${radius} miles for ${day || 'all days'}${vendor ? ` and vendor ${vendor}` : ''}`,
-      );
-
       const params = new URLSearchParams({
         centerLat: lat.toString(),
         centerLng: lng.toString(),
@@ -651,7 +624,6 @@ export class ShowStore {
         this.isLoading = false;
       });
 
-      console.log(`📍 Received ${this.shows.length} nearby shows`);
       return { success: true };
     } catch (error: any) {
       runInAction(() => {

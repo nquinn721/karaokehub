@@ -21,6 +21,7 @@ export interface SongFavorite {
   id: string;
   userId: string;
   songId: string;
+  category?: string;
   createdAt: string;
   song?: Song;
 }
@@ -42,12 +43,15 @@ export class SongFavoriteStore {
     this.error = error;
   }
 
-  async fetchMySongFavorites() {
+  async fetchMySongFavorites(category?: string) {
     try {
       this.setLoading(true);
       this.setError(null);
 
-      const response = await apiStore.get('/song-favorites');
+      const url = category
+        ? `/song-favorites?category=${encodeURIComponent(category)}`
+        : '/song-favorites';
+      const response = await apiStore.get(url);
 
       runInAction(() => {
         this.songFavorites = response.data || [];
@@ -64,11 +68,16 @@ export class SongFavoriteStore {
     }
   }
 
-  async addSongFavorite(songId: string, songData?: any) {
+  async addSongFavorite(songId: string, songData?: any, category?: string) {
     try {
       this.setError(null);
 
-      const response = await apiStore.post(`/song-favorites/${songId}`, songData || {});
+      const requestBody = {
+        songData: songData || {},
+        category: category || null,
+      };
+
+      const response = await apiStore.post(`/song-favorites/${songId}`, requestBody);
 
       if (response.success) {
         runInAction(() => {
@@ -85,22 +94,32 @@ export class SongFavoriteStore {
     }
   }
 
-  async removeSongFavorite(songId: string) {
+  async removeSongFavorite(songId: string, category?: string) {
     try {
       this.setError(null);
 
-      console.log('🎵 SongFavoriteStore.removeSongFavorite called with:', songId);
+      console.log(
+        '🎵 SongFavoriteStore.removeSongFavorite called with:',
+        songId,
+        'category:',
+        category,
+      );
       console.log(
         '🎵 Current favorites before removal:',
         this.songFavorites.map((fav) => ({
           id: fav.id,
           songId: fav.songId,
+          category: fav.category,
           spotifyId: fav.song?.spotifyId,
           title: fav.song?.title,
         })),
       );
 
-      const response = await apiStore.delete(`/song-favorites/${songId}`);
+      const url = category
+        ? `/song-favorites/${songId}?category=${encodeURIComponent(category)}`
+        : `/song-favorites/${songId}`;
+
+      const response = await apiStore.delete(url);
 
       if (response.success) {
         runInAction(() => {
@@ -108,6 +127,12 @@ export class SongFavoriteStore {
           this.songFavorites = this.songFavorites.filter((fav) => {
             const matchesSongId = fav.songId === songId;
             const matchesSpotifyId = fav.song?.spotifyId === songId;
+
+            // If category is specified, only remove if it matches
+            if (category && fav.category !== category) {
+              return true; // Keep this favorite
+            }
+
             return !(matchesSongId || matchesSpotifyId);
           });
 
@@ -116,6 +141,7 @@ export class SongFavoriteStore {
             this.songFavorites.map((fav) => ({
               id: fav.id,
               songId: fav.songId,
+              category: fav.category,
               spotifyId: fav.song?.spotifyId,
               title: fav.song?.title,
             })),
@@ -154,22 +180,33 @@ export class SongFavoriteStore {
     return this.songFavorites.map((fav) => fav.song).filter((song) => song !== undefined) as Song[];
   }
 
-  getFavoriteSongsForCategory(_categoryId: string): Song[] {
-    const allFavorites = this.getFavoriteSongs();
+  getFavoriteSongsForCategory(categoryId: string): Song[] {
+    // Filter favorites by category if it exists, otherwise return all favorites
+    const categoryFavorites = this.songFavorites.filter(
+      (fav) => fav.category === categoryId && fav.song,
+    );
 
-    // Return all favorites for any category - users expect to see their favorites at the top
-    // regardless of what category they're browsing
+    // If we have category-specific favorites, return those
+    if (categoryFavorites.length > 0) {
+      return categoryFavorites
+        .map((fav) => fav.song)
+        .filter((song) => song !== undefined) as Song[];
+    }
+
+    // If no category-specific favorites, return all favorites
+    // This ensures users see their favorites even if they were added before category tracking
+    const allFavorites = this.getFavoriteSongs();
     return allFavorites;
   }
 
-  async toggleSongFavorite(songId: string): Promise<boolean> {
+  async toggleSongFavorite(songId: string, category?: string, songData?: any): Promise<boolean> {
     const isFavorited = this.isSongFavorited(songId);
 
     if (isFavorited) {
-      await this.removeSongFavorite(songId);
+      await this.removeSongFavorite(songId, category);
       return false;
     } else {
-      await this.addSongFavorite(songId);
+      await this.addSongFavorite(songId, songData, category);
       return true;
     }
   }

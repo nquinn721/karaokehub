@@ -20,10 +20,10 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column()
+  @Column({ unique: true })
   name: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, unique: true })
   stageName: string;
 
   @Column({ nullable: true })

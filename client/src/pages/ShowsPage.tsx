@@ -141,126 +141,144 @@ const ShowsPage: React.FC = observer(() => {
           <BottomSheet
             isOpen={true} // Always considered "open" when alwaysVisible
             onToggle={() => showStore.toggleSidebar()}
-            snapPoints={[0.27, 0.57, 0.97]} // Increased by ~0.07 to bring up ~50px (was 0.2, 0.5, 0.9)
+            snapPoints={[0.3, 0.6, 1.0]} // Increased by ~0.01 for +5px (was 0.29, 0.59, 0.99)
             initialSnap={0} // Start minimized
             alwaysVisible={true}
             closeOnOutsideClick={true}
             draggableContent={
               /* Filters Section - Draggable */
-              <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
-                {/* Day Picker - Compact */}
-                <Box sx={{ mb: 2 }}>
-                  <Box
-                    sx={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(4, 1fr)',
-                      gap: 1,
-                      mb: 1,
-                    }}
-                  >
-                    {Object.values(DayOfWeek)
-                      .slice(0, 4)
-                      .map((day) => {
-                        const isSelected = showStore.selectedDay === day;
-                        const dayLabels = {
-                          [DayOfWeek.MONDAY]: 'Mon',
-                          [DayOfWeek.TUESDAY]: 'Tue',
-                          [DayOfWeek.WEDNESDAY]: 'Wed',
-                          [DayOfWeek.THURSDAY]: 'Thu',
-                          [DayOfWeek.FRIDAY]: 'Fri',
-                          [DayOfWeek.SATURDAY]: 'Sat',
-                          [DayOfWeek.SUNDAY]: 'Sun',
-                        };
-                        return (
-                          <Box
-                            key={day}
-                            onClick={() => showStore.setSelectedDay(day)}
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              py: 1,
-                              px: 0.5,
-                              borderRadius: 1,
-                              cursor: 'pointer',
-                              fontSize: '0.75rem',
-                              fontWeight: isSelected ? 600 : 400,
-                              color: isSelected ? 'primary.contrastText' : 'text.primary',
-                              bgcolor: isSelected ? 'primary.main' : 'action.hover',
-                              border: `1px solid ${
-                                isSelected ? theme.palette.primary.main : theme.palette.divider
-                              }`,
-                              '&:hover': {
-                                bgcolor: isSelected ? 'primary.dark' : 'action.selected',
-                              },
-                            }}
-                          >
-                            {dayLabels[day]}
-                          </Box>
-                        );
-                      })}
+              <Box>
+                {/* Filters Section */}
+                <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+                  {/* Day Picker - Compact */}
+                  <Box sx={{ mb: 2 }}>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(4, 1fr)',
+                        gap: 1,
+                        mb: 1,
+                      }}
+                    >
+                      {Object.values(DayOfWeek)
+                        .slice(0, 4)
+                        .map((day) => {
+                          const isSelected = showStore.selectedDay === day;
+                          const dayLabels = {
+                            [DayOfWeek.MONDAY]: 'Mon',
+                            [DayOfWeek.TUESDAY]: 'Tue',
+                            [DayOfWeek.WEDNESDAY]: 'Wed',
+                            [DayOfWeek.THURSDAY]: 'Thu',
+                            [DayOfWeek.FRIDAY]: 'Fri',
+                            [DayOfWeek.SATURDAY]: 'Sat',
+                            [DayOfWeek.SUNDAY]: 'Sun',
+                          };
+                          return (
+                            <Box
+                              key={day}
+                              onClick={() => showStore.setSelectedDay(day)}
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                py: 1,
+                                px: 0.5,
+                                borderRadius: 1,
+                                cursor: 'pointer',
+                                fontSize: '0.75rem',
+                                fontWeight: isSelected ? 600 : 400,
+                                color: isSelected ? 'primary.contrastText' : 'text.primary',
+                                bgcolor: isSelected ? 'primary.main' : 'action.hover',
+                                border: `1px solid ${
+                                  isSelected ? theme.palette.primary.main : theme.palette.divider
+                                }`,
+                                '&:hover': {
+                                  bgcolor: isSelected ? 'primary.dark' : 'action.selected',
+                                },
+                              }}
+                            >
+                              {dayLabels[day]}
+                            </Box>
+                          );
+                        })}
+                    </Box>
+
+                    {/* Second row for remaining days */}
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: 1,
+                      }}
+                    >
+                      {Object.values(DayOfWeek)
+                        .slice(4)
+                        .map((day) => {
+                          const isSelected = showStore.selectedDay === day;
+                          const dayLabels = {
+                            [DayOfWeek.MONDAY]: 'Mon',
+                            [DayOfWeek.TUESDAY]: 'Tue',
+                            [DayOfWeek.WEDNESDAY]: 'Wed',
+                            [DayOfWeek.THURSDAY]: 'Thu',
+                            [DayOfWeek.FRIDAY]: 'Fri',
+                            [DayOfWeek.SATURDAY]: 'Sat',
+                            [DayOfWeek.SUNDAY]: 'Sun',
+                          };
+                          return (
+                            <Box
+                              key={day}
+                              onClick={() => showStore.setSelectedDay(day)}
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                py: 1,
+                                px: 0.5,
+                                borderRadius: 1,
+                                cursor: 'pointer',
+                                fontSize: '0.75rem',
+                                fontWeight: isSelected ? 600 : 400,
+                                color: isSelected ? 'primary.contrastText' : 'text.primary',
+                                bgcolor: isSelected ? 'primary.main' : 'action.hover',
+                                border: `1px solid ${
+                                  isSelected ? theme.palette.primary.main : theme.palette.divider
+                                }`,
+                                '&:hover': {
+                                  bgcolor: isSelected ? 'primary.dark' : 'action.selected',
+                                },
+                              }}
+                            >
+                              {dayLabels[day]}
+                            </Box>
+                          );
+                        })}
+                    </Box>
                   </Box>
 
-                  {/* Second row for remaining days */}
-                  <Box
-                    sx={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, 1fr)',
-                      gap: 1,
-                    }}
-                  >
-                    {Object.values(DayOfWeek)
-                      .slice(4)
-                      .map((day) => {
-                        const isSelected = showStore.selectedDay === day;
-                        const dayLabels = {
-                          [DayOfWeek.MONDAY]: 'Mon',
-                          [DayOfWeek.TUESDAY]: 'Tue',
-                          [DayOfWeek.WEDNESDAY]: 'Wed',
-                          [DayOfWeek.THURSDAY]: 'Thu',
-                          [DayOfWeek.FRIDAY]: 'Fri',
-                          [DayOfWeek.SATURDAY]: 'Sat',
-                          [DayOfWeek.SUNDAY]: 'Sun',
-                        };
-                        return (
-                          <Box
-                            key={day}
-                            onClick={() => showStore.setSelectedDay(day)}
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              py: 1,
-                              px: 0.5,
-                              borderRadius: 1,
-                              cursor: 'pointer',
-                              fontSize: '0.75rem',
-                              fontWeight: isSelected ? 600 : 400,
-                              color: isSelected ? 'primary.contrastText' : 'text.primary',
-                              bgcolor: isSelected ? 'primary.main' : 'action.hover',
-                              border: `1px solid ${
-                                isSelected ? theme.palette.primary.main : theme.palette.divider
-                              }`,
-                              '&:hover': {
-                                bgcolor: isSelected ? 'primary.dark' : 'action.selected',
-                              },
-                            }}
-                          >
-                            {dayLabels[day]}
-                          </Box>
-                        );
-                      })}
+                  {/* Search */}
+                  <Box sx={{ mb: 2 }}>
+                    <ShowSearch
+                      onSelectShow={handleShowSelected}
+                      placeholder="Search venues, DJs, locations..."
+                      size="small"
+                      shows={showStore.filteredShows}
+                    />
                   </Box>
                 </Box>
 
-                {/* Search */}
-                <Box sx={{ mb: 2 }}>
-                  <ShowSearch
-                    onSelectShow={handleShowSelected}
-                    placeholder="Search venues, DJs, locations..."
-                    size="small"
-                    shows={showStore.filteredShows}
-                  />
+                {/* Shows Header - Draggable */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    p: 2,
+                    borderBottom: `1px solid ${theme.palette.divider}`,
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontSize: '1rem' }}>
+                    Shows {showStore.filteredShows.length}
+                  </Typography>
                 </Box>
               </Box>
             }
@@ -269,23 +287,11 @@ const ShowsPage: React.FC = observer(() => {
             <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
               <Box
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  p: 2,
-                  borderBottom: `1px solid ${theme.palette.divider}`,
+                  height: '500px', // Fixed height for all states
+                  overflow: 'auto',
+                  position: 'relative',
                 }}
               >
-                <Typography variant="h6" sx={{ fontSize: '1rem' }}>
-                  Shows {showStore.filteredShows.length}
-                </Typography>
-              </Box>
-
-              <Box sx={{ 
-                height: '500px', // Fixed height for all states
-                overflow: 'auto', 
-                position: 'relative' 
-              }}>
                 {showStore.isLoading ? (
                   <Box
                     sx={{
@@ -299,328 +305,345 @@ const ShowsPage: React.FC = observer(() => {
                     <CircularProgress size={24} />
                   </Box>
                 ) : showStore.filteredShows.length === 0 ? (
-                  <Box sx={{ 
-                    height: '100%', 
-                    p: 3, 
-                    textAlign: 'center', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center' 
-                  }}>
+                  <Box
+                    sx={{
+                      height: '100%',
+                      p: 3,
+                      textAlign: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
                     <Typography variant="body2" color="text.secondary">
                       No shows found for the selected filters.
                     </Typography>
                   </Box>
                 ) : (
                   <Box sx={{ height: '100%', overflow: 'auto' }}>
-                    <List sx={{ p: 0, pb: { xs: 10, md: 1 }, mr: '15px', mt: '5px', minHeight: '100%' }}>
-                    {showStore.filteredShows.map((show: Show) => {
-                      const isFavorited = authStore.isAuthenticated
-                        ? show.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
-                        : false;
+                    <List
+                      sx={{ p: 0, pb: { xs: 10, md: 1 }, mr: '15px', mt: '5px', minHeight: '100%' }}
+                    >
+                      {showStore.filteredShows.map((show: Show) => {
+                        const isFavorited = authStore.isAuthenticated
+                          ? show.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
+                          : false;
 
-                      return (
-                        <React.Fragment key={show.id}>
-                          <ListItem disablePadding>
-                            <ListItemButton
-                              onClick={() => mapStore.selectShowFromSidebar(show)}
-                              selected={mapStore.selectedShow?.id === show.id}
-                              sx={{
-                                p: { xs: 1.5, md: 2.5 },
-                                borderRadius: 2,
-                                transition: 'all 0.2s ease',
-                                border: `1px solid ${theme.palette.divider}`,
-                                backgroundColor:
-                                  theme.palette.mode === 'dark'
-                                    ? '#1E1E1E'
-                                    : theme.palette.background.paper,
-                                minHeight: { xs: '105px', md: '130px' },
-                                '&:hover': {
-                                  backgroundColor: theme.palette.action.hover,
-                                  border: `1px solid ${theme.palette.mode === 'dark' ? '#00E5FF' : theme.palette.primary.main}`,
-                                  transform: 'translateY(-2px)',
-                                  boxShadow: theme.shadows[4],
-                                },
-                                '&.Mui-selected': {
+                        return (
+                          <React.Fragment key={show.id}>
+                            <ListItem disablePadding>
+                              <ListItemButton
+                                onClick={() => mapStore.selectShowFromSidebar(show)}
+                                selected={mapStore.selectedShow?.id === show.id}
+                                sx={{
+                                  p: { xs: 1.5, md: 2.5 },
+                                  borderRadius: 2,
+                                  transition: 'all 0.2s ease',
+                                  border: `1px solid ${theme.palette.divider}`,
                                   backgroundColor:
                                     theme.palette.mode === 'dark'
-                                      ? '#00E5FF15'
-                                      : theme.palette.primary.main + '15',
-                                  border: `2px solid ${theme.palette.mode === 'dark' ? '#00E5FF' : theme.palette.primary.main}`,
+                                      ? '#1E1E1E'
+                                      : theme.palette.background.paper,
+                                  minHeight: { xs: '105px', md: '130px' },
                                   '&:hover': {
+                                    backgroundColor: theme.palette.action.hover,
+                                    border: `1px solid ${theme.palette.mode === 'dark' ? '#00E5FF' : theme.palette.primary.main}`,
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: theme.shadows[4],
+                                  },
+                                  '&.Mui-selected': {
                                     backgroundColor:
                                       theme.palette.mode === 'dark'
-                                        ? '#00E5FF20'
-                                        : theme.palette.primary.main + '20',
+                                        ? '#00E5FF15'
+                                        : theme.palette.primary.main + '15',
+                                    border: `2px solid ${theme.palette.mode === 'dark' ? '#00E5FF' : theme.palette.primary.main}`,
+                                    '&:hover': {
+                                      backgroundColor:
+                                        theme.palette.mode === 'dark'
+                                          ? '#00E5FF20'
+                                          : theme.palette.primary.main + '20',
+                                    },
                                   },
-                                },
-                              }}
-                            >
-                              <Box sx={{ py: { xs: 0.5, md: 1 }, px: 0, width: '100%' }}>
-                                {/* Primary content - Compact mobile layout */}
-                                <Box
-                                  sx={{
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: { xs: 1.5, md: 2 },
-                                    mb: { xs: 0.5, md: 0.5 },
-                                  }}
-                                >
-                                  {/* Icon column */}
+                                }}
+                              >
+                                <Box sx={{ py: { xs: 0.5, md: 1 }, px: 0, width: '100%' }}>
+                                  {/* Primary content - Compact mobile layout */}
                                   <Box
                                     sx={{
                                       display: 'flex',
-                                      flexDirection: 'column',
-                                      alignItems: 'center',
-                                      gap: 0.5,
-                                      minWidth: { xs: '24px', md: '28px' },
+                                      alignItems: 'flex-start',
+                                      gap: { xs: 1.5, md: 2 },
+                                      mb: { xs: 0.5, md: 0.5 },
                                     }}
                                   >
-                                    <FontAwesomeIcon
-                                      icon={faMicrophone}
-                                      style={{
-                                        fontSize: '16px',
-                                        color: theme.palette.primary.main,
-                                      }}
-                                    />
-                                    <Box
-                                      sx={{
-                                        width: '2px',
-                                        height: { xs: '20px', md: '30px' },
-                                        backgroundColor: theme.palette.primary.main,
-                                        opacity: 0.3,
-                                        borderRadius: '1px',
-                                      }}
-                                    />
-                                  </Box>
-
-                                  {/* Main content */}
-                                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                                    {/* Venue name */}
-                                    <Typography
-                                      variant="subtitle1"
-                                      fontWeight={600}
-                                      sx={{
-                                        fontSize: { xs: '0.95rem', md: '1.1rem' },
-                                        lineHeight: 1.2,
-                                        mb: 0.5,
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                      }}
-                                    >
-                                      {show.venue || show.dj?.vendor?.name || 'Unknown Venue'}
-                                    </Typography>
-
-                                    {/* Time badge */}
+                                    {/* Icon column */}
                                     <Box
                                       sx={{
                                         display: 'flex',
+                                        flexDirection: 'column',
                                         alignItems: 'center',
                                         gap: 0.5,
-                                        mb: 0.5,
+                                        minWidth: { xs: '24px', md: '28px' },
                                       }}
                                     >
                                       <FontAwesomeIcon
-                                        icon={faClock}
+                                        icon={faMicrophone}
                                         style={{
-                                          fontSize: '10px',
+                                          fontSize: '16px',
                                           color: theme.palette.primary.main,
                                         }}
                                       />
-                                      <Typography
-                                        variant="caption"
+                                      <Box
                                         sx={{
-                                          fontWeight: 600,
-                                          fontSize: { xs: '0.7rem', md: '0.75rem' },
-                                          color: theme.palette.primary.main,
+                                          width: '2px',
+                                          height: { xs: '20px', md: '30px' },
+                                          backgroundColor: theme.palette.primary.main,
+                                          opacity: 0.3,
+                                          borderRadius: '1px',
                                         }}
-                                      >
-                                        {formatTime(show.startTime)} - {formatTime(show.endTime)}
-                                      </Typography>
+                                      />
                                     </Box>
 
-                                    {/* Compact info rows */}
-                                    <Box
-                                      sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}
-                                    >
-                                      {/* DJ/Host info */}
-                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    {/* Main content */}
+                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                      {/* Venue name */}
+                                      <Typography
+                                        variant="subtitle1"
+                                        fontWeight={600}
+                                        sx={{
+                                          fontSize: { xs: '0.95rem', md: '1.1rem' },
+                                          lineHeight: 1.2,
+                                          mb: 0.5,
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap',
+                                        }}
+                                      >
+                                        {show.venue || show.dj?.vendor?.name || 'Unknown Venue'}
+                                      </Typography>
+
+                                      {/* Time badge */}
+                                      <Box
+                                        sx={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: 0.5,
+                                          mb: 0.5,
+                                        }}
+                                      >
                                         <FontAwesomeIcon
-                                          icon={faUser}
+                                          icon={faClock}
                                           style={{
-                                            fontSize: '11px',
-                                            color: theme.palette.text.secondary,
+                                            fontSize: '10px',
+                                            color: theme.palette.primary.main,
                                           }}
                                         />
                                         <Typography
-                                          variant="body2"
-                                          color="text.secondary"
-                                          onClick={(e) => handleDJClick(e, show)}
+                                          variant="caption"
                                           sx={{
-                                            fontSize: { xs: '0.75rem', md: '0.8rem' },
-                                            fontWeight: 500,
-                                            cursor: show.dj?.name ? 'pointer' : 'default',
-                                            '&:hover': show.dj?.name
-                                              ? {
-                                                  color: theme.palette.primary.main,
-                                                  textDecoration: 'underline',
-                                                }
-                                              : {},
+                                            fontWeight: 600,
+                                            fontSize: { xs: '0.7rem', md: '0.75rem' },
+                                            color: theme.palette.primary.main,
                                           }}
                                         >
-                                          {show.dj?.name || 'Unknown Host'}
+                                          {formatTime(show.startTime)} - {formatTime(show.endTime)}
                                         </Typography>
                                       </Box>
 
-                                      {/* Location info on separate line */}
+                                      {/* Compact info rows */}
                                       <Box
-                                        sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}
+                                        sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}
                                       >
-                                        <FontAwesomeIcon
-                                          icon={faMapMarkerAlt}
-                                          style={{
-                                            fontSize: '11px',
-                                            color: theme.palette.text.secondary,
-                                            marginTop: '2px',
-                                          }}
-                                        />
-                                        <Box sx={{ flex: 1 }}>
+                                        {/* DJ/Host info */}
+                                        <Box
+                                          sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                                        >
+                                          <FontAwesomeIcon
+                                            icon={faUser}
+                                            style={{
+                                              fontSize: '11px',
+                                              color: theme.palette.text.secondary,
+                                            }}
+                                          />
                                           <Typography
                                             variant="body2"
                                             color="text.secondary"
+                                            onClick={(e) => handleDJClick(e, show)}
                                             sx={{
                                               fontSize: { xs: '0.75rem', md: '0.8rem' },
-                                              lineHeight: 1.3,
-                                              wordBreak: 'break-word',
+                                              fontWeight: 500,
+                                              cursor: show.dj?.name ? 'pointer' : 'default',
+                                              '&:hover': show.dj?.name
+                                                ? {
+                                                    color: theme.palette.primary.main,
+                                                    textDecoration: 'underline',
+                                                  }
+                                                : {},
                                             }}
                                           >
-                                            {show.address}
+                                            {show.dj?.name || 'Unknown Host'}
                                           </Typography>
-                                          {(show.city || show.state) && (
+                                        </Box>
+
+                                        {/* Location info on separate line */}
+                                        <Box
+                                          sx={{
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            gap: 0.5,
+                                          }}
+                                        >
+                                          <FontAwesomeIcon
+                                            icon={faMapMarkerAlt}
+                                            style={{
+                                              fontSize: '11px',
+                                              color: theme.palette.text.secondary,
+                                              marginTop: '2px',
+                                            }}
+                                          />
+                                          <Box sx={{ flex: 1 }}>
                                             <Typography
                                               variant="body2"
                                               color="text.secondary"
                                               sx={{
-                                                fontSize: { xs: '0.7rem', md: '0.75rem' },
-                                                lineHeight: 1.2,
-                                                opacity: 0.8,
+                                                fontSize: { xs: '0.75rem', md: '0.8rem' },
+                                                lineHeight: 1.3,
+                                                wordBreak: 'break-word',
                                               }}
                                             >
-                                              {[show.city, show.state].filter(Boolean).join(', ')}
+                                              {show.address}
                                             </Typography>
-                                          )}
+                                            {(show.city || show.state) && (
+                                              <Typography
+                                                variant="body2"
+                                                color="text.secondary"
+                                                sx={{
+                                                  fontSize: { xs: '0.7rem', md: '0.75rem' },
+                                                  lineHeight: 1.2,
+                                                  opacity: 0.8,
+                                                }}
+                                              >
+                                                {[show.city, show.state].filter(Boolean).join(', ')}
+                                              </Typography>
+                                            )}
+                                          </Box>
+                                        </Box>
+                                      </Box>
+
+                                      {/* Badges section */}
+                                      <Box
+                                        sx={{
+                                          mt: 0.5,
+                                          display: 'flex',
+                                          gap: 0.5,
+                                          flexWrap: 'wrap',
+                                        }}
+                                      >
+                                        {/* Vendor chip */}
+                                        {show.dj?.vendor?.name && (
+                                          <Chip
+                                            label={show.dj.vendor.name}
+                                            size="small"
+                                            sx={{
+                                              height: '22px',
+                                              fontSize: { xs: '0.65rem', md: '0.7rem' },
+                                              fontWeight: 500,
+                                              backgroundColor: theme.palette.info.main + '15',
+                                              color: theme.palette.info.main,
+                                              border: `1px solid ${theme.palette.info.main + '30'}`,
+                                              '& .MuiChip-label': {
+                                                px: 0.75,
+                                              },
+                                            }}
+                                          />
+                                        )}
+
+                                        {/* Show type badge */}
+                                        <Box
+                                          sx={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 0.5,
+                                            backgroundColor: theme.palette.secondary.main + '15',
+                                            color: theme.palette.secondary.main,
+                                            px: 1,
+                                            py: 0.25,
+                                            borderRadius: 0.75,
+                                            fontSize: { xs: '0.7rem', md: '0.75rem' },
+                                            fontWeight: 500,
+                                          }}
+                                        >
+                                          <FontAwesomeIcon
+                                            icon={faMusic}
+                                            style={{
+                                              fontSize: '10px',
+                                            }}
+                                          />
+                                          Karaoke
                                         </Box>
                                       </Box>
                                     </Box>
 
-                                    {/* Badges section */}
+                                    {/* Action buttons */}
                                     <Box
-                                      sx={{ mt: 0.5, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}
+                                      sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}
                                     >
-                                      {/* Vendor chip */}
-                                      {show.dj?.vendor?.name && (
-                                        <Chip
-                                          label={show.dj.vendor.name}
-                                          size="small"
-                                          sx={{
-                                            height: '22px',
-                                            fontSize: { xs: '0.65rem', md: '0.7rem' },
-                                            fontWeight: 500,
-                                            backgroundColor: theme.palette.info.main + '15',
-                                            color: theme.palette.info.main,
-                                            border: `1px solid ${theme.palette.info.main + '30'}`,
-                                            '& .MuiChip-label': {
-                                              px: 0.75,
-                                            },
-                                          }}
-                                        />
-                                      )}
-
-                                      {/* Show type badge */}
-                                      <Box
+                                      {/* Schedule button */}
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleScheduleClick(show);
+                                        }}
                                         sx={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: 0.5,
-                                          backgroundColor: theme.palette.secondary.main + '15',
-                                          color: theme.palette.secondary.main,
-                                          px: 1,
-                                          py: 0.25,
-                                          borderRadius: 0.75,
-                                          fontSize: { xs: '0.7rem', md: '0.75rem' },
-                                          fontWeight: 500,
+                                          color: theme.palette.primary.main,
+                                          width: { xs: '32px', md: '36px' },
+                                          height: { xs: '32px', md: '36px' },
+                                          '&:hover': {
+                                            backgroundColor: theme.palette.primary.main + '10',
+                                          },
                                         }}
                                       >
                                         <FontAwesomeIcon
-                                          icon={faMusic}
-                                          style={{
-                                            fontSize: '10px',
-                                          }}
+                                          icon={faCalendarAlt}
+                                          style={{ fontSize: '14px' }}
                                         />
-                                        Karaoke
-                                      </Box>
+                                      </IconButton>
+
+                                      {/* Favorite button */}
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          showStore.handleFavoriteToggle(show);
+                                        }}
+                                        sx={{
+                                          color: isFavorited
+                                            ? theme.palette.error.main
+                                            : theme.palette.text.disabled,
+                                          width: { xs: '32px', md: '36px' },
+                                          height: { xs: '32px', md: '36px' },
+                                          opacity: authStore.isAuthenticated ? 1 : 0.6,
+                                          '&:hover': {
+                                            color: theme.palette.error.main,
+                                            backgroundColor: theme.palette.error.main + '10',
+                                          },
+                                        }}
+                                      >
+                                        <FontAwesomeIcon
+                                          icon={isFavorited ? faHeart : faHeartRegular}
+                                          style={{ fontSize: '14px' }}
+                                        />
+                                      </IconButton>
                                     </Box>
                                   </Box>
-
-                                  {/* Action buttons */}
-                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                    {/* Schedule button */}
-                                    <IconButton
-                                      size="small"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleScheduleClick(show);
-                                      }}
-                                      sx={{
-                                        color: theme.palette.primary.main,
-                                        width: { xs: '32px', md: '36px' },
-                                        height: { xs: '32px', md: '36px' },
-                                        '&:hover': {
-                                          backgroundColor: theme.palette.primary.main + '10',
-                                        },
-                                      }}
-                                    >
-                                      <FontAwesomeIcon
-                                        icon={faCalendarAlt}
-                                        style={{ fontSize: '14px' }}
-                                      />
-                                    </IconButton>
-
-                                    {/* Favorite button */}
-                                    <IconButton
-                                      size="small"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        showStore.handleFavoriteToggle(show);
-                                      }}
-                                      sx={{
-                                        color: isFavorited
-                                          ? theme.palette.error.main
-                                          : theme.palette.text.disabled,
-                                        width: { xs: '32px', md: '36px' },
-                                        height: { xs: '32px', md: '36px' },
-                                        opacity: authStore.isAuthenticated ? 1 : 0.6,
-                                        '&:hover': {
-                                          color: theme.palette.error.main,
-                                          backgroundColor: theme.palette.error.main + '10',
-                                        },
-                                      }}
-                                    >
-                                      <FontAwesomeIcon
-                                        icon={isFavorited ? faHeart : faHeartRegular}
-                                        style={{ fontSize: '14px' }}
-                                      />
-                                    </IconButton>
-                                  </Box>
                                 </Box>
-                              </Box>
-                            </ListItemButton>
-                          </ListItem>
-                        </React.Fragment>
-                      );
-                    })}
-                  </List>
+                              </ListItemButton>
+                            </ListItem>
+                          </React.Fragment>
+                        );
+                      })}
+                    </List>
                   </Box>
                 )}
               </Box>

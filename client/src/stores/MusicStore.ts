@@ -87,90 +87,78 @@ export class MusicStore {
     return [...favorites, ...nonFavorites];
   }
 
-  // Featured categories - now using dynamic Spotify playlists
+  // Featured categories
   featuredCategories = [
+    {
+      id: 'top-100',
+      title: 'Top 100',
+      image: '/images/music/top-100.939Z.png',
+      description: 'Top 100 greatest songs of all time',
+    },
     {
       id: 'karaoke-classics',
       title: 'Karaoke Classics',
       image: '/images/music/karaoke-classics.png',
-      spotifyQuery: 'karaoke sing along crowd favorites piano bar classics',
-      description: 'Top 100 karaoke classics that everyone loves to sing',
-    },
-    {
-      id: 'best-of-70s',
-      title: 'Best of 70s',
-      image: '/images/music/best-of-70s.png',
-      spotifyQuery: 'hits 1970 1971 1972 1973 1974 1975 1976 1977 1978 1979',
-      description: 'Top 100 best songs from the 1970s decade',
+      description: 'Karaoke classics that everyone loves to sing',
     },
     {
       id: 'best-of-80s',
       title: 'Best of 80s',
       image: '/images/music/best-of-80s.png',
-      spotifyQuery: 'hits 1980 1981 1982 1983 1984 1985 1986 1987 1988 1989',
-      description: 'Top 100 best songs from the 1980s decade',
+      description: 'Best songs from the 1980s decade',
     },
     {
       id: 'best-of-90s',
       title: 'Best of 90s',
       image: '/images/music/best-of-90s.png',
-      spotifyQuery: 'hits 1990 1991 1992 1993 1994 1995 1996 1997 1998 1999',
-      description: 'Top 100 best songs from the 1990s decade',
+      description: 'Best songs from the 1990s decade',
     },
     {
       id: 'best-of-2000s',
       title: 'Best of 2000s',
       image: '/images/music/best-of-2000s.png',
-      spotifyQuery: 'hits 2000 2001 2002 2003 2004 2005 2006 2007 2008 2009',
-      description: 'Top 100 best songs from the 2000s decade',
+      description: 'Best songs from the 2000s decade',
     },
     {
       id: 'rock-hits',
       title: 'Rock Hits',
       image: '/images/music/rock-hits.png',
-      spotifyQuery: 'classic rock hard rock alternative guitar driven anthems',
-      description: 'Top 100 greatest rock hits of all time',
+      description: 'Greatest rock hits of all time',
     },
     {
       id: 'pop-hits',
       title: 'Pop Hits',
       image: '/images/music/pop-hits.png',
-      spotifyQuery: 'pop radio chart toppers billboard hot 100 mainstream dance',
-      description: 'Top 100 pop hits and chart toppers',
+      description: 'Pop hits and chart toppers',
     },
     {
       id: 'country-favorites',
       title: 'Country Favorites',
       image: '/images/music/country-favorites.png',
-      spotifyQuery: 'country classics garth brooks shania twain keith urban carrie underwood',
-      description: 'Top 100 country favorites and classics',
+      description: 'Country favorites and classics',
     },
     {
       id: 'rb-hiphop-hits',
       title: 'R&B & Hip-Hop Hits',
       image: '/images/music/rnb-hip-hop-hits.png',
-      spotifyQuery: 'r&b hip hop classics soul rap hits urban contemporary',
-      description: 'Top R&B and Hip-Hop hits perfect for showcasing vocal skills',
+      description: 'R&B and Hip-Hop hits perfect for showcasing vocal skills',
     },
     {
       id: 'one-hit-wonders',
       title: 'One-Hit Wonders',
       image: '/images/music/one-hit-wonders.714Z.png',
-      spotifyQuery: 'one hit wonders 90s 2000s novelty songs viral hits',
       description: 'Nostalgic crowd-pleasers and unforgettable one-hit wonders',
     },
     {
       id: 'duets-love-songs',
       title: 'Duets & Love Songs',
       image: '/images/music/duets-and-love-songs.409Z.png',
-      spotifyQuery: 'duets love songs romantic ballads couples karaoke',
       description: 'Perfect duets and romantic songs for couples and friends',
     },
     {
       id: 'feel-good-classics',
       title: 'Feel Good Classics',
       image: '/images/music/feel-good-classics.429Z.png',
-      spotifyQuery: 'feel good upbeat happy songs mood lifters classics',
       description: 'Upbeat classics guaranteed to lift your spirits and get you singing',
     },
   ];
@@ -283,7 +271,7 @@ export class MusicStore {
           }
         });
 
-        // Then fetch from Spotify API for dynamic suggestions
+        // Then fetch from music API for dynamic suggestions
         try {
           const response = await apiStore.get(
             `/music/search?q=${encodeURIComponent(query)}&limit=12`,
@@ -546,7 +534,6 @@ export class MusicStore {
     console.log('🎵 Loading category music:', {
       categoryId,
       categoryTitle: category.title,
-      spotifyQuery: category.spotifyQuery,
       loadMore,
     });
 
@@ -559,22 +546,13 @@ export class MusicStore {
         this.resetPagination();
       }
 
-      // Use category endpoint for better query expansion and results
+      // Use category endpoint for curated results based on category ID
       const limit = loadMore ? 20 : 50; // Reasonable batch sizes
+      const targetCount = loadMore ? 40 : 100; // Ask for more songs than the limit to account for filtering
 
-      // Split the spotify query into multiple search terms for better results
-      const queries = category.spotifyQuery.split(' ').join(',');
-      const apiUrl = `/music/category?queries=${encodeURIComponent(queries)}&category=${encodeURIComponent(categoryId)}&limit=${limit}&targetCount=${limit}`;
-      console.log('🌐 Making API request to:', apiUrl);
+      const apiUrl = `/music/category/${encodeURIComponent(categoryId)}?limit=${limit}&targetCount=${targetCount}`;
 
       const response = await apiStore.get(apiUrl);
-
-      console.log('📦 API response received:', {
-        isArray: Array.isArray(response),
-        length: response?.length,
-        firstItem: response?.[0],
-        fullResponse: response,
-      });
 
       runInAction(() => {
         if (response && Array.isArray(response) && response.length > 0) {
@@ -710,8 +688,7 @@ export class MusicStore {
       this.resetPagination();
 
       // Step 1: Load initial 2 songs quickly for immediate feedback
-      const queries = category.spotifyQuery.split(' ').join(',');
-      const initialApiUrl = `/music/category?queries=${encodeURIComponent(queries)}&limit=2&targetCount=2`;
+      const initialApiUrl = `/music/category/${encodeURIComponent(categoryId)}?limit=2&targetCount=2`;
 
       console.log('🚀 Loading initial 2 songs...');
       const initialResponse = await apiStore.get(initialApiUrl);
@@ -757,7 +734,7 @@ export class MusicStore {
         setTimeout(async () => {
           try {
             console.log('🔄 Loading remaining songs after 500ms...');
-            const remainingApiUrl = `/music/category?queries=${encodeURIComponent(queries)}&limit=48&targetCount=48`;
+            const remainingApiUrl = `/music/category/${encodeURIComponent(categoryId)}?limit=48&targetCount=48`;
             const remainingResponse = await apiStore.get(remainingApiUrl);
 
             if (

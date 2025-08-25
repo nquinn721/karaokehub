@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ArtistSearchResult, MusicSearchResult } from './music.interface';
 import { MusicService } from './music.service';
 
@@ -67,5 +67,16 @@ export class MusicController {
     const targetSongCount = targetCount ? parseInt(targetCount, 10) : 50;
     const queryArray = queries.split(',').map((q) => q.trim());
     return this.musicService.getCategoryMusic(queryArray, searchLimit, targetSongCount, category);
+  }
+
+  @Get('category/:categoryId')
+  async getCategoryMusicById(
+    @Param('categoryId') categoryId: string,
+    @Query('limit') limit?: string,
+    @Query('targetCount') targetCount?: string,
+  ): Promise<MusicSearchResult[]> {
+    const searchLimit = limit ? parseInt(limit, 10) : 50;
+    const targetSongCount = targetCount ? parseInt(targetCount, 10) : 100;
+    return this.musicService.getCategoryMusicById(categoryId, searchLimit, targetSongCount);
   }
 }

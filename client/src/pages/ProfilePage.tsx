@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import { authStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getUserDisplayName, getUserSecondaryName } from '../utils/userUtils';
 
 const ProfilePage: React.FC = observer(() => {
@@ -25,6 +25,14 @@ const ProfilePage: React.FC = observer(() => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Sync form state when authStore.user changes
+  useEffect(() => {
+    if (authStore.user) {
+      setName(authStore.user.name || '');
+      setStageName(authStore.user.stageName || '');
+    }
+  }, [authStore.user?.name, authStore.user?.stageName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

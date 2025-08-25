@@ -529,11 +529,9 @@ export class MusicService {
 
     if (categoryId) {
       isDecadeCategory =
-        categoryId.includes('70s') ||
         categoryId.includes('80s') ||
         categoryId.includes('90s') ||
         categoryId.includes('2000s') ||
-        categoryId.includes('best-of-70s') ||
         categoryId.includes('best-of-80s') ||
         categoryId.includes('best-of-90s') ||
         categoryId.includes('best-of-2000s');
@@ -568,19 +566,37 @@ export class MusicService {
     const isPopCategory = categoryId?.includes('pop') || queries.some((q) => q.includes('pop'));
     const isKaraokeCategory =
       categoryId?.includes('karaoke') || queries.some((q) => q.includes('karaoke'));
+    const isTop100Category =
+      categoryId?.includes('top-100') ||
+      queries.some((q) => q.includes('top') && q.includes('100'));
 
-    // Special handling for decade categories
-    if (isDecadeCategory) {
+    // Special handling for Top 100 category
+    if (isTop100Category) {
+      const top100Queries = this.getTop100SpecificQueries();
+
+      for (const query of top100Queries.slice(0, 25)) {
+        // Use more queries for Top 100
+        try {
+          const results = await this.searchSongs(query, Math.ceil(limit / 2), 0);
+          allResults.push(...results);
+
+          if (allResults.length >= targetCount) {
+            break;
+          }
+        } catch (error) {
+          console.warn(`Failed to search for top 100 query: ${query}`, error);
+        }
+      }
+    } else if (isDecadeCategory) {
       // For decade categories, use popular artists and songs from that era
       const decadeQueries = this.getDecadeSpecificQueries(categoryId || queries[0] || '90s');
 
-      for (const query of decadeQueries.slice(0, 10)) {
-        // Limit to first 10 for performance
+      for (const query of decadeQueries.slice(0, 20)) {
+        // Increased from 10 to 20 for more variety
         try {
-          const results = await this.searchSongs(query, Math.ceil(limit / 3), 0);
-          // Filter results by year if available
-          const filteredResults = this.filterByDecade(results, categoryId || queries[0] || '');
-          allResults.push(...filteredResults);
+          const results = await this.searchSongs(query, Math.ceil(limit / 2), 0);
+          // Don't filter by decade - iTunes year data is often missing or inaccurate
+          allResults.push(...results);
 
           if (allResults.length >= targetCount) {
             break;
@@ -848,6 +864,61 @@ export class MusicService {
     }
   }
 
+  private getTop100SpecificQueries(): string[] {
+    return [
+      'Queen Bohemian Rhapsody',
+      'The Beatles Hey Jude',
+      'Led Zeppelin Stairway to Heaven',
+      'Michael Jackson Thriller',
+      'Whitney Houston I Will Always Love You',
+      "Journey Don't Stop Believin'",
+      "Elvis Presley Can't Help Myself",
+      'The Rolling Stones Satisfaction',
+      'Bob Dylan Like a Rolling Stone',
+      'John Lennon Imagine',
+      'Prince Purple Rain',
+      'Madonna Like a Prayer',
+      'Nirvana Smells Like Teen Spirit',
+      'AC/DC Back in Black',
+      'Pink Floyd Another Brick in the Wall',
+      'The Who My Generation',
+      'David Bowie Heroes',
+      'Fleetwood Mac Go Your Own Way',
+      'Eagles Hotel California',
+      'Aretha Franklin Respect',
+      'Stevie Wonder Superstition',
+      "Marvin Gaye What's Going On",
+      "Guns N' Roses Sweet Child O' Mine",
+      "Bon Jovi Livin' on a Prayer",
+      'U2 With or Without You',
+      'R.E.M. Losing My Religion',
+      'Red Hot Chili Peppers Under the Bridge',
+      'Pearl Jam Alive',
+      'Soundgarden Black Hole Sun',
+      'Green Day Basket Case',
+      'Oasis Wonderwall',
+      'Radiohead Creep',
+      'Alanis Morissette You Oughta Know',
+      'TLC Waterfalls',
+      'Boyz II Men End of the Road',
+      'Mariah Carey Vision of Love',
+      'Celine Dion My Heart Will Go On',
+      'Backstreet Boys I Want It That Way',
+      'Britney Spears ...Baby One More Time',
+      'Eminem Lose Yourself',
+      'OutKast Hey Ya!',
+      'Beyoncé Crazy in Love',
+      'Coldplay Yellow',
+      'The Killers Mr. Brightside',
+      'Gnarls Barkley Crazy',
+      'Kelly Clarkson Since U Been Gone',
+      "Alicia Keys Fallin'",
+      'Black Eyed Peas I Gotta Feeling',
+      'Lady Gaga Bad Romance',
+      'Adele Rolling in the Deep',
+    ];
+  }
+
   private getCountrySpecificQueries(): string[] {
     return [
       'Garth Brooks Friends in Low Places',
@@ -1078,5 +1149,121 @@ export class MusicService {
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return shuffled;
+  }
+
+  async getCategoryMusicById(
+    categoryId: string,
+    limit: number = 50,
+    targetCount: number = 100,
+  ): Promise<MusicSearchResult[]> {
+    // Map category IDs to specific search strategies
+    const categoryMapping = {
+      'top-100': () => this.getTop100SpecificQueries(),
+      'karaoke-classics': () => [
+        "Don't Stop Believin' Journey",
+        'Sweet Caroline Neil Diamond',
+        'Piano Man Billy Joel',
+        'Bohemian Rhapsody Queen',
+        'I Want It That Way Backstreet Boys',
+        'Mr. Brightside The Killers',
+        'Wonderwall Oasis',
+        'Total Eclipse of the Heart Bonnie Tyler',
+        "Livin' on a Prayer Bon Jovi",
+        'Dancing Queen ABBA',
+      ],
+      'best-of-80s': () => this.getDecadeSpecificQueries('80s'),
+      'best-of-90s': () => this.getDecadeSpecificQueries('90s'),
+      'best-of-2000s': () => this.getDecadeSpecificQueries('2000s'),
+      'rock-hits': () => [
+        'Queen We Will Rock You',
+        'Led Zeppelin Stairway to Heaven',
+        'AC/DC Back in Black',
+        "Guns N' Roses Sweet Child O' Mine",
+        'The Rolling Stones Start Me Up',
+        'Aerosmith Dream On',
+        'Van Halen Jump',
+        'Def Leppard Pour Some Sugar On Me',
+      ],
+      'pop-hits': () => [
+        'Michael Jackson Billie Jean',
+        'Madonna Like a Prayer',
+        'Whitney Houston I Wanna Dance with Somebody',
+        'Prince Purple Rain',
+        'Cyndi Lauper Time After Time',
+        'George Michael Faith',
+        'Duran Duran Hungry Like the Wolf',
+        'Blondie Heart of Glass',
+      ],
+      'country-favorites': () => [
+        'Garth Brooks Friends in Low Places',
+        'Shania Twain Man! I Feel Like a Woman!',
+        'Johnny Cash Ring of Fire',
+        'Dolly Parton 9 to 5',
+        'Kenny Rogers The Gambler',
+        'Patsy Cline Crazy',
+        "Hank Williams Hey Good Lookin'",
+        'Willie Nelson On the Road Again',
+      ],
+      'rb-hiphop-hits': () => [
+        'Aretha Franklin Respect',
+        'Stevie Wonder Superstition',
+        'The Temptations My Girl',
+        "Diana Ross I'm Coming Out",
+        'Earth Wind & Fire September',
+        "Chaka Khan I'm Every Woman",
+        'Ray Charles Georgia On My Mind',
+        'James Brown I Got You (I Feel Good)',
+      ],
+      'one-hit-wonders': () => [
+        'Dexys Midnight Runners Come on Eileen',
+        'A-ha Take On Me',
+        'Toni Basil Mickey',
+        'Mambo No. 5 Lou Bega',
+        'Ice Ice Baby Vanilla Ice',
+        'Tubthumping Chumbawamba',
+        'Macarena Los Del Rio',
+        'Who Let the Dogs Out Baha Men',
+      ],
+      'duets-love-songs': () => [
+        'Islands in the Stream Kenny Rogers Dolly Parton',
+        'The Girl Is Mine Michael Jackson Paul McCartney',
+        'Shallow Lady Gaga Bradley Cooper',
+        "Don't Go Breaking My Heart Elton John Kiki Dee",
+        'Under Pressure Queen David Bowie',
+        'I Got You Babe Sonny & Cher',
+        'Beauty and the Beast Celine Dion Peabo Bryson',
+        'Say Say Say Paul McCartney Michael Jackson',
+      ],
+      'feel-good-classics': () => [
+        'Walking on Sunshine Katrina and the Waves',
+        'Good Vibrations The Beach Boys',
+        'Happy Pharrell Williams',
+        'Uptown Funk Mark Ronson Bruno Mars',
+        'I Got a Feeling Black Eyed Peas',
+        'September Earth Wind & Fire',
+        'Dancing Queen ABBA',
+        'Celebration Kool & The Gang',
+      ],
+    };
+
+    const getQueries = categoryMapping[categoryId] || (() => ['classic hits', 'greatest songs']);
+    const queries = getQueries();
+
+    const allResults: MusicSearchResult[] = [];
+    const maxQueries = Math.min(queries.length, 30); // Limit number of queries
+
+    for (let i = 0; i < maxQueries && allResults.length < targetCount; i++) {
+      try {
+        const query = queries[i];
+        const results = await this.searchSongs(query, Math.ceil(limit / 5), 0);
+        allResults.push(...results);
+      } catch (error) {
+        console.warn(`Failed to search for category query: ${queries[i]}`, error);
+      }
+    }
+
+    // Remove duplicates and sort by popularity
+    const uniqueResults = this.deduplicateResults(allResults);
+    return uniqueResults.slice(0, targetCount);
   }
 }

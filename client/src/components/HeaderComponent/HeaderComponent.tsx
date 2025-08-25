@@ -736,9 +736,6 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                                 {getUserSecondaryName(authStore.user)}
                               </Typography>
                             )}
-                            <Typography variant="caption" color="text.secondary">
-                              {authStore.user.email}
-                            </Typography>
                           </Box>
                         </MenuItem>
                       )}
@@ -1154,9 +1151,6 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                             {getUserSecondaryName(authStore.user)}
                           </Typography>
                         )}
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          {authStore.user.email}
-                        </Typography>
                       </Box>
                     </Box>
                   </ListItem>

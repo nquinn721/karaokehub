@@ -70,7 +70,7 @@ const SendFriendRequestModal: React.FC<SendFriendRequestModalProps> = observer(
         icon={<FontAwesomeIcon icon={faUserPlus} />}
         maxWidth="sm"
       >
-        <Box sx={{ mt: 1 }}>
+        <Box sx={{ mt: 1, minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
           <TextField
             fullWidth
             size="small"
@@ -92,14 +92,164 @@ const SendFriendRequestModal: React.FC<SendFriendRequestModalProps> = observer(
             }}
           />
 
-          {/* Search Results - Remove the loading box entirely */}
-          {searchQuery.length >= 1 &&
-            !friendsStore.searchLoading &&
-            friendsStore.safeSearchResults.length === 0 && (
+          {/* Search Results - Fixed height container */}
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '300px' }}>
+            {searchQuery.length >= 1 &&
+              !friendsStore.searchLoading &&
+              friendsStore.safeSearchResults.length === 0 && (
+                <Box
+                  sx={{
+                    textAlign: 'center',
+                    py: 6,
+                    px: 4,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 2,
+                    borderRadius: 2,
+                    backgroundColor: theme.palette.action.hover,
+                    flex: 1,
+                    justifyContent: 'center',
+                  }}
+                >
+                  <FontAwesomeIcon
+                    icon={faSearch}
+                    style={{
+                      fontSize: '48px',
+                      color: theme.palette.text.disabled,
+                      opacity: 0.5,
+                    }}
+                  />
+                  <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+                    No Users Found
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 300 }}>
+                    No users found matching "{searchQuery}"
+                    <br />
+                    Try searching by stage name
+                  </Typography>
+                </Box>
+              )}
+
+            {friendsStore.safeSearchResults.length > 0 && !friendsStore.searchLoading && (
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                  <Box
+                    sx={{
+                      p: 1,
+                      borderRadius: 2,
+                      backgroundColor: theme.palette.success.main + '15',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <FontAwesomeIcon
+                      icon={faSearch}
+                      style={{ color: theme.palette.success.main, fontSize: '16px' }}
+                    />
+                  </Box>
+                  <Typography variant="h6" fontWeight={600}>
+                    Search Results
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    ({friendsStore.safeSearchResults.length} user
+                    {friendsStore.safeSearchResults.length !== 1 ? 's' : ''} found)
+                  </Typography>
+                </Box>
+
+                <List
+                  sx={{
+                    maxHeight: 300,
+                    overflow: 'auto',
+                    p: 0,
+                    borderRadius: 2,
+                    border: `1px solid ${theme.palette.divider}`,
+                    '&::-webkit-scrollbar': {
+                      width: 8,
+                    },
+                    '&::-webkit-scrollbar-track': {
+                      backgroundColor: theme.palette.action.hover,
+                      borderRadius: 4,
+                    },
+                    '&::-webkit-scrollbar-thumb': {
+                      backgroundColor: theme.palette.action.selected,
+                      borderRadius: 4,
+                    },
+                  }}
+                >
+                  {friendsStore.safeSearchResults.map((user, index) => (
+                    <ListItem key={user.id} sx={{ p: 0 }}>
+                      <ListItemButton
+                        sx={{
+                          p: 3,
+                          borderBottom:
+                            index < friendsStore.safeSearchResults.length - 1
+                              ? `1px solid ${theme.palette.divider}`
+                              : 'none',
+                          '&:hover': {
+                            backgroundColor: theme.palette.action.hover,
+                          },
+                          '&:last-child': {
+                            borderBottom: 'none',
+                          },
+                        }}
+                        onClick={() => handleSendRequest(user.id)}
+                      >
+                        <ListItemAvatar>
+                          <Avatar
+                            src={user.avatar}
+                            sx={{
+                              width: 40,
+                              height: 40,
+                              bgcolor: theme.palette.primary.light,
+                              color: theme.palette.primary.contrastText,
+                            }}
+                          >
+                            {getUserDisplayName(user)?.charAt(0).toUpperCase() ||
+                              user.name?.charAt(0).toUpperCase() ||
+                              '?'}
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={
+                            <Typography variant="body1" fontWeight={500}>
+                              {getUserDisplayName(user)}
+                            </Typography>
+                          }
+                          secondary={
+                            getUserSecondaryName(user) ? (
+                              <Typography variant="body2" color="text.secondary">
+                                {getUserSecondaryName(user)}
+                              </Typography>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                Click to send friend request
+                              </Typography>
+                            )
+                          }
+                        />
+                        <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
+                          <FontAwesomeIcon
+                            icon={faUserPlus}
+                            style={{
+                              color: theme.palette.primary.main,
+                              fontSize: '16px',
+                            }}
+                          />
+                        </Box>
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            )}
+
+            {searchQuery.length === 0 && (
               <Box
                 sx={{
                   textAlign: 'center',
-                  py: 6,
+                  py: 8,
                   px: 4,
                   display: 'flex',
                   flexDirection: 'column',
@@ -107,10 +257,12 @@ const SendFriendRequestModal: React.FC<SendFriendRequestModalProps> = observer(
                   gap: 2,
                   borderRadius: 2,
                   backgroundColor: theme.palette.action.hover,
+                  flex: 1,
+                  justifyContent: 'center',
                 }}
               >
                 <FontAwesomeIcon
-                  icon={faSearch}
+                  icon={faUserPlus}
                   style={{
                     fontSize: '48px',
                     color: theme.palette.text.disabled,
@@ -118,160 +270,14 @@ const SendFriendRequestModal: React.FC<SendFriendRequestModalProps> = observer(
                   }}
                 />
                 <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
-                  No Users Found
+                  Find Friends
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 300 }}>
-                  No users found matching "{searchQuery}"
-                  <br />
-                  Try searching by stage name
+                  Start typing to search for users...
                 </Typography>
               </Box>
             )}
-
-          {friendsStore.safeSearchResults.length > 0 && !friendsStore.searchLoading && (
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                <Box
-                  sx={{
-                    p: 1,
-                    borderRadius: 2,
-                    backgroundColor: theme.palette.success.main + '15',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <FontAwesomeIcon
-                    icon={faSearch}
-                    style={{ color: theme.palette.success.main, fontSize: '16px' }}
-                  />
-                </Box>
-                <Typography variant="h6" fontWeight={600}>
-                  Search Results
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  ({friendsStore.safeSearchResults.length} user
-                  {friendsStore.safeSearchResults.length !== 1 ? 's' : ''} found)
-                </Typography>
-              </Box>
-
-              <List
-                sx={{
-                  maxHeight: 300,
-                  overflow: 'auto',
-                  p: 0,
-                  borderRadius: 2,
-                  border: `1px solid ${theme.palette.divider}`,
-                  '&::-webkit-scrollbar': {
-                    width: 8,
-                  },
-                  '&::-webkit-scrollbar-track': {
-                    backgroundColor: theme.palette.action.hover,
-                    borderRadius: 4,
-                  },
-                  '&::-webkit-scrollbar-thumb': {
-                    backgroundColor: theme.palette.action.selected,
-                    borderRadius: 4,
-                  },
-                }}
-              >
-                {friendsStore.safeSearchResults.map((user, index) => (
-                  <ListItem key={user.id} sx={{ p: 0 }}>
-                    <ListItemButton
-                      sx={{
-                        p: 3,
-                        borderBottom:
-                          index < friendsStore.safeSearchResults.length - 1
-                            ? `1px solid ${theme.palette.divider}`
-                            : 'none',
-                        '&:hover': {
-                          backgroundColor: theme.palette.action.hover,
-                        },
-                        '&:last-child': {
-                          borderBottom: 'none',
-                        },
-                      }}
-                      onClick={() => handleSendRequest(user.id)}
-                    >
-                      <ListItemAvatar>
-                        <Avatar
-                          src={user.avatar}
-                          sx={{
-                            width: 40,
-                            height: 40,
-                            bgcolor: theme.palette.primary.light,
-                            color: theme.palette.primary.contrastText,
-                          }}
-                        >
-                          {getUserDisplayName(user)?.charAt(0).toUpperCase() ||
-                            user.name?.charAt(0).toUpperCase() ||
-                            '?'}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Typography variant="body1" fontWeight={500}>
-                            {getUserDisplayName(user)}
-                          </Typography>
-                        }
-                        secondary={
-                          getUserSecondaryName(user) ? (
-                            <Typography variant="body2" color="text.secondary">
-                              {getUserSecondaryName(user)}
-                            </Typography>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">
-                              Click to send friend request
-                            </Typography>
-                          )
-                        }
-                      />
-                      <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
-                        <FontAwesomeIcon
-                          icon={faUserPlus}
-                          style={{
-                            color: theme.palette.primary.main,
-                            fontSize: '16px',
-                          }}
-                        />
-                      </Box>
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          )}
-
-          {searchQuery.length === 0 && (
-            <Box
-              sx={{
-                textAlign: 'center',
-                py: 8,
-                px: 4,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 2,
-                borderRadius: 2,
-                backgroundColor: theme.palette.action.hover,
-              }}
-            >
-              <FontAwesomeIcon
-                icon={faUserPlus}
-                style={{
-                  fontSize: '48px',
-                  color: theme.palette.text.disabled,
-                  opacity: 0.5,
-                }}
-              />
-              <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
-                Find Friends
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 300 }}>
-                Start typing to search for users...
-              </Typography>
-            </Box>
-          )}
+          </Box>
         </Box>
       </CustomModal>
     );

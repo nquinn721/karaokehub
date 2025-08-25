@@ -44,16 +44,14 @@ export const FloatingVolumeControl: React.FC = observer(() => {
         sx={{
           position: 'fixed',
           bottom: isMobile ? 16 : 24,
-          left: '50%',
-          transform: 'translateX(-50%)',
+          left: `calc(50% - ${isMobile ? 160 : 200}px)`,
           zIndex: 1300,
           background: `linear-gradient(135deg, ${theme.palette.background.paper}dd, ${theme.palette.background.default}dd)`,
           backdropFilter: 'blur(20px)',
           border: `1px solid ${theme.palette.divider}`,
           borderRadius: 3,
           p: isMobile ? 1.5 : 2,
-          minWidth: isMobile ? 280 : 350,
-          maxWidth: isMobile ? 320 : 400,
+          width: isMobile ? 320 : 400,
           boxShadow: `0 8px 32px ${theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.15)'}`,
         }}
       >

@@ -20,6 +20,9 @@ export class SongFavorite {
   @Column('uuid')
   songId: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  category?: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

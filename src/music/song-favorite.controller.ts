@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -24,9 +25,19 @@ export class SongFavoriteController {
 
   @Post(':songId')
   @HttpCode(HttpStatus.CREATED)
-  async addFavorite(@Request() req, @Param('songId') songId: string, @Body() songData?: any) {
+  async addFavorite(
+    @Request() req,
+    @Param('songId') songId: string,
+    @Body() body: { songData?: any; category?: string },
+  ) {
     const userId = req.user.id;
-    const favorite = await this.songFavoriteService.addFavoriteWithData(userId, songId, songData);
+    const { songData, category } = body || {};
+    const favorite = await this.songFavoriteService.addFavoriteWithCategory(
+      userId,
+      songId,
+      category,
+      songData,
+    );
     return {
       success: true,
       message: 'Song added to favorites',
@@ -36,9 +47,17 @@ export class SongFavoriteController {
 
   @Delete(':songId')
   @HttpCode(HttpStatus.OK)
-  async removeFavorite(@Request() req, @Param('songId') songId: string) {
+  async removeFavorite(
+    @Request() req,
+    @Param('songId') songId: string,
+    @Query('category') category?: string,
+  ) {
     const userId = req.user.id;
-    await this.songFavoriteService.removeFavorite(userId, songId);
+    if (category) {
+      await this.songFavoriteService.removeFavoriteByCategory(userId, songId, category);
+    } else {
+      await this.songFavoriteService.removeFavorite(userId, songId);
+    }
     return {
       success: true,
       message: 'Song removed from favorites',
@@ -46,9 +65,11 @@ export class SongFavoriteController {
   }
 
   @Get()
-  async getUserFavorites(@Request() req) {
+  async getUserFavorites(@Request() req, @Query('category') category?: string) {
     const userId = req.user.id;
-    const favorites = await this.songFavoriteService.getUserFavorites(userId);
+    const favorites = category
+      ? await this.songFavoriteService.getUserFavoritesByCategory(userId, category)
+      : await this.songFavoriteService.getUserFavorites(userId);
     return {
       success: true,
       data: favorites,

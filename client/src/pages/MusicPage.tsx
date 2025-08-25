@@ -299,7 +299,10 @@ export const MusicPage: React.FC = observer(() => {
 
     try {
       if (isFavorited) {
-        await songFavoriteStore.removeSongFavorite(song.id);
+        await songFavoriteStore.removeSongFavorite(
+          song.id,
+          musicStore.selectedCategory !== 'all' ? musicStore.selectedCategory : undefined,
+        );
       } else {
         // Pass song data to create the song in the database if it doesn't exist
         const songData = {
@@ -313,7 +316,11 @@ export const MusicPage: React.FC = observer(() => {
           albumArtMedium: song.albumArt?.medium,
           albumArtLarge: song.albumArt?.large,
         };
-        await songFavoriteStore.addSongFavorite(song.id, songData);
+        await songFavoriteStore.addSongFavorite(
+          song.id,
+          songData,
+          musicStore.selectedCategory !== 'all' ? musicStore.selectedCategory : undefined,
+        );
       }
     } catch (error) {
       console.error('❌ Error toggling favorite:', error);
