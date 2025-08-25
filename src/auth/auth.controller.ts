@@ -318,4 +318,151 @@ export class AuthController {
       throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
     }
   }
+
+  // Mobile OAuth endpoints
+  @Post('google/mobile')
+  async googleMobileAuth(@Body() body: { code: string; redirectUri: string; codeVerifier?: string }) {
+    try {
+      console.log('🟢 [GOOGLE_MOBILE_AUTH] Starting mobile OAuth flow');
+      
+      const { code, redirectUri, codeVerifier } = body;
+
+      if (!code || !redirectUri) {
+        throw new HttpException('Authorization code and redirect URI are required', HttpStatus.BAD_REQUEST);
+      }
+
+      // Exchange authorization code for tokens
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID!,
+          client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+          code,
+          grant_type: 'authorization_code',
+          redirect_uri: redirectUri,
+          ...(codeVerifier && { code_verifier: codeVerifier }),
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        throw new HttpException('Failed to exchange authorization code for tokens', HttpStatus.BAD_REQUEST);
+      }
+
+      const tokens = await tokenResponse.json();
+
+      // Get user info from Google
+      const userResponse = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokens.access_token}`);
+      
+      if (!userResponse.ok) {
+        throw new HttpException('Failed to get user info from Google', HttpStatus.BAD_REQUEST);
+      }
+
+      const googleUser = await userResponse.json();
+
+      // Create a profile object similar to passport strategy
+      const profile = {
+        id: googleUser.id,
+        emails: [{ value: googleUser.email }],
+        name: {
+          givenName: googleUser.given_name,
+          familyName: googleUser.family_name,
+        },
+        photos: [{ value: googleUser.picture }],
+      };
+
+      // Validate user using existing OAuth service
+      const user = await this.authService.validateOAuthUser(profile, 'google');
+      const token = this.authService.generateToken(user);
+
+      console.log('🟢 [GOOGLE_MOBILE_AUTH] Mobile OAuth successful');
+
+      return {
+        success: true,
+        user,
+        token,
+        message: 'Google authentication successful',
+      };
+    } catch (error) {
+      console.error('🔴 [GOOGLE_MOBILE_AUTH] Mobile OAuth failed:', error);
+      throw new HttpException(
+        error.message || 'Google mobile authentication failed',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+  }
+
+  @Post('facebook/mobile')
+  async facebookMobileAuth(@Body() body: { code: string; redirectUri: string }) {
+    try {
+      console.log('🟢 [FACEBOOK_MOBILE_AUTH] Starting mobile OAuth flow');
+      
+      const { code, redirectUri } = body;
+
+      if (!code || !redirectUri) {
+        throw new HttpException('Authorization code and redirect URI are required', HttpStatus.BAD_REQUEST);
+      }
+
+      // Exchange authorization code for tokens
+      const tokenResponse = await fetch('https://graph.facebook.com/v18.0/oauth/access_token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: process.env.FACEBOOK_CLIENT_ID!,
+          client_secret: process.env.FACEBOOK_CLIENT_SECRET!,
+          code,
+          redirect_uri: redirectUri,
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        throw new HttpException('Failed to exchange authorization code for tokens', HttpStatus.BAD_REQUEST);
+      }
+
+      const tokens = await tokenResponse.json();
+
+      // Get user info from Facebook
+      const userResponse = await fetch(`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${tokens.access_token}`);
+      
+      if (!userResponse.ok) {
+        throw new HttpException('Failed to get user info from Facebook', HttpStatus.BAD_REQUEST);
+      }
+
+      const facebookUser = await userResponse.json();
+
+      // Create a profile object similar to passport strategy
+      const profile = {
+        id: facebookUser.id,
+        emails: [{ value: facebookUser.email }],
+        name: {
+          givenName: facebookUser.name.split(' ')[0],
+          familyName: facebookUser.name.split(' ').slice(1).join(' '),
+        },
+        photos: [{ value: facebookUser.picture?.data?.url }],
+      };
+
+      // Validate user using existing OAuth service
+      const user = await this.authService.validateOAuthUser(profile, 'facebook');
+      const token = this.authService.generateToken(user);
+
+      console.log('🟢 [FACEBOOK_MOBILE_AUTH] Mobile OAuth successful');
+
+      return {
+        success: true,
+        user,
+        token,
+        message: 'Facebook authentication successful',
+      };
+    } catch (error) {
+      console.error('🔴 [FACEBOOK_MOBILE_AUTH] Mobile OAuth failed:', error);
+      throw new HttpException(
+        error.message || 'Facebook mobile authentication failed',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+  }
 }

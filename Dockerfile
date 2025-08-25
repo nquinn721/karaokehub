@@ -23,7 +23,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-COPY . .
+# Copy source files more explicitly to ensure structure is preserved
+COPY src/ ./src/
+COPY nest-cli.json ./
+COPY tsconfig*.json ./
 COPY --from=client-builder /app/client/dist ./client/dist
 
  # Ensure public directory exists and copy client assets
