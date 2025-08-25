@@ -29,7 +29,7 @@ export class Song {
   duration: number; // in seconds
 
   @Column({ nullable: true })
-  spotifyId: string;
+  itunesId: string;
 
   @Column({ nullable: true })
   youtubeId: string;

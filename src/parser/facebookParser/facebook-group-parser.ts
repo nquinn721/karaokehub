@@ -73,7 +73,9 @@ async function loadFacebookCookies(page: any, cookiesFilePath: string): Promise<
     if (cookies.length === 0) {
       sendProgress('❌ No Facebook cookies found (neither environment variable nor file)');
       if (process.env.NODE_ENV === 'production') {
-        sendProgress('💡 For production, set FB_SESSION_COOKIES environment variable with valid Facebook session cookies');
+        sendProgress(
+          '💡 For production, set FB_SESSION_COOKIES environment variable with valid Facebook session cookies',
+        );
       } else {
         sendProgress('💡 For development, ensure facebook-cookies.json exists in data/ directory');
       }
@@ -95,7 +97,9 @@ async function loadFacebookCookies(page: any, cookiesFilePath: string): Promise<
       // Check if cookie is expired
       if (cookie.expires && cookie.expires * 1000 < now) {
         expiredCookies++;
-        sendProgress(`⏰ Cookie ${cookie.name} is expired (expired: ${new Date(cookie.expires * 1000)})`);
+        sendProgress(
+          `⏰ Cookie ${cookie.name} is expired (expired: ${new Date(cookie.expires * 1000)})`,
+        );
         continue;
       }
 
@@ -118,14 +122,20 @@ async function loadFacebookCookies(page: any, cookiesFilePath: string): Promise<
     }
 
     if (validCookies === 0) {
-      sendProgress(`❌ No valid cookies could be set (${expiredCookies} expired, ${cookies.length - validCookies - expiredCookies} invalid)`);
+      sendProgress(
+        `❌ No valid cookies could be set (${expiredCookies} expired, ${cookies.length - validCookies - expiredCookies} invalid)`,
+      );
       return false;
     }
 
-    sendProgress(`✅ Successfully loaded ${validCookies}/${cookies.length} Facebook session cookies from ${cookieSource}`);
-    
+    sendProgress(
+      `✅ Successfully loaded ${validCookies}/${cookies.length} Facebook session cookies from ${cookieSource}`,
+    );
+
     if (expiredCookies > 0) {
-      sendProgress(`⚠️ Note: ${expiredCookies} cookies were expired and skipped. Consider refreshing your session cookies.`);
+      sendProgress(
+        `⚠️ Note: ${expiredCookies} cookies were expired and skipped. Consider refreshing your session cookies.`,
+      );
     }
 
     return true;
@@ -156,7 +166,7 @@ async function checkIfLoggedIn(page: any): Promise<boolean> {
     sendProgress('🔍 Checking Facebook login status...');
 
     // Wait for page to stabilize
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Check for various login/logout indicators
     const loginStatus = await page.evaluate(() => {
@@ -168,26 +178,32 @@ async function checkIfLoggedIn(page: any): Promise<boolean> {
 
       // Check for logged-in user elements
       const userNav = document.querySelector('[role="navigation"]');
-      const profileMenu = document.querySelector('[data-click="profile_icon"], [aria-label*="profile"], [aria-label*="account"]');
+      const profileMenu = document.querySelector(
+        '[data-click="profile_icon"], [aria-label*="profile"], [aria-label*="account"]',
+      );
       const homeLink = document.querySelector('a[href="/"]');
-      
+
       // Check for Facebook navigation elements
       const fbLogo = document.querySelector('[aria-label="Facebook"]');
-      const notificationIcon = document.querySelector('[aria-label*="notification"], [aria-label*="Notification"]');
-      const messagesIcon = document.querySelector('[aria-label*="message"], [aria-label*="Message"]');
+      const notificationIcon = document.querySelector(
+        '[aria-label*="notification"], [aria-label*="Notification"]',
+      );
+      const messagesIcon = document.querySelector(
+        '[aria-label*="message"], [aria-label*="Message"]',
+      );
 
       // Check page URL and title for login indicators
       const url = window.location.href;
       const title = document.title;
-      
+
       // Look for error messages or login prompts
-      const errorMessages = Array.from(document.querySelectorAll('div, span')).filter(el => 
-        el.textContent && (
-          el.textContent.includes('log in') || 
-          el.textContent.includes('login') ||
-          el.textContent.includes('password') ||
-          el.textContent.includes('email')
-        )
+      const errorMessages = Array.from(document.querySelectorAll('div, span')).filter(
+        (el) =>
+          el.textContent &&
+          (el.textContent.includes('log in') ||
+            el.textContent.includes('login') ||
+            el.textContent.includes('password') ||
+            el.textContent.includes('email')),
       );
 
       return {
@@ -204,7 +220,10 @@ async function checkIfLoggedIn(page: any): Promise<boolean> {
         hasNotificationIcon: !!notificationIcon,
         hasMessagesIcon: !!messagesIcon,
         errorCount: errorMessages.length,
-        errorSample: errorMessages.slice(0, 2).map(el => el.textContent?.trim()).filter(Boolean)
+        errorSample: errorMessages
+          .slice(0, 2)
+          .map((el) => el.textContent?.trim())
+          .filter(Boolean),
       };
     });
 
@@ -212,15 +231,25 @@ async function checkIfLoggedIn(page: any): Promise<boolean> {
     sendProgress(`📊 Login analysis:`);
     sendProgress(`   URL: ${loginStatus.url}`);
     sendProgress(`   Title: ${loginStatus.title}`);
-    sendProgress(`   Login elements: form=${loginStatus.hasLoginForm}, email=${loginStatus.hasEmailInput}, pass=${loginStatus.hasPasswordInput}`);
-    sendProgress(`   User elements: nav=${loginStatus.hasUserNav}, profile=${loginStatus.hasProfileMenu}, notifications=${loginStatus.hasNotificationIcon}`);
+    sendProgress(
+      `   Login elements: form=${loginStatus.hasLoginForm}, email=${loginStatus.hasEmailInput}, pass=${loginStatus.hasPasswordInput}`,
+    );
+    sendProgress(
+      `   User elements: nav=${loginStatus.hasUserNav}, profile=${loginStatus.hasProfileMenu}, notifications=${loginStatus.hasNotificationIcon}`,
+    );
 
     // Determine if logged in based on multiple indicators
-    const loginPageIndicators = loginStatus.hasLoginForm || loginStatus.hasEmailInput || loginStatus.hasPasswordInput;
-    const loggedInIndicators = loginStatus.hasUserNav || loginStatus.hasProfileMenu || loginStatus.hasNotificationIcon || loginStatus.hasMessagesIcon;
-    
+    const loginPageIndicators =
+      loginStatus.hasLoginForm || loginStatus.hasEmailInput || loginStatus.hasPasswordInput;
+    const loggedInIndicators =
+      loginStatus.hasUserNav ||
+      loginStatus.hasProfileMenu ||
+      loginStatus.hasNotificationIcon ||
+      loginStatus.hasMessagesIcon;
+
     // Check URL patterns
-    const isLoginUrl = loginStatus.url.includes('/login') || loginStatus.url.includes('/checkpoint');
+    const isLoginUrl =
+      loginStatus.url.includes('/login') || loginStatus.url.includes('/checkpoint');
     const isGroupUrl = loginStatus.url.includes('/groups/');
 
     if (loginPageIndicators && !loggedInIndicators) {
@@ -250,7 +279,6 @@ async function checkIfLoggedIn(page: any): Promise<boolean> {
     // Default to not logged in if unclear
     sendProgress('⚠️ Login status unclear - defaulting to NOT logged in for safety');
     return false;
-
   } catch (error) {
     sendProgress(`❌ Error checking login status: ${error.message}`);
     return false;
@@ -260,7 +288,10 @@ async function checkIfLoggedIn(page: any): Promise<boolean> {
 /**
  * Use Gemini AI to analyze page content and detect blocking popups/overlays
  */
-async function analyzePageWithGemini(page: any, geminiApiKey: string): Promise<{
+async function analyzePageWithGemini(
+  page: any,
+  geminiApiKey: string,
+): Promise<{
   hasBlockingPopup: boolean;
   popupDescription: string;
   suggestedActions: string[];
@@ -299,7 +330,7 @@ async function analyzePageWithGemini(page: any, geminiApiKey: string): Promise<{
 
       // Also get page title and any error messages
       textContent.push(`Page title: "${document.title}"`);
-      
+
       return [...new Set(textContent)].join('\n');
     });
 
@@ -330,16 +361,17 @@ Focus on elements that would block or interfere with scrolling and content viewi
 
     const result = await model.generateContent(prompt);
     const response = result.response.text().trim();
-    
+
     try {
       const analysis = JSON.parse(response);
-      sendProgress(`🧠 Gemini analysis: ${analysis.hasBlockingPopup ? 'Popup detected' : 'No blocking popups'} - ${analysis.popupDescription}`);
+      sendProgress(
+        `🧠 Gemini analysis: ${analysis.hasBlockingPopup ? 'Popup detected' : 'No blocking popups'} - ${analysis.popupDescription}`,
+      );
       return analysis;
     } catch (parseError) {
       sendProgress(`⚠️ Failed to parse Gemini response, using fallback detection`);
       return { hasBlockingPopup: false, popupDescription: '', suggestedActions: [] };
     }
-
   } catch (error) {
     sendProgress(`❌ Gemini page analysis failed: ${error.message}`);
     return { hasBlockingPopup: false, popupDescription: '', suggestedActions: [] };
@@ -362,7 +394,7 @@ async function tryClickButtons(page: any, buttonTexts: string[]): Promise<boolea
             return true;
           }
         }
-        
+
         // Method 2: Find by aria-label
         for (const button of buttons) {
           if (button.getAttribute('aria-label') === buttonText) {
@@ -370,7 +402,7 @@ async function tryClickButtons(page: any, buttonTexts: string[]): Promise<boolea
             return true;
           }
         }
-        
+
         // Method 3: Find by partial text match (case insensitive)
         for (const button of buttons) {
           const content = button.textContent?.trim().toLowerCase();
@@ -379,13 +411,13 @@ async function tryClickButtons(page: any, buttonTexts: string[]): Promise<boolea
             return true;
           }
         }
-        
+
         return false;
       }, text);
-      
+
       if (clicked) {
         sendProgress(`✅ Successfully clicked button: "${text}"`);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for action to take effect
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for action to take effect
         return true;
       }
     } catch (error) {
@@ -405,23 +437,32 @@ async function closeFacebookPopups(page: any, geminiApiKey?: string): Promise<vo
     // First, use Gemini to analyze the page for blocking elements
     if (geminiApiKey) {
       const geminiAnalysis = await analyzePageWithGemini(page, geminiApiKey);
-      
+
       if (geminiAnalysis.hasBlockingPopup) {
         sendProgress(`🔍 Gemini detected popup: ${geminiAnalysis.popupDescription}`);
-        
+
         // Try Gemini's suggested actions first
         for (const action of geminiAnalysis.suggestedActions) {
           sendProgress(`🎯 Trying Gemini suggestion: ${action}`);
-          
+
           // Convert suggestions to actionable selectors
           if (action.toLowerCase().includes('not now') || action.toLowerCase().includes('block')) {
-            await tryClickButtons(page, ['Not now', 'Not Now', 'Block', 'Don\'t allow', 'Don\'t Allow']);
-          } else if (action.toLowerCase().includes('close') || action.toLowerCase().includes('dismiss')) {
+            await tryClickButtons(page, [
+              'Not now',
+              'Not Now',
+              'Block',
+              "Don't allow",
+              "Don't Allow",
+            ]);
+          } else if (
+            action.toLowerCase().includes('close') ||
+            action.toLowerCase().includes('dismiss')
+          ) {
             await tryClickButtons(page, ['Close', 'Dismiss', 'X', '×']);
           } else if (action.toLowerCase().includes('skip')) {
             await tryClickButtons(page, ['Skip', 'Maybe later', 'No thanks']);
           }
-          
+
           // Check if popup is gone after each action
           const stillBlocked = await analyzePageWithGemini(page, geminiApiKey);
           if (!stillBlocked.hasBlockingPopup) {
@@ -844,8 +885,12 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
     if (!isLoggedIn) {
       if (process.env.NODE_ENV === 'production') {
         // In production, we rely entirely on session cookies - no interactive login
-        sendProgress('❌ Not logged in to Facebook. In production mode, this requires valid session cookies.');
-        throw new Error('Facebook authentication failed. Session cookies may be expired or invalid.');
+        sendProgress(
+          '❌ Not logged in to Facebook. In production mode, this requires valid session cookies.',
+        );
+        throw new Error(
+          'Facebook authentication failed. Session cookies may be expired or invalid.',
+        );
       } else {
         // Development mode - attempt interactive login
         const loginSuccess = await performInteractiveLogin(page, cookiesFilePath);

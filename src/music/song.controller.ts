@@ -54,9 +54,9 @@ export class SongController {
     };
   }
 
-  @Get('spotify/:spotifyId')
-  async findBySpotifyId(@Param('spotifyId') spotifyId: string) {
-    const song = await this.songService.findBySpotifyId(spotifyId);
+  @Get('itunes/:itunesId')
+  async findByItunesId(@Param('itunesId') itunesId: string) {
+    const song = await this.songService.findByItunesId(itunesId);
     return {
       success: true,
       data: song,

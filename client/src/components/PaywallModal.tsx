@@ -111,9 +111,21 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   const handleSubscribe = async (planId: string) => {
     setLoading(true);
     try {
-      const response = await apiStore.post(apiStore.endpoints.subscription.createCheckoutSession, {
-        plan: planId,
+      // The backend enum uses lowercase values: AD_FREE = 'ad_free', PREMIUM = 'premium'
+      // So we can send the frontend plan names directly
+      const payload = { plan: planId };
+
+      console.log('PaywallModal: Sending subscription request:', {
+        planId,
+        payload,
+        endpoint: apiStore.endpoints.subscription.createCheckoutSession,
+        payloadJSON: JSON.stringify(payload),
       });
+
+      const response = await apiStore.post(
+        apiStore.endpoints.subscription.createCheckoutSession,
+        payload,
+      );
 
       if (response.url) {
         window.location.href = response.url;

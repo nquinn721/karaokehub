@@ -9,7 +9,7 @@ export interface CreateSongDto {
   album?: string;
   genre?: string;
   duration?: number;
-  spotifyId?: string;
+  itunesId?: string;
   youtubeId?: string;
   previewUrl?: string;
   albumArtSmall?: string;
@@ -23,7 +23,7 @@ export interface UpdateSongDto {
   album?: string;
   genre?: string;
   duration?: number;
-  spotifyId?: string;
+  itunesId?: string;
   youtubeId?: string;
   previewUrl?: string;
   albumArtSmall?: string;
@@ -63,9 +63,9 @@ export class SongService {
     return song;
   }
 
-  async findBySpotifyId(spotifyId: string): Promise<Song | null> {
+  async findByItunesId(itunesId: string): Promise<Song | null> {
     return await this.songRepository.findOne({
-      where: { spotifyId },
+      where: { itunesId },
       relations: ['favorites'],
     });
   }

@@ -60,7 +60,32 @@ export class StripeService {
         billing_address_collection: 'auto',
       };
 
-      console.log('📝 [STRIPE_SERVICE] Session configuration:', JSON.stringify(sessionConfig, null, 2));
+      // Add test mode enhancements for development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🧪 [STRIPE_SERVICE] Adding test mode enhancements...');
+
+        // Pre-fill customer email for faster testing
+        sessionConfig.customer_email = undefined; // Let customer ID handle this
+
+        // Add metadata for test tracking
+        sessionConfig.metadata = {
+          environment: 'development',
+          test_mode: 'true',
+          created_at: new Date().toISOString(),
+        };
+
+        // Add automatic tax calculation for testing
+        sessionConfig.automatic_tax = {
+          enabled: true,
+        };
+
+        console.log('✅ [STRIPE_SERVICE] Test mode enhancements added');
+      }
+
+      console.log(
+        '📝 [STRIPE_SERVICE] Session configuration:',
+        JSON.stringify(sessionConfig, null, 2),
+      );
 
       const session = await this.stripe.checkout.sessions.create(sessionConfig);
 
@@ -68,6 +93,7 @@ export class StripeService {
         sessionId: session.id,
         mode: session.mode,
         status: session.status,
+        url: session.url?.substring(0, 80) + '...',
       });
 
       return session;

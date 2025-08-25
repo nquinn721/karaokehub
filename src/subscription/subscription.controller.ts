@@ -3,6 +3,7 @@ import { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { User } from '../entities/user.entity';
+import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto';
 import { StripeService } from './stripe.service';
 import { SubscriptionPlan } from './subscription.entity';
 import { SubscriptionService } from './subscription.service';
@@ -49,7 +50,7 @@ export class SubscriptionController {
 
   @Post('create-checkout-session')
   @UseGuards(JwtAuthGuard)
-  async createCheckoutSession(@CurrentUser() user: User, @Body() body: { plan: SubscriptionPlan }) {
+  async createCheckoutSession(@CurrentUser() user: User, @Body() body: CreateCheckoutSessionDto) {
     try {
       console.log('🛒 [SUBSCRIPTION] Create checkout session request:', {
         userId: user.id,
@@ -58,19 +59,21 @@ export class SubscriptionController {
         planType: typeof body.plan,
       });
 
-      // Validate the plan
+      // Validate the plan (this should now be handled by the DTO validation)
       if (!Object.values(SubscriptionPlan).includes(body.plan)) {
         console.error('❌ [SUBSCRIPTION] Invalid subscription plan:', body.plan);
-        throw new Error(`Invalid subscription plan: ${body.plan}. Valid plans: ${Object.values(SubscriptionPlan).join(', ')}`);
+        throw new Error(
+          `Invalid subscription plan: ${body.plan}. Valid plans: ${Object.values(SubscriptionPlan).join(', ')}`,
+        );
       }
 
       const session = await this.subscriptionService.createCheckoutSession(user.id, body.plan);
-      
+
       console.log('✅ [SUBSCRIPTION] Checkout session created:', {
         sessionId: session.id,
         url: session.url?.substring(0, 50) + '...',
       });
-      
+
       return { url: session.url };
     } catch (error) {
       console.error('❌ [SUBSCRIPTION] Checkout session creation failed:', {

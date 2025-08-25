@@ -268,7 +268,7 @@ const AdminParserPage: React.FC = observer(() => {
 
     try {
       let result;
-      
+
       if (parseMethod === 'deepseek') {
         // Use experimental DeepSeek parsing
         const parseType = isCurrentUrlFacebook ? 'facebook' : 'karaoke';
@@ -277,7 +277,7 @@ const AdminParserPage: React.FC = observer(() => {
         // Use traditional parsing methods
         result = await parserStore.parseAndSaveWebsite(urlToParse, parseMethod);
       }
-      
+
       setParseResult(result);
 
       // Only refresh pending reviews if parsing was successful
@@ -750,7 +750,9 @@ const AdminParserPage: React.FC = observer(() => {
                         <RadioGroup
                           row
                           value={parseMethod}
-                          onChange={(e) => setParseMethod(e.target.value as 'html' | 'screenshot' | 'deepseek')}
+                          onChange={(e) =>
+                            setParseMethod(e.target.value as 'html' | 'screenshot' | 'deepseek')
+                          }
                         >
                           <FormControlLabel
                             value="screenshot"
@@ -758,10 +760,10 @@ const AdminParserPage: React.FC = observer(() => {
                             label="Screenshot Parsing (Recommended)"
                           />
                           <FormControlLabel value="html" control={<Radio />} label="HTML Parsing" />
-                          <FormControlLabel 
-                            value="deepseek" 
-                            control={<Radio />} 
-                            label="🧪 DeepSeek-V3.1 (Experimental)" 
+                          <FormControlLabel
+                            value="deepseek"
+                            control={<Radio />}
+                            label="🧪 DeepSeek-V3.1 (Experimental)"
                           />
                         </RadioGroup>
                         <Typography variant="caption" color="text.secondary">

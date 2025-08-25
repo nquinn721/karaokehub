@@ -557,15 +557,15 @@ export class ParserStore {
   }> {
     try {
       this.addLogEntry('🛑 Cancellation requested by user...', 'warning');
-      
+
       // Call the emergency cancel endpoint
       const result = await apiStore.post('/parser/emergency-cancel');
-      
+
       if (result.success) {
         this.addLogEntry('✅ Parsing operation cancelled successfully', 'success');
         this.stopParsingTimer();
         this.setLoading(false);
-        
+
         return {
           success: true,
           message: 'Parsing operation cancelled successfully',
@@ -592,7 +592,7 @@ export class ParserStore {
    */
   async parseWithDeepSeek(
     url: string,
-    parseType: 'karaoke' | 'facebook' = 'karaoke'
+    parseType: 'karaoke' | 'facebook' = 'karaoke',
   ): Promise<{
     success: boolean;
     error?: string;
@@ -616,11 +616,11 @@ export class ParserStore {
 
       if (result.success) {
         this.addLogEntry('✅ DeepSeek parsing completed successfully!', 'success');
-        
+
         if (result.stats) {
           this.addLogEntry(
             `📊 Found: ${result.stats.shows || 0} shows, ${result.stats.djs || 0} DJs, ${result.stats.vendors || 0} vendors`,
-            'success'
+            'success',
           );
         }
 
@@ -639,7 +639,7 @@ export class ParserStore {
       }
     } catch (error: any) {
       let errorMessage = 'Failed to parse with DeepSeek';
-      
+
       if (error.response?.status === 500) {
         errorMessage = 'DeepSeek API error - check configuration';
         this.addLogEntry('❌ DeepSeek API error - ensure DEEPSEEK_API_KEY is configured', 'error');

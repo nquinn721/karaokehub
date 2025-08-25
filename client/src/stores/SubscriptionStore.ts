@@ -180,6 +180,13 @@ export class SubscriptionStore {
   async createCheckoutSession(plan: 'ad_free' | 'premium') {
     try {
       this.setLoading(true);
+
+      // Backend enum uses lowercase values: AD_FREE = 'ad_free', PREMIUM = 'premium'
+      // So we can send the frontend plan names directly
+      console.log('🛒 [SUBSCRIPTION_STORE] Creating checkout session:', {
+        plan,
+      });
+
       const response = await apiStore.post(apiStore.endpoints.subscription.createCheckoutSession, {
         plan,
       });
@@ -189,7 +196,15 @@ export class SubscriptionStore {
       });
 
       if (response.url) {
-        window.location.href = response.url;
+        // For development/testing, add test card auto-fill parameters
+        if (process.env.NODE_ENV === 'development') {
+          const testUrl = new URL(response.url);
+          testUrl.searchParams.append('prefilled_email', 'test@example.com');
+          // Note: Stripe will automatically use test cards in test mode
+          window.location.href = testUrl.toString();
+        } else {
+          window.location.href = response.url;
+        }
       }
 
       return { success: true };
