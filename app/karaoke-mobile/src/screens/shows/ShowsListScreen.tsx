@@ -1,40 +1,29 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import * as Location from 'expo-location';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
+  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import MapView, { Marker, Region } from 'react-native-maps';
 
-import { colors } from '../../theme';
 import { ShowsStackParamList } from '../../navigation/ShowsNavigator';
 import { showsStore } from '../../stores';
+import { colors } from '../../theme';
 import { Show } from '../../types';
 
 type ShowsListScreenNavigationProp = StackNavigationProp<ShowsStackParamList, 'ShowsList'>;
 
-const { width, height } = Dimensions.get('window');
-
 const ShowsListScreen = observer(() => {
   const navigation = useNavigation<ShowsListScreenNavigationProp>();
-  const [region, setRegion] = useState<Region>({
-    latitude: 37.7749,
-    longitude: -122.4194,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-  });
   const [userLocation, setUserLocation] = useState<Location.LocationObjectCoords | null>(null);
-  const [locationPermission, setLocationPermission] = useState<boolean>(false);
-  const [selectedShow, setSelectedShow] = useState<Show | null>(null);
 
   useEffect(() => {
     loadShows();
@@ -44,28 +33,10 @@ const ShowsListScreen = observer(() => {
   const requestLocationPermission = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      
+
       if (status === 'granted') {
-        setLocationPermission(true);
         const location = await Location.getCurrentPositionAsync({});
         setUserLocation(location.coords);
-        
-        // Update map region to user's location
-        setRegion({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
-        });
-      } else {
-        Alert.alert(
-          'Location Permission',
-          'Location permission is needed to show karaoke shows near you.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Settings', onPress: () => Location.requestForegroundPermissionsAsync() }
-          ]
-        );
       }
     } catch (error) {
       console.error('Error requesting location permission:', error);
@@ -85,17 +56,6 @@ const ShowsListScreen = observer(() => {
     navigation.navigate('ShowDetail', { showId: show.id });
   };
 
-  const handleMarkerPress = (show: Show) => {
-    setSelectedShow(show);
-    // Center map on selected show
-    setRegion({
-      latitude: parseFloat(show.latitude) || region.latitude,
-      longitude: parseFloat(show.longitude) || region.longitude,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    });
-  };
-
   const handleFavoritePress = async (show: Show) => {
     try {
       const isFavorited = showsStore.isShowFavorited(show.id);
@@ -111,86 +71,47 @@ const ShowsListScreen = observer(() => {
     }
   };
 
-  const formatTime = (time?: string) => {
-    if (!time) return '';
-    try {
-      const [hours, minutes] = time.split(':');
-      const date = new Date();
-      date.setHours(parseInt(hours, 10), parseInt(minutes, 10));
-      return date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
-    } catch {
-      return time;
-    }
-  };
+  const renderShowItem = ({ item: show }: { item: Show }) => (
+    <TouchableOpacity style={styles.showItem} onPress={() => handleShowPress(show)}>
+      <View style={styles.showHeader}>
+        <Text style={styles.showVenue} numberOfLines={1}>
+          {show.venue || 'Unknown Venue'}
+        </Text>
+        <TouchableOpacity onPress={() => handleFavoritePress(show)} style={styles.favoriteButton}>
+          <Ionicons
+            name={showsStore.isShowFavorited(show.id) ? 'heart' : 'heart-outline'}
+            size={24}
+            color={
+              showsStore.isShowFavorited(show.id) ? colors.dark.error : colors.dark.textSecondary
+            }
+          />
+        </TouchableOpacity>
+      </View>
 
-  const formatDay = (day?: string) => {
-    if (!day) return '';
-    return day.charAt(0).toUpperCase() + day.slice(1);
-  };
+      <Text style={styles.showAddress} numberOfLines={2}>
+        {show.address ? `${show.address}, ` : ''}
+        {show.city ? `${show.city}, ` : ''}
+        {show.state || ''}
+      </Text>
 
-  const renderShowItem = ({ item: show }: { item: Show }) => {
-    const isFavorited = showsStore.isShowFavorited(show.id);
+      {show.time && (
+        <Text style={styles.showTime}>
+          <Ionicons name="time-outline" size={16} color={colors.dark.textSecondary} /> {show.time}
+        </Text>
+      )}
 
-    return (
-      <TouchableOpacity
-        style={styles.showCard}
-        onPress={() => handleShowPress(show)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.showHeader}>
-          <View style={styles.showInfo}>
-            <Text style={styles.venueName}>{show.venue || 'Unknown Venue'}</Text>
-            <Text style={styles.location}>
-              {show.city && show.state ? `${show.city}, ${show.state}` : 'Location TBD'}
-            </Text>
-          </View>
-          <TouchableOpacity onPress={() => handleFavoritePress(show)} style={styles.favoriteButton}>
-            <Ionicons
-              name={isFavorited ? 'heart' : 'heart-outline'}
-              size={24}
-              color={isFavorited ? '#FF6B6B' : '#666'}
-            />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.showDetails}>
-          <View style={styles.timeInfo}>
-            <Ionicons name="calendar-outline" size={16} color="#666" />
-            <Text style={styles.dayText}>{formatDay(show.day)}</Text>
-          </View>
-
-          {show.startTime && (
-            <View style={styles.timeInfo}>
-              <Ionicons name="time-outline" size={16} color="#666" />
-              <Text style={styles.timeText}>{formatTime(show.startTime)}</Text>
-            </View>
-          )}
-
-          {show.dj?.name && (
-            <View style={styles.timeInfo}>
-              <Ionicons name="person-outline" size={16} color="#666" />
-              <Text style={styles.djText}>{show.dj.name}</Text>
-            </View>
-          )}
-        </View>
-
-        {show.description && (
-          <Text style={styles.description} numberOfLines={2}>
-            {show.description}
-          </Text>
-        )}
-      </TouchableOpacity>
-    );
-  };
+      {show.description && (
+        <Text style={styles.showDescription} numberOfLines={2}>
+          {show.description}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
 
   if (showsStore.isLoadingShows && showsStore.shows.length === 0) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={colors.dark.primary} />
         <Text style={styles.loadingText}>Loading shows...</Text>
       </View>
     );
@@ -198,26 +119,22 @@ const ShowsListScreen = observer(() => {
 
   return (
     <View style={styles.container}>
-      {showsStore.shows.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="map-outline" size={80} color="#CCC" />
-          <Text style={styles.emptyTitle}>No Shows Found</Text>
-          <Text style={styles.emptySubtitle}>
-            Check back later for new karaoke shows in your area
-          </Text>
-          <TouchableOpacity style={styles.refreshButton} onPress={loadShows}>
-            <Text style={styles.refreshButtonText}>Refresh</Text>
-          </TouchableOpacity>
+      {userLocation && (
+        <View style={styles.locationInfo}>
+          <Ionicons name="location" size={16} color={colors.dark.primary} />
+          <Text style={styles.locationText}>Shows near you • {showsStore.shows.length} found</Text>
         </View>
-      ) : (
-        <FlatList
-          data={showsStore.filteredShows}
-          renderItem={renderShowItem}
-          keyExtractor={(item) => item.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          contentContainerStyle={styles.listContainer}
-        />
       )}
+
+      <FlatList
+        data={showsStore.shows}
+        renderItem={renderShowItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+        refreshing={showsStore.isLoadingShows}
+        onRefresh={loadShows}
+      />
     </View>
   );
 });
@@ -225,61 +142,44 @@ const ShowsListScreen = observer(() => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colors.dark.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.dark.background,
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: colors.dark.text,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  locationInfo: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 20,
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 10,
-    lineHeight: 22,
-  },
-  refreshButton: {
-    backgroundColor: '#007AFF',
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginTop: 20,
+    paddingVertical: 12,
+    backgroundColor: colors.dark.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.dark.border,
   },
-  refreshButtonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
+  locationText: {
+    marginLeft: 6,
+    fontSize: 14,
+    color: colors.dark.text,
+    fontWeight: '500',
   },
   listContainer: {
-    padding: 16,
+    padding: 20,
   },
-  showCard: {
-    backgroundColor: '#FFF',
+  showItem: {
+    backgroundColor: colors.dark.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowColor: colors.dark.background,
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -288,53 +188,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  showInfo: {
-    flex: 1,
-  },
-  venueName: {
+  showVenue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  location: {
-    fontSize: 14,
-    color: '#666',
+    color: colors.dark.text,
+    flex: 1,
+    marginRight: 8,
   },
   favoriteButton: {
     padding: 4,
   },
-  showDetails: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  showAddress: {
+    fontSize: 14,
+    color: colors.dark.textSecondary,
     marginBottom: 8,
+    lineHeight: 20,
   },
-  timeInfo: {
+  showTime: {
+    fontSize: 14,
+    color: colors.dark.textSecondary,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
-    marginBottom: 4,
   },
-  dayText: {
+  showDescription: {
     fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  timeText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  djText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  description: {
-    fontSize: 14,
-    color: '#666',
+    color: colors.dark.textMuted,
     lineHeight: 20,
   },
 });

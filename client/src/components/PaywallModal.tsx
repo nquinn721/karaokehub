@@ -141,12 +141,13 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
           url: error.config?.url,
           method: error.config?.method,
           data: error.config?.data,
-          headers: error.config?.headers
-        }
+          headers: error.config?.headers,
+        },
       });
-      
+
       // Show user-friendly error message
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to create checkout session';
+      const errorMessage =
+        error.response?.data?.message || error.message || 'Failed to create checkout session';
       alert(`Subscription Error: ${errorMessage}`);
     } finally {
       setLoading(false);

@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
 import {
   ApiResponse,
   FavoriteShow,
@@ -12,14 +14,42 @@ import {
   User,
 } from '../types';
 
-// Configuration
-const API_BASE_URL = __DEV__ ? 'http://localhost:8000/api' : 'https://your-production-url.com/api';
+// Configuration - Smart URL detection for development
+const getApiBaseUrl = () => {
+  if (!__DEV__) {
+    return 'https://your-production-url.com/api';
+  }
+
+  // If EXPO_PUBLIC_API_BASE_URL is set, use it
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
+    return process.env.EXPO_PUBLIC_API_BASE_URL;
+  }
+
+  // Auto-detect based on device type
+  if (Platform.OS === 'android') {
+    // Android emulator uses 10.0.2.2 to access host localhost
+    // Physical devices need the actual IP address
+    return Device.isDevice ? 'http://192.168.0.108:8000/api' : 'http://10.0.2.2:8000/api';
+  } else if (Platform.OS === 'ios') {
+    // iOS simulator can use localhost directly
+    return Device.isDevice ? 'http://192.168.0.108:8000/api' : 'http://localhost:8000/api';
+  }
+
+  // Fallback
+  return 'http://localhost:8000/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiService {
   private token: string | null = null;
 
   constructor() {
     this.loadToken();
+    // Debug: Log the API URL being used
+    console.log('🌐 API Base URL:', API_BASE_URL);
+    console.log('📱 Device type:', Device.isDevice ? 'Physical Device' : 'Emulator/Simulator');
+    console.log('🤖 Platform:', Platform.OS);
   }
 
   private async loadToken() {
@@ -55,6 +85,8 @@ class ApiService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     try {
       const url = `${API_BASE_URL}${endpoint}`;
+      console.log('🌐 Making request to:', url);
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         ...(options.headers as Record<string, string>),
@@ -69,21 +101,25 @@ class ApiService {
         headers,
       });
 
+      console.log('📡 Response status:', response.status);
       const data = await response.json();
 
       if (!response.ok) {
+        console.error('❌ API Error:', data);
         return {
           success: false,
           error: data.message || `HTTP error! status: ${response.status}`,
         };
       }
 
+      console.log('✅ API Success:', endpoint);
       return {
         success: true,
         data,
       };
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error('💥 API request failed:', error);
+      console.error('🔗 Failed URL:', `${API_BASE_URL}${endpoint}`);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error',

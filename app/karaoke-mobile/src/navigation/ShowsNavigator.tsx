@@ -7,7 +7,7 @@ import { colors } from '../theme';
 // Import screens
 import FavoriteShowsScreen from '../screens/shows/FavoriteShowsScreen';
 import ShowDetailScreen from '../screens/shows/ShowDetailScreen';
-import ShowsMapScreen from '../screens/shows/ShowsMapScreen';
+import ShowsListScreen from '../screens/shows/ShowsListScreen';
 
 export type ShowsStackParamList = {
   ShowsList: undefined;
@@ -32,7 +32,7 @@ const ShowsNavigator = () => {
     >
       <Stack.Screen
         name="ShowsList"
-        component={ShowsMapScreen}
+        component={ShowsListScreen}
         options={({ navigation }) => ({
           title: 'Karaoke Shows',
           headerRight: () => (

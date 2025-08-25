@@ -58,6 +58,15 @@ export class StripeService {
         cancel_url: cancelUrl,
         allow_promotion_codes: true,
         billing_address_collection: 'auto',
+        // Configure automatic tax calculation
+        automatic_tax: {
+          enabled: true,
+        },
+        // Configure customer updates to save address for tax calculation
+        customer_update: {
+          address: 'auto', // Automatically save the address entered in checkout
+          shipping: 'auto', // Automatically save the shipping address
+        },
       };
 
       // Add test mode enhancements for development
@@ -72,11 +81,6 @@ export class StripeService {
           environment: 'development',
           test_mode: 'true',
           created_at: new Date().toISOString(),
-        };
-
-        // Add automatic tax calculation for testing
-        sessionConfig.automatic_tax = {
-          enabled: true,
         };
 
         console.log('✅ [STRIPE_SERVICE] Test mode enhancements added');
