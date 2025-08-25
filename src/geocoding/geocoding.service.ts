@@ -122,9 +122,29 @@ export class GeocodingService {
   }
 
   /**
-   * Calculate distance between two coordinates in miles
+   * Calculate distance between two coordinates in miles using Haversine formula
    */
   calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    // Debug: Log coordinates for troubleshooting
+    const distance = this.calculateHaversineDistance(lat1, lng1, lat2, lng2);
+    
+    // If distance is very small but not zero, log for debugging
+    if (distance < 0.1 && distance > 0) {
+      console.log('Small distance calculation:', {
+        from: { lat: lat1, lng: lng1 },
+        to: { lat: lat2, lng: lng2 },
+        distance: distance,
+        distanceMeters: Math.round(distance * 1609.34)
+      });
+    }
+    
+    return distance;
+  }
+
+  /**
+   * Calculate distance using Haversine formula (as the crow flies)
+   */
+  private calculateHaversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
     const R = 3959; // Earth's radius in miles
     const dLat = this.toRadians(lat2 - lat1);
     const dLng = this.toRadians(lng2 - lng1);

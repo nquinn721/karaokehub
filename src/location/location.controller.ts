@@ -74,15 +74,22 @@ export class LocationController {
     const showsWithDistances = shows
       .filter((show) => show.lat && show.lng)
       .map((show) => {
-        const distanceMeters =
-          this.geocodingService.calculateDistance(latitude, longitude, show.lat!, show.lng!) *
-          1609.34; // Convert miles to meters
+        const distanceMiles = this.geocodingService.calculateDistance(
+          latitude,
+          longitude,
+          show.lat!,
+          show.lng!,
+        );
+        const distanceMeters = distanceMiles * 1609.34; // Convert miles to meters
 
         return {
           ...show,
           distance: Math.round(distanceMeters),
         };
-      })
+      });
+
+    // Filter by distance and sort
+    const filteredShows = showsWithDistances
       .filter((show) => show.distance <= maxDistanceMeters)
       .sort((a, b) => a.distance - b.distance);
 
@@ -95,8 +102,8 @@ export class LocationController {
         longitude,
         address: currentAddress || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
       },
-      shows: showsWithDistances,
-      totalShows: showsWithDistances.length,
+      shows: filteredShows,
+      totalShows: filteredShows.length,
       maxDistance: maxDistanceMeters,
       day: targetDay,
     };
@@ -142,8 +149,10 @@ export class LocationController {
           distance: Math.round(distanceMeters),
           distanceMiles: Math.round(distanceMiles * 100) / 100, // Round to 2 decimal places
         };
-      })
-      .sort((a, b) => a.distance - b.distance);
+      });
+
+    // Sort by distance
+    allShowsWithDistance.sort((a, b) => a.distance - b.distance);
 
     // Find shows within specified radius (default 10 meters)
     const nearbyShows = allShowsWithDistance.filter((show) => show.distance <= radiusMeters);
