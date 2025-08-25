@@ -134,22 +134,10 @@ export class SongFavoriteStore {
 
             return !matchesSongId;
           });
-
-          console.log(
-            '🎵 Favorites after removal:',
-            this.songFavorites.map((fav) => ({
-              id: fav.id,
-              songId: fav.songId,
-              category: fav.category,
-              itunesId: fav.song?.itunesId,
-              title: fav.song?.title,
-            })),
-          );
         });
         return true;
       }
     } catch (error: any) {
-      console.error('❌ Error removing song favorite:', error);
       runInAction(() => {
         this.setError(error.message || 'Failed to remove song favorite');
       });

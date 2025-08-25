@@ -54,30 +54,18 @@ export class AudioStore {
   }
 
   async playPreview(song: any) {
-    console.log('🎵 playPreview called:', {
-      songId: song.id,
-      title: song.title,
-      currentlyPlaying: this.currentlyPlaying,
-    });
-
     if (!song.previewUrl) {
-      console.warn('❌ No preview URL for song:', song.id);
       return;
     }
 
     // If clicking the same song that's currently playing, toggle play/pause
     if (this.currentlyPlaying === song.id && this.audioElement) {
-      console.log('🔄 Toggling play/pause for current song:', song.id);
       this.togglePlayPause();
       return;
     }
 
     // Stop current audio if playing a different song
     if (this.currentlyPlaying && this.currentlyPlaying !== song.id) {
-      console.log('🛑 Stopping current song to play new one:', {
-        from: this.currentlyPlaying,
-        to: song.id,
-      });
       this.stopAudio();
     }
 
