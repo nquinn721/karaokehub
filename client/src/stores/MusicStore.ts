@@ -530,12 +530,6 @@ export class MusicStore {
       return;
     }
 
-    console.log('🎵 Loading category music:', {
-      categoryId,
-      categoryTitle: category.title,
-      loadMore,
-    });
-
     try {
       if (loadMore) {
         this.setLoadingMore(true);
@@ -555,7 +549,6 @@ export class MusicStore {
 
       runInAction(() => {
         if (response && Array.isArray(response) && response.length > 0) {
-          console.log('✅ Processing non-empty response with', response.length, 'songs');
           let newSongs = response;
 
           if (loadMore) {

@@ -3,7 +3,6 @@ import { makePersistable } from 'mobx-persist-store';
 
 export class UIStore {
   sidebarOpen = false;
-  darkMode = true;
   notifications: Array<{
     id: string;
     message: string;
@@ -16,7 +15,7 @@ export class UIStore {
 
     makePersistable(this, {
       name: 'UIStore',
-      properties: ['darkMode', 'sidebarOpen'],
+      properties: ['sidebarOpen'],
       storage: window.localStorage,
     });
   }
@@ -27,10 +26,6 @@ export class UIStore {
 
   setSidebarOpen(open: boolean) {
     this.sidebarOpen = open;
-  }
-
-  toggleDarkMode() {
-    this.darkMode = !this.darkMode;
   }
 
   addNotification(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') {

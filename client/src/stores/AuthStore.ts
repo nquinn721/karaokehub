@@ -44,22 +44,14 @@ export class AuthStore {
       name: 'AuthStore',
       properties: ['user', 'token', 'isAuthenticated'],
       storage: window.localStorage,
-    })
-      .then(() => {
-        // This callback runs after hydration is complete
-        console.log('AuthStore hydrated, token exists:', !!this.token);
-        this.safeInitialize();
-      })
-      .catch((error) => {
-        console.error('AuthStore hydration failed:', error);
-        // Don't initialize if hydration fails to prevent loops
-      });
+    }).then(() => {
+      this.safeInitialize();
+    });
   }
 
   // Safe initialization with loop prevention
   private async safeInitialize() {
     if (this.isInitializing || this.hasInitialized) {
-      console.log('AuthStore already initializing or initialized, skipping');
       return;
     }
 
@@ -77,30 +69,20 @@ export class AuthStore {
 
   // Initialize the store after hydration with comprehensive error handling
   private async initialize() {
-    console.log('AuthStore initialize called, token exists:', !!this.token);
-
     // Set token in API store if it exists after hydration
     if (this.token) {
       try {
         apiStore.setToken(this.token);
 
         // Always fetch fresh profile data from API to ensure it's up to date
-        // This prevents stale cached data issues when user data changes in the database
-        console.log('Fetching fresh profile data on app startup...');
-
         await this.getProfile();
       } catch (error: any) {
-        console.warn('Failed to fetch profile on startup:', error);
-
         // Handle different error types safely without causing loops
         if (error?.response?.status === 401 || error?.status === 401) {
-          console.log('Token invalid (401), clearing auth state silently');
           this.clearAuthStateSilently();
         } else if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network Error')) {
-          console.log('Network error during startup, keeping current auth state');
           // Don't clear auth on network errors - user might be offline
         } else {
-          console.log('Unknown error during startup, clearing auth state silently');
           this.clearAuthStateSilently();
         }
       }
@@ -111,7 +93,6 @@ export class AuthStore {
           const { subscriptionStore } = await import('./index');
           await subscriptionStore.fetchSubscriptionStatus();
         } catch (error) {
-          console.warn('Failed to fetch subscription status on startup:', error);
           // Don't let subscription errors affect auth state
         }
       }
@@ -120,8 +101,6 @@ export class AuthStore {
 
   // Clear auth state without triggering logout or navigation
   private clearAuthStateSilently() {
-    console.log('Clearing auth state silently to prevent loops');
-
     runInAction(() => {
       this.user = null;
       this.token = null;
@@ -161,7 +140,6 @@ export class AuthStore {
 
   // Force refresh profile data - useful after admin status changes
   async refreshProfile() {
-    console.log('AuthStore: Force refreshing profile data...');
     return await this.getProfile();
   }
 
@@ -190,8 +168,8 @@ export class AuthStore {
 
       // Fetch subscription status after successful login
       import('./index').then(({ subscriptionStore }) => {
-        subscriptionStore.fetchSubscriptionStatus().catch((error) => {
-          console.warn('Failed to fetch subscription status after login:', error);
+        subscriptionStore.fetchSubscriptionStatus().catch(() => {
+          // Silent fail on subscription fetch
         });
       });
 
@@ -245,7 +223,6 @@ export class AuthStore {
   async logout() {
     // Prevent logout during initialization to avoid loops
     if (this.isInitializing) {
-      console.log('Logout called during initialization, deferring');
       setTimeout(() => this.logout(), 1000);
       return;
     }
@@ -255,7 +232,6 @@ export class AuthStore {
       await apiStore.post(apiStore.endpoints.auth.logout);
     } catch (error) {
       // Continue with logout even if API call fails
-      console.warn('Logout API call failed:', error);
     }
 
     runInAction(() => {
@@ -276,7 +252,7 @@ export class AuthStore {
       const { subscriptionStore } = await import('./index');
       subscriptionStore.clearSubscriptionStatus();
     } catch (error) {
-      console.warn('Failed to clear subscription status:', error);
+      // Silent fail
     }
   }
 
@@ -316,17 +292,11 @@ export class AuthStore {
   // OAuth login methods
   loginWithGoogle() {
     const googleUrl = `${apiStore.environmentInfo.baseURL}${apiStore.endpoints.auth.google}`;
-    console.log('Redirecting to Google OAuth URL:', googleUrl);
-    console.log('Base URL:', apiStore.environmentInfo.baseURL);
-    console.log('Google endpoint:', apiStore.endpoints.auth.google);
     window.location.href = googleUrl;
   }
 
   loginWithFacebook() {
     const facebookUrl = `${apiStore.environmentInfo.baseURL}${apiStore.endpoints.auth.facebook}`;
-    console.log('Redirecting to Facebook OAuth URL:', facebookUrl);
-    console.log('Base URL:', apiStore.environmentInfo.baseURL);
-    console.log('Facebook endpoint:', apiStore.endpoints.auth.facebook);
     window.location.href = facebookUrl;
   }
 
@@ -346,19 +316,12 @@ export class AuthStore {
       this.setLoading(true);
       const response = await apiStore.patch(`/users/${this.user.id}`, updateData);
 
-      console.log('updateProfile API response:', response);
-      console.log('updateProfile response.data:', response.data);
-      console.log('Current user before update:', this.user);
-
       runInAction(() => {
         // The API returns the user object directly, not wrapped in a data property
         this.user = { ...this.user!, ...response };
-        console.log('Updated user after merge:', this.user);
         this.isLoading = false;
 
         // Re-check stage name requirement after profile update
-        // This will automatically close the modal if a stage name was set
-        console.log('About to call checkStageNameRequired after profile update');
         this.checkStageNameRequired();
       });
 
@@ -385,14 +348,6 @@ export class AuthStore {
 
   // Check if stage name is required and show modal
   checkStageNameRequired() {
-    console.log('checkStageNameRequired called with:', {
-      isAuthenticated: this.isAuthenticated,
-      user: this.user,
-      stageName: this.user?.stageName,
-      stageNameTrimmed: this.user?.stageName?.trim(),
-      currentShowStageNameModal: this.showStageNameModal,
-    });
-
     // Only show stage name modal if:
     // 1. User is authenticated
     // 2. User data is loaded
@@ -402,17 +357,7 @@ export class AuthStore {
       this.user &&
       (!this.user.stageName || this.user.stageName.trim() === '');
 
-    console.log('shouldShowModal calculated as:', shouldShowModal);
-
-    if (shouldShowModal) {
-      console.log('Stage name required - showing modal for user:', this.user?.email);
-      this.showStageNameModal = true;
-    } else {
-      console.log('Stage name not required - hiding modal');
-      this.showStageNameModal = false;
-    }
-
-    console.log('Final showStageNameModal state:', this.showStageNameModal);
+    this.showStageNameModal = !!shouldShowModal;
   }
 
   // Force check stage name requirement - called from App component
@@ -436,41 +381,7 @@ export class AuthStore {
 
     // Handle both boolean true and integer 1 from database
     const isAdminValue = this.user?.isAdmin;
-    const result =
-      isAdminValue === true || (isAdminValue as any) === 1 || String(isAdminValue) === '1';
-
-    // Debug logging
-    console.log('AuthStore.isAdmin check:', {
-      user: this.user,
-      isAdminValue,
-      result,
-      userKeys: this.user ? Object.keys(this.user) : 'no user',
-    });
-
-    return result;
-  }
-
-  // Debug method to check localStorage
-  checkLocalStorage() {
-    const stored = localStorage.getItem('AuthStore');
-    console.log('AuthStore localStorage:', stored);
-    console.log('Parsed:', stored ? JSON.parse(stored) : null);
-    return stored;
-  }
-
-  // Debug method to clear cached data and force fresh fetch
-  clearCacheAndRefresh() {
-    console.log('Clearing AuthStore cache and refreshing from API...');
-    localStorage.removeItem('AuthStore');
-    if (this.token) {
-      this.getProfile()
-        .then(() => {
-          console.log('Profile refreshed from API');
-        })
-        .catch((error) => {
-          console.error('Failed to refresh profile:', error);
-        });
-    }
+    return isAdminValue === true || (isAdminValue as any) === 1 || String(isAdminValue) === '1';
   }
 
   // Handle One Tap authentication success
@@ -500,7 +411,6 @@ export class AuthStore {
         });
       });
 
-      console.log('One Tap authentication successful');
       return { success: true };
     } catch (error) {
       console.error('Failed to handle One Tap success:', error);
