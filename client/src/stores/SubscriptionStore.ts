@@ -197,7 +197,7 @@ export class SubscriptionStore {
 
       if (response.url) {
         // For development/testing, add test card auto-fill parameters
-        if (process.env.NODE_ENV === 'development') {
+        if (apiStore.isServerDevelopment) {
           const testUrl = new URL(response.url);
           testUrl.searchParams.append('prefilled_email', 'test@example.com');
           // Note: Stripe will automatically use test cards in test mode

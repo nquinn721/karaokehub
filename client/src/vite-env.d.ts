@@ -6,8 +6,6 @@ interface ImportMetaEnv {
   readonly PROD: boolean;
   readonly DEV: boolean;
   readonly SSR: boolean;
-  readonly VITE_GOOGLE_MAPS_API_KEY?: string;
-  readonly VITE_API_URL?: string;
 }
 
 interface ImportMeta {

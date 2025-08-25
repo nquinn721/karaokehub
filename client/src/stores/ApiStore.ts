@@ -19,7 +19,11 @@ let globalAxiosInstance: AxiosInstance;
 class ApiStore {
   public isLoading = false;
   public error: ApiError | null = null;
-  public clientConfig: { googleMapsApiKey?: string; environment?: string } | null = null;
+  public clientConfig: {
+    googleMapsApiKey?: string;
+    googleClientId?: string;
+    environment?: string;
+  } | null = null;
   public configLoaded = false;
 
   // Getter to access the non-observable axios instance
@@ -454,7 +458,9 @@ class ApiStore {
       try {
         // Use a timeout to ensure fast failure
         const config = await Promise.race([
-          this.get<{ googleMapsApiKey: string; environment: string }>(this.endpoints.config.client),
+          this.get<{ googleMapsApiKey: string; googleClientId: string; environment: string }>(
+            this.endpoints.config.client,
+          ),
           new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('Config request timeout')), 5000),
           ),
@@ -488,6 +494,21 @@ class ApiStore {
   get googleMapsApiKey(): string | undefined {
     // Only get from server config - no fallback to env variables in production
     return this.clientConfig?.googleMapsApiKey;
+  }
+
+  // Get Google Client ID from config
+  get googleClientId(): string | undefined {
+    return this.clientConfig?.googleClientId;
+  }
+
+  // Get environment from server config, fallback to local detection
+  get environment(): string {
+    return this.clientConfig?.environment || (this.isDevelopment ? 'development' : 'production');
+  }
+
+  // Check if running in development mode based on server config
+  get isServerDevelopment(): boolean {
+    return this.environment === 'development';
   }
 
   // API endpoints - centralized URL management

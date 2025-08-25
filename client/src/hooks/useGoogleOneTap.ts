@@ -1,5 +1,6 @@
 import { authStore } from '@stores/index';
 import { useEffect, useRef } from 'react';
+import { apiStore } from '../stores/ApiStore';
 
 // Types for Google Identity Services
 declare global {
@@ -76,9 +77,11 @@ export const useGoogleOneTap = (options: UseGoogleOneTapOptions = {}) => {
 
   // Get Google Client ID from environment
   const getGoogleClientId = () => {
-    // In production, this should come from your environment variables
-    // For now, we'll use the new client ID for development
-    return '203453576607-ha4529p5nc6hs1i0h2jd7sl9601fg8tj.apps.googleusercontent.com';
+    // Get from server config or fallback to development client ID
+    return (
+      apiStore.googleClientId ||
+      '203453576607-ha4529p5nc6hs1i0h2jd7sl9601fg8tj.apps.googleusercontent.com'
+    );
   };
 
   const handleCredentialResponse = async (response: GoogleCredentialResponse) => {
@@ -88,19 +91,16 @@ export const useGoogleOneTap = (options: UseGoogleOneTapOptions = {}) => {
       // Send the credential to your backend for verification
       // This should go to the same endpoint as your OAuth callback
       // but handle JWT token instead of authorization code
-      const result = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/auth/google/verify`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            credential: response.credential,
-            clientId: response.clientId,
-          }),
+      const result = await fetch(`${apiStore.environmentInfo.baseURL}/auth/google/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({
+          credential: response.credential,
+          clientId: response.clientId,
+        }),
+      });
 
       if (!result.ok) {
         throw new Error('Failed to verify Google credential');
