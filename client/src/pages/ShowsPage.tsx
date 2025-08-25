@@ -281,7 +281,7 @@ const ShowsPage: React.FC = observer(() => {
                 </Typography>
               </Box>
 
-              <Box sx={{ flex: 1, overflow: 'auto' }}>
+              <Box sx={{ flex: 1, overflow: 'auto', minHeight: '200px' }}>
                 {showStore.isLoading ? (
                   <Box
                     sx={{
@@ -289,12 +289,13 @@ const ShowsPage: React.FC = observer(() => {
                       justifyContent: 'center',
                       alignItems: 'center',
                       p: 4,
+                      minHeight: '200px',
                     }}
                   >
                     <CircularProgress size={24} />
                   </Box>
                 ) : showStore.filteredShows.length === 0 ? (
-                  <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Box sx={{ p: 3, textAlign: 'center', minHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Typography variant="body2" color="text.secondary">
                       No shows found for the selected filters.
                     </Typography>
