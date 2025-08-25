@@ -281,12 +281,15 @@ const ShowsPage: React.FC = observer(() => {
                 </Typography>
               </Box>
 
-              <Box sx={{ flex: 1, overflow: 'auto', minHeight: '400px' }}>
+              <Box sx={{ 
+                height: '500px', // Fixed height for all states
+                overflow: 'auto', 
+                position: 'relative' 
+              }}>
                 {showStore.isLoading ? (
                   <Box
                     sx={{
                       height: '100%',
-                      minHeight: '400px',
                       display: 'flex',
                       justifyContent: 'center',
                       alignItems: 'center',
@@ -298,7 +301,6 @@ const ShowsPage: React.FC = observer(() => {
                 ) : showStore.filteredShows.length === 0 ? (
                   <Box sx={{ 
                     height: '100%', 
-                    minHeight: '400px', 
                     p: 3, 
                     textAlign: 'center', 
                     display: 'flex', 
@@ -310,7 +312,8 @@ const ShowsPage: React.FC = observer(() => {
                     </Typography>
                   </Box>
                 ) : (
-                  <List sx={{ p: 0, pb: { xs: 10, md: 1 }, mr: '15px', mt: '5px' }}>
+                  <Box sx={{ height: '100%', overflow: 'auto' }}>
+                    <List sx={{ p: 0, pb: { xs: 10, md: 1 }, mr: '15px', mt: '5px', minHeight: '100%' }}>
                     {showStore.filteredShows.map((show: Show) => {
                       const isFavorited = authStore.isAuthenticated
                         ? show.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
@@ -618,6 +621,7 @@ const ShowsPage: React.FC = observer(() => {
                       );
                     })}
                   </List>
+                  </Box>
                 )}
               </Box>
             </Box>
