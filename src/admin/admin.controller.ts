@@ -1,10 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import { DeduplicationService } from './deduplication.service';
 
 @Controller('admin')
 // @UseGuards(AuthGuard('jwt'), AdminGuard)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly deduplicationService: DeduplicationService,
+  ) {}
 
   @Get('statistics')
   async getStatistics() {
@@ -137,6 +141,25 @@ export class AdminController {
     return await this.adminService.deleteFeedback(id);
   }
 
+  @Get('show-reviews')
+  async getShowReviews(
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('search') search?: string,
+  ) {
+    return await this.adminService.getShowReviews(+page, +limit, search);
+  }
+
+  @Put('show-reviews/:id')
+  async updateShowReview(@Param('id') id: string, @Body() updateData: any) {
+    return await this.adminService.updateShowReview(id, updateData);
+  }
+
+  @Delete('show-reviews/:id')
+  async deleteShowReview(@Param('id') id: string) {
+    return await this.adminService.deleteShowReview(id);
+  }
+
   // Get relationships that will be affected by deletion
   @Get('venues/:id/relationships')
   async getVenueRelationships(@Param('id') id: string) {
@@ -151,5 +174,29 @@ export class AdminController {
   @Get('djs/:id/relationships')
   async getDjRelationships(@Param('id') id: string) {
     return await this.adminService.getDjRelationships(id);
+  }
+
+  // Deduplication endpoints
+  @Post('deduplicate/venues/analyze')
+  async analyzeVenueDuplicates() {
+    return await this.deduplicationService.deduplicateVenues();
+  }
+
+  @Post('deduplicate/shows/analyze')
+  async analyzeShowDuplicates() {
+    return await this.deduplicationService.deduplicateShows();
+  }
+
+  @Post('deduplicate/djs/analyze')
+  async analyzeDjDuplicates() {
+    return await this.deduplicationService.deduplicateDJs();
+  }
+
+  @Post('deduplicate/:type/execute')
+  async executeDuplicateDeletion(
+    @Param('type') type: 'venues' | 'shows' | 'djs',
+    @Body() body: { idsToDelete: string[] },
+  ) {
+    return await this.deduplicationService.executeDeletion(type, body.idsToDelete);
   }
 }

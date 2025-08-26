@@ -363,4 +363,61 @@ export class SubscriptionService {
       throw error;
     }
   }
+
+  async changeSubscriptionPlan(userId: string, newPlan: SubscriptionPlan) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const subscription = await this.getUserSubscription(userId);
+    if (!subscription || !subscription.stripeSubscriptionId) {
+      throw new NotFoundException('No active subscription found');
+    }
+
+    const newPriceId = this.stripeService.getPriceId(newPlan);
+
+    // Update subscription in Stripe
+    const updatedStripeSubscription = await this.stripeService.changeSubscriptionPlan(
+      subscription.stripeSubscriptionId,
+      newPriceId,
+    );
+
+    // Update local subscription record
+    await this.upsertSubscription(userId, updatedStripeSubscription, newPlan);
+
+    return await this.getUserSubscription(userId);
+  }
+
+  async cancelSubscription(userId: string, immediately: boolean = false) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const subscription = await this.getUserSubscription(userId);
+    if (!subscription || !subscription.stripeSubscriptionId) {
+      throw new NotFoundException('No active subscription found');
+    }
+
+    let updatedStripeSubscription;
+
+    if (immediately) {
+      // Cancel immediately
+      updatedStripeSubscription = await this.stripeService.cancelSubscriptionImmediately(
+        subscription.stripeSubscriptionId,
+      );
+    } else {
+      // Cancel at period end
+      updatedStripeSubscription = await this.stripeService.cancelSubscription(
+        subscription.stripeSubscriptionId,
+      );
+    }
+
+    // Update local subscription record
+    const plan = this.getPlanFromPriceId(updatedStripeSubscription.items.data[0].price.id);
+    await this.upsertSubscription(userId, updatedStripeSubscription, plan);
+
+    return await this.getUserSubscription(userId);
+  }
 }

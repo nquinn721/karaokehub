@@ -57,6 +57,52 @@ const SettingsPage: React.FC = observer(() => {
     }
   };
 
+  const upgradeToSubscription = async (plan: 'ad_free' | 'premium') => {
+    try {
+      const response = await apiStore.post('/subscription/create-checkout-session', { plan });
+      if (response.url) {
+        window.location.href = response.url;
+      }
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      alert('Error starting upgrade process. Please try again.');
+    }
+  };
+
+  const handleDowngrade = async (plan: 'free' | 'ad_free') => {
+    const confirmMessage =
+      plan === 'free'
+        ? 'Are you sure you want to cancel your subscription and downgrade to the free plan? This will take effect at the end of your current billing period.'
+        : 'Are you sure you want to downgrade to the Ad-Free plan? This will take effect immediately and you will be charged a prorated amount.';
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      if (plan === 'free') {
+        // Cancel subscription (will downgrade to free at period end)
+        await apiStore.post('/subscription/cancel', { immediately: false });
+        alert(
+          'Your subscription has been cancelled and will end at the end of your current billing period.',
+        );
+      } else {
+        // Change to ad_free plan
+        await apiStore.post('/subscription/change-plan', { plan });
+        alert('Your subscription has been changed to Ad-Free.');
+      }
+
+      await loadSubscriptionStatus(); // Reload status
+    } catch (error) {
+      console.error('Error changing subscription:', error);
+      alert('Error changing subscription. Please try again or contact support.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadSubscriptionStatus();
   }, [authStore.isAuthenticated]);
@@ -136,13 +182,27 @@ const SettingsPage: React.FC = observer(() => {
                       </Typography>
                     )}
 
-                    <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap' }}>
                       <Button variant="outlined" onClick={openBillingPortal}>
                         Manage Billing
                       </Button>
                       <Button variant="outlined" onClick={syncSubscription} disabled={syncing}>
                         {syncing ? <CircularProgress size={20} /> : 'Sync Status'}
                       </Button>
+                      {subscriptionStatus.subscription.plan !== 'PREMIUM' &&
+                        subscriptionStatus.subscription.plan !== 'premium' && (
+                          <Button
+                            variant="contained"
+                            color="secondary"
+                            onClick={() => upgradeToSubscription('premium')}
+                            size="small"
+                          >
+                            {subscriptionStatus.subscription.plan === 'AD_FREE' ||
+                            subscriptionStatus.subscription.plan === 'ad_free'
+                              ? 'Upgrade to Premium'
+                              : 'Upgrade to Premium ($1.99/mo)'}
+                          </Button>
+                        )}
                     </Box>
                   </Box>
                 ) : (
@@ -154,14 +214,27 @@ const SettingsPage: React.FC = observer(() => {
                       No active subscription found.
                     </Typography>
 
-                    <Button
-                      variant="outlined"
-                      onClick={syncSubscription}
-                      disabled={syncing}
-                      sx={{ mr: 2 }}
-                    >
-                      {syncing ? <CircularProgress size={20} /> : 'Check for Subscription'}
-                    </Button>
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
+                      <Button variant="outlined" onClick={syncSubscription} disabled={syncing}>
+                        {syncing ? <CircularProgress size={20} /> : 'Check for Subscription'}
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => upgradeToSubscription('ad_free')}
+                        sx={{ minWidth: 140 }}
+                      >
+                        Upgrade to Ad-Free ($0.99/mo)
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        onClick={() => upgradeToSubscription('premium')}
+                        sx={{ minWidth: 140 }}
+                      >
+                        Upgrade to Premium ($1.99/mo)
+                      </Button>
+                    </Box>
                   </Box>
                 )}
 
@@ -190,6 +263,171 @@ const SettingsPage: React.FC = observer(() => {
                 </Box>
               </>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Plan Comparison */}
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h5" gutterBottom>
+              Available Plans
+            </Typography>
+
+            <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
+              {/* Free Plan */}
+              <Box
+                sx={{ flex: 1, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
+              >
+                <Typography variant="h6" gutterBottom>
+                  Free
+                </Typography>
+                <Typography variant="h4" gutterBottom>
+                  $0
+                  <Typography component="span" variant="body2">
+                    /month
+                  </Typography>
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  • Basic music search
+                  <br />
+                  • View karaoke shows
+                  <br />
+                  • Ads included
+                  <br />
+                  • 5 song favorites
+                  <br />• 10 song previews
+                </Typography>
+                {!subscriptionStatus?.subscription ||
+                subscriptionStatus?.subscription?.plan === 'free' ? (
+                  <Typography variant="body2" color="primary" sx={{ fontWeight: 600 }}>
+                    Current Plan
+                  </Typography>
+                ) : (
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    onClick={() => handleDowngrade('free')}
+                    size="small"
+                    color="warning"
+                  >
+                    Downgrade to Free
+                  </Button>
+                )}
+              </Box>
+
+              {/* Ad-Free Plan */}
+              <Box
+                sx={{ flex: 1, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
+              >
+                <Typography variant="h6" gutterBottom>
+                  Ad-Free
+                </Typography>
+                <Typography variant="h4" gutterBottom>
+                  $0.99
+                  <Typography component="span" variant="body2">
+                    /month
+                  </Typography>
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  • All free features
+                  <br />
+                  • No advertisements
+                  <br />
+                  • Clean browsing experience
+                  <br />• Support development
+                </Typography>
+                {subscriptionStatus?.subscription?.plan === 'AD_FREE' ||
+                subscriptionStatus?.subscription?.plan === 'ad_free' ? (
+                  <Typography variant="body2" color="primary" sx={{ fontWeight: 600 }}>
+                    Current Plan
+                  </Typography>
+                ) : subscriptionStatus?.subscription?.plan === 'PREMIUM' ||
+                  subscriptionStatus?.subscription?.plan === 'premium' ? (
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    onClick={() => handleDowngrade('ad_free')}
+                    size="small"
+                    color="warning"
+                  >
+                    Downgrade to Ad-Free
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    onClick={() => upgradeToSubscription('ad_free')}
+                    size="small"
+                  >
+                    Upgrade
+                  </Button>
+                )}
+              </Box>
+
+              {/* Premium Plan */}
+              <Box
+                sx={{
+                  flex: 1,
+                  p: 2,
+                  border: '2px solid',
+                  borderColor: 'secondary.main',
+                  borderRadius: 1,
+                  position: 'relative',
+                }}
+              >
+                <Chip
+                  label="Most Popular"
+                  color="secondary"
+                  size="small"
+                  sx={{ position: 'absolute', top: -8, right: 8 }}
+                />
+                <Typography variant="h6" gutterBottom>
+                  Premium
+                </Typography>
+                <Typography variant="h4" gutterBottom>
+                  $1.99
+                  <Typography component="span" variant="body2">
+                    /month
+                  </Typography>
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  • All ad-free features
+                  <br />
+                  • Unlimited song favorites
+                  <br />
+                  • Unlimited show favorites
+                  <br />
+                  • Unlimited song previews
+                  <br />• Priority support
+                </Typography>
+                {subscriptionStatus?.subscription?.plan === 'PREMIUM' ||
+                subscriptionStatus?.subscription?.plan === 'premium' ? (
+                  <Typography variant="body2" color="primary" sx={{ fontWeight: 600 }}>
+                    Current Plan
+                  </Typography>
+                ) : subscriptionStatus?.subscription ? (
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    fullWidth
+                    onClick={() => upgradeToSubscription('premium')}
+                    size="small"
+                  >
+                    Upgrade
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    fullWidth
+                    onClick={() => upgradeToSubscription('premium')}
+                    size="small"
+                  >
+                    Upgrade
+                  </Button>
+                )}
+              </Box>
+            </Box>
           </CardContent>
         </Card>
 

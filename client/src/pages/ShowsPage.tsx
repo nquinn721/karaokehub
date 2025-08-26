@@ -2,6 +2,8 @@ import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
   faCalendarAlt,
   faClock,
+  faEdit,
+  faFlag,
   faHeart,
   faMapMarkerAlt,
   faMicrophone,
@@ -29,6 +31,8 @@ import MapComponent from '../components/MapComponent';
 import { AuthRequiredModal } from '../components/modals/AuthRequiredModal';
 import { CombinedScheduleModal } from '../components/modals/CombinedScheduleModal';
 import { DJScheduleModal } from '../components/modals/DJScheduleModal';
+import { FlagShowDialog } from '../components/modals/FlagShowDialog';
+import { SubmitMissingInfoModal } from '../components/modals/SubmitMissingInfoModal';
 import { ShowSearch } from '../components/search/ShowSearch';
 import { SEO } from '../components/SEO';
 import { authStore, favoriteStore, showStore } from '../stores/index';
@@ -43,8 +47,13 @@ const ShowsPage: React.FC = observer(() => {
   const [djModalOpen, setDjModalOpen] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [flagDialogOpen, setFlagDialogOpen] = useState(false);
+  const [submitInfoModalOpen, setSubmitInfoModalOpen] = useState(false);
   const [selectedDJ, setSelectedDJ] = useState<{ id: string; name: string } | null>(null);
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
+  const [showToFlag, setShowToFlag] = useState<Show | null>(null);
+  const [showToEdit, setShowToEdit] = useState<Show | null>(null);
+  const [flagLoading, setFlagLoading] = useState(false);
 
   // Initialize stores only (no duplicate API calls)
   useEffect(() => {
@@ -103,6 +112,59 @@ const ShowsPage: React.FC = observer(() => {
   const handleScheduleModalOpen = (show: Show) => {
     setSelectedShow(show);
     setScheduleModalOpen(true);
+  };
+
+  // Handle flag button click
+  const handleFlagClick = (event: React.MouseEvent, show: Show) => {
+    event.stopPropagation();
+    if (!authStore.isAuthenticated) {
+      setAuthModalOpen(true);
+      return;
+    }
+    setShowToFlag(show);
+    setFlagDialogOpen(true);
+  };
+
+  // Handle confirm flag action
+  const handleConfirmFlag = async () => {
+    if (!showToFlag || !authStore.user?.id) return;
+
+    setFlagLoading(true);
+    try {
+      const success = await showStore.flagShow(showToFlag.id, authStore.user.id);
+      if (success) {
+        setFlagDialogOpen(false);
+        setShowToFlag(null);
+        // Optionally show a success message
+      }
+    } catch (error) {
+      console.error('Error flagging show:', error);
+    } finally {
+      setFlagLoading(false);
+    }
+  };
+
+  // Handle close flag dialog
+  const handleCloseFlagDialog = () => {
+    setFlagDialogOpen(false);
+    setShowToFlag(null);
+  };
+
+  // Handle edit button click
+  const handleEditClick = (event: React.MouseEvent, show: Show) => {
+    event.stopPropagation();
+    if (!authStore.isAuthenticated) {
+      setAuthModalOpen(true);
+      return;
+    }
+    setShowToEdit(show);
+    setSubmitInfoModalOpen(true);
+  };
+
+  // Handle close submit info modal
+  const handleCloseSubmitInfoModal = () => {
+    setSubmitInfoModalOpen(false);
+    setShowToEdit(null);
   };
 
   return (
@@ -635,6 +697,48 @@ const ShowsPage: React.FC = observer(() => {
                                           style={{ fontSize: '14px' }}
                                         />
                                       </IconButton>
+
+                                      {/* Flag button */}
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => handleFlagClick(e, show)}
+                                        sx={{
+                                          color: show.isFlagged
+                                            ? theme.palette.warning.main
+                                            : theme.palette.text.disabled,
+                                          width: { xs: '32px', md: '36px' },
+                                          height: { xs: '32px', md: '36px' },
+                                          '&:hover': {
+                                            color: theme.palette.warning.main,
+                                            backgroundColor: theme.palette.warning.main + '10',
+                                          },
+                                        }}
+                                      >
+                                        <FontAwesomeIcon
+                                          icon={faFlag}
+                                          style={{ fontSize: '14px' }}
+                                        />
+                                      </IconButton>
+
+                                      {/* Edit button */}
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => handleEditClick(e, show)}
+                                        sx={{
+                                          color: theme.palette.info.main,
+                                          width: { xs: '32px', md: '36px' },
+                                          height: { xs: '32px', md: '36px' },
+                                          '&:hover': {
+                                            color: theme.palette.info.main,
+                                            backgroundColor: theme.palette.info.main + '10',
+                                          },
+                                        }}
+                                      >
+                                        <FontAwesomeIcon
+                                          icon={faEdit}
+                                          style={{ fontSize: '14px' }}
+                                        />
+                                      </IconButton>
                                     </Box>
                                   </Box>
                                 </Box>
@@ -1106,6 +1210,46 @@ const ShowsPage: React.FC = observer(() => {
                                       style={{ fontSize: '12px' }}
                                     />
                                   </IconButton>
+
+                                  {/* Flag button */}
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => handleFlagClick(e, show)}
+                                    sx={{
+                                      color: show.isFlagged
+                                        ? theme.palette.warning.main
+                                        : theme.palette.text.disabled,
+                                      width: { xs: '28px', md: '32px' },
+                                      height: { xs: '28px', md: '32px' },
+                                      '&:hover': {
+                                        color: theme.palette.warning.main,
+                                        backgroundColor: theme.palette.warning.main + '10',
+                                        transform: 'scale(1.1)',
+                                      },
+                                      transition: 'all 0.2s ease',
+                                    }}
+                                  >
+                                    <FontAwesomeIcon icon={faFlag} style={{ fontSize: '12px' }} />
+                                  </IconButton>
+
+                                  {/* Edit button */}
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => handleEditClick(e, show)}
+                                    sx={{
+                                      color: theme.palette.info.main,
+                                      width: { xs: '28px', md: '32px' },
+                                      height: { xs: '28px', md: '32px' },
+                                      '&:hover': {
+                                        color: theme.palette.info.main,
+                                        backgroundColor: theme.palette.info.main + '10',
+                                        transform: 'scale(1.1)',
+                                      },
+                                      transition: 'all 0.2s ease',
+                                    }}
+                                  >
+                                    <FontAwesomeIcon icon={faEdit} style={{ fontSize: '12px' }} />
+                                  </IconButton>
                                 </Box>
                               </Box>
                             </Box>
@@ -1146,6 +1290,20 @@ const ShowsPage: React.FC = observer(() => {
       )}
 
       <AuthRequiredModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+
+      <FlagShowDialog
+        open={flagDialogOpen}
+        onClose={handleCloseFlagDialog}
+        onConfirm={handleConfirmFlag}
+        show={showToFlag}
+        loading={flagLoading}
+      />
+
+      <SubmitMissingInfoModal
+        open={submitInfoModalOpen}
+        onClose={handleCloseSubmitInfoModal}
+        show={showToEdit}
+      />
     </>
   );
 });

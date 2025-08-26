@@ -257,6 +257,24 @@ export class SubscriptionStore {
     }
   }
 
+  async syncSubscription() {
+    try {
+      this.setLoading(true);
+      await apiStore.post(apiStore.endpoints.subscription.sync);
+
+      // After syncing, fetch the updated subscription status
+      return await this.fetchSubscriptionStatus();
+    } catch (error: any) {
+      runInAction(() => {
+        this.isLoading = false;
+      });
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to sync subscription',
+      };
+    }
+  }
+
   // Getters for easy access to subscription features
   get hasAdFreeAccess(): boolean {
     // Admins get all premium features
@@ -385,6 +403,52 @@ export class SubscriptionStore {
         return !this.hasAdFreeAccess;
       default:
         return true;
+    }
+  }
+
+  async changeSubscriptionPlan(plan: 'free' | 'ad_free' | 'premium') {
+    try {
+      this.setLoading(true);
+
+      if (plan === 'free') {
+        // If changing to free, cancel the subscription
+        await this.cancelSubscription();
+      } else {
+        // Change to a paid plan
+        const response = await apiStore.post('/subscription/change-plan', { plan });
+
+        if (response) {
+          // Refresh subscription status
+          await this.fetchSubscriptionStatus();
+        } else {
+          throw new Error('Failed to change subscription plan');
+        }
+      }
+    } catch (error) {
+      console.error('Error changing subscription plan:', error);
+      throw error;
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async cancelSubscription(immediately: boolean = false) {
+    try {
+      this.setLoading(true);
+
+      const response = await apiStore.post('/subscription/cancel', { immediately });
+
+      if (response) {
+        // Refresh subscription status
+        await this.fetchSubscriptionStatus();
+      } else {
+        throw new Error('Failed to cancel subscription');
+      }
+    } catch (error) {
+      console.error('Error canceling subscription:', error);
+      throw error;
+    } finally {
+      this.setLoading(false);
     }
   }
 }

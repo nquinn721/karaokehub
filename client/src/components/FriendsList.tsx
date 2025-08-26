@@ -37,6 +37,7 @@ import { authStore, friendsStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import SendFriendRequestModal from './SendFriendRequestModal';
+import { FriendFavoriteShowsModal } from './modals/FriendFavoriteShowsModal';
 
 interface FriendsListProps {
   onUserSelect?: (userId: string) => void;
@@ -49,6 +50,8 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
   const [showRequests, setShowRequests] = useState(false);
   const [showSentRequests, setShowSentRequests] = useState(false);
   const [showSendRequestModal, setShowSendRequestModal] = useState(false);
+  const [showFavoriteModal, setShowFavoriteModal] = useState(false);
+  const [selectedFriend, setSelectedFriend] = useState<any>(null);
 
   useEffect(() => {
     if (authStore.isAuthenticated) {
@@ -69,6 +72,13 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
 
   const handleDeclineRequest = async (requestId: string) => {
     await friendsStore.declineFriendRequest(requestId);
+  };
+
+  const handleFriendClick = (friend: any) => {
+    setSelectedFriend(friend);
+    setShowFavoriteModal(true);
+    // Call the original onUserSelect if provided
+    onUserSelect?.(friend.id);
   };
 
   const getDisplayName = (user: any) => {
@@ -362,7 +372,7 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
             {(filteredFriends || []).slice(0, 8).map((friend) => (
               <ListItem key={friend.id} disablePadding>
                 <ListItemButton
-                  onClick={() => onUserSelect?.(friend.id)}
+                  onClick={() => handleFriendClick(friend)}
                   sx={{ borderRadius: 1, px: 1 }}
                 >
                   <ListItemAvatar>
@@ -408,6 +418,18 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
         open={showSendRequestModal}
         onClose={() => setShowSendRequestModal(false)}
       />
+
+      {/* Friend Favorite Shows Modal */}
+      {selectedFriend && (
+        <FriendFavoriteShowsModal
+          open={showFavoriteModal}
+          onClose={() => {
+            setShowFavoriteModal(false);
+            setSelectedFriend(null);
+          }}
+          friend={selectedFriend}
+        />
+      )}
     </Card>
   );
 });

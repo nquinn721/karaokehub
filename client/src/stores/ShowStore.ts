@@ -28,6 +28,7 @@ export interface Show {
   description?: string;
   lat?: number; // Latitude coordinate
   lng?: number; // Longitude coordinate
+  isFlagged?: boolean; // Whether the show has been flagged as non-existent
   dj?: {
     id: string;
     name: string;
@@ -668,6 +669,50 @@ export class ShowStore {
     } catch (error: any) {
       console.error('Error fetching venue weekly schedule:', error);
       return [];
+    }
+  }
+
+  /**
+   * Flag a show as non-existent
+   */
+  async flagShow(showId: string, userId: string): Promise<boolean> {
+    try {
+      await apiStore.patch(`/shows/${showId}/flag`, { userId });
+
+      // Update the show in our local state
+      runInAction(() => {
+        const show = this.shows.find((s) => s.id === showId);
+        if (show) {
+          show.isFlagged = true;
+        }
+      });
+
+      return true;
+    } catch (error: any) {
+      console.error('Error flagging show:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Unflag a show
+   */
+  async unflagShow(showId: string, userId: string): Promise<boolean> {
+    try {
+      await apiStore.patch(`/shows/${showId}/unflag`, { userId });
+
+      // Update the show in our local state
+      runInAction(() => {
+        const show = this.shows.find((s) => s.id === showId);
+        if (show) {
+          show.isFlagged = false;
+        }
+      });
+
+      return true;
+    } catch (error: any) {
+      console.error('Error unflagging show:', error);
+      return false;
     }
   }
 }

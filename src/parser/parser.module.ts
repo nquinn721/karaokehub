@@ -1,10 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DJ } from '../dj/dj.entity';
-import { DJNickname } from '../entities/dj-nickname.entity';
 import { GeocodingService } from '../geocoding/geocoding.service';
 import { CancellationService } from '../services/cancellation.service';
-import { DJNicknameService } from '../services/dj-nickname.service';
 import { FacebookService } from '../services/facebook.service';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
@@ -18,7 +16,7 @@ import { UrlToParseService } from './url-to-parse.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Vendor, DJ, Show, ParsedSchedule, UrlToParse, DJNickname]),
+    TypeOrmModule.forFeature([Vendor, DJ, Show, ParsedSchedule, UrlToParse]),
     WebSocketModule,
   ],
   controllers: [ParserController],
@@ -26,7 +24,6 @@ import { UrlToParseService } from './url-to-parse.service';
     KaraokeParserService,
     FacebookParserService,
     UrlToParseService,
-    DJNicknameService,
     GeocodingService,
     FacebookService,
     CancellationService,
@@ -35,7 +32,6 @@ import { UrlToParseService } from './url-to-parse.service';
     KaraokeParserService,
     FacebookParserService,
     UrlToParseService,
-    DJNicknameService,
     FacebookService,
     CancellationService,
   ],

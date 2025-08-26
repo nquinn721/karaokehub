@@ -121,6 +121,45 @@ const AppContent: React.FC = observer(() => {
     }
   }, [location.pathname, authStore.isAuthenticated, authStore.user]);
 
+  // Automatically sync subscription status when app loads and user is authenticated
+  useEffect(() => {
+    if (authStore.isAuthenticated && authStore.user) {
+      // Import subscriptionStore dynamically to avoid circular dependencies
+      import('@stores/index').then(({ subscriptionStore }) => {
+        // Force sync subscription data from Stripe to ensure it's up to date
+        subscriptionStore.syncSubscription().then((result) => {
+          if (result.success) {
+            console.log('Subscription synced successfully on app load');
+          } else {
+            console.warn('Failed to sync subscription on app load:', result.error);
+            // Fallback to regular fetch if sync fails
+            subscriptionStore.fetchSubscriptionStatus();
+          }
+        });
+      });
+    }
+  }, [authStore.isAuthenticated, authStore.user]);
+
+  // Refresh subscription when user returns to tab (page becomes visible)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && authStore.isAuthenticated && authStore.user) {
+        // Import subscriptionStore dynamically to avoid circular dependencies
+        import('@stores/index').then(({ subscriptionStore }) => {
+          // Sync subscription when user returns to the tab
+          subscriptionStore.fetchSubscriptionStatus().then((result) => {
+            if (result.success) {
+              console.log('Subscription refreshed on tab focus');
+            }
+          });
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [authStore.isAuthenticated, authStore.user]);
+
   // Additional safety check - ensure stage name modal can't be bypassed
   useEffect(() => {
     const interval = setInterval(() => {

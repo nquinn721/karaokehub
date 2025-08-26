@@ -110,7 +110,7 @@ spec:
             # Music API Configuration
             # iTunes API is used for music search
             - name: ITUNES_API_BASE_URL
-              value: "https://itunes.apple.com"
+              value: 'https://itunes.apple.com'
             - name: STRIPE_SECRET_KEY
               valueFrom:
                 secretKeyRef:

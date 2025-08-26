@@ -1634,7 +1634,7 @@ CRITICAL RESPONSE REQUIREMENTS:
 - If the same venue appears multiple times with the same day/time, only include it ONCE
 - Different days at the same venue = separate shows (e.g., "Bar Monday" vs "Bar Saturday")  
 - Different times at the same venue = separate shows (e.g., "Bar 7:00 PM" vs "Bar 10:00 PM")
-- Same venue, same day, same time = DUPLICATE, include only once
+- Same address, same day, same time = DUPLICATE, include only once
 - Verify each show is truly distinct before adding to the list
 
 CRITICAL: For each venue mentioned, create a separate show entry for EACH day of the week it appears.
@@ -1993,7 +1993,7 @@ ${htmlContent}`;
   }
 
   /**
-   * Remove duplicate shows based on venue and startTime only
+   * Remove duplicate shows based on address, day, and startTime
    */
   private removeDuplicateShows(shows: any[]): any[] {
     const unique: any[] = [];
@@ -2002,28 +2002,27 @@ ${htmlContent}`;
     this.logAndBroadcast(`Starting deduplication with ${shows.length} shows`, 'info');
 
     for (const show of shows) {
-      // Create a key that includes venue, day, and startTime for deduplication
-      const venue = show.venue?.toLowerCase().trim() || '';
+      // Create a key that includes address, day, and startTime for deduplication
+      // This handles cases where venue names might vary but it's the same physical location
+      const address = show.address?.toLowerCase().trim() || '';
       const day = show.day?.toLowerCase().trim() || '';
       const startTime =
         show.startTime?.toLowerCase().trim() || show.time?.toLowerCase().trim() || '';
-      const key = `${venue}-${day}-${startTime}`;
+      const key = `${address}-${day}-${startTime}`;
 
       if (key && !seenShows.has(key)) {
         seenShows.add(key);
         unique.push(show);
-        this.logger.debug(
-          `Added show: ${show.venue} on ${day} at ${startTime} with ${show.djName}`,
-        );
+        this.logger.debug(`Added show: ${show.venue} at ${show.address} on ${day} at ${startTime}`);
       } else {
         this.logger.debug(
-          `Skipped duplicate: ${show.venue} on ${day} at ${startTime} with ${show.djName} (key: ${key})`,
+          `Skipped duplicate: ${show.venue} at ${show.address} on ${day} at ${startTime} (key: ${key})`,
         );
       }
     }
 
     this.logAndBroadcast(
-      `Deduplication: ${shows.length} shows → ${unique.length} unique shows (venue + day + startTime)`,
+      `Deduplication: ${shows.length} shows → ${unique.length} unique shows (address + day + startTime)`,
       'success',
     );
     return unique;
@@ -2407,6 +2406,18 @@ ${htmlContent}`;
     this.logAndBroadcast(`Starting approval process for schedule ${parsedScheduleId}`, 'info');
 
     try {
+      // Remove duplicates from approved data before processing
+      const originalShowCount = approvedData.shows.length;
+      approvedData.shows = this.removeDuplicateShows(approvedData.shows);
+      const finalShowCount = approvedData.shows.length;
+
+      if (originalShowCount !== finalShowCount) {
+        this.logAndBroadcast(
+          `Removed ${originalShowCount - finalShowCount} duplicate shows from approved data`,
+          'success',
+        );
+      }
+
       // Validate input data
       if (!approvedData || !approvedData.shows || approvedData.shows.length === 0) {
         throw new Error('Invalid data: no shows found');
@@ -2653,7 +2664,7 @@ ${htmlContent}`;
 
         const normalizedDay = dayMapping[showData.day?.toLowerCase()] || 'monday';
 
-        // Determine vendor for this show
+        // Determine vendor for this show first
         let showVendor: Vendor | null = null;
         if (showData.vendor) {
           showVendor = vendorMap.get(showData.vendor) || null;
@@ -2667,6 +2678,33 @@ ${htmlContent}`;
           showVendor = primaryVendor; // Use primary vendor as fallback
         }
 
+        // Check for cross-vendor duplicates (address-day-starttime) that should be rejected
+        if (showData.address && showData.startTime) {
+          const crossVendorDuplicate = await this.showRepository.findOne({
+            where: {
+              address: showData.address,
+              day: normalizedDay as any,
+              startTime: showData.startTime,
+            },
+            relations: ['dj', 'dj.vendor'],
+          });
+
+          // If we find a duplicate from a different vendor, reject this show
+          if (crossVendorDuplicate) {
+            const existingVendorId = crossVendorDuplicate.dj?.vendor?.id;
+            const currentVendorId = showVendor?.id;
+
+            if (existingVendorId && existingVendorId !== currentVendorId) {
+              this.logAndBroadcast(
+                `Rejecting cross-vendor duplicate: ${showData.venue} at ${showData.address} on ${normalizedDay} at ${showData.startTime} (already exists for different vendor)`,
+                'warning',
+              );
+              showsDuplicated++;
+              return null; // Skip this show entirely
+            }
+          }
+        }
+
         // Check for existing show with same vendor, day, time, venue, and DJ
         const existingShow = await this.showRepository.findOne({
           where: {
@@ -2678,117 +2716,141 @@ ${htmlContent}`;
           relations: ['dj', 'dj.vendor'], // Load DJ and vendor relationships to check vendor match
         });
 
-        // Check if existing show belongs to the same vendor (through DJ)
-        const isSameVendor = existingShow?.dj?.vendor?.id === (showVendor?.id || null);
+        // Also check for address-day-starttime duplicates (more strict duplicate detection)
+        let addressBasedDuplicate = null;
+        if (showData.address && showData.startTime) {
+          addressBasedDuplicate = await this.showRepository.findOne({
+            where: {
+              address: showData.address,
+              day: normalizedDay as any,
+              startTime: showData.startTime,
+            },
+            relations: ['dj', 'dj.vendor'],
+          });
+        }
 
-        if (existingShow && isSameVendor) {
+        // Use the most specific duplicate found (address-based takes priority)
+        const duplicateShow = addressBasedDuplicate || existingShow;
+
+        // Check if existing show belongs to the same vendor (through DJ)
+        const isSameVendor = duplicateShow?.dj?.vendor?.id === (showVendor?.id || null);
+
+        if (duplicateShow && isSameVendor) {
+          // If we found an address-based duplicate but not a venue-based one, log it
+          if (addressBasedDuplicate && !existingShow) {
+            this.logAndBroadcast(
+              `Found address-based duplicate: ${showData.venue} at ${showData.address} on ${normalizedDay} at ${showData.startTime}`,
+              'warning',
+            );
+          }
+
           // Update existing show with any missing information
           let showUpdated = false;
-          if (!existingShow.address && showData.address) {
-            existingShow.address = showData.address;
+          if (!duplicateShow.address && showData.address) {
+            duplicateShow.address = showData.address;
             showUpdated = true;
           }
-          if (!existingShow.venuePhone && showData.venuePhone) {
-            existingShow.venuePhone = showData.venuePhone;
+          if (!duplicateShow.venuePhone && showData.venuePhone) {
+            duplicateShow.venuePhone = showData.venuePhone;
             showUpdated = true;
           }
-          if (!existingShow.venueWebsite && showData.venueWebsite) {
-            existingShow.venueWebsite = showData.venueWebsite;
+          if (!duplicateShow.venueWebsite && showData.venueWebsite) {
+            duplicateShow.venueWebsite = showData.venueWebsite;
             showUpdated = true;
           }
-          if (!existingShow.description && showData.description) {
-            existingShow.description = showData.description;
+          if (!duplicateShow.description && showData.description) {
+            duplicateShow.description = showData.description;
             showUpdated = true;
           }
-          if (!existingShow.source && showData.source) {
-            existingShow.source = showData.source;
+          if (!duplicateShow.source && showData.source) {
+            duplicateShow.source = showData.source;
             showUpdated = true;
           }
-          if (!existingShow.city && (showData.city || showData.address)) {
+          if (!duplicateShow.city && (showData.city || showData.address)) {
             let city = showData.city;
             if (!city && showData.address) {
               const extracted = this.geocodingService.extractCityStateFromAddress(showData.address);
               city = extracted.city;
             }
             if (city) {
-              existingShow.city = city;
+              duplicateShow.city = city;
               showUpdated = true;
             }
           }
-          if (!existingShow.state && (showData.state || showData.address)) {
+          if (!duplicateShow.state && (showData.state || showData.address)) {
             let state = showData.state;
             if (!state && showData.address) {
               const extracted = this.geocodingService.extractCityStateFromAddress(showData.address);
               state = extracted.state;
             }
             if (state) {
-              existingShow.state = state;
+              duplicateShow.state = state;
               showUpdated = true;
             }
           }
-          if (!existingShow.zip && (showData.zip || showData.address)) {
+          if (!duplicateShow.zip && (showData.zip || showData.address)) {
             let zip = showData.zip;
             if (!zip && showData.address) {
               const extracted = this.geocodingService.extractCityStateFromAddress(showData.address);
               zip = extracted.zip;
             }
             if (zip) {
-              existingShow.zip = zip;
+              duplicateShow.zip = zip;
               showUpdated = true;
             }
           }
           // Try to get coordinates if missing
-          if ((!existingShow.lat || !existingShow.lng) && existingShow.address) {
+          if ((!duplicateShow.lat || !duplicateShow.lng) && duplicateShow.address) {
             try {
               const geocodeResult = await this.geocodingService.geocodeAddressHybrid(
-                existingShow.address,
+                duplicateShow.address,
               );
               if (geocodeResult) {
-                if (!existingShow.lat && geocodeResult.lat) {
-                  existingShow.lat = geocodeResult.lat;
+                if (!duplicateShow.lat && geocodeResult.lat) {
+                  duplicateShow.lat = geocodeResult.lat;
                   showUpdated = true;
                 }
-                if (!existingShow.lng && geocodeResult.lng) {
-                  existingShow.lng = geocodeResult.lng;
+                if (!duplicateShow.lng && geocodeResult.lng) {
+                  duplicateShow.lng = geocodeResult.lng;
                   showUpdated = true;
                 }
                 // Also update other missing fields
-                if (!existingShow.city && geocodeResult.city) {
-                  existingShow.city = geocodeResult.city;
+                if (!duplicateShow.city && geocodeResult.city) {
+                  duplicateShow.city = geocodeResult.city;
                   showUpdated = true;
                 }
-                if (!existingShow.state && geocodeResult.state) {
-                  existingShow.state = geocodeResult.state;
+                if (!duplicateShow.state && geocodeResult.state) {
+                  duplicateShow.state = geocodeResult.state;
                   showUpdated = true;
                 }
-                if (!existingShow.zip && geocodeResult.zip) {
-                  existingShow.zip = geocodeResult.zip;
+                if (!duplicateShow.zip && geocodeResult.zip) {
+                  duplicateShow.zip = geocodeResult.zip;
                   showUpdated = true;
                 }
                 // Trust the existing address parsing - don't re-clean it
               }
             } catch (geocodeError) {
               this.logAndBroadcast(
-                `Geocoding failed for existing show ${existingShow.venue}: ${geocodeError.message}`,
+                `Geocoding failed for existing show ${duplicateShow.venue}: ${geocodeError.message}`,
                 'warning',
               );
             }
           }
-          if (!existingShow.startTime && showData.startTime) {
+          if (!duplicateShow.startTime && showData.startTime) {
             const validatedStartTime = this.validateTimeValue(showData.startTime);
             if (validatedStartTime) {
-              existingShow.startTime = validatedStartTime;
+              duplicateShow.startTime = validatedStartTime;
               showUpdated = true;
             }
           }
-          if (!existingShow.endTime) {
+          if (!duplicateShow.endTime) {
             const validatedEndTime = this.validateTimeValue(showData.endTime) || '00:00'; // Default to midnight
-            existingShow.endTime = validatedEndTime;
+            duplicateShow.endTime = validatedEndTime;
             showUpdated = true;
           }
 
           if (showUpdated) {
-            await this.showRepository.save(existingShow);
+            await this.showRepository.save(duplicateShow);
             this.logAndBroadcast(
               `Updated existing show: ${showData.venue} on ${normalizedDay} at ${showData.time}`,
               'info',
@@ -2801,7 +2863,7 @@ ${htmlContent}`;
             );
             showsDuplicated++;
           }
-          return existingShow;
+          return duplicateShow;
         }
 
         this.logAndBroadcast(

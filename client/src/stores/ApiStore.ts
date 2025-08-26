@@ -596,6 +596,7 @@ class ApiStore {
       status: '/subscription/status',
       createCheckoutSession: '/subscription/create-checkout-session',
       createPortalSession: '/subscription/create-portal-session',
+      sync: '/subscription/sync',
       webhook: '/subscription/webhook',
       pricing: '/subscription/pricing',
     },

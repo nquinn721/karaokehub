@@ -1,7 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DJ } from '../dj/dj.entity';
-import { DJNickname } from '../entities/dj-nickname.entity';
 import { User } from '../entities/user.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
 import { Feedback } from '../feedback/feedback.entity';
@@ -11,6 +10,7 @@ import { SongFavorite } from '../music/song-favorite.entity';
 import { Song } from '../music/song.entity';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { UrlToParse } from '../parser/url-to-parse.entity';
+import { ShowReview } from '../show-review/show-review.entity';
 import { Show } from '../show/show.entity';
 import { Subscription } from '../subscription/subscription.entity';
 import { UserFeatureOverride } from '../user-feature-override/user-feature-override.entity';
@@ -30,8 +30,8 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       User,
       Vendor,
       DJ,
-      DJNickname,
       Show,
+      ShowReview,
       FavoriteShow,
       Feedback,
       ParsedSchedule,

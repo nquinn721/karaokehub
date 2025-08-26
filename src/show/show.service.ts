@@ -715,4 +715,42 @@ export class ShowService {
       throw error;
     }
   }
+
+  async flagShow(id: string, userId: string): Promise<Show> {
+    try {
+      const show = await this.showRepository.findOne({ where: { id } });
+
+      if (!show) {
+        throw new Error('Show not found');
+      }
+
+      show.isFlagged = true;
+      const updatedShow = await this.showRepository.save(show);
+
+      this.logger.log(`Show ${id} flagged by user ${userId}`);
+      return updatedShow;
+    } catch (error) {
+      this.logger.error('Error flagging show:', error);
+      throw error;
+    }
+  }
+
+  async unflagShow(id: string, userId: string): Promise<Show> {
+    try {
+      const show = await this.showRepository.findOne({ where: { id } });
+
+      if (!show) {
+        throw new Error('Show not found');
+      }
+
+      show.isFlagged = false;
+      const updatedShow = await this.showRepository.save(show);
+
+      this.logger.log(`Show ${id} unflagged by user ${userId}`);
+      return updatedShow;
+    } catch (error) {
+      this.logger.error('Error unflagging show:', error);
+      throw error;
+    }
+  }
 }

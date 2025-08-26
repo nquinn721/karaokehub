@@ -141,6 +141,27 @@ export class StripeService {
     });
   }
 
+  async changeSubscriptionPlan(
+    subscriptionId: string,
+    newPriceId: string,
+  ): Promise<Stripe.Subscription> {
+    const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
+
+    return this.stripe.subscriptions.update(subscriptionId, {
+      items: [
+        {
+          id: subscription.items.data[0].id,
+          price: newPriceId,
+        },
+      ],
+      proration_behavior: 'always_invoice',
+    });
+  }
+
+  async cancelSubscriptionImmediately(subscriptionId: string): Promise<Stripe.Subscription> {
+    return this.stripe.subscriptions.cancel(subscriptionId);
+  }
+
   async listSubscriptions(customerId: string): Promise<Stripe.ApiList<Stripe.Subscription>> {
     return this.stripe.subscriptions.list({
       customer: customerId,

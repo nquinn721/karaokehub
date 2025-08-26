@@ -3,6 +3,7 @@ import {
   faBars,
   faCog,
   faComments,
+  faCrown,
   faHome,
   faMapLocationDot,
   faMusic,
@@ -33,13 +34,13 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { authStore } from '@stores/index';
+import { authStore, subscriptionStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getUserDisplayName, getUserSecondaryName } from '../../utils/userUtils';
 import FeedbackModal from '../FeedbackModal';
-import { ThemeToggle } from '../ThemeToggle';
+import { SubscriptionUpgradeModal } from '../SubscriptionUpgradeModal';
 
 export interface HeaderComponentProps {
   title?: string;
@@ -54,6 +55,7 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
     const [feedbackOpen, setFeedbackOpen] = React.useState(false);
+    const [upgradeModalOpen, setUpgradeModalOpen] = React.useState(false);
 
     // Helper function to check if a path is active
     const isActivePath = (path: string) => {
@@ -626,8 +628,30 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
 
               {/* Desktop Controls - Hidden on small screens */}
               <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
-                {/* Theme Toggle */}
-                <ThemeToggle />
+                {/* Upgrade Button - Only show if user is authenticated and not on premium */}
+                {authStore.isAuthenticated && subscriptionStore.currentPlan !== 'premium' && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setUpgradeModalOpen(true)}
+                    sx={{
+                      color: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                      borderColor:
+                        theme.palette.mode === 'light' ? 'rgba(255,255,255,0.7)' : 'inherit',
+                      '&:hover': {
+                        borderColor: theme.palette.mode === 'light' ? 'white' : 'inherit',
+                        backgroundColor:
+                          theme.palette.mode === 'light' ? 'rgba(255,255,255,0.1)' : 'inherit',
+                      },
+                    }}
+                  >
+                    <FontAwesomeIcon
+                      icon={faCrown}
+                      style={{ marginRight: '6px', fontSize: '14px' }}
+                    />
+                    Upgrade
+                  </Button>
+                )}
 
                 {authStore.isAuthenticated ? (
                   <>
@@ -843,21 +867,6 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
           </Box>
 
           <List>
-            {/* Theme Toggle */}
-            <ListItem>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: theme.palette.mode === 'dark' ? theme.palette.text.primary : '#ffffff',
-                  }}
-                >
-                  Theme
-                </Typography>
-                <ThemeToggle />
-              </Box>
-            </ListItem>
-
             <Divider
               sx={{
                 my: 1,
@@ -1260,6 +1269,47 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   </ListItemButton>
                 </ListItem>
 
+                {/* Upgrade Button - Mobile - Only show if not on premium */}
+                {subscriptionStore.currentPlan !== 'premium' && (
+                  <ListItem disablePadding>
+                    <ListItemButton
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setUpgradeModalOpen(true);
+                      }}
+                      sx={{
+                        background: `linear-gradient(135deg, 
+                          ${theme.palette.secondary.main}20 0%, 
+                          ${theme.palette.secondary.main}10 100%)`,
+                        border: `1px solid ${theme.palette.secondary.main}40`,
+                        borderRadius: 1,
+                        mx: 1,
+                        my: 0.5,
+                        '&:hover': {
+                          background: `linear-gradient(135deg, 
+                            ${theme.palette.secondary.main}30 0%, 
+                            ${theme.palette.secondary.main}15 100%)`,
+                        },
+                      }}
+                    >
+                      <ListItemIcon sx={{ color: theme.palette.secondary.main }}>
+                        <FontAwesomeIcon icon={faCrown} />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={
+                          subscriptionStore.currentPlan === 'free'
+                            ? 'Upgrade to Premium'
+                            : 'Upgrade to Premium'
+                        }
+                        primaryTypographyProps={{
+                          fontWeight: 600,
+                          color: theme.palette.secondary.main,
+                        }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                )}
+
                 {/* Admin Dashboard */}
                 {authStore.isAdmin && (
                   <ListItem disablePadding>
@@ -1381,6 +1431,13 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
 
         {/* Feedback Modal */}
         <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+
+        {/* Subscription Upgrade Modal */}
+        <SubscriptionUpgradeModal
+          open={upgradeModalOpen}
+          onClose={() => setUpgradeModalOpen(false)}
+          currentPlan={subscriptionStore.currentPlan}
+        />
       </>
     );
   },

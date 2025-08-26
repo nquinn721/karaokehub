@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
-import { DJNickname } from '../entities/dj-nickname.entity';
 import { User } from '../entities/user.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
 import { Feedback } from '../feedback/feedback.entity';
 import { ParsedSchedule, ParseStatus } from '../parser/parsed-schedule.entity';
+import { ReviewStatus, ShowReview } from '../show-review/show-review.entity';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
 
@@ -21,14 +21,14 @@ export class AdminService {
     private showRepository: Repository<Show>,
     @InjectRepository(DJ)
     private djRepository: Repository<DJ>,
-    @InjectRepository(DJNickname)
-    private djNicknameRepository: Repository<DJNickname>,
     @InjectRepository(ParsedSchedule)
     private parsedScheduleRepository: Repository<ParsedSchedule>,
     @InjectRepository(FavoriteShow)
     private favoriteShowRepository: Repository<FavoriteShow>,
     @InjectRepository(Feedback)
     private feedbackRepository: Repository<Feedback>,
+    @InjectRepository(ShowReview)
+    private showReviewRepository: Repository<ShowReview>,
   ) {}
 
   async getStatistics() {
@@ -40,7 +40,8 @@ export class AdminService {
       activeShows,
       totalDJs,
       totalFavorites,
-      pendingReviews,
+      pendingParserReviews,
+      pendingShowReviews,
       totalFeedback,
     ] = await Promise.all([
       this.userRepository.count(),
@@ -51,6 +52,7 @@ export class AdminService {
       this.djRepository.count(),
       this.favoriteShowRepository.count(),
       this.parsedScheduleRepository.count({ where: { status: ParseStatus.PENDING_REVIEW } }),
+      this.showReviewRepository.count({ where: { status: ReviewStatus.PENDING } }),
       this.feedbackRepository.count(),
     ]);
 
@@ -81,7 +83,8 @@ export class AdminService {
       activeShows,
       totalDJs,
       totalFavorites,
-      pendingReviews,
+      pendingReviews: pendingParserReviews + pendingShowReviews,
+      pendingShowReviews,
       totalFeedback,
       growth: {
         newUsersLast30Days,
@@ -553,21 +556,40 @@ export class AdminService {
   // Test comment for recompilation
 
   async deleteShow(id: string) {
-    const show = await this.showRepository.findOne({
-      where: { id },
-      relations: ['favorites'],
-    });
+    try {
+      console.log(`Starting deletion process for show ID: ${id}`);
 
-    if (!show) {
-      throw new Error('Show not found');
+      const show = await this.showRepository.findOne({
+        where: { id },
+      });
+
+      if (!show) {
+        throw new Error('Show not found');
+      }
+
+      console.log(`Found show: ${show.venue || 'Unknown Venue'}`);
+
+      // With CASCADE delete configured on FavoriteShow and ShowReview entities,
+      // related records should be automatically deleted
+      console.log('Attempting to delete show with CASCADE deletes...');
+      await this.showRepository.remove(show);
+      console.log('Show deleted successfully');
+
+      return { message: 'Show and all related data deleted successfully' };
+    } catch (error) {
+      console.error('Detailed error deleting show:', error);
+
+      // Provide more specific error messages based on the error type
+      if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.errno === 1451) {
+        throw new Error(
+          `Cannot delete this show because it has related data in other tables. Foreign key constraint failed: ${error.message}`,
+        );
+      } else if (error.code === 'ER_NO_REFERENCED_ROW_2' || error.errno === 1452) {
+        throw new Error(`Cannot delete this show due to a reference constraint: ${error.message}`);
+      } else {
+        throw new Error(`Cannot delete this show. Error: ${error.message}`);
+      }
     }
-
-    // Delete all favorites for this show first
-    await this.favoriteShowRepository.delete({ show: { id } });
-
-    // Then delete the show
-    await this.showRepository.remove(show);
-    return { message: 'Show and all related data deleted successfully' };
   }
 
   async deleteDj(id: string) {
@@ -579,9 +601,6 @@ export class AdminService {
     if (!dj) {
       throw new Error('DJ not found');
     }
-
-    // Delete all DJ nicknames first
-    await this.djNicknameRepository.delete({ djId: id });
 
     // Set DJ references to null in shows before deleting
     await this.showRepository.update({ djId: id }, { djId: null });
@@ -728,5 +747,185 @@ export class AdminService {
       throw new Error('Feedback not found');
     }
     return { message: 'Feedback deleted successfully' };
+  }
+
+  async getShowReviews(page: number = 1, limit: number = 10, search?: string) {
+    const queryBuilder = this.showReviewRepository
+      .createQueryBuilder('review')
+      .leftJoinAndSelect('review.show', 'show')
+      .leftJoinAndSelect('show.dj', 'dj')
+      .leftJoinAndSelect('dj.vendor', 'vendor')
+      .leftJoinAndSelect('review.submittedByUser', 'submittedBy')
+      .leftJoinAndSelect('review.reviewedByUser', 'reviewedBy');
+
+    if (search) {
+      queryBuilder.where(
+        '(review.djName LIKE :search OR review.vendorName LIKE :search OR review.venueName LIKE :search OR review.comments LIKE :search OR show.venue LIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    queryBuilder
+      .orderBy('review.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [items, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async updateShowReview(id: string, updateData: any) {
+    await this.showReviewRepository.update(id, updateData);
+    return await this.showReviewRepository.findOne({
+      where: { id },
+      relations: ['show', 'show.dj', 'show.dj.vendor', 'submittedByUser', 'reviewedByUser'],
+    });
+  }
+
+  async deleteShowReview(id: string) {
+    const result = await this.showReviewRepository.delete(id);
+    if (result.affected === 0) {
+      throw new Error('Show review not found');
+    }
+    return { message: 'Show review deleted successfully' };
+  }
+
+  async detectDuplicatesInParsedSchedule(parsedScheduleId: string) {
+    const parsedSchedule = await this.parsedScheduleRepository.findOne({
+      where: { id: parsedScheduleId },
+    });
+
+    if (!parsedSchedule) {
+      throw new Error('Parsed schedule not found');
+    }
+
+    const aiAnalysis = parsedSchedule.aiAnalysis;
+    if (!aiAnalysis || !aiAnalysis.shows) {
+      throw new Error('No shows data found in parsed schedule');
+    }
+
+    const shows = aiAnalysis.shows;
+    const duplicateGroups = [];
+    const seenKeys = new Map<string, any[]>();
+
+    // Group shows by address-day-starttime
+    for (const show of shows) {
+      const address = (show.address || '').toLowerCase().trim();
+      const day = (show.day || '').toLowerCase().trim();
+      const startTime = (show.startTime || show.time || '').toLowerCase().trim();
+      const key = `${address}-${day}-${startTime}`;
+
+      if (!seenKeys.has(key)) {
+        seenKeys.set(key, []);
+      }
+      seenKeys.get(key)!.push(show);
+    }
+
+    // Find groups with duplicates
+    for (const [key, group] of seenKeys.entries()) {
+      if (group.length > 1) {
+        duplicateGroups.push({
+          key,
+          count: group.length,
+          shows: group,
+          address: group[0].address,
+          day: group[0].day,
+          startTime: group[0].startTime || group[0].time,
+        });
+      }
+    }
+
+    return {
+      totalShows: shows.length,
+      duplicateGroups,
+      duplicateCount: duplicateGroups.reduce((sum, group) => sum + group.count - 1, 0),
+      uniqueShowsAfterDedup:
+        shows.length - duplicateGroups.reduce((sum, group) => sum + group.count - 1, 0),
+    };
+  }
+
+  async removeDuplicatesFromParsedSchedule(parsedScheduleId: string, keepIndices: number[] = []) {
+    const parsedSchedule = await this.parsedScheduleRepository.findOne({
+      where: { id: parsedScheduleId },
+    });
+
+    if (!parsedSchedule) {
+      throw new Error('Parsed schedule not found');
+    }
+
+    const aiAnalysis = parsedSchedule.aiAnalysis;
+    if (!aiAnalysis || !aiAnalysis.shows) {
+      throw new Error('No shows data found in parsed schedule');
+    }
+
+    const shows = aiAnalysis.shows;
+    const uniqueShows = [];
+    const seenKeys = new Set<string>();
+    const duplicateGroups = new Map<string, any[]>();
+
+    // First pass: identify duplicate groups
+    for (let i = 0; i < shows.length; i++) {
+      const show = shows[i];
+      const address = (show.address || '').toLowerCase().trim();
+      const day = (show.day || '').toLowerCase().trim();
+      const startTime = (show.startTime || show.time || '').toLowerCase().trim();
+      const key = `${address}-${day}-${startTime}`;
+
+      if (!duplicateGroups.has(key)) {
+        duplicateGroups.set(key, []);
+      }
+      duplicateGroups.get(key)!.push({ ...show, originalIndex: i });
+    }
+
+    // Second pass: keep only one from each group (first one or specified index)
+    for (const [key, group] of duplicateGroups.entries()) {
+      if (group.length === 1) {
+        // Not a duplicate, keep it
+        uniqueShows.push(group[0]);
+      } else {
+        // Multiple shows with same key, keep only one
+        let showToKeep = group[0]; // Default to first
+
+        // If keepIndices are specified, try to find a match
+        if (keepIndices.length > 0) {
+          const matchingShow = group.find((show) => keepIndices.includes(show.originalIndex));
+          if (matchingShow) {
+            showToKeep = matchingShow;
+          }
+        }
+
+        // Remove the originalIndex property before saving
+        const { originalIndex, ...cleanShow } = showToKeep;
+        uniqueShows.push(cleanShow);
+      }
+    }
+
+    // Update the parsed schedule with deduplicated data
+    const updatedAiAnalysis = {
+      ...aiAnalysis,
+      shows: uniqueShows,
+      stats: {
+        ...aiAnalysis.stats,
+        showsFound: uniqueShows.length,
+      },
+    };
+
+    await this.parsedScheduleRepository.update(parsedScheduleId, {
+      aiAnalysis: updatedAiAnalysis,
+    });
+
+    return {
+      originalCount: shows.length,
+      uniqueCount: uniqueShows.length,
+      removedCount: shows.length - uniqueShows.length,
+      message: `Removed ${shows.length - uniqueShows.length} duplicate shows. ${uniqueShows.length} unique shows remain.`,
+    };
   }
 }

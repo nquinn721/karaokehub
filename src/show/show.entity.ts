@@ -84,6 +84,9 @@ export class Show {
   @Column({ default: true })
   isValid: boolean;
 
+  @Column({ default: false })
+  isFlagged: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

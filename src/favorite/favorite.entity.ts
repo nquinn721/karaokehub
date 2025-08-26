@@ -45,7 +45,7 @@ export class FavoriteShow {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @ManyToOne(() => Show, (show) => show.favoriteShows)
+  @ManyToOne(() => Show, (show) => show.favoriteShows, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'showId' })
   show: Show;
 }

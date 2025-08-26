@@ -153,4 +153,70 @@ export class SubscriptionController {
       ],
     };
   }
+
+  @Post('change-plan')
+  @UseGuards(JwtAuthGuard)
+  async changeSubscriptionPlan(
+    @CurrentUser() user: User,
+    @Body() body: { plan: SubscriptionPlan },
+  ) {
+    try {
+      console.log('🔄 [SUBSCRIPTION] Change plan request:', {
+        userId: user.id,
+        newPlan: body.plan,
+      });
+
+      if (!Object.values(SubscriptionPlan).includes(body.plan)) {
+        throw new Error(`Invalid subscription plan: ${body.plan}`);
+      }
+
+      const updatedSubscription = await this.subscriptionService.changeSubscriptionPlan(
+        user.id,
+        body.plan,
+      );
+
+      console.log('✅ [SUBSCRIPTION] Plan changed successfully:', {
+        userId: user.id,
+        newPlan: body.plan,
+      });
+
+      return updatedSubscription;
+    } catch (error) {
+      console.error('❌ [SUBSCRIPTION] Plan change failed:', {
+        userId: user.id,
+        plan: body.plan,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  @Post('cancel')
+  @UseGuards(JwtAuthGuard)
+  async cancelSubscription(@CurrentUser() user: User, @Body() body: { immediately?: boolean }) {
+    try {
+      console.log('🚫 [SUBSCRIPTION] Cancel subscription request:', {
+        userId: user.id,
+        immediately: body.immediately || false,
+      });
+
+      const updatedSubscription = await this.subscriptionService.cancelSubscription(
+        user.id,
+        body.immediately || false,
+      );
+
+      console.log('✅ [SUBSCRIPTION] Subscription cancelled:', {
+        userId: user.id,
+        immediately: body.immediately || false,
+      });
+
+      return updatedSubscription;
+    } catch (error) {
+      console.error('❌ [SUBSCRIPTION] Cancellation failed:', {
+        userId: user.id,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
 }

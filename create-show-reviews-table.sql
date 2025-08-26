@@ -1,0 +1,26 @@
+-- Create show_reviews table
+CREATE TABLE `show_reviews` (
+  `id` varchar(36) NOT NULL,
+  `showId` varchar(36) NOT NULL,
+  `submittedByUserId` varchar(36) DEFAULT NULL,
+  `djName` text,
+  `vendorName` text,
+  `venueName` text,
+  `venuePhone` text,
+  `venueWebsite` text,
+  `description` text,
+  `comments` text,
+  `status` enum('pending','approved','declined') NOT NULL DEFAULT 'pending',
+  `adminNotes` text,
+  `reviewedByUserId` varchar(36) DEFAULT NULL,
+  `reviewedAt` timestamp NULL DEFAULT NULL,
+  `createdAt` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `updatedAt` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`id`),
+  KEY `FK_show_reviews_showId` (`showId`),
+  KEY `FK_show_reviews_submittedByUserId` (`submittedByUserId`),
+  KEY `FK_show_reviews_reviewedByUserId` (`reviewedByUserId`),
+  CONSTRAINT `FK_show_reviews_showId` FOREIGN KEY (`showId`) REFERENCES `shows` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_show_reviews_submittedByUserId` FOREIGN KEY (`submittedByUserId`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `FK_show_reviews_reviewedByUserId` FOREIGN KEY (`reviewedByUserId`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

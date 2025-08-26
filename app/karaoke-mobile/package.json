@@ -9,8 +9,8 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@expo/vector-icons": "^15.0.0",
-    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@expo/vector-icons": "^14.1.0",
+    "@react-native-async-storage/async-storage": "2.1.2",
     "@react-navigation/bottom-tabs": "^7.4.6",
     "@react-navigation/drawer": "^7.5.7",
     "@react-navigation/native": "^7.1.17",
@@ -23,19 +23,21 @@
     "expo-device": "~7.1.4",
     "expo-linear-gradient": "^14.1.5",
     "expo-location": "^18.1.6",
+    "expo-maps": "~0.11.0",
     "expo-status-bar": "~2.2.3",
     "expo-web-browser": "^14.2.0",
     "mobx": "^6.13.7",
     "mobx-persist-store": "^1.1.8",
     "mobx-react-lite": "^4.1.0",
     "react": "19.0.0",
-    "react-native": "0.79.6",
-    "react-native-gesture-handler": "^2.28.0",
-    "react-native-reanimated": "^4.0.2",
-    "react-native-safe-area-context": "^5.6.1",
-    "react-native-screens": "^4.15.2",
+    "react-native": "0.79.5",
+    "react-native-gesture-handler": "~2.24.0",
+    "react-native-reanimated": "~3.17.4",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1",
     "react-native-vector-icons": "^10.3.0",
-    "react-native-webview": "13.13.5"
+    "react-native-webview": "^13.13.5",
+    "react-native-worklets": "^0.4.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

@@ -116,4 +116,14 @@ export class ShowController {
   getInvalidShows() {
     return this.showService.findInvalidShows();
   }
+
+  @Patch(':id/flag')
+  flagShow(@Param('id') id: string, @Body() body: { userId: string }) {
+    return this.showService.flagShow(id, body.userId);
+  }
+
+  @Patch(':id/unflag')
+  unflagShow(@Param('id') id: string, @Body() body: { userId: string }) {
+    return this.showService.unflagShow(id, body.userId);
+  }
 }

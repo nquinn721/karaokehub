@@ -18,6 +18,7 @@ import { LocationModule } from './location/location.module';
 import { MusicModule } from './music/music.module';
 import { ParserModule } from './parser/parser.module';
 import { ProductionUploadModule } from './production-upload/production-upload.module';
+import { ShowReviewModule } from './show-review/show-review.module';
 import { ShowModule } from './show/show.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { UploadModule } from './upload/upload.module';
@@ -65,6 +66,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     VendorModule,
     DJModule,
     ShowModule,
+    ShowReviewModule,
     FavoriteModule,
     FeedbackModule,
     FriendsModule,
