@@ -36,15 +36,13 @@ import SubmitShowPage from './pages/SubmitShowPage';
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Wait for authentication initialization to complete
   if (authStore.isInitializing) {
-    console.log('🔄 ProtectedRoute: Waiting for auth initialization...');
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress />
       </Box>
     );
   }
 
-  console.log('🛡️ ProtectedRoute: Auth initialized, isAuthenticated =', authStore.isAuthenticated);
   return authStore.isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 };
 
@@ -52,15 +50,13 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Wait for authentication initialization to complete
   if (authStore.isInitializing) {
-    console.log('🔄 PublicRoute: Waiting for auth initialization...');
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
         <CircularProgress />
       </Box>
     );
   }
 
-  console.log('🌐 PublicRoute: Auth initialized, isAuthenticated =', authStore.isAuthenticated);
   return !authStore.isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" />;
 }; // App content component that has access to location
 const AppContent: React.FC = observer(() => {

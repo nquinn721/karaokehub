@@ -39,9 +39,6 @@ export class AuthStore {
   constructor() {
     makeAutoObservable(this);
 
-    // Start in initializing state to prevent route decisions before auth validation
-    this.isInitializing = true;
-
     // Make this store persistent with proper hydration handling
     makePersistable(this, {
       name: 'AuthStore',
@@ -50,38 +47,33 @@ export class AuthStore {
     }).then(() => {
       this.safeInitialize();
     });
-  }
-
-  // Safe initialization with loop prevention
+  } // Safe initialization with loop prevention
   private async safeInitialize() {
-    if (this.isInitializing || this.hasInitialized) {
-      console.log('🔄 AuthStore: Skipping initialization - already initializing or initialized');
+    if (this.hasInitialized) {
       return;
     }
 
-    console.log('🚀 AuthStore: Starting safe initialization');
+    if (this.isInitializing) {
+      return;
+    }
+
     this.isInitializing = true;
 
     try {
       await this.initialize();
       this.hasInitialized = true;
-      console.log('✅ AuthStore: Initialization completed successfully');
     } catch (error) {
-      console.error('❌ AuthStore initialization failed:', error);
+      console.error('AuthStore initialization failed:', error);
     } finally {
       this.isInitializing = false;
-      console.log('🏁 AuthStore: Initialization finished, isInitializing = false');
     }
   }
 
   // Initialize the store after hydration with comprehensive error handling
   private async initialize() {
-    console.log('🔧 AuthStore: Starting initialization, token exists:', !!this.token);
-
     // Set token in API store if it exists after hydration
     if (this.token) {
       try {
-        console.log('🔑 AuthStore: Setting token in API store');
         apiStore.setToken(this.token);
 
         console.log('👤 AuthStore: Fetching profile to validate token');
