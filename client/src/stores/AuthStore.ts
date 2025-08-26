@@ -33,11 +33,14 @@ export class AuthStore {
   isNewUser = false;
 
   // Safeguard to prevent initialization loops
-  private isInitializing = false;
+  isInitializing = false;
   private hasInitialized = false;
 
   constructor() {
     makeAutoObservable(this);
+
+    // Start in initializing state to prevent route decisions before auth validation
+    this.isInitializing = true;
 
     // Make this store persistent with proper hydration handling
     makePersistable(this, {
@@ -52,37 +55,54 @@ export class AuthStore {
   // Safe initialization with loop prevention
   private async safeInitialize() {
     if (this.isInitializing || this.hasInitialized) {
+      console.log('🔄 AuthStore: Skipping initialization - already initializing or initialized');
       return;
     }
 
+    console.log('🚀 AuthStore: Starting safe initialization');
     this.isInitializing = true;
 
     try {
       await this.initialize();
       this.hasInitialized = true;
+      console.log('✅ AuthStore: Initialization completed successfully');
     } catch (error) {
-      console.error('AuthStore initialization failed:', error);
+      console.error('❌ AuthStore initialization failed:', error);
     } finally {
       this.isInitializing = false;
+      console.log('🏁 AuthStore: Initialization finished, isInitializing = false');
     }
   }
 
   // Initialize the store after hydration with comprehensive error handling
   private async initialize() {
+    console.log('🔧 AuthStore: Starting initialization, token exists:', !!this.token);
+
     // Set token in API store if it exists after hydration
     if (this.token) {
       try {
+        console.log('🔑 AuthStore: Setting token in API store');
         apiStore.setToken(this.token);
 
+        console.log('👤 AuthStore: Fetching profile to validate token');
         // Always fetch fresh profile data from API to ensure it's up to date
         await this.getProfile();
+        console.log('✅ AuthStore: Profile fetched successfully, user authenticated');
       } catch (error: any) {
+        console.log(
+          '❌ AuthStore: Profile fetch failed:',
+          error.response?.status || error.status || 'unknown',
+        );
+
         // Handle different error types safely without causing loops
         if (error?.response?.status === 401 || error?.status === 401) {
+          console.log('🚪 AuthStore: 401 error - clearing auth state (token expired/invalid)');
           this.clearAuthStateSilently();
         } else if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network Error')) {
+          console.log('🌐 AuthStore: Network error - keeping auth state (user might be offline)');
           // Don't clear auth on network errors - user might be offline
         } else {
+          console.log('🚪 AuthStore: Other error - clearing auth state');
           this.clearAuthStateSilently();
         }
       }
@@ -90,12 +110,16 @@ export class AuthStore {
       // Fetch subscription status for authenticated users (only if still authenticated)
       if (this.isAuthenticated && this.token) {
         try {
+          console.log('💳 AuthStore: Fetching subscription status');
           const { subscriptionStore } = await import('./index');
           await subscriptionStore.fetchSubscriptionStatus();
         } catch (error) {
+          console.warn('💳 AuthStore: Subscription fetch failed (non-critical):', error);
           // Don't let subscription errors affect auth state
         }
       }
+    } else {
+      console.log('🚫 AuthStore: No token found, user not authenticated');
     }
   }
 

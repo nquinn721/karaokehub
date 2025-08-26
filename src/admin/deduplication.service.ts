@@ -86,10 +86,11 @@ export class DeduplicationService {
         records: [
           group.keepRecord,
           ...group.deleteIds.map((id, index) => {
-            const venueToDelete = venues.find(venue => venue.id === id);
+            const venueToDelete = venues.find((venue) => venue.id === id);
             return {
               id,
-              name: group.deletedNames?.[index] || (venueToDelete ? venueToDelete.name : `Venue ${id}`),
+              name:
+                group.deletedNames?.[index] || (venueToDelete ? venueToDelete.name : `Venue ${id}`),
               _willBeDeleted: true,
             };
           }),
@@ -158,10 +159,14 @@ export class DeduplicationService {
         records: [
           group.keepRecord,
           ...group.deleteIds.map((id, index) => {
-            const showToDelete = shows.find(show => show.id === id);
+            const showToDelete = shows.find((show) => show.id === id);
             return {
               id,
-              name: group.deletedNames?.[index] || (showToDelete ? `${showToDelete.venue} - ${showToDelete.day} ${showToDelete.startTime}` : `Show ${id}`),
+              name:
+                group.deletedNames?.[index] ||
+                (showToDelete
+                  ? `${showToDelete.venue} - ${showToDelete.day} ${showToDelete.startTime}`
+                  : `Show ${id}`),
               _willBeDeleted: true,
             };
           }),
@@ -228,7 +233,7 @@ export class DeduplicationService {
         records: [
           group.keepRecord,
           ...group.deleteIds.map((id, index) => {
-            const djToDelete = djs.find(dj => dj.id === id);
+            const djToDelete = djs.find((dj) => dj.id === id);
             return {
               id,
               name: group.deletedNames?.[index] || (djToDelete ? djToDelete.name : `DJ ${id}`),

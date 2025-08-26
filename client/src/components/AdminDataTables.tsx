@@ -231,7 +231,7 @@ const AdminDataTables: React.FC = observer(() => {
 
   // Debounced search effect - updates searchTerms after 500ms delay
   useEffect(() => {
-    const timeouts: Record<string, NodeJS.Timeout> = {};
+    const timeouts: Record<string, ReturnType<typeof setTimeout>> = {};
 
     Object.keys(searchInputs).forEach((table) => {
       timeouts[table] = setTimeout(() => {
@@ -2116,12 +2116,7 @@ const AdminDataTables: React.FC = observer(() => {
       </CustomModal>
 
       {/* Error Dialog */}
-      <Dialog
-        open={errorDialogOpen}
-        onClose={handleCloseErrorDialog}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={errorDialogOpen} onClose={handleCloseErrorDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
           <Box display="flex" alignItems="center" gap={1}>
             <FontAwesomeIcon icon={faExclamationTriangle} color="red" />
@@ -2129,9 +2124,7 @@ const AdminDataTables: React.FC = observer(() => {
           </Box>
         </DialogTitle>
         <DialogContent>
-          <Typography color="text.primary">
-            {errorMessage}
-          </Typography>
+          <Typography color="text.primary">{errorMessage}</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseErrorDialog} variant="outlined">
