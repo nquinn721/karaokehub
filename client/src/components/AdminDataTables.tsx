@@ -1,12 +1,18 @@
 import {
+  faCheck,
+  faCheckCircle,
+  faClipboardList,
   faComment,
+  faCopy,
   faEdit,
+  faExclamationTriangle,
   faEye,
   faMapMarkerAlt,
   faMicrophone,
   faMusic,
   faRefresh,
   faSearch,
+  faTimes,
   faTrash,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
@@ -15,6 +21,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -22,9 +29,13 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputAdornment,
   InputLabel,
+  List,
+  ListItem,
+  ListItemText,
   MenuItem,
   Paper,
   Select,
@@ -42,11 +53,72 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import type { AdminDJ, AdminFeedback, AdminShow, AdminUser, AdminVenue } from '@stores/AdminStore';
+import type {
+  AdminDJ,
+  AdminFeedback,
+  AdminShow,
+  AdminShowReview,
+  AdminUser,
+  AdminVenue,
+} from '@stores/AdminStore';
 import { adminStore, authStore, uiStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import CustomModal from './CustomModal';
 import { UserFeatureOverrideModal } from './UserFeatureOverrideModal';
+
+// Separate non-observer component for search input to prevent focus loss
+// Non-observer component for stable search input
+const IsolatedSearchInput = React.memo(
+  ({
+    table,
+    placeholder,
+    onSearch,
+    onEnter,
+    onRefresh,
+  }: {
+    table: string;
+    placeholder: string;
+    onSearch: (table: string, value: string) => void;
+    onEnter: (table: string, value: string) => void;
+    onRefresh: (table: string, value: string) => void;
+  }) => {
+    const [localValue, setLocalValue] = useState('');
+
+    return (
+      <TextField
+        size="small"
+        placeholder={placeholder}
+        value={localValue}
+        onChange={(e) => {
+          const newValue = e.target.value;
+          setLocalValue(newValue);
+          onSearch(table, newValue);
+        }}
+        onKeyPress={(e) => {
+          if (e.key === 'Enter') {
+            onEnter(table, localValue);
+          }
+        }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <FontAwesomeIcon icon={faSearch} size="sm" />
+            </InputAdornment>
+          ),
+          endAdornment: (
+            <InputAdornment position="end">
+              <IconButton size="small" onClick={() => onRefresh(table, localValue)}>
+                <FontAwesomeIcon icon={faRefresh} size="xs" />
+              </IconButton>
+            </InputAdornment>
+          ),
+        }}
+        sx={{ minWidth: 250 }}
+      />
+    );
+  },
+);
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -79,22 +151,42 @@ const AdminDataTables: React.FC = observer(() => {
     shows: '',
     djs: '',
     feedback: '',
+    reviews: '',
   });
+
+  // Separate state for immediate input values (prevents focus loss)
+  const [searchInputs, setSearchInputs] = useState<Record<string, string>>({
+    users: '',
+    venues: '',
+    shows: '',
+    djs: '',
+    feedback: '',
+    reviews: '',
+  });
+
   const [pages, setPages] = useState<Record<string, number>>({
     users: 0,
     venues: 0,
     shows: 0,
     djs: 0,
     feedback: 0,
+    reviews: 0,
   });
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Edit state
   const [editingItem, setEditingItem] = useState<any>(null);
-  const [editType, setEditType] = useState<'venue' | 'show' | 'dj' | 'feedback' | null>(null);
+  const [editType, setEditType] = useState<'venue' | 'show' | 'dj' | 'feedback' | 'reviews' | null>(
+    null,
+  );
 
   // Feedback view state
   const [viewingFeedback, setViewingFeedback] = useState<AdminFeedback | null>(null);
+
+  // Show review states
+  const [reviewingShowReview, setReviewingShowReview] = useState<AdminShowReview | null>(null);
+  const [reviewAction, setReviewAction] = useState<'approve' | 'decline' | null>(null);
+  const [adminNotes, setAdminNotes] = useState('');
 
   // User image view state
   const [viewingUserImage, setViewingUserImage] = useState<{
@@ -106,14 +198,67 @@ const AdminDataTables: React.FC = observer(() => {
   const [userOverrideModalOpen, setUserOverrideModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
+  // Deduplication state
+  const [dedupeDialogOpen, setDedupeDialogOpen] = useState(false);
+  const [dedupeType, setDedupeType] = useState<'venues' | 'shows' | 'djs' | null>(null);
+  const [duplicatesFound, setDuplicatesFound] = useState<any[]>([]);
+  const [selectedDuplicates, setSelectedDuplicates] = useState<string[]>([]);
+  const [dedupeLoading, setDedupeLoading] = useState(false);
+
+  // Deduplication results modal state
+  const [resultsModalOpen, setResultsModalOpen] = useState(false);
+  const [dedupeResults, setDedupeResults] = useState<{
+    deletedCount: number;
+    deletedRecords: any[];
+    type: string;
+  } | null>(null);
+
+  // Deduplication error dialog state
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
-  const handleSearch = (table: string, term: string) => {
-    setSearchTerms((prev) => ({ ...prev, [table]: term }));
-    setPages((prev) => ({ ...prev, [table]: 0 }));
-  };
+  const handleSearch = useCallback((table: string, term: string) => {
+    // Update input value immediately (this prevents focus loss)
+    setSearchInputs((prev) => ({ ...prev, [table]: term }));
+
+    // Also update search terms for immediate use but don't trigger page reset yet
+    // The debounced effect will handle the actual search and page reset
+  }, []);
+
+  // Debounced search effect - updates searchTerms after 500ms delay
+  useEffect(() => {
+    const timeouts: Record<string, NodeJS.Timeout> = {};
+
+    Object.keys(searchInputs).forEach((table) => {
+      timeouts[table] = setTimeout(() => {
+        if (searchInputs[table] !== searchTerms[table]) {
+          setSearchTerms((prev) => ({ ...prev, [table]: searchInputs[table] }));
+          setPages((prev) => ({ ...prev, [table]: 0 }));
+        }
+      }, 500);
+    });
+
+    return () => {
+      Object.values(timeouts).forEach((timeout) => clearTimeout(timeout));
+    };
+  }, [searchInputs]);
+
+  // Trigger data fetch when searchTerms actually change
+  useEffect(() => {
+    if (!authStore.isAuthenticated || !authStore.user?.isAdmin) {
+      return;
+    }
+
+    const tables = ['users', 'venues', 'shows', 'djs', 'feedback', 'reviews'];
+    const currentTable = tables[tabValue];
+    if (currentTable) {
+      fetchData(currentTable, pages[currentTable] || 0, searchTerms[currentTable] || undefined);
+    }
+  }, [searchTerms, tabValue, pages, rowsPerPage]);
 
   const handlePageChange = (table: string, newPage: number) => {
     setPages((prev) => ({ ...prev, [table]: newPage }));
@@ -140,6 +285,9 @@ const AdminDataTables: React.FC = observer(() => {
         break;
       case 'feedback':
         await adminStore.fetchFeedback(page + 1, rowsPerPage, search);
+        break;
+      case 'reviews':
+        await adminStore.fetchShowReviews(page + 1, rowsPerPage, search);
         break;
     }
   };
@@ -245,6 +393,98 @@ const AdminDataTables: React.FC = observer(() => {
     setSelectedUser(null);
   };
 
+  // Deduplication handlers
+  const handleStartDeduplication = async (type: 'venues' | 'shows' | 'djs') => {
+    try {
+      setDedupeLoading(true);
+      setDedupeType(type);
+
+      let result;
+      switch (type) {
+        case 'venues':
+          result = await adminStore.analyzeVenueDuplicates();
+          break;
+        case 'shows':
+          result = await adminStore.analyzeShowDuplicates();
+          break;
+        case 'djs':
+          result = await adminStore.analyzeDjDuplicates();
+          break;
+      }
+
+      if (result.duplicateGroups && result.duplicateGroups.length > 0) {
+        setDuplicatesFound(result.duplicateGroups);
+        setDedupeDialogOpen(true);
+      } else {
+        setErrorMessage('No duplicates found!');
+        setErrorDialogOpen(true);
+      }
+    } catch (error: any) {
+      setErrorMessage(`Error analyzing duplicates: ${error.message}`);
+      setErrorDialogOpen(true);
+    } finally {
+      setDedupeLoading(false);
+    }
+  };
+
+  const handleExecuteDeduplication = async () => {
+    if (!dedupeType || selectedDuplicates.length === 0) return;
+
+    // Prepare the records that will be deleted for the results
+    const recordsToDelete = duplicatesFound.flatMap((group) =>
+      group.records.filter((record: any) => selectedDuplicates.includes(record.id)),
+    );
+
+    try {
+      setDedupeLoading(true);
+      await adminStore.executeDuplicateDeletion(dedupeType, selectedDuplicates);
+
+      // Store results for the modal
+      setDedupeResults({
+        deletedCount: selectedDuplicates.length,
+        deletedRecords: recordsToDelete,
+        type: dedupeType,
+      });
+
+      // Close the selection dialog and show results modal
+      setDedupeDialogOpen(false);
+      setSelectedDuplicates([]);
+      setDuplicatesFound([]);
+      setResultsModalOpen(true);
+    } catch (error: any) {
+      setErrorMessage(`Error deleting duplicates: ${error.message}`);
+      setErrorDialogOpen(true);
+    } finally {
+      setDedupeLoading(false);
+    }
+  };
+
+  const handleCloseDedupe = () => {
+    setDedupeDialogOpen(false);
+    setSelectedDuplicates([]);
+    setDuplicatesFound([]);
+    setDedupeType(null);
+  };
+
+  const handleCloseResultsModal = () => {
+    setResultsModalOpen(false);
+    setDedupeResults(null);
+    setDedupeType(null);
+  };
+
+  const handleCloseErrorDialog = () => {
+    setErrorDialogOpen(false);
+    setErrorMessage('');
+  };
+
+  const handleDuplicateSelection = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedDuplicates((prev) => [...prev, id]);
+    } else {
+      setSelectedDuplicates((prev) => prev.filter((dupId) => dupId !== id));
+    }
+  };
+
   useEffect(() => {
     // Only fetch data if user is authenticated and is admin
     if (!authStore.isAuthenticated || !authStore.user?.isAdmin) {
@@ -256,44 +496,47 @@ const AdminDataTables: React.FC = observer(() => {
       adminStore.fetchStatistics();
     }
 
-    // Load initial data based on current tab
-    const tables = ['users', 'venues', 'shows', 'djs', 'feedback'];
+    // Initial load when tab changes (without search terms initially)
+    const tables = ['users', 'venues', 'shows', 'djs', 'feedback', 'reviews'];
     const currentTable = tables[tabValue];
-    if (currentTable) {
-      fetchData(currentTable, pages[currentTable] || 0, searchTerms[currentTable] || undefined);
+    if (currentTable && !searchTerms[currentTable]) {
+      fetchData(currentTable, pages[currentTable] || 0);
     }
-  }, [tabValue, pages, rowsPerPage]);
+  }, [tabValue, rowsPerPage]);
 
-  const SearchField = ({ table, placeholder }: { table: string; placeholder: string }) => (
-    <TextField
-      size="small"
-      placeholder={placeholder}
-      value={searchTerms[table] || ''}
-      onChange={(e) => handleSearch(table, e.target.value)}
-      onKeyPress={(e) => {
-        if (e.key === 'Enter') {
-          fetchData(table, 0, searchTerms[table] || undefined);
-        }
-      }}
-      InputProps={{
-        startAdornment: (
-          <InputAdornment position="start">
-            <FontAwesomeIcon icon={faSearch} size="sm" />
-          </InputAdornment>
-        ),
-        endAdornment: (
-          <InputAdornment position="end">
-            <IconButton
-              size="small"
-              onClick={() => fetchData(table, pages[table] || 0, searchTerms[table] || undefined)}
-            >
-              <FontAwesomeIcon icon={faRefresh} size="xs" />
-            </IconButton>
-          </InputAdornment>
-        ),
-      }}
-      sx={{ minWidth: 250 }}
-    />
+  // Create stable search field render function
+  const SearchField = useCallback(
+    ({ table, placeholder }: { table: string; placeholder: string }) => (
+      <IsolatedSearchInput
+        table={table}
+        placeholder={placeholder}
+        onSearch={(table, value) => handleSearch(table, value)}
+        onEnter={(table, value) => {
+          setSearchTerms((prev) => ({ ...prev, [table]: value }));
+          setPages((prev) => ({ ...prev, [table]: 0 }));
+        }}
+        onRefresh={(table, value) => {
+          setSearchTerms((prev) => ({ ...prev, [table]: value }));
+          fetchData(table, pages[table] || 0, value || undefined);
+        }}
+      />
+    ),
+    [handleSearch, fetchData, setSearchTerms, setPages],
+  );
+
+  const DedupeButton = ({ type, label }: { type: 'venues' | 'shows' | 'djs'; label: string }) => (
+    <Tooltip title={`Find and remove duplicate ${label.toLowerCase()}`}>
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<FontAwesomeIcon icon={faCopy} />}
+        onClick={() => handleStartDeduplication(type)}
+        disabled={dedupeLoading}
+        sx={{ ml: 1 }}
+      >
+        {dedupeLoading && dedupeType === type ? <CircularProgress size={16} /> : 'Dedupe'}
+      </Button>
+    </Tooltip>
   );
 
   const formatDate = (date: Date) => {
@@ -393,6 +636,10 @@ const AdminDataTables: React.FC = observer(() => {
             <Tab
               icon={<FontAwesomeIcon icon={faComment} />}
               label={`Feedback${adminStore.statistics?.totalFeedback ? ` (${adminStore.statistics.totalFeedback})` : ''}`}
+            />
+            <Tab
+              icon={<FontAwesomeIcon icon={faClipboardList} />}
+              label={`Reviews${adminStore.statistics?.pendingShowReviews ? ` (${adminStore.statistics.pendingShowReviews})` : ''}`}
             />
           </Tabs>
         </Box>
@@ -514,7 +761,10 @@ const AdminDataTables: React.FC = observer(() => {
       <TabPanel value={tabValue} index={1}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Venues Management</Typography>
-          <SearchField table="venues" placeholder="Search venues..." />
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <SearchField table="venues" placeholder="Search venues..." />
+            <DedupeButton type="venues" label="Venues" />
+          </Box>
         </Box>
         <TableContainer>
           <Table>
@@ -653,7 +903,10 @@ const AdminDataTables: React.FC = observer(() => {
       <TabPanel value={tabValue} index={2}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Shows Management</Typography>
-          <SearchField table="shows" placeholder="Search shows..." />
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <SearchField table="shows" placeholder="Search shows..." />
+            <DedupeButton type="shows" label="Shows" />
+          </Box>
         </Box>
         <TableContainer>
           <Table>
@@ -821,7 +1074,10 @@ const AdminDataTables: React.FC = observer(() => {
       <TabPanel value={tabValue} index={3}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">DJs Management</Typography>
-          <SearchField table="djs" placeholder="Search DJs..." />
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <SearchField table="djs" placeholder="Search DJs..." />
+            <DedupeButton type="djs" label="DJs" />
+          </Box>
         </Box>
         <TableContainer>
           <Table>
@@ -1031,6 +1287,155 @@ const AdminDataTables: React.FC = observer(() => {
           </Table>
         </TableContainer>
         <PaginationControls table="feedback" data={adminStore.feedback} />
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={5}>
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">Show Reviews Management</Typography>
+          <IconButton onClick={() => adminStore.fetchShowReviews()}>
+            <FontAwesomeIcon icon={faRefresh} />
+          </IconButton>
+        </Box>
+
+        <SearchField table="reviews" placeholder="Search reviews..." />
+
+        <TableContainer component={Paper} sx={{ mt: 2 }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Show Info</TableCell>
+                <TableCell>Submitted Changes</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Submitted By</TableCell>
+                <TableCell>Date</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {adminStore.showReviews?.items.map((review: AdminShowReview) => (
+                <TableRow key={review.id}>
+                  <TableCell>
+                    <Box>
+                      <Typography variant="body2" fontWeight="bold">
+                        {review.show?.venue || 'Unknown Venue'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {review.show?.address}
+                      </Typography>
+                      {review.show?.dj?.name && (
+                        <Typography variant="caption" display="block" color="text.secondary">
+                          DJ: {review.show.dj.name}
+                        </Typography>
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ maxWidth: 300 }}>
+                      {review.djName && (
+                        <Typography variant="caption" display="block">
+                          <strong>DJ:</strong> {review.djName}
+                        </Typography>
+                      )}
+                      {review.vendorName && (
+                        <Typography variant="caption" display="block">
+                          <strong>Vendor:</strong> {review.vendorName}
+                        </Typography>
+                      )}
+                      {review.venueName && (
+                        <Typography variant="caption" display="block">
+                          <strong>Venue:</strong> {review.venueName}
+                        </Typography>
+                      )}
+                      {review.venuePhone && (
+                        <Typography variant="caption" display="block">
+                          <strong>Phone:</strong> {review.venuePhone}
+                        </Typography>
+                      )}
+                      {review.venueWebsite && (
+                        <Typography variant="caption" display="block">
+                          <strong>Website:</strong> {review.venueWebsite}
+                        </Typography>
+                      )}
+                      {review.description && (
+                        <Typography variant="caption" display="block">
+                          <strong>Description:</strong>{' '}
+                          {review.description.length > 50
+                            ? review.description.substring(0, 50) + '...'
+                            : review.description}
+                        </Typography>
+                      )}
+                      {review.comments && (
+                        <Typography variant="caption" display="block" color="text.secondary">
+                          <strong>Comments:</strong>{' '}
+                          {review.comments.length > 50
+                            ? review.comments.substring(0, 50) + '...'
+                            : review.comments}
+                        </Typography>
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={review.status}
+                      size="small"
+                      color={
+                        review.status === 'pending'
+                          ? 'warning'
+                          : review.status === 'approved'
+                            ? 'success'
+                            : 'error'
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>{review.submittedByUser?.name || 'Unknown User'}</TableCell>
+                  <TableCell>{new Date(review.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    {review.status === 'pending' && (
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Tooltip title="Approve Review">
+                          <IconButton
+                            size="small"
+                            color="success"
+                            onClick={() => {
+                              setReviewingShowReview(review);
+                              setReviewAction('approve');
+                            }}
+                          >
+                            <FontAwesomeIcon icon={faEdit} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Decline Review">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => {
+                              setReviewingShowReview(review);
+                              setReviewAction('decline');
+                            }}
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    )}
+                    <Tooltip title="View Details">
+                      <IconButton size="small" onClick={() => setReviewingShowReview(review)}>
+                        <FontAwesomeIcon icon={faEye} />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              )) || (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    <Typography color="text.secondary">No reviews found</Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <PaginationControls table="reviews" data={adminStore.showReviews} />
       </TabPanel>
 
       {/* Edit Dialog */}
@@ -1364,6 +1769,376 @@ const AdminDataTables: React.FC = observer(() => {
         onClose={handleCloseUserOverrideModal}
         user={selectedUser}
       />
+
+      {/* Show Review Dialog */}
+      <Dialog
+        open={!!reviewingShowReview}
+        onClose={() => {
+          setReviewingShowReview(null);
+          setReviewAction(null);
+          setAdminNotes('');
+        }}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          {reviewAction
+            ? `${reviewAction === 'approve' ? 'Approve' : 'Decline'} Review`
+            : 'Review Details'}
+        </DialogTitle>
+        <DialogContent>
+          {reviewingShowReview && (
+            <Box>
+              {/* Original Show Info */}
+              <Typography variant="subtitle2" sx={{ mb: 1, color: 'primary.main' }}>
+                Current Show Information:
+              </Typography>
+              <Box sx={{ mb: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <strong>Venue:</strong> {reviewingShowReview.show?.venue || 'Not specified'}
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <strong>Address:</strong> {reviewingShowReview.show?.address || 'Not specified'}
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <strong>DJ/Host:</strong> {reviewingShowReview.show?.dj?.name || 'Not specified'}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Vendor:</strong>{' '}
+                  {reviewingShowReview.show?.dj?.vendor?.name || 'Not specified'}
+                </Typography>
+              </Box>
+
+              {/* Submitted Changes */}
+              <Typography variant="subtitle2" sx={{ mb: 1, color: 'secondary.main' }}>
+                Submitted Changes:
+              </Typography>
+              <Box
+                sx={{
+                  mb: 3,
+                  p: 2,
+                  bgcolor: 'success.50',
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor: 'success.200',
+                }}
+              >
+                {reviewingShowReview.djName && (
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>DJ/Host:</strong> {reviewingShowReview.djName}
+                  </Typography>
+                )}
+                {reviewingShowReview.vendorName && (
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>Vendor:</strong> {reviewingShowReview.vendorName}
+                  </Typography>
+                )}
+                {reviewingShowReview.venueName && (
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>Venue:</strong> {reviewingShowReview.venueName}
+                  </Typography>
+                )}
+                {reviewingShowReview.venuePhone && (
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>Phone:</strong> {reviewingShowReview.venuePhone}
+                  </Typography>
+                )}
+                {reviewingShowReview.venueWebsite && (
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>Website:</strong> {reviewingShowReview.venueWebsite}
+                  </Typography>
+                )}
+                {reviewingShowReview.description && (
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    <strong>Description:</strong> {reviewingShowReview.description}
+                  </Typography>
+                )}
+              </Box>
+
+              {/* User Comments */}
+              {reviewingShowReview.comments && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    User Comments:
+                  </Typography>
+                  <Paper sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                    <Typography variant="body2">{reviewingShowReview.comments}</Typography>
+                  </Paper>
+                </Box>
+              )}
+
+              {/* Submission Info */}
+              <Box sx={{ mb: 3, p: 2, bgcolor: 'info.50', borderRadius: 1 }}>
+                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <strong>Submitted by:</strong>{' '}
+                  {reviewingShowReview.submittedByUser?.name || 'Unknown User'}
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <strong>Date:</strong> {new Date(reviewingShowReview.createdAt).toLocaleString()}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Status:</strong> <Chip label={reviewingShowReview.status} size="small" />
+                </Typography>
+              </Box>
+
+              {/* Admin Notes (if taking action) */}
+              {reviewAction && (
+                <Box sx={{ mb: 2 }}>
+                  <TextField
+                    label="Admin Notes"
+                    multiline
+                    rows={3}
+                    fullWidth
+                    value={adminNotes}
+                    onChange={(e) => setAdminNotes(e.target.value)}
+                    placeholder="Add notes about your decision..."
+                  />
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setReviewingShowReview(null);
+              setReviewAction(null);
+              setAdminNotes('');
+            }}
+          >
+            Cancel
+          </Button>
+          {reviewAction && reviewingShowReview && (
+            <Button
+              variant="contained"
+              color={reviewAction === 'approve' ? 'success' : 'error'}
+              startIcon={<FontAwesomeIcon icon={reviewAction === 'approve' ? faCheck : faTimes} />}
+              onClick={async () => {
+                try {
+                  if (reviewAction === 'approve') {
+                    await adminStore.approveShowReview(reviewingShowReview.id, adminNotes);
+                    uiStore.addNotification('Review approved successfully', 'success');
+                  } else {
+                    await adminStore.declineShowReview(reviewingShowReview.id, adminNotes);
+                    uiStore.addNotification('Review declined successfully', 'info');
+                  }
+                  setReviewingShowReview(null);
+                  setReviewAction(null);
+                  setAdminNotes('');
+                } catch (error: any) {
+                  uiStore.addNotification(error.message || 'Failed to process review', 'error');
+                }
+              }}
+            >
+              {reviewAction === 'approve' ? 'Approve' : 'Decline'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Deduplication Dialog */}
+      <Dialog open={dedupeDialogOpen} onClose={handleCloseDedupe} maxWidth="md" fullWidth>
+        <DialogTitle>
+          {duplicatesFound.length > 0
+            ? `Found ${duplicatesFound.length} Duplicate Groups`
+            : 'No Duplicates Found'}
+        </DialogTitle>
+        <DialogContent>
+          {duplicatesFound.length > 0 ? (
+            <Box>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                Select the records you want to delete. The first record in each group will be kept.
+              </Typography>
+              {duplicatesFound.map((group, groupIndex) => (
+                <Box
+                  key={groupIndex}
+                  sx={{ mb: 3, p: 2, border: '1px solid #ddd', borderRadius: 1 }}
+                >
+                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                    Duplicate Group {groupIndex + 1}
+                  </Typography>
+                  <List dense>
+                    {group.records.map((record: any, recordIndex: number) => (
+                      <ListItem key={record.id} sx={{ py: 0.5 }}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={selectedDuplicates.includes(record.id)}
+                              onChange={(e) =>
+                                handleDuplicateSelection(record.id, e.target.checked)
+                              }
+                              disabled={recordIndex === 0} // Keep first record
+                            />
+                          }
+                          label={
+                            <ListItemText
+                              primary={record.name || record.title || 'Unnamed'}
+                              secondary={
+                                <Box>
+                                  <Typography variant="caption" display="block">
+                                    ID: {record.id}
+                                  </Typography>
+                                  {record.venue && (
+                                    <Typography variant="caption" display="block">
+                                      Venue: {record.venue}
+                                    </Typography>
+                                  )}
+                                  {record.website && (
+                                    <Typography variant="caption" display="block">
+                                      Website: {record.website}
+                                    </Typography>
+                                  )}
+                                  {recordIndex === 0 && (
+                                    <Chip
+                                      label="KEEP"
+                                      size="small"
+                                      color="success"
+                                      sx={{ mt: 0.5 }}
+                                    />
+                                  )}
+                                </Box>
+                              }
+                            />
+                          }
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              ))}
+              {selectedDuplicates.length > 0 && (
+                <Alert severity="warning" sx={{ mt: 2 }}>
+                  {selectedDuplicates.length} record(s) will be permanently deleted.
+                </Alert>
+              )}
+            </Box>
+          ) : (
+            <Typography>No duplicate records were found.</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDedupe}>Cancel</Button>
+          {duplicatesFound.length > 0 && selectedDuplicates.length > 0 && (
+            <Button
+              onClick={handleExecuteDeduplication}
+              variant="contained"
+              color="error"
+              disabled={dedupeLoading}
+            >
+              {dedupeLoading ? (
+                <CircularProgress size={20} />
+              ) : (
+                `Delete ${selectedDuplicates.length} Records`
+              )}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Deduplication Results Modal */}
+      <CustomModal
+        open={resultsModalOpen}
+        onClose={handleCloseResultsModal}
+        title="Deduplication Complete"
+        icon={<FontAwesomeIcon icon={faCheckCircle} />}
+        maxWidth="md"
+      >
+        <Box sx={{ textAlign: 'center', py: 2 }}>
+          {dedupeResults && (
+            <>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="h6" color="success.main" sx={{ mb: 1 }}>
+                  ✅ Successfully Deleted {dedupeResults.deletedCount} Duplicate Records
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {dedupeResults.type.charAt(0).toUpperCase() + dedupeResults.type.slice(1)}{' '}
+                  duplicates have been removed from your database.
+                </Typography>
+              </Box>
+
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
+                  Deleted Records:
+                </Typography>
+                <Box
+                  sx={{
+                    maxHeight: 300,
+                    overflowY: 'auto',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    p: 2,
+                  }}
+                >
+                  {dedupeResults.deletedRecords.map((record, index) => (
+                    <Box
+                      key={record.id}
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        py: 1,
+                        borderBottom:
+                          index < dedupeResults.deletedRecords.length - 1 ? '1px solid' : 'none',
+                        borderColor: 'divider',
+                      }}
+                    >
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {record.name || record.title || 'Unnamed'}
+                        </Typography>
+                        {record.venue && (
+                          <Typography variant="caption" color="text.secondary">
+                            Venue: {record.venue}
+                          </Typography>
+                        )}
+                        {record.website && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Website: {record.website}
+                          </Typography>
+                        )}
+                      </Box>
+                      <Chip label="DELETED" size="small" color="error" variant="outlined" />
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+
+              <Alert severity="success" sx={{ textAlign: 'left' }}>
+                <Typography variant="body2">
+                  Your database has been cleaned up! The remaining records are the highest quality
+                  versions that were kept during deduplication.
+                </Typography>
+              </Alert>
+            </>
+          )}
+        </Box>
+      </CustomModal>
+
+      {/* Error Dialog */}
+      <Dialog
+        open={errorDialogOpen}
+        onClose={handleCloseErrorDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box display="flex" alignItems="center" gap={1}>
+            <FontAwesomeIcon icon={faExclamationTriangle} color="red" />
+            Error
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Typography color="text.primary">
+            {errorMessage}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseErrorDialog} variant="outlined">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 });

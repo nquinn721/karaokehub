@@ -11,6 +11,7 @@ export interface AdminStatistics {
   totalFeedback: number;
   totalFavorites: number;
   pendingReviews: number;
+  pendingShowReviews: number;
   growth: {
     newUsersLast30Days: number;
     newVendorsLast30Days: number;
@@ -180,6 +181,28 @@ export interface AdminFeedback {
   updatedAt: Date;
 }
 
+export interface AdminShowReview {
+  id: string;
+  showId: string;
+  submittedByUserId?: string;
+  djName?: string;
+  vendorName?: string;
+  venueName?: string;
+  venuePhone?: string;
+  venueWebsite?: string;
+  description?: string;
+  comments?: string;
+  status: 'pending' | 'approved' | 'declined';
+  adminNotes?: string;
+  reviewedByUserId?: string;
+  reviewedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  show?: AdminShow;
+  submittedByUser?: AdminUser;
+  reviewedByUser?: AdminUser;
+}
+
 export interface ParserStatus {
   status: string;
   statistics: {
@@ -213,6 +236,7 @@ export class AdminStore {
   favorites: PaginatedResponse<AdminFavorite> | null = null;
   songs: PaginatedResponse<AdminSong> | null = null;
   feedback: PaginatedResponse<AdminFeedback> | null = null;
+  showReviews: PaginatedResponse<AdminShowReview> | null = null;
   parserStatus: ParserStatus | null = null;
 
   isLoadingTable = false;
@@ -627,6 +651,83 @@ export class AdminStore {
     }
   }
 
+  async fetchShowReviews(page = 1, limit = 10, search?: string): Promise<void> {
+    try {
+      this.setTableLoading(true);
+      this.setTableError(null);
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+
+      if (search) {
+        params.append('search', search);
+      }
+
+      const response = await apiStore.get(`/admin/show-reviews?${params.toString()}`);
+
+      runInAction(() => {
+        this.showReviews = {
+          ...response,
+          items: response.items.map((review: any) => ({
+            ...review,
+            createdAt: new Date(review.createdAt),
+            updatedAt: new Date(review.updatedAt),
+            reviewedAt: review.reviewedAt ? new Date(review.reviewedAt) : undefined,
+          })),
+        };
+      });
+    } catch (error: any) {
+      // Don't show error for authentication issues since they're handled by interceptor
+      if (error.response?.status === 401) {
+        return;
+      }
+      const errorMessage = error.response?.data?.message || 'Failed to fetch show reviews';
+      this.setTableError(errorMessage);
+    } finally {
+      this.setTableLoading(false);
+    }
+  }
+
+  async approveShowReview(reviewId: string, adminNotes?: string): Promise<void> {
+    try {
+      await apiStore.patch(`/show-reviews/${reviewId}/review`, {
+        status: 'approved',
+        adminNotes,
+      });
+
+      // Refresh the reviews list
+      if (this.showReviews) {
+        await this.fetchShowReviews();
+      }
+
+      // Refresh statistics to update counts
+      await this.fetchStatistics();
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to approve review');
+    }
+  }
+
+  async declineShowReview(reviewId: string, adminNotes?: string): Promise<void> {
+    try {
+      await apiStore.patch(`/show-reviews/${reviewId}/review`, {
+        status: 'declined',
+        adminNotes,
+      });
+
+      // Refresh the reviews list
+      if (this.showReviews) {
+        await this.fetchShowReviews();
+      }
+
+      // Refresh statistics to update counts
+      await this.fetchStatistics();
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to decline review');
+    }
+  }
+
   async fetchParserStatus(): Promise<void> {
     try {
       this.setTableLoading(true);
@@ -813,6 +914,76 @@ export class AdminStore {
       await apiStore.post('/admin/user-feature-overrides/cleanup-expired');
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to cleanup expired overrides');
+    }
+  }
+
+  // Deduplication functionality
+  async analyzeVenueDuplicates(): Promise<any> {
+    try {
+      this.isLoadingTable = true;
+      const response = await apiStore.post('/admin/deduplicate/venues/analyze');
+      return response;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to analyze venue duplicates';
+      throw new Error(errorMessage);
+    } finally {
+      this.isLoadingTable = false;
+    }
+  }
+
+  async analyzeShowDuplicates(): Promise<any> {
+    try {
+      this.isLoadingTable = true;
+      const response = await apiStore.post('/admin/deduplicate/shows/analyze');
+      return response;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to analyze show duplicates';
+      throw new Error(errorMessage);
+    } finally {
+      this.isLoadingTable = false;
+    }
+  }
+
+  async analyzeDjDuplicates(): Promise<any> {
+    try {
+      this.isLoadingTable = true;
+      const response = await apiStore.post('/admin/deduplicate/djs/analyze');
+      return response;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to analyze DJ duplicates';
+      throw new Error(errorMessage);
+    } finally {
+      this.isLoadingTable = false;
+    }
+  }
+
+  async executeDuplicateDeletion(
+    type: 'venues' | 'shows' | 'djs',
+    idsToDelete: string[],
+  ): Promise<any> {
+    try {
+      this.isLoadingTable = true;
+      const response = await apiStore.post(`/admin/deduplicate/${type}/execute`, { idsToDelete });
+
+      // Refresh the relevant data after deletion
+      switch (type) {
+        case 'venues':
+          await this.fetchVenues(1, 10);
+          break;
+        case 'shows':
+          await this.fetchShows(1, 10);
+          break;
+        case 'djs':
+          await this.fetchDjs(1, 10);
+          break;
+      }
+
+      return response;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || `Failed to delete ${type} duplicates`;
+      throw new Error(errorMessage);
+    } finally {
+      this.isLoadingTable = false;
     }
   }
 }
