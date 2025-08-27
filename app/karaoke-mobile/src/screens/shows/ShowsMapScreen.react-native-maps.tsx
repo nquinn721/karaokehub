@@ -111,20 +111,9 @@ const ShowsMapScreen = observer(() => {
   };
 
   const getValidShows = () => {
-    return showsStore.filteredShows.filter((show) => {
-      const lat = parseFloat(show.lat?.toString() || '0');
-      const lng = parseFloat(show.lng?.toString() || '0');
-      return (
-        show.lat &&
-        show.lng &&
-        !isNaN(lat) &&
-        !isNaN(lng) &&
-        lat !== 0 &&
-        lng !== 0 &&
-        show.isActive &&
-        show.isValid
-      );
-    });
+    return showsStore.filteredShows.filter(
+      (show) => show.lat && show.lng && show.isActive && show.isValid,
+    );
   };
 
   if (showsStore.isLoadingShows) {
@@ -163,8 +152,8 @@ const ShowsMapScreen = observer(() => {
           <Marker
             key={show.id}
             coordinate={{
-              latitude: parseFloat(show.lat!.toString()),
-              longitude: parseFloat(show.lng!.toString()),
+              latitude: show.lat!,
+              longitude: show.lng!,
             }}
             title={show.venue}
             description={`${show.address}${show.city && show.state ? `, ${show.city}, ${show.state}` : ''}`}

@@ -2,10 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as Location from 'expo-location';
+import { GoogleMaps } from 'expo-maps';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker, Region } from 'react-native-maps';
 
 import { ShowsStackParamList } from '../../navigation/ShowsNavigator';
 import { showsStore } from '../../stores';
@@ -16,9 +16,9 @@ type ShowsMapScreenNavigationProp = StackNavigationProp<ShowsStackParamList, 'Sh
 
 const ShowsMapScreen = observer(() => {
   const navigation = useNavigation<ShowsMapScreenNavigationProp>();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<GoogleMaps.MapView>(null);
   const [userLocation, setUserLocation] = useState<Location.LocationObjectCoords | null>(null);
-  const [region, setRegion] = useState<Region>({
+  const [region, setRegion] = useState({
     latitude: 39.9612, // Columbus, OH default
     longitude: -82.9988,
     latitudeDelta: 0.5,
@@ -41,7 +41,7 @@ const ShowsMapScreen = observer(() => {
         setUserLocation(location.coords);
 
         // Update map region to user's location
-        const newRegion: Region = {
+        const newRegion = {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
           latitudeDelta: 0.3,
@@ -51,7 +51,14 @@ const ShowsMapScreen = observer(() => {
 
         // Animate to user location
         if (mapRef.current) {
-          mapRef.current.animateToRegion(newRegion, 1000);
+          mapRef.current.setCameraPosition({
+            coordinates: {
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude,
+            },
+            zoom: 12,
+            duration: 1000,
+          });
         }
       } else {
         Alert.alert(
@@ -84,13 +91,14 @@ const ShowsMapScreen = observer(() => {
 
   const centerOnUserLocation = () => {
     if (userLocation && mapRef.current) {
-      const newRegion: Region = {
-        latitude: userLocation.latitude,
-        longitude: userLocation.longitude,
-        latitudeDelta: 0.1,
-        longitudeDelta: 0.1,
-      };
-      mapRef.current.animateToRegion(newRegion, 1000);
+      mapRef.current.setCameraPosition({
+        coordinates: {
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+        },
+        zoom: 12,
+        duration: 1000,
+      });
     }
   };
 
@@ -111,20 +119,41 @@ const ShowsMapScreen = observer(() => {
   };
 
   const getValidShows = () => {
-    return showsStore.filteredShows.filter((show) => {
-      const lat = parseFloat(show.lat?.toString() || '0');
-      const lng = parseFloat(show.lng?.toString() || '0');
-      return (
-        show.lat &&
-        show.lng &&
-        !isNaN(lat) &&
-        !isNaN(lng) &&
-        lat !== 0 &&
-        lng !== 0 &&
-        show.isActive &&
-        show.isValid
-      );
+    return showsStore.filteredShows.filter(
+      (show) => show.lat && show.lng && show.isActive && show.isValid,
+    );
+  };
+
+  const getMapMarkers = (): GoogleMaps.Marker[] => {
+    const markers: GoogleMaps.Marker[] = [];
+
+    // Add user location marker
+    if (userLocation) {
+      markers.push({
+        id: 'user-location',
+        coordinates: {
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+        },
+        title: 'Your Location',
+      });
+    }
+
+    // Add show markers
+    getValidShows().forEach((show) => {
+      markers.push({
+        id: show.id,
+        coordinates: {
+          latitude: show.lat!,
+          longitude: show.lng!,
+        },
+        title: show.venue,
+        snippet: `${show.address}${show.city && show.state ? `, ${show.city}, ${show.state}` : ''}`,
+        showCallout: true,
+      });
     });
+
+    return markers;
   };
 
   if (showsStore.isLoadingShows) {
@@ -138,41 +167,36 @@ const ShowsMapScreen = observer(() => {
 
   return (
     <View style={styles.container}>
-      <MapView
+      <GoogleMaps.View
         ref={mapRef}
         style={styles.map}
-        initialRegion={region}
-        showsUserLocation={!!userLocation}
-        showsMyLocationButton={false}
-        onRegionChangeComplete={setRegion}
-      >
-        {/* User location marker */}
-        {userLocation && (
-          <Marker
-            coordinate={{
-              latitude: userLocation.latitude,
-              longitude: userLocation.longitude,
-            }}
-            title="Your Location"
-            pinColor="blue"
-          />
-        )}
-
-        {/* Show markers */}
-        {getValidShows().map((show) => (
-          <Marker
-            key={show.id}
-            coordinate={{
-              latitude: parseFloat(show.lat!.toString()),
-              longitude: parseFloat(show.lng!.toString()),
-            }}
-            title={show.venue}
-            description={`${show.address}${show.city && show.state ? `, ${show.city}, ${show.state}` : ''}`}
-            onPress={() => handleMarkerPress(show)}
-            onCalloutPress={() => handleCalloutPress(show)}
-          />
-        ))}
-      </MapView>
+        cameraPosition={{
+          coordinates: region
+            ? {
+                latitude: region.latitude,
+                longitude: region.longitude,
+              }
+            : undefined,
+          zoom: 12,
+        }}
+        markers={getMapMarkers()}
+        onMarkerClick={(marker) => {
+          if (marker.id && marker.id !== 'user-location') {
+            const show = getValidShows().find((s) => s.id === marker.id);
+            if (show) {
+              handleMarkerPress(show);
+            }
+          }
+        }}
+        onCameraMove={(event) => {
+          setRegion({
+            latitude: event.coordinates.latitude!,
+            longitude: event.coordinates.longitude!,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
+          });
+        }}
+      />
 
       {/* Floating action buttons */}
       <View style={styles.floatingButtons}>
@@ -221,74 +245,121 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.dark.text,
   },
+  markerContainer: {
+    backgroundColor: colors.dark.primary,
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  callout: {
+    minWidth: 200,
+    maxWidth: 250,
+  },
+  calloutContent: {
+    padding: 8,
+  },
+  calloutTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.dark.text,
+    marginBottom: 4,
+  },
+  calloutAddress: {
+    fontSize: 12,
+    color: colors.dark.textSecondary,
+    marginBottom: 4,
+  },
+  calloutDay: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.dark.primary,
+    marginBottom: 2,
+  },
+  calloutTime: {
+    fontSize: 14,
+    color: colors.dark.text,
+    marginBottom: 2,
+  },
+  calloutDj: {
+    fontSize: 12,
+    color: colors.dark.textSecondary,
+    marginBottom: 4,
+  },
+  calloutTap: {
+    fontSize: 12,
+    color: colors.dark.primary,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 4,
+  },
   floatingButtons: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
+    top: 16,
+    right: 16,
     alignItems: 'flex-end',
   },
   locationButton: {
     backgroundColor: colors.dark.surface,
+    padding: 12,
     borderRadius: 25,
-    width: 50,
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
   },
   statsContainer: {
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   statsText: {
-    color: colors.dark.text,
+    color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
+    textAlign: 'center',
   },
   errorContainer: {
     position: 'absolute',
-    top: 50,
-    left: 20,
-    right: 20,
-    backgroundColor: colors.dark.error,
+    bottom: 80,
+    left: 16,
+    right: 16,
+    backgroundColor: '#dc2626',
     padding: 16,
     borderRadius: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
   errorText: {
-    color: colors.dark.text,
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 12,
+    color: '#fff',
+    flex: 1,
+    marginRight: 8,
   },
   retryButton: {
-    backgroundColor: colors.dark.text,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 4,
   },
   retryText: {
-    color: colors.dark.error,
-    fontSize: 14,
-    fontWeight: 'bold',
+    color: '#dc2626',
+    fontWeight: '600',
   },
 });
 

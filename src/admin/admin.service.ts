@@ -330,53 +330,6 @@ export class AdminService {
     };
   }
 
-  async getShows(page = 1, limit = 10, search?: string) {
-    const query = this.showRepository
-      .createQueryBuilder('show')
-      .leftJoinAndSelect('show.dj', 'dj')
-      .leftJoinAndSelect('dj.vendor', 'vendor')
-      .where('show.isActive = :isActive AND show.isValid = :isValid', {
-        isActive: true,
-        isValid: true,
-      });
-
-    if (search) {
-      query.andWhere(
-        '(vendor.name LIKE :search OR show.day LIKE :search OR dj.name LIKE :search OR show.venue LIKE :search)',
-        {
-          search: `%${search}%`,
-        },
-      );
-    }
-
-    console.log('Admin getShows query SQL:', query.getQuery());
-
-    const [items, total] = await query
-      .orderBy('show.venue', 'ASC')
-      .addOrderBy('show.day', 'ASC')
-      .addOrderBy('show.startTime', 'ASC')
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
-
-    console.log('Admin getShows results:', items.length, 'items found');
-    console.log('First item DJ:', items[0]?.dj?.name, 'Vendor:', items[0]?.dj?.vendor?.name);
-
-    // Map items to include readableSource
-    const mappedItems = items.map((show) => ({
-      ...show,
-      readableSource: show.readableSource,
-    }));
-
-    return {
-      items: mappedItems,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
-  }
-
   async getDjs(page = 1, limit = 10, search?: string) {
     const query = this.djRepository
       .createQueryBuilder('dj')
@@ -680,17 +633,6 @@ export class AdminService {
     return {
       shows: shows,
       djs: venue.djs,
-    };
-  }
-
-  async getShowRelationships(id: string) {
-    const favorites = await this.favoriteShowRepository.find({
-      where: { show: { id } },
-      relations: ['user'],
-    });
-
-    return {
-      favorites,
     };
   }
 

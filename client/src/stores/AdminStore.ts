@@ -457,24 +457,39 @@ export class AdminStore {
       this.setTableLoading(true);
       this.setTableError(null);
 
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-      });
-
-      if (search) {
-        params.append('search', search);
-      }
-
-      const response = await apiStore.get(`/admin/shows?${params.toString()}`);
+      // Use the regular shows endpoint instead of admin endpoint
+      const response = await apiStore.get('/shows');
 
       runInAction(() => {
+        let items = response || [];
+        
+        // Apply search filter if provided
+        if (search) {
+          const searchLower = search.toLowerCase();
+          items = items.filter((show: any) => 
+            show.venue?.toLowerCase().includes(searchLower) ||
+            show.day?.toLowerCase().includes(searchLower) ||
+            show.dj?.name?.toLowerCase().includes(searchLower) ||
+            show.dj?.vendor?.name?.toLowerCase().includes(searchLower) ||
+            show.address?.toLowerCase().includes(searchLower)
+          );
+        }
+
+        // Calculate pagination
+        const total = items.length;
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedItems = items.slice(startIndex, endIndex);
+
         this.shows = {
-          ...response,
-          items: response.items.map((show: any) => ({
+          items: paginatedItems.map((show: any) => ({
             ...show,
             createdAt: new Date(show.createdAt),
           })),
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
         };
       });
     } catch (error: any) {
@@ -763,7 +778,7 @@ export class AdminStore {
 
   async deleteShow(id: string): Promise<void> {
     try {
-      await apiStore.delete(`/admin/shows/${id}`);
+      await apiStore.delete(`/shows/${id}`);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to delete show');
     }
@@ -788,7 +803,7 @@ export class AdminStore {
 
   async updateShow(id: string, data: any): Promise<void> {
     try {
-      await apiStore.put(`/admin/shows/${id}`, data);
+      await apiStore.put(`/shows/${id}`, data);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to update show');
     }
@@ -824,14 +839,6 @@ export class AdminStore {
       return await apiStore.get(`/admin/venues/${id}/relationships`);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch venue relationships');
-    }
-  }
-
-  async getShowRelationships(id: string): Promise<any> {
-    try {
-      return await apiStore.get(`/admin/shows/${id}/relationships`);
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch show relationships');
     }
   }
 

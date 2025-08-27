@@ -44,15 +44,6 @@ export class AdminController {
     return await this.adminService.getVenues(+page, +limit, search);
   }
 
-  @Get('shows')
-  async getShows(
-    @Query('page') page = 1,
-    @Query('limit') limit = 10,
-    @Query('search') search?: string,
-  ) {
-    return await this.adminService.getShows(+page, +limit, search);
-  }
-
   @Get('djs')
   async getDjs(
     @Query('page') page = 1,
@@ -164,11 +155,6 @@ export class AdminController {
   @Get('venues/:id/relationships')
   async getVenueRelationships(@Param('id') id: string) {
     return await this.adminService.getVenueRelationships(id);
-  }
-
-  @Get('shows/:id/relationships')
-  async getShowRelationships(@Param('id') id: string) {
-    return await this.adminService.getShowRelationships(id);
   }
 
   @Get('djs/:id/relationships')
