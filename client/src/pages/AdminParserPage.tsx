@@ -1217,11 +1217,11 @@ const AdminParserPage: React.FC = observer(() => {
                         const result = await response.json();
 
                         if (result.success) {
-                          const { validation, recommendations, nextExpiry } = result.data;
+                          const { validation, nextExpiry } = result.data;
 
                           // If cookies appear valid locally, test authentication
                           let authStatus = '';
-                          let finalNotificationType = 'info';
+                          let finalNotificationType: 'success' | 'warning' | 'error' | 'info' = 'info';
 
                           if (validation.isValid) {
                             try {
