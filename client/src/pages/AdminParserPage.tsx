@@ -3,6 +3,7 @@ import FacebookLoginModal from '@components/FacebookLoginModal';
 import {
   faCheck,
   faChevronDown,
+  faCookie,
   faCopy,
   faExclamationTriangle,
   faEye,
@@ -1205,6 +1206,50 @@ const AdminParserPage: React.FC = observer(() => {
                     startIcon={<FontAwesomeIcon icon={faRefresh} />}
                   >
                     Check Status
+                  </Button>
+
+                  <Button
+                    variant="outlined"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/parser/facebook-cookies/validate');
+                        const result = await response.json();
+
+                        if (result.success) {
+                          const { validation, recommendations, nextExpiry } = result.data;
+                          const status = validation.isValid ? '✅ Valid' : '❌ Invalid';
+                          const expiredInfo = validation.expired > 0 ? ` (${validation.expired} expired)` : '';
+                          const nextExpiryInfo = nextExpiry ? ` - Next expiry: ${new Date(nextExpiry).toLocaleDateString()}` : '';
+                          
+                          uiStore.addNotification(
+                            `Facebook Cookies ${status}: ${validation.total} total${expiredInfo}${nextExpiryInfo}. ${recommendations[0]}`,
+                            validation.isValid ? 'success' : 'error',
+                          );
+
+                          // Also test authentication if cookies seem valid
+                          if (validation.isValid) {
+                            try {
+                              const testResponse = await fetch('/api/parser/facebook-cookies/test', { method: 'POST' });
+                              const testResult = await testResponse.json();
+                              
+                              if (testResult.success && testResult.data.success) {
+                                uiStore.addNotification('🎉 Facebook authentication test passed!', 'success');
+                              } else {
+                                uiStore.addNotification('⚠️ Facebook authentication test failed - cookies may need refresh', 'warning');
+                              }
+                            } catch {
+                              uiStore.addNotification('⚠️ Facebook authentication test timed out - cookies likely need refresh', 'warning');
+                            }
+                          }
+                        }
+                      } catch (error) {
+                        console.error('Failed to check Facebook cookies:', error);
+                        uiStore.addNotification('Failed to check Facebook cookies', 'error');
+                      }
+                    }}
+                    startIcon={<FontAwesomeIcon icon={faCookie} />}
+                  >
+                    Check FB Cookies
                   </Button>
                 </Box>
 
