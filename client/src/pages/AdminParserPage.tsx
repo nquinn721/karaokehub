@@ -1218,19 +1218,22 @@ const AdminParserPage: React.FC = observer(() => {
 
                         if (result.success) {
                           const { validation, recommendations, nextExpiry } = result.data;
-                          
+
                           // If cookies appear valid locally, test authentication
                           let authStatus = '';
                           let finalNotificationType = 'info';
-                          
+
                           if (validation.isValid) {
                             try {
-                              const testResponse = await fetch('/api/parser/facebook-cookies/test', { 
-                                method: 'POST',
-                                signal: AbortSignal.timeout(8000) // 8 second timeout
-                              });
+                              const testResponse = await fetch(
+                                '/api/parser/facebook-cookies/test',
+                                {
+                                  method: 'POST',
+                                  signal: AbortSignal.timeout(8000), // 8 second timeout
+                                },
+                              );
                               const testResult = await testResponse.json();
-                              
+
                               if (testResult.success && testResult.data.success) {
                                 authStatus = '🎉 Authentication: WORKING';
                                 finalNotificationType = 'success';
@@ -1247,10 +1250,15 @@ const AdminParserPage: React.FC = observer(() => {
                             finalNotificationType = 'error';
                           }
 
-                          const status = validation.isValid ? '✅ Format Valid' : '❌ Format Invalid';
-                          const expiredInfo = validation.expired > 0 ? ` (${validation.expired} expired)` : '';
-                          const nextExpiryInfo = nextExpiry ? ` - Expires: ${new Date(nextExpiry).toLocaleDateString()}` : '';
-                          
+                          const status = validation.isValid
+                            ? '✅ Format Valid'
+                            : '❌ Format Invalid';
+                          const expiredInfo =
+                            validation.expired > 0 ? ` (${validation.expired} expired)` : '';
+                          const nextExpiryInfo = nextExpiry
+                            ? ` - Expires: ${new Date(nextExpiry).toLocaleDateString()}`
+                            : '';
+
                           uiStore.addNotification(
                             `Facebook Cookies: ${status} (${validation.total} total${expiredInfo}) | ${authStatus}${nextExpiryInfo}`,
                             finalNotificationType,
@@ -1275,9 +1283,10 @@ const AdminParserPage: React.FC = observer(() => {
                 </Typography>
 
                 <Alert severity="info" sx={{ mt: 2, fontSize: '0.875rem' }}>
-                  <strong>Facebook Cookie Status:</strong> Format validation checks if cookies exist and aren't expired. 
-                  Authentication testing verifies if Facebook accepts the cookies. If authentication fails, 
-                  cookies need to be refreshed using <code>bash fix-facebook-cookies.sh</code>
+                  <strong>Facebook Cookie Status:</strong> Format validation checks if cookies exist
+                  and aren't expired. Authentication testing verifies if Facebook accepts the
+                  cookies. If authentication fails, cookies need to be refreshed using{' '}
+                  <code>bash fix-facebook-cookies.sh</code>
                 </Alert>
               </Paper>
             </Grid>
