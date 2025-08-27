@@ -1,8 +1,14 @@
 import { Box, Container, Grid, Link, Typography } from '@mui/material';
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
+import { uiStore } from '../stores';
 
 const FooterComponent: React.FC = () => {
+  const handleContactClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    uiStore.openFeedbackModal();
+  };
+
   return (
     <Box
       component="footer"
@@ -29,6 +35,16 @@ const FooterComponent: React.FC = () => {
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
               <Link
                 component={RouterLink}
+                to="/about"
+                color="inherit"
+                underline="hover"
+                variant="body2"
+              >
+                About
+              </Link>
+              
+              <Link
+                component={RouterLink}
                 to="/privacy-policy"
                 color="inherit"
                 underline="hover"
@@ -38,7 +54,8 @@ const FooterComponent: React.FC = () => {
               </Link>
 
               <Link
-                href="mailto:support@karaokehub.app"
+                href="#"
+                onClick={handleContactClick}
                 color="inherit"
                 underline="hover"
                 variant="body2"

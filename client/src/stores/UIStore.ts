@@ -3,6 +3,7 @@ import { makePersistable } from 'mobx-persist-store';
 
 export class UIStore {
   sidebarOpen = false;
+  feedbackModalOpen = false;
   notifications: Array<{
     id: string;
     message: string;
@@ -26,6 +27,14 @@ export class UIStore {
 
   setSidebarOpen(open: boolean) {
     this.sidebarOpen = open;
+  }
+
+  openFeedbackModal() {
+    this.feedbackModalOpen = true;
+  }
+
+  closeFeedbackModal() {
+    this.feedbackModalOpen = false;
   }
 
   addNotification(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') {

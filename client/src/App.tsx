@@ -1,11 +1,12 @@
 import { HeaderComponent } from '@components/HeaderComponent';
 import { Box, CircularProgress, CssBaseline } from '@mui/material';
-import { authStore, showStore } from '@stores/index';
+import { authStore, showStore, uiStore } from '@stores/index';
 import { ThemeProvider } from '@theme/ThemeProvider';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
 import FeedbackButton from './components/FeedbackButton';
+import FeedbackModal from './components/FeedbackModal';
 import FloatingVolumeControl from './components/FloatingVolumeControl';
 import FooterComponent from './components/FooterComponent';
 import GlobalNotifications from './components/GlobalNotifications';
@@ -16,6 +17,7 @@ import useVenueDetection from './hooks/useVenueDetection';
 import { VenueProximity } from './services/GeolocationService';
 
 // Pages
+import AboutPage from './pages/AboutPage';
 import AdminDashboardPageTabbed from './pages/AdminDashboardPageTabbed';
 import AdminParserPage from './pages/AdminParserPage';
 import AuthError from './pages/AuthError';
@@ -260,6 +262,7 @@ const AppContent: React.FC = observer(() => {
             <Route path="/auth/error" element={<AuthError />} />
 
             {/* Public pages */}
+            <Route path="/about" element={<AboutPage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
 
             {/* Protected Routes */}
@@ -350,6 +353,9 @@ const App: React.FC = observer(() => {
 
         {/* Global Notifications */}
         <GlobalNotifications />
+
+        {/* Global Feedback Modal */}
+        <FeedbackModal open={uiStore.feedbackModalOpen} onClose={() => uiStore.closeFeedbackModal()} />
 
         {/* Post Login Modal */}
         <PostLoginModal />
