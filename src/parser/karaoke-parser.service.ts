@@ -2367,7 +2367,6 @@ ${htmlContent}`;
 
     // Transform the data to include extracted shows from aiAnalysis
     return sortedSchedules.map((schedule) => {
-      console.log(JSON.stringify(schedule, null, 2));
       const aiAnalysis = schedule.aiAnalysis || {};
       const shows = aiAnalysis.shows || [];
 

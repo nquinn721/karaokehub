@@ -60,16 +60,13 @@ export class ParserController {
 
       if (url.includes('instagram.com')) {
         // Instagram URL - use visual parsing with screenshots
-        console.log('🔍 Detected Instagram URL, using visual parsing');
         result = await this.karaokeParserService.parseInstagramWithScreenshots(body.url);
       } else if (url.includes('facebook.com') || url.includes('fb.com')) {
         // Facebook URL - use new ULTRA CLEAN Facebook parsing method
-        console.log('🔍 Detected Facebook URL, using ULTRA CLEAN FacebookParserService');
         result = await this.facebookParserService.parseAndSaveFacebookPageNew(body.url);
       } else {
         // Regular website - use specified method
         const parseMethod = body.parseMethod || 'html';
-        console.log(`🔍 Detected regular website, using ${parseMethod} parsing`);
 
         if (parseMethod === 'screenshot') {
           result = await this.karaokeParserService.parseWebsiteWithScreenshot(body.url);
@@ -171,15 +168,9 @@ export class ParserController {
     logger.log('🔥🔥🔥 PENDING REVIEWS ENDPOINT HIT - REQUEST RECEIVED 🔥🔥🔥');
     logger.log('Timestamp: ' + new Date().toISOString());
 
-    // Also keep console.log for good measure
-    console.log('🔥🔥🔥 PENDING REVIEWS ENDPOINT HIT - REQUEST RECEIVED 🔥🔥🔥');
-    console.error('🔥🔥🔥 THIS IS AN ERROR LOG - SHOULD ALWAYS SHOW 🔥🔥🔥');
-    console.warn('🔥🔥🔥 THIS IS A WARNING LOG - SHOULD ALWAYS SHOW 🔥🔥🔥');
-
     try {
       const result = await this.karaokeParserService.getPendingReviews();
       logger.log('✅ Successfully retrieved pending reviews, count: ' + (result?.length || 0));
-      console.log('✅ Successfully retrieved pending reviews, count:', result?.length || 0);
       return result;
     } catch (error) {
       logger.error('❌ Error getting pending reviews: ' + error);
@@ -440,7 +431,6 @@ export class ParserController {
   @Post('emergency-cancel')
   async emergencyCancel() {
     try {
-      console.log('🛑 EMERGENCY CANCEL requested via API endpoint');
       await this.cancellationService.cancelAll();
 
       return {

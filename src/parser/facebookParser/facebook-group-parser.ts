@@ -1079,8 +1079,6 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
       const photoLinks = Array.from(document.querySelectorAll('a[href*="/photo/"]'));
       const photoUrls: string[] = [];
 
-      console.log(`Found ${photoLinks.length} photo links`);
-
       photoLinks.forEach((link, index) => {
         const href = (link as HTMLAnchorElement).href;
         const img = link.querySelector('img') as HTMLImageElement;
@@ -1113,9 +1111,6 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
                   ? href
                   : `https://www.facebook.com${href}`;
 
-                console.log(
-                  `Adding photo URL ${index + 1}: ${width}x${height} - ${fullPhotoUrl.substring(0, 100)}...`,
-                );
                 photoUrls.push(fullPhotoUrl);
               }
             }
@@ -1123,11 +1118,8 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
         }
       });
 
-      console.log(`Filtered to ${photoUrls.length} valid photo URLs`);
-
       // Remove duplicates
       const uniqueUrls = [...new Set(photoUrls)];
-      console.log(`After deduplication: ${uniqueUrls.length} unique photo URLs`);
 
       return uniqueUrls;
     });

@@ -1212,39 +1212,53 @@ const AdminParserPage: React.FC = observer(() => {
                     variant="outlined"
                     onClick={async () => {
                       try {
+                        // First check cookie validation
                         const response = await fetch('/api/parser/facebook-cookies/validate');
                         const result = await response.json();
 
                         if (result.success) {
                           const { validation, recommendations, nextExpiry } = result.data;
-                          const status = validation.isValid ? '✅ Valid' : '❌ Invalid';
-                          const expiredInfo = validation.expired > 0 ? ` (${validation.expired} expired)` : '';
-                          const nextExpiryInfo = nextExpiry ? ` - Next expiry: ${new Date(nextExpiry).toLocaleDateString()}` : '';
                           
-                          uiStore.addNotification(
-                            `Facebook Cookies ${status}: ${validation.total} total${expiredInfo}${nextExpiryInfo}. ${recommendations[0]}`,
-                            validation.isValid ? 'success' : 'error',
-                          );
-
-                          // Also test authentication if cookies seem valid
+                          // If cookies appear valid locally, test authentication
+                          let authStatus = '';
+                          let finalNotificationType = 'info';
+                          
                           if (validation.isValid) {
                             try {
-                              const testResponse = await fetch('/api/parser/facebook-cookies/test', { method: 'POST' });
+                              const testResponse = await fetch('/api/parser/facebook-cookies/test', { 
+                                method: 'POST',
+                                signal: AbortSignal.timeout(8000) // 8 second timeout
+                              });
                               const testResult = await testResponse.json();
                               
                               if (testResult.success && testResult.data.success) {
-                                uiStore.addNotification('🎉 Facebook authentication test passed!', 'success');
+                                authStatus = '🎉 Authentication: WORKING';
+                                finalNotificationType = 'success';
                               } else {
-                                uiStore.addNotification('⚠️ Facebook authentication test failed - cookies may need refresh', 'warning');
+                                authStatus = '⚠️ Authentication: FAILED (need refresh)';
+                                finalNotificationType = 'warning';
                               }
                             } catch {
-                              uiStore.addNotification('⚠️ Facebook authentication test timed out - cookies likely need refresh', 'warning');
+                              authStatus = '⚠️ Authentication: TIMEOUT (need refresh)';
+                              finalNotificationType = 'warning';
                             }
+                          } else {
+                            authStatus = '❌ Authentication: CANNOT TEST (invalid cookies)';
+                            finalNotificationType = 'error';
                           }
+
+                          const status = validation.isValid ? '✅ Format Valid' : '❌ Format Invalid';
+                          const expiredInfo = validation.expired > 0 ? ` (${validation.expired} expired)` : '';
+                          const nextExpiryInfo = nextExpiry ? ` - Expires: ${new Date(nextExpiry).toLocaleDateString()}` : '';
+                          
+                          uiStore.addNotification(
+                            `Facebook Cookies: ${status} (${validation.total} total${expiredInfo}) | ${authStatus}${nextExpiryInfo}`,
+                            finalNotificationType,
+                          );
                         }
                       } catch (error) {
                         console.error('Failed to check Facebook cookies:', error);
-                        uiStore.addNotification('Failed to check Facebook cookies', 'error');
+                        uiStore.addNotification('❌ Failed to check Facebook cookies', 'error');
                       }
                     }}
                     startIcon={<FontAwesomeIcon icon={faCookie} />}
@@ -1259,6 +1273,12 @@ const AdminParserPage: React.FC = observer(() => {
                   💡 Tip: The discovery process will automatically save found group URLs to the URLs
                   to Parse table above. You can then review and parse them individually.
                 </Typography>
+
+                <Alert severity="info" sx={{ mt: 2, fontSize: '0.875rem' }}>
+                  <strong>Facebook Cookie Status:</strong> Format validation checks if cookies exist and aren't expired. 
+                  Authentication testing verifies if Facebook accepts the cookies. If authentication fails, 
+                  cookies need to be refreshed using <code>bash fix-facebook-cookies.sh</code>
+                </Alert>
               </Paper>
             </Grid>
 
