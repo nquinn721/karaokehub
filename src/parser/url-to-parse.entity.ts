@@ -23,6 +23,12 @@ export class UrlToParse {
   @Column({ type: 'boolean', default: false })
   hasBeenParsed: boolean;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  city: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  state: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

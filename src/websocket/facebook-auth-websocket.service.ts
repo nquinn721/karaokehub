@@ -56,7 +56,7 @@ export class FacebookAuthWebSocketService {
     return new Promise((resolve) => {
       this.pendingRequests.set(requestId, resolve);
 
-      // Timeout after 5 minutes
+      // Timeout after 10 seconds (short timeout since we have cookie fallback)
       setTimeout(
         () => {
           if (this.pendingRequests.has(requestId)) {
@@ -65,7 +65,7 @@ export class FacebookAuthWebSocketService {
             resolve(null);
           }
         },
-        5 * 60 * 1000,
+        10 * 1000, // 10 seconds instead of 5 minutes
       );
     });
   }

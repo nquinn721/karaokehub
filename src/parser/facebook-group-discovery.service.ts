@@ -48,6 +48,36 @@ export class FacebookGroupDiscoveryService {
   }
 
   /**
+   * Load existing Facebook session cookies from environment or file
+   */
+  private async loadExistingCookies(): Promise<any[]> {
+    try {
+      // Try environment variable first (production)
+      const cookiesFromEnv = this.configService.get<string>('FB_SESSION_COOKIES');
+
+      if (cookiesFromEnv) {
+        this.logger.log('📦 Loading existing Facebook cookies from environment...');
+        return JSON.parse(cookiesFromEnv);
+      }
+
+      // Try local file (development)
+      const cookiesFilePath = path.join(process.cwd(), 'data', 'facebook-cookies.json');
+
+      if (fs.existsSync(cookiesFilePath)) {
+        this.logger.log('📂 Loading existing Facebook cookies from local file...');
+        const fileContent = fs.readFileSync(cookiesFilePath, 'utf8');
+        return JSON.parse(fileContent);
+      }
+
+      this.logger.warn('❌ No existing Facebook cookies found');
+      return [];
+    } catch (error) {
+      this.logger.error(`❌ Failed to load existing cookies: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
    * Main method to discover karaoke groups from all cities
    */
   async discoverGroupsFromAllCities(): Promise<GroupSearchResult[]> {
@@ -163,16 +193,27 @@ export class FacebookGroupDiscoveryService {
     state: string,
   ): Promise<string[]> {
     try {
-      // Get Facebook credentials from admin via WebSocket
+      // Try to get Facebook credentials from admin via WebSocket first
       const requestId = `group-search-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      this.logger.log(`🔐 Requesting Facebook credentials for ${city}, ${state}...`);
+
       const credentials = await this.facebookAuthService.requestCredentials(requestId);
 
       if (!credentials) {
-        throw new Error('No Facebook credentials provided by admin');
-      }
+        // Fallback to existing session cookies
+        this.logger.log('⚡ No admin credentials provided, using existing session cookies...');
+        const existingCookies = await this.loadExistingCookies();
 
-      // Navigate to Facebook and login
-      await this.loginToFacebook(page, credentials);
+        if (existingCookies.length === 0) {
+          throw new Error('No Facebook credentials or session cookies available');
+        }
+
+        // Use existing cookies for authentication
+        await this.loginToFacebook(page, { cookies: existingCookies });
+      } else {
+        // Use provided credentials
+        await this.loginToFacebook(page, credentials);
+      }
 
       // Search for karaoke groups in the city
       const searchQuery = `karaoke ${city} ${state}`;
@@ -324,8 +365,19 @@ export class FacebookGroupDiscoveryService {
       const response = await result.response;
       const analysis = response.text();
 
+      // Clean the response by removing markdown code blocks and extra whitespace
+      let cleanedAnalysis = analysis.trim();
+      
+      // Remove markdown code blocks if present
+      if (cleanedAnalysis.startsWith('```json') || cleanedAnalysis.startsWith('```')) {
+        cleanedAnalysis = cleanedAnalysis.replace(/^```(json)?\s*/, '').replace(/```\s*$/, '');
+      }
+      
+      // Trim again after removing code blocks
+      cleanedAnalysis = cleanedAnalysis.trim();
+
       // Parse the JSON response
-      const urls = JSON.parse(analysis);
+      const urls = JSON.parse(cleanedAnalysis);
 
       if (Array.isArray(urls)) {
         this.logger.log(`✅ Gemini selected ${urls.length} groups for ${city}, ${state}`);
@@ -346,48 +398,48 @@ export class FacebookGroupDiscoveryService {
   private async saveDiscoveredUrls(results: GroupSearchResult[]): Promise<void> {
     this.logger.log('💾 Saving discovered URLs to database...');
 
-    const allUrls: string[] = [];
+    let totalSaved = 0;
+    let totalSkipped = 0;
 
+    // Process each result to maintain city/state association
     for (const result of results) {
       for (const url of result.groupUrls) {
         if (url && url.includes('facebook.com/groups/')) {
-          allUrls.push(url);
-        }
-      }
-    }
+          try {
+            // Check if URL already exists
+            const existing = await this.urlToParseRepository.findOne({ where: { url } });
 
-    // Remove duplicates
-    const uniqueUrls = [...new Set(allUrls)];
-    this.logger.log(`📊 Found ${uniqueUrls.length} unique group URLs`);
-
-    // Save to database in batches
-    const batchSize = 50;
-    for (let i = 0; i < uniqueUrls.length; i += batchSize) {
-      const batch = uniqueUrls.slice(i, i + batchSize);
-
-      for (const url of batch) {
-        try {
-          // Check if URL already exists
-          const existing = await this.urlToParseRepository.findOne({ where: { url } });
-
-          if (!existing) {
-            await this.urlToParseRepository.save({
-              url,
-              name: null,
-              isApproved: false,
-              hasBeenParsed: false,
-            });
-            this.logger.log(`✅ Saved new URL: ${url}`);
-          } else {
-            this.logger.log(`⏭️ URL already exists: ${url}`);
+            if (!existing) {
+              await this.urlToParseRepository.save({
+                url,
+                name: null,
+                isApproved: false,
+                hasBeenParsed: false,
+                city: result.city,
+                state: result.state,
+              });
+              this.logger.log(`✅ Saved new URL for ${result.city}, ${result.state}: ${url}`);
+              totalSaved++;
+            } else {
+              // Update existing record with city/state if missing
+              if (!existing.city || !existing.state) {
+                existing.city = result.city;
+                existing.state = result.state;
+                await this.urlToParseRepository.save(existing);
+                this.logger.log(`🔄 Updated city/state for existing URL: ${url}`);
+              } else {
+                this.logger.log(`⏭️ URL already exists: ${url}`);
+              }
+              totalSkipped++;
+            }
+          } catch (error) {
+            this.logger.error(`❌ Failed to save URL ${url}: ${error.message}`);
           }
-        } catch (error) {
-          this.logger.error(`❌ Failed to save URL ${url}: ${error.message}`);
         }
       }
     }
 
-    this.logger.log(`✅ Finished saving URLs to database`);
+    this.logger.log(`✅ Finished saving URLs: ${totalSaved} new, ${totalSkipped} existing`);
   }
 
   /**
