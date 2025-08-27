@@ -9,8 +9,9 @@ import {
   Post,
 } from '@nestjs/common';
 import { CancellationService } from '../services/cancellation.service';
-import { FacebookParserService } from './facebook-parser.service';
+import { FacebookCookieValidatorService } from './facebook-cookie-validator.service';
 import { FacebookGroupDiscoveryService } from './facebook-group-discovery.service';
+import { FacebookParserService } from './facebook-parser.service';
 import { KaraokeParserService } from './karaoke-parser.service';
 import { UrlToParse } from './url-to-parse.entity';
 import { UrlToParseService } from './url-to-parse.service';
@@ -22,6 +23,7 @@ export class ParserController {
     private readonly urlToParseService: UrlToParseService,
     private readonly facebookParserService: FacebookParserService,
     private readonly facebookGroupDiscoveryService: FacebookGroupDiscoveryService,
+    private readonly facebookCookieValidatorService: FacebookCookieValidatorService,
     private readonly cancellationService: CancellationService,
   ) {}
 
@@ -506,16 +508,16 @@ export class ParserController {
   @Post('discover-facebook-groups')
   async discoverFacebookGroups() {
     const logger = new Logger('FacebookGroupDiscovery');
-    
+
     try {
       logger.log('🚀 Starting Facebook group discovery for all cities...');
-      
+
       const results = await this.facebookGroupDiscoveryService.discoverGroupsFromAllCities();
-      
+
       const totalGroups = results.reduce((sum, r) => sum + r.groupUrls.length, 0);
-      const successfulCities = results.filter(r => r.groupUrls.length > 0).length;
-      const failedCities = results.filter(r => r.error).length;
-      
+      const successfulCities = results.filter((r) => r.groupUrls.length > 0).length;
+      const failedCities = results.filter((r) => r.error).length;
+
       logger.log(`✅ Facebook group discovery completed!`);
       logger.log(`📊 Results: ${totalGroups} groups found across ${successfulCities} cities`);
       if (failedCities > 0) {
@@ -551,7 +553,7 @@ export class ParserController {
   async getFacebookGroupDiscoveryStatus() {
     try {
       const status = await this.facebookGroupDiscoveryService.getDiscoveryStatus();
-      
+
       return {
         success: true,
         data: status,
@@ -561,6 +563,64 @@ export class ParserController {
       console.error('❌ Failed to get Facebook group discovery status:', error);
       throw new HttpException(
         `Failed to get discovery status: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * VALIDATE FACEBOOK COOKIES
+   * Check if Facebook session cookies are valid and not expired
+   */
+  @Get('facebook-cookies/validate')
+  async validateFacebookCookies() {
+    try {
+      const analysis = await this.facebookCookieValidatorService.getCookieAnalysis();
+
+      return {
+        success: true,
+        data: analysis,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Failed to validate Facebook cookies:', error);
+      throw new HttpException(
+        `Failed to validate cookies: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * TEST FACEBOOK AUTHENTICATION
+   * Test if current Facebook cookies can successfully authenticate
+   */
+  @Post('facebook-cookies/test')
+  async testFacebookAuthentication() {
+    const logger = new Logger('FacebookAuthTest');
+
+    try {
+      logger.log('🧪 Testing Facebook authentication...');
+
+      const testResult = await this.facebookCookieValidatorService.testFacebookAuthentication();
+
+      if (testResult.success) {
+        logger.log('✅ Facebook authentication test passed');
+      } else {
+        logger.warn(
+          `⚠️ Facebook authentication test failed: ${testResult.error || 'Unknown error'}`,
+        );
+      }
+
+      return {
+        success: true,
+        data: testResult,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error(`❌ Facebook authentication test failed: ${error.message}`);
+      throw new HttpException(
+        `Failed to test authentication: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

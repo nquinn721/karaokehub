@@ -94,6 +94,11 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
       handleMenuClose();
     };
 
+    const handleFeedback = () => {
+      setFeedbackOpen(true);
+      handleMenuClose();
+    };
+
     const handleMobileMenuOpen = () => {
       setMobileMenuOpen(true);
     };
@@ -777,6 +782,10 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                           Admin Dashboard
                         </MenuItem>
                       )}
+                      <MenuItem onClick={handleFeedback}>
+                        <FontAwesomeIcon icon={faComments} style={{ marginRight: '8px' }} />
+                        Send Feedback
+                      </MenuItem>
                       <MenuItem onClick={handleLogout}>
                         <FontAwesomeIcon icon={faSignOutAlt} style={{ marginRight: '8px' }} />
                         Logout

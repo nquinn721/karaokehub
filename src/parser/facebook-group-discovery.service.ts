@@ -1,14 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import * as puppeteer from 'puppeteer';
-import { UrlToParse } from './url-to-parse.entity';
-import { FacebookAuthWebSocketService } from '../websocket/facebook-auth-websocket.service';
-import { getGeminiModel } from '../config/gemini.config';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as puppeteer from 'puppeteer';
+import { Like, Repository } from 'typeorm';
+import { getGeminiModel } from '../config/gemini.config';
+import { FacebookAuthWebSocketService } from '../websocket/facebook-auth-websocket.service';
+import { UrlToParse } from './url-to-parse.entity';
 
 export interface LocationData {
   [state: string]: Array<{
@@ -55,7 +55,7 @@ export class FacebookGroupDiscoveryService {
 
     const locations = this.loadLocationsData();
     const allCities = this.flattenLocations(locations);
-    
+
     this.logger.log(`📍 Found ${allCities.length} cities to process`);
 
     // Process cities in batches with worker limit
@@ -64,9 +64,11 @@ export class FacebookGroupDiscoveryService {
 
     for (let i = 0; i < allCities.length; i += batchSize) {
       const batch = allCities.slice(i, i + batchSize);
-      this.logger.log(`🏭 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(allCities.length / batchSize)}`);
+      this.logger.log(
+        `🏭 Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(allCities.length / batchSize)}`,
+      );
 
-      const batchPromises = batch.map(city => this.discoverGroupsForCity(city));
+      const batchPromises = batch.map((city) => this.discoverGroupsForCity(city));
       const batchResults = await Promise.allSettled(batchPromises);
 
       for (const result of batchResults) {
@@ -86,19 +88,26 @@ export class FacebookGroupDiscoveryService {
     // Save all discovered URLs to database
     await this.saveDiscoveredUrls(results);
 
-    this.logger.log(`✅ Group discovery completed. Found ${results.reduce((sum, r) => sum + r.groupUrls.length, 0)} groups total`);
+    this.logger.log(
+      `✅ Group discovery completed. Found ${results.reduce((sum, r) => sum + r.groupUrls.length, 0)} groups total`,
+    );
     return results;
   }
 
   /**
    * Discover karaoke groups for a specific city
    */
-  private async discoverGroupsForCity(cityData: { city: string; state: string; lat: number; lng: number }): Promise<GroupSearchResult> {
+  private async discoverGroupsForCity(cityData: {
+    city: string;
+    state: string;
+    lat: number;
+    lng: number;
+  }): Promise<GroupSearchResult> {
     const { city, state } = cityData;
     this.logger.log(`🎤 Searching for karaoke groups in ${city}, ${state}`);
 
     let browser: puppeteer.Browser | null = null;
-    
+
     try {
       // Launch Puppeteer with Facebook-friendly settings
       browser = await puppeteer.launch({
@@ -115,9 +124,11 @@ export class FacebookGroupDiscoveryService {
       });
 
       const page = await browser.newPage();
-      
+
       // Set user agent and viewport
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+      await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      );
       await page.setViewport({ width: 1366, height: 768 });
 
       // Perform Facebook login and search
@@ -128,7 +139,6 @@ export class FacebookGroupDiscoveryService {
         state,
         groupUrls,
       };
-
     } catch (error) {
       this.logger.error(`❌ Error discovering groups for ${city}, ${state}: ${error.message}`);
       return {
@@ -147,7 +157,11 @@ export class FacebookGroupDiscoveryService {
   /**
    * Perform the actual Facebook search and group selection
    */
-  private async performGroupSearch(page: puppeteer.Page, city: string, state: string): Promise<string[]> {
+  private async performGroupSearch(
+    page: puppeteer.Page,
+    city: string,
+    state: string,
+  ): Promise<string[]> {
     try {
       // Get Facebook credentials from admin via WebSocket
       const requestId = `group-search-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -165,16 +179,19 @@ export class FacebookGroupDiscoveryService {
       await this.performSearch(page, searchQuery);
 
       // Take screenshot for Gemini analysis
-      const screenshot = await page.screenshot({ 
+      const screenshot = await page.screenshot({
         fullPage: false,
-        clip: { x: 0, y: 0, width: 1366, height: 768 }
+        clip: { x: 0, y: 0, width: 1366, height: 768 },
       });
 
       // Use Gemini to analyze and select appropriate groups
-      const selectedGroups = await this.analyzeGroupsWithGemini(Buffer.from(screenshot), city, state);
+      const selectedGroups = await this.analyzeGroupsWithGemini(
+        Buffer.from(screenshot),
+        city,
+        state,
+      );
 
       return selectedGroups;
-
     } catch (error) {
       this.logger.error(`❌ Group search failed for ${city}, ${state}: ${error.message}`);
       throw error;
@@ -202,7 +219,7 @@ export class FacebookGroupDiscoveryService {
       // Fill in login credentials
       await page.type('#email', credentials.email);
       await page.type('#pass', credentials.password);
-      
+
       // Submit login form
       await Promise.all([
         page.waitForNavigation({ waitUntil: 'networkidle0' }),
@@ -263,7 +280,11 @@ export class FacebookGroupDiscoveryService {
   /**
    * Use Gemini to analyze the screenshot and select appropriate groups
    */
-  private async analyzeGroupsWithGemini(screenshot: Buffer, city: string, state: string): Promise<string[]> {
+  private async analyzeGroupsWithGemini(
+    screenshot: Buffer,
+    city: string,
+    state: string,
+  ): Promise<string[]> {
     this.logger.log(`🤖 Analyzing groups for ${city}, ${state} with Gemini...`);
 
     const prompt = `
@@ -286,8 +307,8 @@ export class FacebookGroupDiscoveryService {
     `;
 
     try {
-      const model = this.genAI.getGenerativeModel({ 
-        model: getGeminiModel('vision')
+      const model = this.genAI.getGenerativeModel({
+        model: getGeminiModel('vision'),
       });
 
       const result = await model.generateContent([
@@ -302,10 +323,10 @@ export class FacebookGroupDiscoveryService {
 
       const response = await result.response;
       const analysis = response.text();
-      
+
       // Parse the JSON response
       const urls = JSON.parse(analysis);
-      
+
       if (Array.isArray(urls)) {
         this.logger.log(`✅ Gemini selected ${urls.length} groups for ${city}, ${state}`);
         return urls.slice(0, 2); // Ensure max 2 groups
@@ -326,7 +347,7 @@ export class FacebookGroupDiscoveryService {
     this.logger.log('💾 Saving discovered URLs to database...');
 
     const allUrls: string[] = [];
-    
+
     for (const result of results) {
       for (const url of result.groupUrls) {
         if (url && url.includes('facebook.com/groups/')) {
@@ -343,12 +364,12 @@ export class FacebookGroupDiscoveryService {
     const batchSize = 50;
     for (let i = 0; i < uniqueUrls.length; i += batchSize) {
       const batch = uniqueUrls.slice(i, i + batchSize);
-      
+
       for (const url of batch) {
         try {
           // Check if URL already exists
           const existing = await this.urlToParseRepository.findOne({ where: { url } });
-          
+
           if (!existing) {
             await this.urlToParseRepository.save({
               url,
@@ -381,9 +402,11 @@ export class FacebookGroupDiscoveryService {
   /**
    * Flatten locations data into a single array with state info
    */
-  private flattenLocations(locations: LocationData): Array<{ city: string; state: string; lat: number; lng: number }> {
+  private flattenLocations(
+    locations: LocationData,
+  ): Array<{ city: string; state: string; lat: number; lng: number }> {
     const flattened: Array<{ city: string; state: string; lat: number; lng: number }> = [];
-    
+
     for (const [state, cities] of Object.entries(locations)) {
       for (const cityData of cities) {
         flattened.push({
@@ -394,7 +417,7 @@ export class FacebookGroupDiscoveryService {
         });
       }
     }
-    
+
     return flattened;
   }
 
@@ -402,7 +425,7 @@ export class FacebookGroupDiscoveryService {
    * Utility method for delays
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -416,10 +439,10 @@ export class FacebookGroupDiscoveryService {
   }> {
     const locations = this.loadLocationsData();
     const totalCities = this.flattenLocations(locations).length;
-    
+
     // Count how many URLs we've discovered (approximate progress)
     const discoveredGroups = await this.urlToParseRepository.count({
-      where: { url: Like('%facebook.com/groups/%') }
+      where: { url: Like('%facebook.com/groups/%') },
     });
 
     return {

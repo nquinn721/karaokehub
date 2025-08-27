@@ -1128,15 +1128,15 @@ const AdminParserPage: React.FC = observer(() => {
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Automatically discover karaoke groups from all US cities using AI-powered analysis.
-                  This process will search Facebook groups in {'{'}865{'}'} cities and use Gemini AI to select 
-                  the most relevant karaoke communities.
+                  Automatically discover karaoke groups from all US cities using AI-powered
+                  analysis. This process will search Facebook groups in {'{'}865{'}'} cities and use
+                  Gemini AI to select the most relevant karaoke communities.
                 </Typography>
 
                 <Alert severity="info" sx={{ mb: 3 }}>
-                  <strong>Important:</strong> This process requires Facebook authentication and may take 
-                  several hours to complete. Make sure you have proper Facebook credentials configured 
-                  before starting.
+                  <strong>Important:</strong> This process requires Facebook authentication and may
+                  take several hours to complete. Make sure you have proper Facebook credentials
+                  configured before starting.
                 </Alert>
 
                 <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
@@ -1145,7 +1145,7 @@ const AdminParserPage: React.FC = observer(() => {
                     onClick={async () => {
                       try {
                         uiStore.addNotification('Starting Facebook group discovery...', 'info');
-                        
+
                         const response = await fetch('/api/parser/discover-facebook-groups', {
                           method: 'POST',
                           headers: {
@@ -1154,11 +1154,11 @@ const AdminParserPage: React.FC = observer(() => {
                         });
 
                         const result = await response.json();
-                        
+
                         if (result.success) {
                           uiStore.addNotification(
                             `Facebook group discovery completed! Found ${result.data.totalGroups} groups across ${result.data.successfulCities} cities.`,
-                            'success'
+                            'success',
                           );
                         } else {
                           throw new Error(result.message || 'Discovery failed');
@@ -1167,7 +1167,7 @@ const AdminParserPage: React.FC = observer(() => {
                         console.error('Facebook group discovery error:', error);
                         uiStore.addNotification(
                           `Facebook group discovery failed: ${error instanceof Error ? error.message : String(error)}`,
-                          'error'
+                          'error',
                         );
                       }
                     }}
@@ -1189,12 +1189,12 @@ const AdminParserPage: React.FC = observer(() => {
                       try {
                         const response = await fetch('/api/parser/facebook-groups/status');
                         const result = await response.json();
-                        
+
                         if (result.success) {
                           const { totalCities, discoveredGroups, isRunning } = result.data;
                           uiStore.addNotification(
                             `Discovery Status: ${discoveredGroups} groups found from ${totalCities} total cities. ${isRunning ? 'Currently running...' : 'Not running.'}`,
-                            'info'
+                            'info',
                           );
                         }
                       } catch (error) {
@@ -1211,8 +1211,8 @@ const AdminParserPage: React.FC = observer(() => {
                 <Divider sx={{ my: 2 }} />
 
                 <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                  💡 Tip: The discovery process will automatically save found group URLs to the URLs to Parse 
-                  table above. You can then review and parse them individually.
+                  💡 Tip: The discovery process will automatically save found group URLs to the URLs
+                  to Parse table above. You can then review and parse them individually.
                 </Typography>
               </Paper>
             </Grid>
