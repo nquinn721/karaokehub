@@ -462,16 +462,17 @@ export class AdminStore {
 
       runInAction(() => {
         let items = response || [];
-        
+
         // Apply search filter if provided
         if (search) {
           const searchLower = search.toLowerCase();
-          items = items.filter((show: any) => 
-            show.venue?.toLowerCase().includes(searchLower) ||
-            show.day?.toLowerCase().includes(searchLower) ||
-            show.dj?.name?.toLowerCase().includes(searchLower) ||
-            show.dj?.vendor?.name?.toLowerCase().includes(searchLower) ||
-            show.address?.toLowerCase().includes(searchLower)
+          items = items.filter(
+            (show: any) =>
+              show.venue?.toLowerCase().includes(searchLower) ||
+              show.day?.toLowerCase().includes(searchLower) ||
+              show.dj?.name?.toLowerCase().includes(searchLower) ||
+              show.dj?.vendor?.name?.toLowerCase().includes(searchLower) ||
+              show.address?.toLowerCase().includes(searchLower),
           );
         }
 

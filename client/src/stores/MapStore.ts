@@ -29,22 +29,16 @@ export class MapStore {
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
-    console.log('🗺️ MapStore: Initializing...');
-
     // Wait for API store to be ready
     await this.apiStore.ensureInitialized();
 
     runInAction(() => {
       this.isInitialized = true;
     });
-
-    console.log('🗺️ MapStore: Initialized');
   }
 
   // Set the Google Maps instance
   setMapInstance = (map: google.maps.Map): void => {
-    console.log('🗺️ MapStore: Setting map instance');
-
     runInAction(() => {
       this.mapInstance = map;
     });
@@ -52,7 +46,6 @@ export class MapStore {
     // Set up event listeners for zoom and center changes
     map.addListener('zoom_changed', () => {
       const zoom = map.getZoom() || 11;
-      console.log('🔍 Zoom changed to:', zoom);
 
       runInAction(() => {
         this.currentZoom = zoom;
@@ -96,36 +89,23 @@ export class MapStore {
   // Main data fetching logic based on zoom level
   async fetchDataForCurrentView(): Promise<void> {
     if (!this.mapInstance || !this.currentCenter) {
-      console.log('🗺️ MapStore: No map instance or center, skipping data fetch');
       return;
     }
 
-    const zoom = this.currentZoom;
-    const center = this.currentCenter;
     const day = this.showStore.selectedDay;
-    const vendor = this.showStore.vendorFilter;
-
-    console.log('🗺️ MapStore: Fetching data for view:', {
-      zoom,
-      center,
-      day,
-      vendor,
-    });
 
     runInAction(() => {
       this.isLoadingShows = true;
     });
 
     try {
-      if (zoom <= 9) {
-        // Low zoom (9 or less): Get ALL shows with current filters (no radius limit)
-        console.log('🌍 MapStore: Low zoom - fetching ALL shows with filters (no radius)');
-        await this.showStore.fetchAllShows(day, vendor);
-      } else {
-        // High zoom (10+): Get shows within 100 miles of map center
-        console.log('📍 MapStore: High zoom - fetching nearby shows within 100 miles');
-        await this.showStore.fetchNearbyShows(center.lat, center.lng, 100, day, vendor);
-      }
+      // Use location-based filtering with map center for better accuracy
+      const mapCenter = this.currentCenter 
+        ? { lat: this.currentCenter.lat, lng: this.currentCenter.lng, radius: 100 }
+        : undefined;
+      
+      console.log('📍 MapStore: Fetching shows with current filters using location-based endpoint');
+      await this.showStore.fetchShows(day, mapCenter);
     } catch (error) {
       console.error('❌ MapStore: Failed to fetch data:', error);
     } finally {
@@ -137,8 +117,6 @@ export class MapStore {
 
   // Handle marker click
   handleMarkerClick = (show: any): void => {
-    console.log('🎯 MapStore: Marker clicked:', show.venue || show.id);
-
     runInAction(() => {
       this.selectedShow = show;
     });
@@ -157,8 +135,6 @@ export class MapStore {
 
   // Clear selected show
   clearSelectedShow = (): void => {
-    console.log('🗺️ MapStore: Clearing selected show');
-
     runInAction(() => {
       this.selectedShow = null;
     });
@@ -168,8 +144,6 @@ export class MapStore {
 
   // Select show from sidebar (called when clicking on sidebar show)
   selectShowFromSidebar = (show: any): void => {
-    console.log('📝 MapStore: Show selected from sidebar:', show.venue || show.id);
-
     this.handleMarkerClick(show);
 
     // Zoom to show location if map is available
@@ -188,8 +162,6 @@ export class MapStore {
 
   // Get current location and center map
   async goToCurrentLocation(isMobile: boolean = false): Promise<void> {
-    console.log('🌍 MapStore: Getting current location...');
-
     runInAction(() => {
       this.isLoadingLocation = true;
     });
@@ -219,8 +191,6 @@ export class MapStore {
         this.mapInstance.setCenter({ lat: latitude, lng: longitude });
         this.mapInstance.setZoom(isMobile ? 10 : 12);
       }
-
-      console.log('✅ MapStore: Location found:', { lat: latitude, lng: longitude });
     } catch (error) {
       console.warn('⚠️ MapStore: Failed to get location:', error);
 
@@ -245,7 +215,6 @@ export class MapStore {
 
   // Refresh data when filters change
   refreshDataForCurrentView = (): void => {
-    console.log('🔄 MapStore: Refreshing data for current view');
     this.fetchDataForCurrentView();
   };
 

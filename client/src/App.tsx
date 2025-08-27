@@ -355,7 +355,10 @@ const App: React.FC = observer(() => {
         <GlobalNotifications />
 
         {/* Global Feedback Modal */}
-        <FeedbackModal open={uiStore.feedbackModalOpen} onClose={() => uiStore.closeFeedbackModal()} />
+        <FeedbackModal
+          open={uiStore.feedbackModalOpen}
+          onClose={() => uiStore.closeFeedbackModal()}
+        />
 
         {/* Post Login Modal */}
         <PostLoginModal />

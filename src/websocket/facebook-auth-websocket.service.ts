@@ -45,8 +45,6 @@ export class FacebookAuthWebSocketService {
    * Returns a promise that resolves when admin provides credentials
    */
   async requestCredentials(requestId: string): Promise<FacebookLoginRequest> {
-    this.logger.log(`📡 Requesting Facebook credentials from admin UI (ID: ${requestId})`);
-
     // Emit request to all connected admin clients
     this.server.emit('facebook-login-required', {
       requestId,
@@ -77,8 +75,6 @@ export class FacebookAuthWebSocketService {
    */
   @SubscribeMessage('provide-facebook-credentials')
   handleCredentials(@MessageBody() data: FacebookLoginRequest, @ConnectedSocket() client: Socket) {
-    this.logger.log(`🔑 Received credentials for request ID: ${data.requestId}`);
-
     const resolver = this.pendingRequests.get(data.requestId);
     if (resolver) {
       this.pendingRequests.delete(data.requestId);
@@ -126,8 +122,6 @@ export class FacebookAuthWebSocketService {
    * Handle client connections
    */
   handleConnection(client: Socket) {
-    this.logger.log(`📱 Admin client connected: ${client.id}`);
-
     // Send current status to new client
     client.emit('connected', {
       message: 'Connected to Facebook Auth service',
@@ -139,6 +133,6 @@ export class FacebookAuthWebSocketService {
    * Handle client disconnections
    */
   handleDisconnect(client: Socket) {
-    this.logger.log(`📱 Admin client disconnected: ${client.id}`);
+    // Client disconnected - no action needed
   }
 }

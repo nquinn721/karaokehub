@@ -42,7 +42,7 @@ const FooterComponent: React.FC = () => {
               >
                 About
               </Link>
-              
+
               <Link
                 component={RouterLink}
                 to="/privacy-policy"

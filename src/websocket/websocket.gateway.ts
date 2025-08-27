@@ -53,7 +53,6 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
   constructor(private urlService: UrlService) {
     // Update CORS origins dynamically
     const allowedOrigins = this.urlService.getWebSocketOrigins();
-    this.logger.log(`WebSocket CORS origins: ${allowedOrigins.join(', ')}`);
   }
 
   handleConnection(client: Socket) {
@@ -67,11 +66,6 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
 
     this.connectedClients.add(client.id);
 
-    // Only log every 10th connection to reduce noise in development
-    if (this.connectedClients.size % 10 === 0 || this.connectedClients.size <= 5) {
-      this.logger.log(`Client connected: ${client.id} (Total: ${this.connectedClients.size})`);
-    }
-
     // Send welcome message
     client.emit('welcome', {
       message: 'Welcome to KaraokeHub! 🎤',
@@ -81,11 +75,6 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
 
   handleDisconnect(client: Socket) {
     this.connectedClients.delete(client.id);
-
-    // Only log every 10th disconnection or when getting to low numbers
-    if (this.connectedClients.size % 10 === 0 || this.connectedClients.size <= 5) {
-      this.logger.log(`Client disconnected: ${client.id} (Total: ${this.connectedClients.size})`);
-    }
 
     // Remove from user sockets mapping
     for (const [userId, socketId] of this.userSockets.entries()) {
@@ -145,8 +134,6 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
     if (!room.participants.includes(client.id)) {
       room.participants.push(client.id);
     }
-
-    this.logger.log(`User ${userName} joined room ${roomId}`);
 
     // Notify all participants in the room
     this.server.to(roomId).emit('userJoined', {
@@ -320,8 +307,6 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
    * Returns a promise that resolves when admin provides credentials
    */
   async requestFacebookCredentials(requestId: string): Promise<any> {
-    this.logger.log(`📡 Requesting Facebook credentials from admin UI (ID: ${requestId})`);
-
     // Emit request to all connected admin clients
     this.server.emit('facebook-login-required', {
       requestId,
@@ -352,8 +337,6 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
    */
   @SubscribeMessage('provide-facebook-credentials')
   handleFacebookCredentials(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    this.logger.log(`🔑 Received Facebook credentials for request ID: ${data.requestId}`);
-
     const resolver = this.pendingFacebookRequests.get(data.requestId);
     if (resolver) {
       this.pendingFacebookRequests.delete(data.requestId);

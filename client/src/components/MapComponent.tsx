@@ -285,8 +285,8 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
       setClusterer(null);
     }
 
-    // Only cluster at zoom 9 or less
-    if (zoom <= 9 && filteredShows.length > 0) {
+    // Only cluster at zoom 8 or less for better visibility
+    if (zoom <= 8 && filteredShows.length > 0) {
       console.log('🎯 Setting up clustering for zoom', zoom, 'with', filteredShows.length, 'shows');
 
       // Create markers for clustering using filtered shows
@@ -349,12 +349,12 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
     }
   }, [map, mapStore?.currentZoom, showStore.filteredShows]);
 
-  // Render individual show markers (for zoom > 9)
+  // Render individual show markers (always show markers)
   const renderShowMarkers = () => {
-    if (!mapStore || mapStore.currentZoom <= 9) return null;
+    if (!mapStore) return null;
 
-    const shows = showStore.shows;
-    console.log(`📍 Rendering ${shows.length} show markers`);
+    const shows = showStore.filteredShows;
+    console.log(`📍 Rendering ${shows.length} show markers (filtered)`);
 
     return shows.map((show: any) => {
       if (!show.lat || !show.lng) return null;

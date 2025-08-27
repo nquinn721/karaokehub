@@ -60,8 +60,6 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_JWT_SECRET
                   key: latest
-            - name: JWT_EXPIRES_IN
-              value: '365d'
             - name: GOOGLE_CLIENT_ID
               valueFrom:
                 secretKeyRef:
@@ -96,6 +94,11 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: KARAOKE_HUB_FACEBOOK_PARSER_APP_SECRET
+                  key: latest
+            - name: FB_SESSION_COOKIES
+              valueFrom:
+                secretKeyRef:
+                  name: fb-session-cookies
                   key: latest
             - name: OPENAI_API_KEY
               valueFrom:

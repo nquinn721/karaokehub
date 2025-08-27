@@ -884,12 +884,56 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
 
     if (!isLoggedIn) {
       if (process.env.NODE_ENV === 'production') {
-        // In production, we rely entirely on session cookies - no interactive login
+        // In production, we rely entirely on session cookies - provide better diagnostics
         sendProgress(
           '❌ Not logged in to Facebook. In production mode, this requires valid session cookies.',
         );
+
+        // Try to extract more information about why authentication failed
+        const pageUrl = await page.url();
+        const pageTitle = await page.title();
+
+        sendProgress(`📍 Current URL: ${pageUrl}`);
+        sendProgress(`📄 Page Title: ${pageTitle}`);
+
+        // Check if we're on a login page
+        if (pageUrl.includes('login') || pageTitle.toLowerCase().includes('log in')) {
+          sendProgress('🔄 Detected login page - cookies may be expired');
+        }
+
+        // Check for any error messages on the page
+        try {
+          const errorMessage = await page.evaluate(() => {
+            const errorSelectors = [
+              '[data-testid="form_error"]',
+              '.error-message',
+              '[role="alert"]',
+              '.alert',
+            ];
+
+            for (const selector of errorSelectors) {
+              const element = document.querySelector(selector);
+              if (element && element.textContent) {
+                return element.textContent.trim();
+              }
+            }
+            return null;
+          });
+
+          if (errorMessage) {
+            sendProgress(`🚨 Error on page: ${errorMessage}`);
+          }
+        } catch (err) {
+          // Ignore evaluation errors
+        }
+
+        sendProgress('💡 To fix this:');
+        sendProgress('1. Check if FB_SESSION_COOKIES environment variable is set');
+        sendProgress('2. Verify cookies are not expired (expires field in cookies)');
+        sendProgress('3. Generate fresh cookies by logging in locally and running setup script');
+
         throw new Error(
-          'Facebook authentication failed. Session cookies may be expired or invalid.',
+          'Facebook authentication failed. Session cookies may be expired or invalid. Check logs for details.',
         );
       } else {
         // Development mode - attempt interactive login
