@@ -5,7 +5,6 @@ import { ThemeProvider } from '@theme/ThemeProvider';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
-import FeedbackButton from './components/FeedbackButton';
 import FeedbackModal from './components/FeedbackModal';
 import FloatingVolumeControl from './components/FloatingVolumeControl';
 import FooterComponent from './components/FooterComponent';
@@ -124,12 +123,13 @@ const AppContent: React.FC = observer(() => {
     }
   }, [permissionStatus, requestPermission]);
 
-  // Load shows for venue detection
+  // Load shows for venue detection (but not on shows page where map controls data)
   useEffect(() => {
-    if (showStore.filteredShows.length === 0) {
+    const isOnShowsPage = location.pathname === '/shows';
+    if (!isOnShowsPage && showStore.filteredShows.length === 0) {
       showStore.fetchShows();
     }
-  }, []);
+  }, [location.pathname]);
 
   // Check for stage name requirement on every route change and app load
   useEffect(() => {
@@ -344,9 +344,6 @@ const App: React.FC = observer(() => {
       <CssBaseline />
       <Router>
         <AppContent />
-
-        {/* Global Feedback Button */}
-        <FeedbackButton />
 
         {/* Floating Volume Control */}
         <FloatingVolumeControl />

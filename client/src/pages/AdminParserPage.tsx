@@ -1097,6 +1097,126 @@ const AdminParserPage: React.FC = observer(() => {
               </Paper>
             </Grid>
 
+            {/* Facebook Group Discovery */}
+            <Grid item xs={12}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: 3,
+                  background: `linear-gradient(135deg, 
+                ${alpha(theme.palette.background.paper, 0.95)} 0%, 
+                ${alpha(theme.palette.background.paper, 0.8)} 100%)`,
+                  backdropFilter: 'blur(10px)',
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    background: `linear-gradient(90deg, ${theme.palette.secondary.main}, ${theme.palette.success.main})`,
+                  },
+                }}
+              >
+                <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
+                  <FontAwesomeIcon icon={faGlobe} style={{ marginRight: '8px' }} />
+                  Facebook Group Discovery
+                </Typography>
+
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  Automatically discover karaoke groups from all US cities using AI-powered analysis.
+                  This process will search Facebook groups in {'{'}865{'}'} cities and use Gemini AI to select 
+                  the most relevant karaoke communities.
+                </Typography>
+
+                <Alert severity="info" sx={{ mb: 3 }}>
+                  <strong>Important:</strong> This process requires Facebook authentication and may take 
+                  several hours to complete. Make sure you have proper Facebook credentials configured 
+                  before starting.
+                </Alert>
+
+                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                  <Button
+                    variant="contained"
+                    onClick={async () => {
+                      try {
+                        uiStore.addNotification('Starting Facebook group discovery...', 'info');
+                        
+                        const response = await fetch('/api/parser/discover-facebook-groups', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                        });
+
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                          uiStore.addNotification(
+                            `Facebook group discovery completed! Found ${result.data.totalGroups} groups across ${result.data.successfulCities} cities.`,
+                            'success'
+                          );
+                        } else {
+                          throw new Error(result.message || 'Discovery failed');
+                        }
+                      } catch (error) {
+                        console.error('Facebook group discovery error:', error);
+                        uiStore.addNotification(
+                          `Facebook group discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+                          'error'
+                        );
+                      }
+                    }}
+                    startIcon={<FontAwesomeIcon icon={faGlobe} />}
+                    sx={{
+                      background: `linear-gradient(45deg, ${theme.palette.secondary.main}, ${theme.palette.success.main})`,
+                      color: 'white',
+                      '&:hover': {
+                        background: `linear-gradient(45deg, ${theme.palette.secondary.dark}, ${theme.palette.success.dark})`,
+                      },
+                    }}
+                  >
+                    Start Group Discovery
+                  </Button>
+
+                  <Button
+                    variant="outlined"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/parser/facebook-groups/status');
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                          const { totalCities, discoveredGroups, isRunning } = result.data;
+                          uiStore.addNotification(
+                            `Discovery Status: ${discoveredGroups} groups found from ${totalCities} total cities. ${isRunning ? 'Currently running...' : 'Not running.'}`,
+                            'info'
+                          );
+                        }
+                      } catch (error) {
+                        console.error('Failed to get discovery status:', error);
+                        uiStore.addNotification('Failed to get discovery status', 'error');
+                      }
+                    }}
+                    startIcon={<FontAwesomeIcon icon={faRefresh} />}
+                  >
+                    Check Status
+                  </Button>
+                </Box>
+
+                <Divider sx={{ my: 2 }} />
+
+                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                  💡 Tip: The discovery process will automatically save found group URLs to the URLs to Parse 
+                  table above. You can then review and parse them individually.
+                </Typography>
+              </Paper>
+            </Grid>
+
             {/* Pending Reviews */}
             <Grid item xs={12}>
               <Paper

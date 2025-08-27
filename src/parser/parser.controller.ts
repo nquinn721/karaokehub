@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { CancellationService } from '../services/cancellation.service';
 import { FacebookParserService } from './facebook-parser.service';
+import { FacebookGroupDiscoveryService } from './facebook-group-discovery.service';
 import { KaraokeParserService } from './karaoke-parser.service';
 import { UrlToParse } from './url-to-parse.entity';
 import { UrlToParseService } from './url-to-parse.service';
@@ -20,6 +21,7 @@ export class ParserController {
     private readonly karaokeParserService: KaraokeParserService,
     private readonly urlToParseService: UrlToParseService,
     private readonly facebookParserService: FacebookParserService,
+    private readonly facebookGroupDiscoveryService: FacebookGroupDiscoveryService,
     private readonly cancellationService: CancellationService,
   ) {}
 
@@ -492,6 +494,73 @@ export class ParserController {
       console.error('❌ Failed to reset cancellation service:', error);
       throw new HttpException(
         `Failed to reset cancellation service: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * DISCOVER FACEBOOK GROUPS
+   * Discovers karaoke groups from all cities using Puppeteer and Gemini AI
+   */
+  @Post('discover-facebook-groups')
+  async discoverFacebookGroups() {
+    const logger = new Logger('FacebookGroupDiscovery');
+    
+    try {
+      logger.log('🚀 Starting Facebook group discovery for all cities...');
+      
+      const results = await this.facebookGroupDiscoveryService.discoverGroupsFromAllCities();
+      
+      const totalGroups = results.reduce((sum, r) => sum + r.groupUrls.length, 0);
+      const successfulCities = results.filter(r => r.groupUrls.length > 0).length;
+      const failedCities = results.filter(r => r.error).length;
+      
+      logger.log(`✅ Facebook group discovery completed!`);
+      logger.log(`📊 Results: ${totalGroups} groups found across ${successfulCities} cities`);
+      if (failedCities > 0) {
+        logger.warn(`⚠️ Failed to process ${failedCities} cities`);
+      }
+
+      return {
+        success: true,
+        message: 'Facebook group discovery completed successfully',
+        data: {
+          totalGroups,
+          successfulCities,
+          failedCities,
+          totalCitiesProcessed: results.length,
+          results: results.slice(0, 10), // Return first 10 for preview
+        },
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      logger.error(`❌ Facebook group discovery failed: ${error.message}`);
+      throw new HttpException(
+        `Failed to discover Facebook groups: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * GET FACEBOOK GROUP DISCOVERY STATUS
+   * Returns current status and progress of group discovery
+   */
+  @Get('facebook-groups/status')
+  async getFacebookGroupDiscoveryStatus() {
+    try {
+      const status = await this.facebookGroupDiscoveryService.getDiscoveryStatus();
+      
+      return {
+        success: true,
+        data: status,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Failed to get Facebook group discovery status:', error);
+      throw new HttpException(
+        `Failed to get discovery status: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

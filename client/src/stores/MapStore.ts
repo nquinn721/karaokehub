@@ -92,7 +92,8 @@ export class MapStore {
       return;
     }
 
-    const day = this.showStore.selectedDay;
+    // Only use day filtering if enabled
+    const day = this.showStore.useDayFilter ? this.showStore.selectedDay : undefined;
 
     runInAction(() => {
       this.isLoadingShows = true;
@@ -100,10 +101,10 @@ export class MapStore {
 
     try {
       // Use location-based filtering with map center for better accuracy
-      const mapCenter = this.currentCenter 
+      const mapCenter = this.currentCenter
         ? { lat: this.currentCenter.lat, lng: this.currentCenter.lng, radius: 100 }
         : undefined;
-      
+
       console.log('📍 MapStore: Fetching shows with current filters using location-based endpoint');
       await this.showStore.fetchShows(day, mapCenter);
     } catch (error) {

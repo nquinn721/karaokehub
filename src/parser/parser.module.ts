@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
 import { DJ } from '../dj/dj.entity';
 import { GeocodingService } from '../geocoding/geocoding.service';
 import { CancellationService } from '../services/cancellation.service';
@@ -8,6 +9,7 @@ import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
 import { WebSocketModule } from '../websocket/websocket.module';
 import { FacebookParserService } from './facebook-parser.service';
+import { FacebookGroupDiscoveryService } from './facebook-group-discovery.service';
 import { KaraokeParserService } from './karaoke-parser.service';
 import { ParsedSchedule } from './parsed-schedule.entity';
 import { ParserController } from './parser.controller';
@@ -18,11 +20,13 @@ import { UrlToParseService } from './url-to-parse.service';
   imports: [
     TypeOrmModule.forFeature([Vendor, DJ, Show, ParsedSchedule, UrlToParse]),
     WebSocketModule,
+    ConfigModule,
   ],
   controllers: [ParserController],
   providers: [
     KaraokeParserService,
     FacebookParserService,
+    FacebookGroupDiscoveryService,
     UrlToParseService,
     GeocodingService,
     FacebookService,
@@ -31,6 +35,7 @@ import { UrlToParseService } from './url-to-parse.service';
   exports: [
     KaraokeParserService,
     FacebookParserService,
+    FacebookGroupDiscoveryService,
     UrlToParseService,
     FacebookService,
     CancellationService,
