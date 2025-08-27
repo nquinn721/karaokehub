@@ -1,5 +1,5 @@
-import React from 'react';
 import { observer } from 'mobx-react-lite';
+import React from 'react';
 
 // This component is temporarily disabled to comply with Google AdSense policies
 // Fake ads that look like real ads can cause policy violations
@@ -18,16 +18,25 @@ export const AdWithUpgrade: React.FC<AdWithUpgradeProps> = observer(() => {
 });
 
 // Enhanced ad components that include upgrade prompts - all disabled
-export const BannerAdWithUpgrade: React.FC<{ className?: string; showUpgradePrompt?: boolean }> = () => null;
+export const BannerAdWithUpgrade: React.FC<{
+  className?: string;
+  showUpgradePrompt?: boolean;
+}> = () => null;
 
-export const WideAdWithUpgrade: React.FC<{ className?: string; showUpgradePrompt?: boolean }> = () => null;
+export const WideAdWithUpgrade: React.FC<{
+  className?: string;
+  showUpgradePrompt?: boolean;
+}> = () => null;
 
 export const SidebarAdWithUpgrade: React.FC<{
   className?: string;
   showUpgradePrompt?: boolean;
 }> = () => null;
 
-export const SquareAdWithUpgrade: React.FC<{ className?: string; showUpgradePrompt?: boolean }> = () => null;
+export const SquareAdWithUpgrade: React.FC<{
+  className?: string;
+  showUpgradePrompt?: boolean;
+}> = () => null;
 
 export const RectangleAdWithUpgrade: React.FC<{
   className?: string;

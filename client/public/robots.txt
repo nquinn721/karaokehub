@@ -4,11 +4,11 @@ Allow: /
 # Important pages
 Allow: /
 Allow: /music
-Allow: /dashboard
-Allow: /login
-Allow: /register
+Allow: /shows
+Allow: /submit
+Allow: /privacy-policy
 
-# Block admin and API routes
+# Block admin and API routes  
 Disallow: /admin
 Disallow: /api
 Disallow: /auth
