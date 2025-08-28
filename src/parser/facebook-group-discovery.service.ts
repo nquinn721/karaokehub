@@ -293,7 +293,7 @@ export class FacebookGroupDiscoveryService {
   }
 
   /**
-   * Perform search for karaoke groups
+   * Perform search for karaoke groups with deep scrolling if needed
    */
   private async performSearch(page: puppeteer.Page, searchQuery: string): Promise<void> {
     this.logger.log(`🔍 Searching for: "${searchQuery}"`);
@@ -305,61 +305,135 @@ export class FacebookGroupDiscoveryService {
     // Wait for search results to load
     await page.waitForSelector('[role="feed"]', { timeout: 10000 });
 
-    // Scroll down a bit to load more results
-    await page.evaluate(() => {
-      window.scrollBy(0, 500);
-    });
-
-    await this.delay(2000);
+    // Progressively scroll to load more results
+    // We'll scroll multiple times to get a good selection of groups
+    await this.scrollToLoadMoreResults(page);
   }
 
   /**
-   * Use Gemini to analyze the screenshot and select appropriate groups
+   * Scroll down progressively to load more search results
+   */
+  private async scrollToLoadMoreResults(page: puppeteer.Page): Promise<void> {
+    this.logger.log(`📜 Loading more search results...`);
+
+    // Scroll down in stages to load more groups
+    for (let i = 0; i < 5; i++) {
+      const scrollAmount = 600 * (i + 1);
+      
+      await page.evaluate((amount) => {
+        window.scrollBy(0, amount);
+      }, scrollAmount);
+
+      // Wait for content to load after each scroll
+      await this.delay(2000);
+
+      // Check if we've reached the end of results
+      const hasMoreContent = await page.evaluate(() => {
+        const feed = document.querySelector('[role="feed"]');
+        if (!feed) return false;
+        
+        // Check if there are loading spinners or "no more results" indicators
+        const loadingSpinners = document.querySelectorAll('[role="progressbar"]');
+        const noMoreResults = document.querySelectorAll('*').length > 0 && 
+          Array.from(document.querySelectorAll('*')).some(el => 
+            el.textContent?.toLowerCase().includes('no more') ||
+            el.textContent?.toLowerCase().includes('end of results')
+          );
+        
+        return loadingSpinners.length > 0 || !noMoreResults;
+      });
+
+      if (!hasMoreContent) {
+        this.logger.log(`📜 Reached end of search results after ${i + 1} scrolls`);
+        break;
+      }
+    }
+
+    // Final scroll back to top to ensure we capture the full page
+    await page.evaluate(() => {
+      window.scrollTo(0, 0);
+    });
+    await this.delay(1000);
+  }
+
+  /**
+   * Two-stage analysis: First analyze search results, then validate individual groups
+   * If not enough valid groups found, search deeper in the results
    */
   private async analyzeGroupsWithGemini(
     screenshot: Buffer,
     city: string,
     state: string,
   ): Promise<string[]> {
-    this.logger.log(`🤖 Analyzing groups for ${city}, ${state} with Gemini...`);
+    this.logger.log(`🤖 Stage 1: Analyzing search results for ${city}, ${state} with Gemini...`);
 
+    // Stage 1: Analyze search results page to identify potential groups
+    const candidateUrls = await this.analyzeSearchResults(screenshot, city, state);
+    
+    if (candidateUrls.length === 0) {
+      this.logger.log(`❌ No candidate groups found in search results for ${city}, ${state}`);
+      return [];
+    }
+
+    this.logger.log(`🔍 Stage 2: Validating ${candidateUrls.length} candidate groups by visiting their pages...`);
+
+    // Stage 2: Visit each candidate group and validate with screenshots
+    const validatedUrls = await this.validateGroupsWithScreenshots(candidateUrls, city, state);
+
+    // If we don't have enough validated groups, we could implement additional search logic here
+    // For now, return what we found
+    return validatedUrls;
+  }
+
+  /**
+   * Stage 1: Analyze search results to identify potential karaoke groups
+   */
+  private async analyzeSearchResults(
+    screenshot: Buffer,
+    city: string,
+    state: string,
+  ): Promise<string[]> {
     const prompt = `
     You are analyzing a Facebook search results page for karaoke groups in ${city}, ${state}.
     
-    Please identify the TOP 2 public karaoke groups from this screenshot that meet these STRICT criteria:
+    Please identify ALL potential public karaoke groups from this screenshot that meet these criteria:
     
-    REQUIRED CRITERIA:
+    BASIC CRITERIA (for candidates):
     1. Must be PUBLIC groups (look for "Public group" text or public icon indicators)
-    2. Must be related to karaoke (singing, music venues, karaoke nights, open mic, DJ services, etc.)
-    3. Must be relevant to ${city} or ${state} area (local groups only)
-    4. Must have valid, well-formed Facebook group URLs
-    5. Should have reasonable member counts (prefer groups with 50+ members)
+    2. Could be related to karaoke, singing, music venues, entertainment, or nightlife
+    3. Should be relevant to ${city} or ${state} area (local groups preferred)
+    4. Must have valid Facebook group URLs
+    5. Should have some member activity (prefer groups with 20+ members)
     
     FILTERING RULES:
     - REJECT any groups marked as "Private" or "Closed"
-    - REJECT any groups without clear karaoke/music relevance
-    - REJECT any groups that appear to be spam or fake
+    - REJECT any groups that are clearly spam or fake
     - REJECT any malformed or incomplete URLs
-    - REJECT any groups with very few members (under 10)
-    - REJECT any groups that are clearly not local to ${city}, ${state}
+    - REJECT any groups with very few members (under 5)
+    - REJECT any groups that are clearly not local to the region
     
     URL REQUIREMENTS:
-    - URLs must follow the exact format: https://www.facebook.com/groups/[group-id]
+    - URLs must follow the format: https://www.facebook.com/groups/[group-id]
     - Remove ALL query parameters (everything after ?)
-    - Ensure the group-id portion is valid (letters, numbers, dots, hyphens only)
-    - Do not include URLs that redirect to Facebook login or error pages
+    - Ensure the group-id portion is valid
     
-    From the screenshot, extract the Facebook group URLs for the TOP 2 groups that best match these criteria.
-    Focus on groups that appear to be active karaoke communities with PUBLIC visibility.
+    BE INCLUSIVE in this stage - we will validate the actual content in the next stage.
+    Look for groups that might be karaoke-related, including:
+    - Karaoke groups
+    - Music venues
+    - DJ services
+    - Open mic nights
+    - Entertainment groups
+    - Bar/club groups that might host karaoke
+    - Community groups that might have karaoke events
     
-    IMPORTANT: Clean the URLs by removing all query parameters (everything after the ? in the URL).
-    For example: "https://www.facebook.com/groups/example?ref=search" should become "https://www.facebook.com/groups/example"
+    Extract ALL potential group URLs (up to 8) that could be karaoke-related.
     
     Return your response as a JSON array of cleaned group URLs:
-    ["https://www.facebook.com/groups/group1", "https://www.facebook.com/groups/group2"]
+    ["https://www.facebook.com/groups/group1", "https://www.facebook.com/groups/group2", ...]
     
-    If you cannot find 2 suitable PUBLIC karaoke groups that meet ALL criteria, return fewer URLs or an empty array.
-    Quality over quantity - only include groups you are confident are public and karaoke-related.
+    If you find fewer than 8 suitable candidates, return what you find.
+    Quality candidates that need validation - don't be too restrictive at this stage.
     `;
 
     try {
@@ -370,7 +444,7 @@ export class FacebookGroupDiscoveryService {
           temperature: performanceSettings.temperature,
           topP: performanceSettings.topP,
           topK: performanceSettings.topK,
-          maxOutputTokens: Math.min(performanceSettings.maxTokensPerRequest, 1024), // Limit for JSON response
+          maxOutputTokens: Math.min(performanceSettings.maxTokensPerRequest, 1024),
         },
       });
 
@@ -387,58 +461,353 @@ export class FacebookGroupDiscoveryService {
       const response = await result.response;
       const analysis = response.text();
 
-      // Clean the response by removing markdown code blocks and extra whitespace
+      // Clean and parse the response
       let cleanedAnalysis = analysis.trim();
-
-      // Remove markdown code blocks if present
       if (cleanedAnalysis.startsWith('```json') || cleanedAnalysis.startsWith('```')) {
         cleanedAnalysis = cleanedAnalysis.replace(/^```(json)?\s*/, '').replace(/```\s*$/, '');
       }
-
-      // Trim again after removing code blocks
       cleanedAnalysis = cleanedAnalysis.trim();
 
-      // Parse the JSON response
       const urls = JSON.parse(cleanedAnalysis);
 
       if (Array.isArray(urls)) {
-        // Clean URLs by removing query parameters and validate format
-        const cleanedUrls = urls
-          .map((url) => {
-            if (typeof url === 'string') {
-              // Remove query parameters
-              let cleanUrl = url.includes('?') ? url.split('?')[0] : url;
-
-              // Ensure proper Facebook group URL format
-              if (cleanUrl.includes('facebook.com/groups/')) {
-                // Extract the group ID and validate it
-                const groupIdMatch = cleanUrl.match(/facebook\.com\/groups\/([a-zA-Z0-9._-]+)\/?$/);
-                if (groupIdMatch && groupIdMatch[1]) {
-                  const groupId = groupIdMatch[1];
-                  // Validate group ID format (alphanumeric, dots, hyphens, underscores)
-                  if (/^[a-zA-Z0-9._-]+$/.test(groupId) && groupId.length >= 3) {
-                    return `https://www.facebook.com/groups/${groupId}`;
-                  }
-                }
-              }
-            }
-            return null;
-          })
-          .filter((url) => url !== null);
-
-        this.logger.log(`✅ Gemini selected ${cleanedUrls.length} groups for ${city}, ${state}:`);
-        cleanedUrls.forEach((url, index) => {
-          this.logger.log(`   ${index + 1}. ${url}`);
-        });
-        return cleanedUrls.slice(0, 2); // Ensure max 2 groups
+        const cleanedUrls = this.cleanAndValidateUrls(urls);
+        this.logger.log(`✅ Found ${cleanedUrls.length} candidate groups for validation`);
+        return cleanedUrls.slice(0, 8); // Max 8 candidates for validation
       } else {
-        this.logger.warn(`⚠️ Unexpected Gemini response format for ${city}, ${state}`);
+        this.logger.warn(`⚠️ Unexpected response format from Gemini for search results`);
         return [];
       }
     } catch (error) {
-      this.logger.error(`❌ Gemini analysis failed for ${city}, ${state}: ${error.message}`);
+      this.logger.error(`❌ Search results analysis failed: ${error.message}`);
       return [];
     }
+  }
+
+  /**
+   * Stage 2: Visit each candidate group and validate with screenshots
+   */
+  private async validateGroupsWithScreenshots(
+    candidateUrls: string[],
+    city: string,
+    state: string,
+  ): Promise<string[]> {
+    const validatedUrls: string[] = [];
+    const maxValidatedGroups = 3; // Final limit of validated groups
+    const maxRetries = 2; // Retry failed validations
+
+    for (let i = 0; i < candidateUrls.length && validatedUrls.length < maxValidatedGroups; i++) {
+      const url = candidateUrls[i];
+      this.logger.log(`🔍 Validating group ${i + 1}/${candidateUrls.length}: ${url}`);
+
+      let isValid = false;
+      let retryCount = 0;
+
+      // Retry validation in case of network issues
+      while (!isValid && retryCount <= maxRetries) {
+        try {
+          isValid = await this.validateSingleGroup(url, city, state);
+          if (isValid) {
+            validatedUrls.push(url);
+            this.logger.log(`✅ Group validated and approved: ${url}`);
+            break;
+          } else {
+            this.logger.log(`❌ Group rejected after validation: ${url}`);
+            break; // Don't retry if group is genuinely not karaoke-related
+          }
+        } catch (error) {
+          retryCount++;
+          this.logger.error(`❌ Error validating group ${url} (attempt ${retryCount}/${maxRetries + 1}): ${error.message}`);
+          
+          if (retryCount <= maxRetries) {
+            this.logger.log(`🔄 Retrying validation for ${url} in 3 seconds...`);
+            await this.delay(3000);
+          }
+        }
+      }
+
+      // Delay between validations to be respectful
+      if (i < candidateUrls.length - 1) {
+        await this.delay(2000);
+      }
+    }
+
+    this.logger.log(`✅ Validation complete: ${validatedUrls.length} groups approved for ${city}, ${state}`);
+    
+    // If we didn't find enough valid groups, log a suggestion for deeper search
+    if (validatedUrls.length < 2) {
+      this.logger.log(`⚠️ Only found ${validatedUrls.length} valid groups for ${city}, ${state}. Consider expanding search criteria or scrolling deeper in results.`);
+    }
+
+    return validatedUrls;
+  }
+
+  /**
+   * Validate a single group by visiting its page and taking a screenshot
+   */
+  private async validateSingleGroup(url: string, city: string, state: string): Promise<boolean> {
+    let browser: puppeteer.Browser | null = null;
+
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
+        ],
+      });
+
+      const page = await browser.newPage();
+      
+      // Set longer timeout for page operations
+      page.setDefaultTimeout(20000);
+      page.setDefaultNavigationTimeout(20000);
+      
+      await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      );
+      await page.setViewport({ width: 1366, height: 768 });
+
+      // Load existing cookies for authentication
+      const existingCookies = await this.loadExistingCookies();
+      if (existingCookies.length > 0) {
+        try {
+          // Navigate to Facebook first, then set cookies
+          await page.goto('https://www.facebook.com/', { waitUntil: 'domcontentloaded', timeout: 10000 });
+          await page.setCookie(...existingCookies);
+        } catch (cookieError) {
+          this.logger.warn(`⚠️ Failed to set cookies for ${url}: ${cookieError.message}`);
+        }
+      }
+
+      // Navigate to the group page with retries
+      let navigationSuccess = false;
+      const maxNavigationRetries = 3;
+      
+      for (let retry = 0; retry < maxNavigationRetries && !navigationSuccess; retry++) {
+        try {
+          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+          navigationSuccess = true;
+        } catch (navError) {
+          this.logger.warn(`⚠️ Navigation attempt ${retry + 1} failed for ${url}: ${navError.message}`);
+          if (retry < maxNavigationRetries - 1) {
+            await this.delay(2000);
+          }
+        }
+      }
+
+      if (!navigationSuccess) {
+        this.logger.error(`❌ Failed to navigate to ${url} after ${maxNavigationRetries} attempts`);
+        return false;
+      }
+
+      // Wait for page content to load
+      await this.delay(3000);
+
+      // Check if we're redirected to login (private group or authentication issue)
+      const currentUrl = page.url();
+      if (currentUrl.includes('login') || currentUrl.includes('checkpoint') || currentUrl.includes('verify')) {
+        this.logger.log(`⚠️ Redirected to login/checkpoint for ${url} - skipping`);
+        return false;
+      }
+
+      // Check for error pages
+      if (currentUrl.includes('error') || currentUrl.includes('notfound')) {
+        this.logger.log(`⚠️ Error page detected for ${url} - skipping`);
+        return false;
+      }
+
+      // Check for private group indicators
+      const privateIndicators = await page.evaluate(() => {
+        const text = document.body.textContent || '';
+        const lowerText = text.toLowerCase();
+        return lowerText.includes('private group') || 
+               lowerText.includes('closed group') || 
+               lowerText.includes('request to join') ||
+               lowerText.includes('this content isn\'t available') ||
+               lowerText.includes('content not available') ||
+               lowerText.includes('join group');
+      });
+
+      if (privateIndicators) {
+        this.logger.log(`⚠️ Group appears to be private: ${url}`);
+        return false;
+      }
+
+      // Check if page actually loaded group content
+      const hasGroupContent = await page.evaluate(() => {
+        // Look for typical Facebook group page elements
+        const groupIndicators = [
+          '[data-pagelet="GroupFeed"]',
+          '[data-pagelet="GroupInformation"]',
+          '[role="main"]',
+          '[data-testid="GroupFeed"]',
+        ];
+        
+        return groupIndicators.some(selector => document.querySelector(selector) !== null);
+      });
+
+      if (!hasGroupContent) {
+        this.logger.log(`⚠️ No group content detected for ${url} - skipping`);
+        return false;
+      }
+
+      // Scroll down to load more content
+      await page.evaluate(() => {
+        window.scrollBy(0, 800);
+      });
+      await this.delay(2000);
+
+      // Take screenshot of the group page
+      const screenshot = await page.screenshot({
+        fullPage: false,
+        clip: { x: 0, y: 0, width: 1366, height: 768 },
+        type: 'png',
+      });
+
+      // Use Gemini to analyze the group content
+      const isKaraokeRelated = await this.analyzeGroupContent(
+        Buffer.from(screenshot),
+        url,
+        city,
+        state,
+      );
+
+      return isKaraokeRelated;
+    } catch (error) {
+      this.logger.error(`❌ Error validating group ${url}: ${error.message}`);
+      return false;
+    } finally {
+      if (browser) {
+        try {
+          await browser.close();
+        } catch (closeError) {
+          this.logger.warn(`⚠️ Error closing browser: ${closeError.message}`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Analyze individual group content to determine if it's karaoke-related
+   */
+  private async analyzeGroupContent(
+    screenshot: Buffer,
+    url: string,
+    city: string,
+    state: string,
+  ): Promise<boolean> {
+    const prompt = `
+    You are analyzing a Facebook group page to determine if it's genuinely karaoke-related and worth including in our karaoke venue discovery system.
+    
+    Group URL: ${url}
+    Location: ${city}, ${state}
+    
+    Analyze this screenshot and determine if this group meets ALL these STRICT criteria:
+    
+    REQUIRED CRITERIA:
+    1. The group must be PUBLIC (not private/closed)
+    2. The group must be actively related to KARAOKE specifically, including:
+       - Karaoke venues or bars
+       - Karaoke events or nights
+       - Karaoke singers or communities
+       - Open mic nights that include karaoke
+       - DJ services that provide karaoke
+    3. The group must be relevant to ${city}, ${state} or surrounding area
+    4. The group should have real activity (recent posts, member engagement)
+    5. The group should have a reasonable number of members (20+)
+    
+    REJECTION CRITERIA (return false if ANY of these apply):
+    - Private or closed groups
+    - Groups without clear karaoke relevance
+    - Spam or fake groups
+    - Groups with no recent activity
+    - Groups clearly not related to the ${city}, ${state} area
+    - Groups with very few members (under 20)
+    - Groups that are just general music/entertainment without karaoke focus
+    - Groups that are primarily about selling products/services unrelated to karaoke
+    - Adult content or inappropriate groups
+    
+    Look for specific karaoke indicators in the content:
+    - Posts about karaoke nights
+    - Photos from karaoke events
+    - Mentions of karaoke equipment
+    - Discussions about songs or singing
+    - Venue information for karaoke bars
+    - Event announcements for karaoke
+    
+    Based on your analysis, is this a legitimate, active, public karaoke group worth including?
+    
+    Respond with ONLY "true" or "false" - no explanation needed.
+    `;
+
+    try {
+      const performanceSettings = getGeminiPerformanceSettings();
+      const model = this.genAI.getGenerativeModel({
+        model: getGeminiModel('vision'),
+        generationConfig: {
+          temperature: 0.1, // Lower temperature for more consistent binary decisions
+          topP: performanceSettings.topP,
+          topK: performanceSettings.topK,
+          maxOutputTokens: 10, // Very short response
+        },
+      });
+
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: screenshot.toString('base64'),
+            mimeType: 'image/png',
+          },
+        },
+      ]);
+
+      const response = await result.response;
+      const analysis = response.text().trim().toLowerCase();
+
+      // Parse the boolean response
+      const isValid = analysis.includes('true');
+      
+      this.logger.log(`🤖 Gemini validation result for ${url}: ${isValid ? 'APPROVED' : 'REJECTED'}`);
+      return isValid;
+    } catch (error) {
+      this.logger.error(`❌ Group content analysis failed for ${url}: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Clean and validate URLs from Gemini response
+   */
+  private cleanAndValidateUrls(urls: any[]): string[] {
+    return urls
+      .map((url) => {
+        if (typeof url === 'string') {
+          // Remove query parameters
+          let cleanUrl = url.includes('?') ? url.split('?')[0] : url;
+
+          // Ensure proper Facebook group URL format
+          if (cleanUrl.includes('facebook.com/groups/')) {
+            const groupIdMatch = cleanUrl.match(/facebook\.com\/groups\/([a-zA-Z0-9._-]+)\/?$/);
+            if (groupIdMatch && groupIdMatch[1]) {
+              const groupId = groupIdMatch[1];
+              if (/^[a-zA-Z0-9._-]+$/.test(groupId) && groupId.length >= 3) {
+                return `https://www.facebook.com/groups/${groupId}`;
+              }
+            }
+          }
+        }
+        return null;
+      })
+      .filter((url) => url !== null);
   }
 
   /**
