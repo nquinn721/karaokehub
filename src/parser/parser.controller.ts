@@ -7,6 +7,7 @@ import {
   Logger,
   Param,
   Post,
+  Put,
 } from '@nestjs/common';
 import { CancellationService } from '../services/cancellation.service';
 import { FacebookCookieValidatorService } from './facebook-cookie-validator.service';
@@ -101,16 +102,40 @@ export class ParserController {
       vendorId: string;
       venue: string;
       address?: string;
-      day: string;
+      days: string[]; // Changed from day to days array
       startTime: string;
       endTime?: string;
       djName?: string;
       description?: string;
       venuePhone?: string;
       venueWebsite?: string;
+      city?: string;
+      state?: string;
+      zip?: string;
+      lat?: number;
+      lng?: number;
     },
   ) {
     try {
+      // Create show objects for each selected day
+      const shows = body.days.map((day) => ({
+        venue: body.venue,
+        date: day,
+        time: body.startTime,
+        endTime: body.endTime,
+        djName: body.djName,
+        description: body.description,
+        address: body.address,
+        city: body.city,
+        state: body.state,
+        zip: body.zip,
+        lat: body.lat,
+        lng: body.lng,
+        venuePhone: body.venuePhone,
+        venueWebsite: body.venueWebsite,
+        confidence: 1.0,
+      }));
+
       // Create manual show submission in a format similar to parsed data
       const manualShowData = {
         vendor: {
@@ -127,20 +152,7 @@ export class ParserController {
               },
             ]
           : [],
-        shows: [
-          {
-            venue: body.venue,
-            date: body.day, // This could be enhanced to handle specific dates
-            time: body.startTime,
-            endTime: body.endTime,
-            djName: body.djName,
-            description: body.description,
-            address: body.address,
-            venuePhone: body.venuePhone,
-            venueWebsite: body.venueWebsite,
-            confidence: 1.0,
-          },
-        ],
+        shows: shows, // Multiple shows, one for each day
       };
 
       // For now, we'll add this to the parsed schedules for admin review
@@ -344,6 +356,41 @@ export class ParserController {
     } catch (error) {
       console.error('Error marking URL as unparsed:', error);
       throw new HttpException('Failed to mark URL as unparsed', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Put('urls/:id')
+  async updateUrl(
+    @Param('id') id: string,
+    @Body() body: { name?: string; city?: string; state?: string },
+  ): Promise<UrlToParse> {
+    try {
+      return await this.urlToParseService.update(parseInt(id), body);
+    } catch (error) {
+      console.error('Error updating URL:', error);
+      throw new HttpException('Failed to update URL', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('urls/:id/approve')
+  async approveUrl(@Param('id') id: string): Promise<{ message: string }> {
+    try {
+      await this.urlToParseService.approve(parseInt(id));
+      return { message: 'URL approved successfully' };
+    } catch (error) {
+      console.error('Error approving URL:', error);
+      throw new HttpException('Failed to approve URL', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('urls/:id/unapprove')
+  async unapproveUrl(@Param('id') id: string): Promise<{ message: string }> {
+    try {
+      await this.urlToParseService.unapprove(parseInt(id));
+      return { message: 'URL unapproved successfully' };
+    } catch (error) {
+      console.error('Error unapproving URL:', error);
+      throw new HttpException('Failed to unapprove URL', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

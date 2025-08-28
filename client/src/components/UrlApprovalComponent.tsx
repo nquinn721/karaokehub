@@ -207,6 +207,9 @@ const UrlApprovalComponent = observer(() => {
                 >
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>URL</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>
+                    Location
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>
                     Submitted
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>
@@ -259,6 +262,24 @@ const UrlApprovalComponent = observer(() => {
                           <FontAwesomeIcon icon={faExternalLinkAlt} size="xs" />
                         </IconButton>
                       </Box>
+                    </TableCell>
+                    <TableCell sx={{ py: 2.5 }}>
+                      {urlItem.city || urlItem.state ? (
+                        <Typography variant="body2" color="text.primary" sx={{ fontWeight: 500 }}>
+                          📍{' '}
+                          {urlItem.city && urlItem.state
+                            ? `${urlItem.city}, ${urlItem.state}`
+                            : urlItem.city || urlItem.state}
+                        </Typography>
+                      ) : (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ fontStyle: 'italic' }}
+                        >
+                          Location not specified
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell sx={{ py: 2.5 }}>
                       <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>

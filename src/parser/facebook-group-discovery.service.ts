@@ -3,19 +3,16 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import * as puppeteer from 'puppeteer';
 import { Like, Repository } from 'typeorm';
-import { getGeminiModel } from '../config/gemini.config';
+import { getGeminiModel, getGeminiPerformanceSettings } from '../config/gemini.config';
 import { FacebookAuthWebSocketService } from '../websocket/facebook-auth-websocket.service';
 import { UrlToParse } from './url-to-parse.entity';
 
 export interface LocationData {
-  [state: string]: Array<{
-    city: string;
-    lat: number;
-    lng: number;
-  }>;
+  [state: string]: string[];
 }
 
 export interface GroupSearchResult {
@@ -28,8 +25,8 @@ export interface GroupSearchResult {
 @Injectable()
 export class FacebookGroupDiscoveryService {
   private readonly logger = new Logger(FacebookGroupDiscoveryService.name);
-  private readonly maxConcurrentWorkers = 3; // Limit concurrent Puppeteer instances
-  private readonly searchDelay = 2000; // Delay between searches to avoid rate limiting
+  private readonly maxConcurrentWorkers = Math.min(os.cpus().length, 16); // Use available CPU cores, max 16 to avoid overwhelming Facebook
+  private readonly searchDelay = 1500; // Reduced delay for faster processing
   private genAI: GoogleGenerativeAI;
 
   constructor(
@@ -130,8 +127,6 @@ export class FacebookGroupDiscoveryService {
   private async discoverGroupsForCity(cityData: {
     city: string;
     state: string;
-    lat: number;
-    lng: number;
   }): Promise<GroupSearchResult> {
     const { city, state } = cityData;
     this.logger.log(`🎤 Searching for karaoke groups in ${city}, ${state}`);
@@ -331,25 +326,52 @@ export class FacebookGroupDiscoveryService {
     const prompt = `
     You are analyzing a Facebook search results page for karaoke groups in ${city}, ${state}.
     
-    Please identify the TOP 2 public karaoke groups from this screenshot that meet these criteria:
-    1. Must be PUBLIC groups (not private)
-    2. Must be related to karaoke (singing, music venues, karaoke nights, etc.)
-    3. Must be relevant to ${city} or ${state} area
-    4. Should have reasonable member counts (prefer groups with more members)
-    5. Avoid duplicate or very similar groups
+    Please identify the TOP 2 public karaoke groups from this screenshot that meet these STRICT criteria:
     
-    From the screenshot, extract the Facebook group URLs or names for the TOP 2 groups that best match these criteria.
-    Focus on groups that appear to be active karaoke communities.
+    REQUIRED CRITERIA:
+    1. Must be PUBLIC groups (look for "Public group" text or public icon indicators)
+    2. Must be related to karaoke (singing, music venues, karaoke nights, open mic, DJ services, etc.)
+    3. Must be relevant to ${city} or ${state} area (local groups only)
+    4. Must have valid, well-formed Facebook group URLs
+    5. Should have reasonable member counts (prefer groups with 50+ members)
     
-    Return your response as a JSON array of group URLs or identifiers:
+    FILTERING RULES:
+    - REJECT any groups marked as "Private" or "Closed"
+    - REJECT any groups without clear karaoke/music relevance
+    - REJECT any groups that appear to be spam or fake
+    - REJECT any malformed or incomplete URLs
+    - REJECT any groups with very few members (under 10)
+    - REJECT any groups that are clearly not local to ${city}, ${state}
+    
+    URL REQUIREMENTS:
+    - URLs must follow the exact format: https://www.facebook.com/groups/[group-id]
+    - Remove ALL query parameters (everything after ?)
+    - Ensure the group-id portion is valid (letters, numbers, dots, hyphens only)
+    - Do not include URLs that redirect to Facebook login or error pages
+    
+    From the screenshot, extract the Facebook group URLs for the TOP 2 groups that best match these criteria.
+    Focus on groups that appear to be active karaoke communities with PUBLIC visibility.
+    
+    IMPORTANT: Clean the URLs by removing all query parameters (everything after the ? in the URL).
+    For example: "https://www.facebook.com/groups/example?ref=search" should become "https://www.facebook.com/groups/example"
+    
+    Return your response as a JSON array of cleaned group URLs:
     ["https://www.facebook.com/groups/group1", "https://www.facebook.com/groups/group2"]
     
-    If you cannot find 2 suitable public karaoke groups, return fewer URLs or an empty array.
+    If you cannot find 2 suitable PUBLIC karaoke groups that meet ALL criteria, return fewer URLs or an empty array.
+    Quality over quantity - only include groups you are confident are public and karaoke-related.
     `;
 
     try {
+      const performanceSettings = getGeminiPerformanceSettings();
       const model = this.genAI.getGenerativeModel({
         model: getGeminiModel('vision'),
+        generationConfig: {
+          temperature: performanceSettings.temperature,
+          topP: performanceSettings.topP,
+          topK: performanceSettings.topK,
+          maxOutputTokens: Math.min(performanceSettings.maxTokensPerRequest, 1024), // Limit for JSON response
+        },
       });
 
       const result = await model.generateContent([
@@ -367,12 +389,12 @@ export class FacebookGroupDiscoveryService {
 
       // Clean the response by removing markdown code blocks and extra whitespace
       let cleanedAnalysis = analysis.trim();
-      
+
       // Remove markdown code blocks if present
       if (cleanedAnalysis.startsWith('```json') || cleanedAnalysis.startsWith('```')) {
         cleanedAnalysis = cleanedAnalysis.replace(/^```(json)?\s*/, '').replace(/```\s*$/, '');
       }
-      
+
       // Trim again after removing code blocks
       cleanedAnalysis = cleanedAnalysis.trim();
 
@@ -380,8 +402,35 @@ export class FacebookGroupDiscoveryService {
       const urls = JSON.parse(cleanedAnalysis);
 
       if (Array.isArray(urls)) {
-        this.logger.log(`✅ Gemini selected ${urls.length} groups for ${city}, ${state}`);
-        return urls.slice(0, 2); // Ensure max 2 groups
+        // Clean URLs by removing query parameters and validate format
+        const cleanedUrls = urls
+          .map((url) => {
+            if (typeof url === 'string') {
+              // Remove query parameters
+              let cleanUrl = url.includes('?') ? url.split('?')[0] : url;
+
+              // Ensure proper Facebook group URL format
+              if (cleanUrl.includes('facebook.com/groups/')) {
+                // Extract the group ID and validate it
+                const groupIdMatch = cleanUrl.match(/facebook\.com\/groups\/([a-zA-Z0-9._-]+)\/?$/);
+                if (groupIdMatch && groupIdMatch[1]) {
+                  const groupId = groupIdMatch[1];
+                  // Validate group ID format (alphanumeric, dots, hyphens, underscores)
+                  if (/^[a-zA-Z0-9._-]+$/.test(groupId) && groupId.length >= 3) {
+                    return `https://www.facebook.com/groups/${groupId}`;
+                  }
+                }
+              }
+            }
+            return null;
+          })
+          .filter((url) => url !== null);
+
+        this.logger.log(`✅ Gemini selected ${cleanedUrls.length} groups for ${city}, ${state}:`);
+        cleanedUrls.forEach((url, index) => {
+          this.logger.log(`   ${index + 1}. ${url}`);
+        });
+        return cleanedUrls.slice(0, 2); // Ensure max 2 groups
       } else {
         this.logger.warn(`⚠️ Unexpected Gemini response format for ${city}, ${state}`);
         return [];
@@ -389,6 +438,36 @@ export class FacebookGroupDiscoveryService {
     } catch (error) {
       this.logger.error(`❌ Gemini analysis failed for ${city}, ${state}: ${error.message}`);
       return [];
+    }
+  }
+
+  /**
+   * Validate Facebook group URL format
+   */
+  private isValidFacebookGroupUrl(url: string): boolean {
+    try {
+      // Check basic URL format
+      const urlObj = new URL(url);
+      if (!urlObj.hostname.includes('facebook.com')) {
+        return false;
+      }
+
+      // Check for groups path
+      if (!url.includes('facebook.com/groups/')) {
+        return false;
+      }
+
+      // Extract and validate group ID
+      const groupIdMatch = url.match(/facebook\.com\/groups\/([a-zA-Z0-9._-]+)\/?$/);
+      if (!groupIdMatch || !groupIdMatch[1]) {
+        return false;
+      }
+
+      const groupId = groupIdMatch[1];
+      // Validate group ID format and length
+      return /^[a-zA-Z0-9._-]+$/.test(groupId) && groupId.length >= 3 && groupId.length <= 100;
+    } catch (error) {
+      return false;
     }
   }
 
@@ -404,7 +483,7 @@ export class FacebookGroupDiscoveryService {
     // Process each result to maintain city/state association
     for (const result of results) {
       for (const url of result.groupUrls) {
-        if (url && url.includes('facebook.com/groups/')) {
+        if (url && this.isValidFacebookGroupUrl(url)) {
           try {
             // Check if URL already exists
             const existing = await this.urlToParseRepository.findOne({ where: { url } });
@@ -435,6 +514,8 @@ export class FacebookGroupDiscoveryService {
           } catch (error) {
             this.logger.error(`❌ Failed to save URL ${url}: ${error.message}`);
           }
+        } else {
+          this.logger.warn(`⚠️ Invalid or malformed URL rejected: ${url}`);
         }
       }
     }
@@ -446,7 +527,7 @@ export class FacebookGroupDiscoveryService {
    * Load locations data from JSON file
    */
   private loadLocationsData(): LocationData {
-    const locationsPath = path.join(process.cwd(), 'data', 'locations.json');
+    const locationsPath = path.join(process.cwd(), 'data', 'majorLocations.json');
     const locationsData = JSON.parse(fs.readFileSync(locationsPath, 'utf8'));
     return locationsData;
   }
@@ -454,18 +535,14 @@ export class FacebookGroupDiscoveryService {
   /**
    * Flatten locations data into a single array with state info
    */
-  private flattenLocations(
-    locations: LocationData,
-  ): Array<{ city: string; state: string; lat: number; lng: number }> {
-    const flattened: Array<{ city: string; state: string; lat: number; lng: number }> = [];
+  private flattenLocations(locations: LocationData): Array<{ city: string; state: string }> {
+    const flattened: Array<{ city: string; state: string }> = [];
 
     for (const [state, cities] of Object.entries(locations)) {
-      for (const cityData of cities) {
+      for (const city of cities) {
         flattened.push({
-          city: cityData.city,
+          city,
           state,
-          lat: cityData.lat,
-          lng: cityData.lng,
         });
       }
     }

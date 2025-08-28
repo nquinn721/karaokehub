@@ -1,0 +1,12 @@
+{
+  "California": ["Los Angeles", "San Francisco"],
+  "Texas": ["Houston", "Austin"],
+  "Florida": ["Miami", "Orlando"],
+  "New York": ["New York City", "Buffalo"],
+  "Illinois": ["Chicago", "Rockford"],
+  "Pennsylvania": ["Philadelphia", "Pittsburgh"],
+  "Ohio": ["Columbus", "Cleveland"],
+  "Georgia": ["Atlanta", "Augusta"],
+  "North Carolina": ["Charlotte", "Raleigh"],
+  "Michigan": ["Detroit", "Grand Rapids"]
+}

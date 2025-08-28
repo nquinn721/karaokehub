@@ -18,6 +18,7 @@ import {
   Card,
   CardActions,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -27,9 +28,12 @@ import {
   FormControl,
   Grid,
   InputLabel,
+  ListItemText,
   MenuItem,
+  OutlinedInput,
   Paper,
   Select,
+  SelectChangeEvent,
   Tab,
   Tabs,
   TextField,
@@ -38,7 +42,7 @@ import {
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
-import { authStore, parserStore, vendorStore } from '../stores';
+import { apiStore, authStore, parserStore, vendorStore } from '../stores';
 import { ParsedScheduleItem } from '../stores/ParserStore';
 import { Vendor } from '../stores/VendorStore';
 
@@ -81,6 +85,9 @@ const SubmitShowPage: React.FC = observer(() => {
 
   // Manual show entry state
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+  const [availableDJs, setAvailableDJs] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedDJ, setSelectedDJ] = useState<{ id: string; name: string } | null>(null);
+  const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
   const [newVendorData, setNewVendorData] = useState({
     name: '',
     website: '',
@@ -90,13 +97,18 @@ const SubmitShowPage: React.FC = observer(() => {
   const [showData, setShowData] = useState({
     venue: '',
     address: '',
-    day: '',
+    days: [] as string[], // Changed to array for multi-select
     startTime: '',
     endTime: '',
     djName: '',
     description: '',
     venuePhone: '',
     venueWebsite: '',
+    city: '',
+    state: '',
+    zip: '',
+    lat: null as number | null,
+    lng: null as number | null,
   });
   const [isCreatingVendor, setIsCreatingVendor] = useState(!authStore.isAuthenticated);
 
@@ -104,6 +116,65 @@ const SubmitShowPage: React.FC = observer(() => {
     // Load vendors when component mounts (now that endpoint is public)
     vendorStore.fetchVendors();
   }, []);
+
+  // Fetch DJs when vendor is selected
+  useEffect(() => {
+    const fetchDJs = async () => {
+      if (selectedVendor) {
+        try {
+          const response = await apiStore.get(`/djs/vendor/${selectedVendor.id}`);
+          setAvailableDJs(response.data || []);
+        } catch (error) {
+          console.error('Failed to fetch DJs for vendor:', error);
+          setAvailableDJs([]);
+        }
+      } else {
+        setAvailableDJs([]);
+        setSelectedDJ(null);
+      }
+    };
+
+    fetchDJs();
+  }, [selectedVendor]);
+
+  // Function to geocode address automatically
+  const handleAddressGeocoding = async (address: string) => {
+    if (!address.trim() || address.length < 10) return; // Only geocode detailed addresses
+
+    setIsGeocodingAddress(true);
+    try {
+      const response = await fetch(`/api/location/geocode?address=${encodeURIComponent(address)}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.result) {
+          // Update showData with geocoded information
+          setShowData((prev) => ({
+            ...prev,
+            city: data.result.city || prev.city,
+            state: data.result.state || prev.state,
+            zip: data.result.zip || prev.zip,
+            lat: data.result.lat || prev.lat,
+            lng: data.result.lng || prev.lng,
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Geocoding failed:', error);
+    } finally {
+      setIsGeocodingAddress(false);
+    }
+  };
+
+  // Debounced address geocoding
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (showData.address) {
+        handleAddressGeocoding(showData.address);
+      }
+    }, 1500); // Wait 1.5 seconds after user stops typing
+
+    return () => clearTimeout(timer);
+  }, [showData.address]);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -242,8 +313,8 @@ const SubmitShowPage: React.FC = observer(() => {
       return;
     }
 
-    if (!showData.venue.trim() || !showData.day.trim() || !showData.startTime.trim()) {
-      setError('Venue, day, and start time are required');
+    if (!showData.venue.trim() || showData.days.length === 0 || !showData.startTime.trim()) {
+      setError('Venue, at least one day, and start time are required');
       return;
     }
 
@@ -254,13 +325,18 @@ const SubmitShowPage: React.FC = observer(() => {
         vendorId: selectedVendor.id,
         venue: showData.venue,
         address: showData.address,
-        day: showData.day,
+        days: showData.days, // Send array of selected days
         startTime: showData.startTime,
         endTime: showData.endTime,
         djName: showData.djName,
-        description: showData.description,
-        venuePhone: showData.venuePhone,
-        venueWebsite: showData.venueWebsite,
+        description: showData.description || '', // Optional field
+        venuePhone: showData.venuePhone || '', // Optional field
+        venueWebsite: showData.venueWebsite || '', // Optional field
+        city: showData.city,
+        state: showData.state,
+        zip: showData.zip,
+        lat: showData.lat,
+        lng: showData.lng,
       };
 
       const result = await parserStore.submitManualShow(showSubmission);
@@ -270,14 +346,20 @@ const SubmitShowPage: React.FC = observer(() => {
         setShowData({
           venue: '',
           address: '',
-          day: '',
+          days: [],
           startTime: '',
           endTime: '',
           djName: '',
           description: '',
           venuePhone: '',
           venueWebsite: '',
+          city: '',
+          state: '',
+          zip: '',
+          lat: null,
+          lng: null,
         });
+        setSelectedDJ(null);
       } else {
         setError(result.error || 'Failed to submit show.');
       }
@@ -995,7 +1077,15 @@ const SubmitShowPage: React.FC = observer(() => {
                           onChange={(e) => setShowData({ ...showData, address: e.target.value })}
                           InputProps={{
                             sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                            endAdornment: isGeocodingAddress ? (
+                              <CircularProgress size={20} />
+                            ) : null,
                           }}
+                          helperText={
+                            showData.city || showData.state
+                              ? `Parsed: ${showData.city}${showData.city && showData.state ? ', ' : ''}${showData.state} ${showData.zip}`
+                              : ''
+                          }
                         />
                       </Grid>
                       <Grid item xs={12} sm={4}>
@@ -1008,60 +1098,47 @@ const SubmitShowPage: React.FC = observer(() => {
                               },
                             }}
                           >
-                            Day *
+                            Days *
                           </InputLabel>
                           <Select
-                            value={showData.day}
-                            onChange={(e) => setShowData({ ...showData, day: e.target.value })}
-                            label="Day *"
+                            multiple
+                            value={showData.days}
+                            onChange={(e: SelectChangeEvent<string[]>) => {
+                              const value = e.target.value as string[];
+                              setShowData({ ...showData, days: value });
+                            }}
+                            input={<OutlinedInput label="Days *" />}
+                            renderValue={(selected) => (
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {(selected as string[]).map((value) => (
+                                  <Chip key={value} label={value} size="small" />
+                                ))}
+                              </Box>
+                            )}
                             sx={{
                               '& .MuiSelect-select': {
                                 fontSize: { xs: '0.9rem', sm: '1rem' },
                               },
                             }}
                           >
-                            <MenuItem
-                              value="Monday"
-                              sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
-                            >
-                              Monday
-                            </MenuItem>
-                            <MenuItem
-                              value="Tuesday"
-                              sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
-                            >
-                              Tuesday
-                            </MenuItem>
-                            <MenuItem
-                              value="Wednesday"
-                              sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
-                            >
-                              Wednesday
-                            </MenuItem>
-                            <MenuItem
-                              value="Thursday"
-                              sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
-                            >
-                              Thursday
-                            </MenuItem>
-                            <MenuItem
-                              value="Friday"
-                              sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
-                            >
-                              Friday
-                            </MenuItem>
-                            <MenuItem
-                              value="Saturday"
-                              sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
-                            >
-                              Saturday
-                            </MenuItem>
-                            <MenuItem
-                              value="Sunday"
-                              sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
-                            >
-                              Sunday
-                            </MenuItem>
+                            {[
+                              'Monday',
+                              'Tuesday',
+                              'Wednesday',
+                              'Thursday',
+                              'Friday',
+                              'Saturday',
+                              'Sunday',
+                            ].map((day) => (
+                              <MenuItem
+                                key={day}
+                                value={day}
+                                sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}
+                              >
+                                <Checkbox checked={showData.days.indexOf(day) > -1} />
+                                <ListItemText primary={day} />
+                              </MenuItem>
+                            ))}
                           </Select>
                         </FormControl>
                       </Grid>
@@ -1093,21 +1170,57 @@ const SubmitShowPage: React.FC = observer(() => {
                         />
                       </Grid>
                       <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="DJ/KJ Name"
-                          placeholder="e.g., DJ Mike"
-                          value={showData.djName}
-                          onChange={(e) => setShowData({ ...showData, djName: e.target.value })}
-                          InputProps={{
-                            sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
-                          }}
-                        />
+                        {availableDJs.length > 0 ? (
+                          <Autocomplete
+                            options={availableDJs}
+                            getOptionLabel={(option) =>
+                              typeof option === 'string' ? option : option.name
+                            }
+                            value={selectedDJ}
+                            onChange={(_event, newValue) => {
+                              if (typeof newValue === 'string') {
+                                setSelectedDJ(null);
+                                setShowData({ ...showData, djName: newValue });
+                              } else {
+                                setSelectedDJ(newValue);
+                                setShowData({ ...showData, djName: newValue?.name || '' });
+                              }
+                            }}
+                            freeSolo
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                fullWidth
+                                label="DJ/KJ Name"
+                                placeholder="Select existing DJ or type new name"
+                                value={showData.djName}
+                                onChange={(e) =>
+                                  setShowData({ ...showData, djName: e.target.value })
+                                }
+                                InputProps={{
+                                  ...params.InputProps,
+                                  sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                                }}
+                              />
+                            )}
+                          />
+                        ) : (
+                          <TextField
+                            fullWidth
+                            label="DJ/KJ Name"
+                            placeholder="e.g., DJ Mike"
+                            value={showData.djName}
+                            onChange={(e) => setShowData({ ...showData, djName: e.target.value })}
+                            InputProps={{
+                              sx: { fontSize: { xs: '0.9rem', sm: '1rem' } },
+                            }}
+                          />
+                        )}
                       </Grid>
                       <Grid item xs={12} sm={6}>
                         <TextField
                           fullWidth
-                          label="Venue Phone"
+                          label="Venue Phone (Optional)"
                           placeholder="e.g., (555) 123-4567"
                           value={showData.venuePhone}
                           onChange={(e) => setShowData({ ...showData, venuePhone: e.target.value })}
@@ -1119,7 +1232,7 @@ const SubmitShowPage: React.FC = observer(() => {
                       <Grid item xs={12}>
                         <TextField
                           fullWidth
-                          label="Venue Website"
+                          label="Venue Website (Optional)"
                           placeholder="https://venue-website.com"
                           value={showData.venueWebsite}
                           onChange={(e) =>
@@ -1136,7 +1249,7 @@ const SubmitShowPage: React.FC = observer(() => {
                           multiline
                           minRows={2}
                           maxRows={4}
-                          label="Additional Description"
+                          label="Additional Description (Optional)"
                           placeholder="Any additional details about the show, special events, song restrictions, etc."
                           value={showData.description}
                           onChange={(e) =>

@@ -100,13 +100,27 @@ export class MapStore {
     });
 
     try {
-      // Use location-based filtering with map center for better accuracy
-      const mapCenter = this.currentCenter
-        ? { lat: this.currentCenter.lat, lng: this.currentCenter.lng, radius: 100 }
-        : undefined;
+      // At zoom 9 or lower, load all shows nationwide without distance filtering
+      if (this.currentZoom <= 9) {
+        console.log(
+          '🌎 MapStore: Fetching ALL shows nationwide (zoom 9 or lower)',
+          this.currentZoom,
+        );
 
-      console.log('📍 MapStore: Fetching shows with current filters using location-based endpoint');
-      await this.showStore.fetchShows(day, mapCenter);
+        await this.showStore.fetchAllShows(day, this.showStore.vendorFilter);
+      } else {
+        // For zoom levels 10+, use location-based filtering with smaller radius
+        console.log('📍 MapStore: Fetching regional shows (zoom 10+)', this.currentZoom);
+
+        // Use appropriate radius for higher zoom levels
+        const radius = this.currentZoom <= 12 ? 100 : 50; // 100 miles for medium zoom, 50 miles for detailed view
+
+        const mapCenter = this.currentCenter
+          ? { lat: this.currentCenter.lat, lng: this.currentCenter.lng, radius }
+          : undefined;
+
+        await this.showStore.fetchShows(day, mapCenter);
+      }
     } catch (error) {
       console.error('❌ MapStore: Failed to fetch data:', error);
     } finally {

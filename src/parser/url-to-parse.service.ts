@@ -97,4 +97,27 @@ export class UrlToParseService {
     urlToParse.hasBeenParsed = false;
     return await this.urlToParseRepository.save(urlToParse);
   }
+
+  async update(
+    id: number,
+    updateData: { name?: string; city?: string; state?: string },
+  ): Promise<UrlToParse | null> {
+    const urlToParse = await this.findById(id);
+    if (!urlToParse) {
+      return null;
+    }
+
+    // Update only provided fields
+    if (updateData.name !== undefined) {
+      urlToParse.name = updateData.name;
+    }
+    if (updateData.city !== undefined) {
+      urlToParse.city = updateData.city;
+    }
+    if (updateData.state !== undefined) {
+      urlToParse.state = updateData.state;
+    }
+
+    return await this.urlToParseRepository.save(urlToParse);
+  }
 }

@@ -1,10 +1,12 @@
 import AdminBreadcrumb from '@components/AdminBreadcrumb';
 import FacebookLoginModal from '@components/FacebookLoginModal';
+import LocationEditModal from '@components/LocationEditModal';
 import {
   faCheck,
   faChevronDown,
   faCookie,
   faCopy,
+  faEdit,
   faExclamationTriangle,
   faEye,
   faGlobe,
@@ -75,6 +77,16 @@ const AdminParserPage: React.FC = observer(() => {
   const [reviewComments, setReviewComments] = useState('');
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState(false);
   const [urlToDelete, setUrlToDelete] = useState<{ id: number; url: string } | null>(null);
+
+  // Location Edit Modal state
+  const [locationEditModalOpen, setLocationEditModalOpen] = useState(false);
+  const [urlToEdit, setUrlToEdit] = useState<{
+    id: number;
+    url: string;
+    name?: string;
+    city?: string;
+    state?: string;
+  } | null>(null);
 
   // Facebook Login Modal state
   const [facebookModalOpen, setFacebookModalOpen] = useState(false);
@@ -611,6 +623,19 @@ const AdminParserPage: React.FC = observer(() => {
                                   >
                                     {url.url}
                                   </Typography>
+                                  {(url.city || url.state) && (
+                                    <Typography
+                                      variant="caption"
+                                      color="primary.main"
+                                      component="div"
+                                      sx={{ fontStyle: 'italic' }}
+                                    >
+                                      📍{' '}
+                                      {url.city && url.state
+                                        ? `${url.city}, ${url.state}`
+                                        : url.city || url.state}
+                                    </Typography>
+                                  )}
                                 </>
                               ) : (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -649,6 +674,30 @@ const AdminParserPage: React.FC = observer(() => {
                                 icon={url.hasBeenParsed ? faTimes : faCheck}
                                 size="sm"
                               />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              color="info"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent MenuItem selection
+                                setUrlToEdit({
+                                  id: url.id,
+                                  url: url.url,
+                                  name: url.name,
+                                  city: url.city,
+                                  state: url.state,
+                                });
+                                setLocationEditModalOpen(true);
+                              }}
+                              title="Edit URL Info"
+                              sx={{
+                                minWidth: '32px',
+                                width: '32px',
+                                height: '32px',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <FontAwesomeIcon icon={faEdit} size="sm" />
                             </IconButton>
                             <IconButton
                               size="small"
@@ -1221,7 +1270,8 @@ const AdminParserPage: React.FC = observer(() => {
 
                           // If cookies appear valid locally, test authentication
                           let authStatus = '';
-                          let finalNotificationType: 'success' | 'warning' | 'error' | 'info' = 'info';
+                          let finalNotificationType: 'success' | 'warning' | 'error' | 'info' =
+                            'info';
 
                           if (validation.isValid) {
                             try {
@@ -1893,6 +1943,38 @@ const AdminParserPage: React.FC = observer(() => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Location Edit Modal */}
+        <LocationEditModal
+          open={locationEditModalOpen}
+          onClose={() => {
+            setLocationEditModalOpen(false);
+            setUrlToEdit(null);
+          }}
+          onSave={async (data) => {
+            if (urlToEdit) {
+              const result = await parserStore.updateUrlCityState(
+                urlToEdit.id,
+                data.city,
+                data.state,
+                data.name,
+              );
+              if (!result.success) {
+                throw new Error(result.error || 'Failed to update URL');
+              }
+            }
+          }}
+          initialData={
+            urlToEdit
+              ? {
+                  url: urlToEdit.url,
+                  name: urlToEdit.name,
+                  city: urlToEdit.city,
+                  state: urlToEdit.state,
+                }
+              : undefined
+          }
+        />
 
         {/* Delete Confirmation Dialog */}
         <Dialog

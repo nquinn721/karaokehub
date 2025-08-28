@@ -26,6 +26,23 @@ export class LocationController {
   }
 
   /**
+   * Get coordinates from address using forward geocoding
+   */
+  @Get('geocode')
+  async geocodeAddress(@Query('address') address: string): Promise<any> {
+    if (!address) {
+      throw new Error('Address parameter is required');
+    }
+
+    const result = await this.geocodingService.geocodeAddress(address);
+
+    return {
+      address,
+      result: result || null,
+    };
+  }
+
+  /**
    * Get address from coordinates using reverse geocoding
    */
   @Get('reverse-geocode')

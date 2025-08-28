@@ -70,6 +70,8 @@ export interface UrlToParse {
   name?: string;
   isApproved: boolean;
   hasBeenParsed: boolean;
+  city?: string;
+  state?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1077,6 +1079,37 @@ export class ParserStore {
   // Simple reject review method for admin interface
   async rejectReview(reviewId: string, reason?: string): Promise<void> {
     await this.rejectParsedData(reviewId, reason || 'Rejected by admin');
+  }
+
+  // Update URL city/state information
+  async updateUrlCityState(
+    id: number,
+    city?: string,
+    state?: string,
+    name?: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      const updateData: { name?: string; city?: string; state?: string } = {};
+      if (name !== undefined) updateData.name = name;
+      if (city !== undefined) updateData.city = city;
+      if (state !== undefined) updateData.state = state;
+
+      await apiStore.put(`/parser/urls/${id}`, updateData);
+
+      // Refresh the list after updating
+      await this.fetchUrlsToParse();
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to update URL';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
   }
 }
 
