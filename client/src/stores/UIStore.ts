@@ -60,3 +60,5 @@ export class UIStore {
     this.notifications = [];
   }
 }
+
+export const uiStore = new UIStore();

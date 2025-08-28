@@ -1,5 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { apiStore } from './ApiStore';
+import { uiStore } from './UIStore';
 
 export enum DayOfWeek {
   MONDAY = 'monday',
@@ -673,23 +674,27 @@ export class ShowStore {
   }
 
   /**
-   * Flag a show as non-existent
+   * Flag a show as non-existent and remove it from the list
    */
   async flagShow(showId: string, userId: string): Promise<boolean> {
     try {
+      // Show immediate feedback
+      uiStore.addNotification('Flagging show for review...', 'info');
+
       await apiStore.patch(`/shows/${showId}/flag`, { userId });
 
-      // Update the show in our local state
+      // Remove the show from our local state immediately
       runInAction(() => {
-        const show = this.shows.find((s) => s.id === showId);
-        if (show) {
-          show.isFlagged = true;
-        }
+        this.shows = this.shows.filter((s) => s.id !== showId);
       });
+
+      // Show success notification
+      uiStore.addNotification('Show flagged for review', 'success');
 
       return true;
     } catch (error: any) {
       console.error('Error flagging show:', error);
+      uiStore.addNotification('Failed to flag show. Please try again.', 'error');
       return false;
     }
   }
