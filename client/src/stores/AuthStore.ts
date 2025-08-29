@@ -36,8 +36,17 @@ export class AuthStore {
   isInitializing = false;
   private hasInitialized = false;
 
+  // Loop detection and prevention
+  private authFailureCount = 0;
+  private lastAuthFailureTime: number | null = null;
+  private readonly MAX_AUTH_FAILURES = 3;
+  private readonly AUTH_FAILURE_RESET_TIME = 300000; // 5 minutes
+
   constructor() {
     makeAutoObservable(this);
+
+    // Check for existing loop state on startup
+    this.checkForExistingLoop();
 
     // Make this store persistent with proper hydration handling
     makePersistable(this, {
@@ -71,6 +80,23 @@ export class AuthStore {
 
   // Initialize the store after hydration with comprehensive error handling
   private async initialize() {
+    // Check for URL-based recovery parameter
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('recovery')) {
+        console.warn('🆘 URL recovery parameter detected, triggering emergency recovery');
+        this.emergencyRecovery();
+        return;
+      }
+    }
+
+    // Check for existing loops to prevent infinite auth cycles
+    if (this.checkForExistingLoop()) {
+      console.error('🚨 AuthStore: Loop detected, aborting initialization');
+      this.clearAuthState();
+      return;
+    }
+
     // Set token in API store if it exists after hydration
     if (this.token) {
       try {
@@ -89,12 +115,14 @@ export class AuthStore {
         // Handle different error types safely without causing loops
         if (error?.response?.status === 401 || error?.status === 401) {
           console.log('🚪 AuthStore: 401 error - clearing auth state (token expired/invalid)');
+          this.recordAuthFailure();
           this.clearAuthStateSilently();
         } else if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network Error')) {
           console.log('🌐 AuthStore: Network error - keeping auth state (user might be offline)');
           // Don't clear auth on network errors - user might be offline
         } else {
           console.log('🚪 AuthStore: Other error - clearing auth state');
+          this.recordAuthFailure();
           this.clearAuthStateSilently();
         }
       }
@@ -112,6 +140,30 @@ export class AuthStore {
       }
     } else {
       console.log('🚫 AuthStore: No token found, user not authenticated');
+    }
+  }
+
+  // Check for existing authentication loops to prevent infinite redirects
+  private checkForExistingLoop(): boolean {
+    const now = Date.now();
+    
+    // Reset counter if enough time has passed
+    if (this.lastAuthFailureTime !== null && now - this.lastAuthFailureTime > this.AUTH_FAILURE_RESET_TIME) {
+      this.authFailureCount = 0;
+    }
+    
+    return this.authFailureCount >= this.MAX_AUTH_FAILURES;
+  }
+
+  // Record authentication failure for loop detection
+  private recordAuthFailure() {
+    this.authFailureCount++;
+    this.lastAuthFailureTime = Date.now();
+    console.warn(`🔄 AuthStore: Auth failure #${this.authFailureCount} recorded`);
+    
+    if (this.authFailureCount >= this.MAX_AUTH_FAILURES) {
+      console.error('🚨 AuthStore: Maximum auth failures reached, clearing all auth state');
+      this.clearAuthState();
     }
   }
 
@@ -465,8 +517,55 @@ export class AuthStore {
   // Manual method to clear auth state - useful for debugging loops
   clearAuthState() {
     console.log('🧹 Manually clearing auth state...');
+    
+    // Reset loop detection counters
+    this.authFailureCount = 0;
+    this.lastAuthFailureTime = null;
+    
     this.clearAuthStateSilently();
     // Force a page reload to ensure clean state
     window.location.reload();
+  }
+
+  // Emergency recovery method for stuck users - clears everything and redirects to login
+  emergencyRecovery() {
+    console.warn('🆘 Emergency recovery triggered - clearing all storage and auth state');
+    
+    try {
+      // Clear all possible storage locations
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Clear cookies by setting them to expire
+      document.cookie.split(";").forEach((c) => {
+        const eqPos = c.indexOf("=");
+        const name = eqPos > -1 ? c.substr(0, eqPos) : c;
+        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+      });
+      
+      // Reset all auth state
+      runInAction(() => {
+        this.user = null;
+        this.token = null;
+        this.isAuthenticated = false;
+        this.showPostLoginModal = false;
+        this.showStageNameModal = false;
+        this.isNewUser = false;
+        this.isLoading = false;
+        this.authFailureCount = 0;
+        this.lastAuthFailureTime = null;
+      });
+      
+      // Clear API token
+      apiStore.clearToken();
+      
+      // Redirect to login with cache busting
+      window.location.href = '/login?recovery=' + Date.now();
+      
+    } catch (error) {
+      console.error('Emergency recovery failed:', error);
+      // Last resort - reload page
+      window.location.reload();
+    }
   }
 }
