@@ -79,6 +79,8 @@ COPY --from=server-builder --chown=nestjs:nodejs /app/package*.json ./
 
 # Create public directory and copy contents
 RUN mkdir -p ./public/images/shows
+# Create temp directory for image processing with proper permissions
+RUN mkdir -p ./temp/images && chown -R nestjs:nodejs ./temp
 # Copy client build files and public assets
 COPY --from=server-builder --chown=nestjs:nodejs /app/public/ ./public/
 

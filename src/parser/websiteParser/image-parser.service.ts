@@ -310,8 +310,26 @@ export class ImageParserService {
    * Ensure temp directory exists
    */
   private ensureTempDirectory(): void {
-    if (!fs.existsSync(this.tempDir)) {
-      fs.mkdirSync(this.tempDir, { recursive: true });
+    try {
+      if (!fs.existsSync(this.tempDir)) {
+        fs.mkdirSync(this.tempDir, { recursive: true });
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to create temp directory ${this.tempDir}: ${error.message}`);
+      // Try alternative locations for temp directory
+      const altTempDir = path.join('/tmp', 'images');
+      try {
+        if (!fs.existsSync(altTempDir)) {
+          fs.mkdirSync(altTempDir, { recursive: true });
+        }
+        // Update the temp directory path
+        (this as any).tempDir = altTempDir;
+        this.logger.log(`Using alternative temp directory: ${altTempDir}`);
+      } catch (altError) {
+        this.logger.error(`Failed to create alternative temp directory: ${altError.message}`);
+        // Disable image downloading if we can't create temp directory
+        this.logger.warn('Image downloading will be disabled');
+      }
     }
   }
 }
