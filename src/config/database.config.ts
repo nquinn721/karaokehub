@@ -63,9 +63,15 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       ...baseConfig,
       extra: {
         connectionLimit: 5,
-        connectTimeout: 20000,
+        connectTimeout: 60000, // Increased timeout
+        acquireTimeout: 60000,
+        timeout: 60000,
         queueLimit: 0,
         socketPath,
+        retry: {
+          max: 3,
+          delay: 2000,
+        },
       },
     } as TypeOrmModuleOptions;
   } else {
@@ -76,8 +82,14 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       port: parseInt(configService.get('DATABASE_PORT', '3306')),
       extra: {
         connectionLimit: 5,
-        connectTimeout: 20000,
+        connectTimeout: 60000, // Increased timeout
+        acquireTimeout: 60000,
+        timeout: 60000,
         queueLimit: 0,
+        retry: {
+          max: 3,
+          delay: 2000,
+        },
         // Only add SSL in production
         ...(isProduction && {
           ssl: {
