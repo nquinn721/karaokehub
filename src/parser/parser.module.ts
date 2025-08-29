@@ -16,6 +16,11 @@ import { ParsedSchedule } from './parsed-schedule.entity';
 import { ParserController } from './parser.controller';
 import { UrlToParse } from './url-to-parse.entity';
 import { UrlToParseService } from './url-to-parse.service';
+import { DeepSeekParserService } from './websiteParser/deepseek-parser.service';
+import { HtmlParserService } from './websiteParser/html-parser.service';
+import { ImageParserService } from './websiteParser/image-parser.service';
+import { WebsiteParserService } from './websiteParser/website-parser.service';
+import { WorkerBasedWebsiteParserService } from './websiteParser/worker-based-website-parser.service';
 
 @Module({
   imports: [
@@ -33,6 +38,11 @@ import { UrlToParseService } from './url-to-parse.service';
     GeocodingService,
     FacebookService,
     CancellationService,
+    WebsiteParserService,
+    WorkerBasedWebsiteParserService,
+    HtmlParserService,
+    ImageParserService,
+    DeepSeekParserService,
   ],
   exports: [
     KaraokeParserService,
@@ -41,6 +51,7 @@ import { UrlToParseService } from './url-to-parse.service';
     UrlToParseService,
     FacebookService,
     CancellationService,
+    WebsiteParserService,
   ],
 })
 export class ParserModule {}

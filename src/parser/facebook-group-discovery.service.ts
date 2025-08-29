@@ -67,11 +67,15 @@ export class FacebookGroupDiscoveryService {
         const fileContent = fs.readFileSync(cookiesFilePath, 'utf8');
         const cookies = JSON.parse(fileContent);
         this.logger.log(`🍪 Found ${cookies.length} cookies from file`);
-        
+
         // Log cookie summary for debugging (without sensitive values)
-        const cookieSummary = cookies.map(c => ({ name: c.name, domain: c.domain, expires: c.expires }));
+        const cookieSummary = cookies.map((c) => ({
+          name: c.name,
+          domain: c.domain,
+          expires: c.expires,
+        }));
         this.logger.log(`🍪 Cookie summary: ${JSON.stringify(cookieSummary.slice(0, 3))}...`);
-        
+
         return cookies;
       }
 
@@ -328,7 +332,7 @@ export class FacebookGroupDiscoveryService {
     // Scroll down in stages to load more groups
     for (let i = 0; i < 5; i++) {
       const scrollAmount = 600 * (i + 1);
-      
+
       await page.evaluate((amount) => {
         window.scrollBy(0, amount);
       }, scrollAmount);
@@ -340,15 +344,17 @@ export class FacebookGroupDiscoveryService {
       const hasMoreContent = await page.evaluate(() => {
         const feed = document.querySelector('[role="feed"]');
         if (!feed) return false;
-        
+
         // Check if there are loading spinners or "no more results" indicators
         const loadingSpinners = document.querySelectorAll('[role="progressbar"]');
-        const noMoreResults = document.querySelectorAll('*').length > 0 && 
-          Array.from(document.querySelectorAll('*')).some(el => 
-            el.textContent?.toLowerCase().includes('no more') ||
-            el.textContent?.toLowerCase().includes('end of results')
+        const noMoreResults =
+          document.querySelectorAll('*').length > 0 &&
+          Array.from(document.querySelectorAll('*')).some(
+            (el) =>
+              el.textContent?.toLowerCase().includes('no more') ||
+              el.textContent?.toLowerCase().includes('end of results'),
           );
-        
+
         return loadingSpinners.length > 0 || !noMoreResults;
       });
 
@@ -378,21 +384,25 @@ export class FacebookGroupDiscoveryService {
 
     // Stage 1: Analyze search results page to identify potential groups
     const candidateUrls = await this.analyzeSearchResults(screenshot, city, state);
-    
+
     if (candidateUrls.length === 0) {
       this.logger.log(`❌ No candidate groups found in search results for ${city}, ${state}`);
       return [];
     }
 
-    this.logger.log(`🔍 Stage 2: Validating ${candidateUrls.length} candidate groups by visiting their pages...`);
+    this.logger.log(
+      `🔍 Stage 2: Validating ${candidateUrls.length} candidate groups by visiting their pages...`,
+    );
 
     // Stage 2: Visit each candidate group and validate with screenshots
     const validatedUrls = await this.validateGroupsWithScreenshots(candidateUrls, city, state);
 
-    // Fallback: If no groups were validated but we have candidates, 
+    // Fallback: If no groups were validated but we have candidates,
     // return some candidates for manual review (max 2)
     if (validatedUrls.length === 0 && candidateUrls.length > 0) {
-      this.logger.log(`⚠️ No groups passed validation, but returning ${Math.min(2, candidateUrls.length)} candidates for manual review`);
+      this.logger.log(
+        `⚠️ No groups passed validation, but returning ${Math.min(2, candidateUrls.length)} candidates for manual review`,
+      );
       return candidateUrls.slice(0, 2);
     }
 
@@ -523,12 +533,12 @@ export class FacebookGroupDiscoveryService {
         try {
           // Add timeout wrapper for validation
           const validationPromise = this.validateSingleGroup(url, city, state);
-          const timeoutPromise = new Promise<boolean>((_, reject) => 
-            setTimeout(() => reject(new Error('Validation timeout')), validationTimeout)
+          const timeoutPromise = new Promise<boolean>((_, reject) =>
+            setTimeout(() => reject(new Error('Validation timeout')), validationTimeout),
           );
-          
+
           isValid = await Promise.race([validationPromise, timeoutPromise]);
-          
+
           if (isValid) {
             validatedUrls.push(url);
             this.logger.log(`✅ Group validated and approved: ${url}`);
@@ -539,8 +549,10 @@ export class FacebookGroupDiscoveryService {
           }
         } catch (error) {
           retryCount++;
-          this.logger.error(`❌ Error validating group ${url} (attempt ${retryCount}/${maxRetries + 1}): ${error.message}`);
-          
+          this.logger.error(
+            `❌ Error validating group ${url} (attempt ${retryCount}/${maxRetries + 1}): ${error.message}`,
+          );
+
           if (retryCount <= maxRetries && !error.message.includes('timeout')) {
             this.logger.log(`🔄 Retrying validation for ${url} in 2 seconds...`);
             await this.delay(2000);
@@ -554,11 +566,15 @@ export class FacebookGroupDiscoveryService {
       }
     }
 
-    this.logger.log(`✅ Validation complete: ${validatedUrls.length} groups approved for ${city}, ${state}`);
-    
+    this.logger.log(
+      `✅ Validation complete: ${validatedUrls.length} groups approved for ${city}, ${state}`,
+    );
+
     // If we didn't find enough valid groups, log a suggestion for deeper search
     if (validatedUrls.length < 2) {
-      this.logger.log(`⚠️ Only found ${validatedUrls.length} valid groups for ${city}, ${state}. Consider expanding search criteria or checking authentication.`);
+      this.logger.log(
+        `⚠️ Only found ${validatedUrls.length} valid groups for ${city}, ${state}. Consider expanding search criteria or checking authentication.`,
+      );
     }
 
     return validatedUrls;
@@ -587,11 +603,11 @@ export class FacebookGroupDiscoveryService {
       });
 
       const page = await browser.newPage();
-      
+
       // Set longer timeout for page operations
       page.setDefaultTimeout(20000);
       page.setDefaultNavigationTimeout(20000);
-      
+
       await page.setUserAgent(
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
       );
@@ -603,22 +619,29 @@ export class FacebookGroupDiscoveryService {
         try {
           // Navigate to Facebook first, then set cookies
           this.logger.log(`🍪 Setting ${existingCookies.length} cookies for ${url}`);
-          await page.goto('https://www.facebook.com/', { waitUntil: 'domcontentloaded', timeout: 10000 });
+          await page.goto('https://www.facebook.com/', {
+            waitUntil: 'domcontentloaded',
+            timeout: 10000,
+          });
           await page.setCookie(...existingCookies);
-          
+
           // Verify authentication by checking for login indicators
           const authCheck = await page.evaluate(() => {
             const text = document.body.textContent || '';
             return {
               hasLoginForm: !!document.querySelector('[data-testid="royal_login_form"]'),
               hasUserNav: !!document.querySelector('[role="navigation"]'),
-              textSample: text.substring(0, 200)
+              textSample: text.substring(0, 200),
             };
           });
-          
-          this.logger.log(`🔐 Auth check: loginForm=${authCheck.hasLoginForm}, userNav=${authCheck.hasUserNav}`);
+
+          this.logger.log(
+            `🔐 Auth check: loginForm=${authCheck.hasLoginForm}, userNav=${authCheck.hasUserNav}`,
+          );
           if (authCheck.hasLoginForm) {
-            this.logger.warn(`⚠️ Still seeing login form after setting cookies - authentication may have failed`);
+            this.logger.warn(
+              `⚠️ Still seeing login form after setting cookies - authentication may have failed`,
+            );
           }
         } catch (cookieError) {
           this.logger.warn(`⚠️ Failed to set cookies for ${url}: ${cookieError.message}`);
@@ -630,13 +653,15 @@ export class FacebookGroupDiscoveryService {
       // Navigate to the group page with retries
       let navigationSuccess = false;
       const maxNavigationRetries = 3;
-      
+
       for (let retry = 0; retry < maxNavigationRetries && !navigationSuccess; retry++) {
         try {
           await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
           navigationSuccess = true;
         } catch (navError) {
-          this.logger.warn(`⚠️ Navigation attempt ${retry + 1} failed for ${url}: ${navError.message}`);
+          this.logger.warn(
+            `⚠️ Navigation attempt ${retry + 1} failed for ${url}: ${navError.message}`,
+          );
           if (retry < maxNavigationRetries - 1) {
             await this.delay(2000);
           }
@@ -653,7 +678,11 @@ export class FacebookGroupDiscoveryService {
 
       // Check if we're redirected to login (private group or authentication issue)
       const currentUrl = page.url();
-      if (currentUrl.includes('login') || currentUrl.includes('checkpoint') || currentUrl.includes('verify')) {
+      if (
+        currentUrl.includes('login') ||
+        currentUrl.includes('checkpoint') ||
+        currentUrl.includes('verify')
+      ) {
         this.logger.log(`⚠️ Redirected to login/checkpoint for ${url} - skipping`);
         return false;
       }
@@ -668,20 +697,20 @@ export class FacebookGroupDiscoveryService {
       const pageAnalysis = await page.evaluate(() => {
         const text = document.body.textContent || '';
         const lowerText = text.toLowerCase();
-        
+
         // More specific checks for private groups
         const privateIndicators = {
           hasPrivateGroup: lowerText.includes('private group'),
           hasClosedGroup: lowerText.includes('closed group'),
           hasRequestToJoin: lowerText.includes('request to join'),
-          hasContentNotAvailable: lowerText.includes('this content isn\'t available'),
+          hasContentNotAvailable: lowerText.includes("this content isn't available"),
           hasJoinGroup: lowerText.includes('join group'),
           hasGroupAbout: lowerText.includes('about this group'),
           hasGroupPosts: lowerText.includes('recent posts') || lowerText.includes('posts'),
           hasGroupMembers: lowerText.includes('members'),
-          textSample: text.substring(0, 500) // Get a sample of the page text for debugging
+          textSample: text.substring(0, 500), // Get a sample of the page text for debugging
         };
-        
+
         return privateIndicators;
       });
 
@@ -696,9 +725,10 @@ export class FacebookGroupDiscoveryService {
       this.logger.log(`   - Text sample: "${pageAnalysis.textSample.substring(0, 200)}..."`);
 
       // More conservative private group detection - only reject if clearly private/closed
-      const isDefinitelyPrivate = pageAnalysis.hasPrivateGroup || 
-                                  pageAnalysis.hasClosedGroup || 
-                                  (pageAnalysis.hasRequestToJoin && !pageAnalysis.hasGroupPosts);
+      const isDefinitelyPrivate =
+        pageAnalysis.hasPrivateGroup ||
+        pageAnalysis.hasClosedGroup ||
+        (pageAnalysis.hasRequestToJoin && !pageAnalysis.hasGroupPosts);
 
       if (isDefinitelyPrivate) {
         this.logger.log(`⚠️ Group confirmed as private/closed: ${url}`);
@@ -706,7 +736,11 @@ export class FacebookGroupDiscoveryService {
       }
 
       // If content is not available but we can see other group indicators, it might be a loading issue
-      if (pageAnalysis.hasContentNotAvailable && !pageAnalysis.hasGroupAbout && !pageAnalysis.hasGroupMembers) {
+      if (
+        pageAnalysis.hasContentNotAvailable &&
+        !pageAnalysis.hasGroupAbout &&
+        !pageAnalysis.hasGroupMembers
+      ) {
         this.logger.log(`⚠️ Group content not available (possibly loading issue): ${url}`);
         return false;
       }
@@ -720,8 +754,8 @@ export class FacebookGroupDiscoveryService {
           '[role="main"]',
           '[data-testid="GroupFeed"]',
         ];
-        
-        return groupIndicators.some(selector => document.querySelector(selector) !== null);
+
+        return groupIndicators.some((selector) => document.querySelector(selector) !== null);
       });
 
       if (!hasGroupContent) {
@@ -845,8 +879,10 @@ export class FacebookGroupDiscoveryService {
 
       // Parse the boolean response
       const isValid = analysis.includes('true');
-      
-      this.logger.log(`🤖 Gemini validation result for ${url}: ${isValid ? 'APPROVED' : 'REJECTED'}`);
+
+      this.logger.log(
+        `🤖 Gemini validation result for ${url}: ${isValid ? 'APPROVED' : 'REJECTED'}`,
+      );
       return isValid;
     } catch (error) {
       this.logger.error(`❌ Group content analysis failed for ${url}: ${error.message}`);

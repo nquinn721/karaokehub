@@ -283,9 +283,12 @@ const AdminParserPage: React.FC = observer(() => {
       let result;
 
       if (parseMethod === 'deepseek') {
-        // Use experimental DeepSeek parsing
-        const parseType = isCurrentUrlFacebook ? 'facebook' : 'karaoke';
-        result = await parserStore.parseWithDeepSeek(urlToParse, parseType);
+        // Use comprehensive DeepSeek website parsing
+        result = await parserStore.parseWithDeepSeek(urlToParse, {
+          usePuppeteer: true,
+          maxPages: 10,
+          includeSubdomains: false,
+        });
       } else {
         // Use traditional parsing methods
         result = await parserStore.parseAndSaveWebsite(urlToParse, parseMethod);

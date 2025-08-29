@@ -16,9 +16,12 @@ import { FacebookParserService } from './facebook-parser.service';
 import { KaraokeParserService } from './karaoke-parser.service';
 import { UrlToParse } from './url-to-parse.entity';
 import { UrlToParseService } from './url-to-parse.service';
+import { WorkerBasedWebsiteParserService } from './websiteParser/worker-based-website-parser.service';
 
 @Controller('parser')
 export class ParserController {
+  private readonly logger = new Logger(ParserController.name);
+
   constructor(
     private readonly karaokeParserService: KaraokeParserService,
     private readonly urlToParseService: UrlToParseService,
@@ -26,6 +29,7 @@ export class ParserController {
     private readonly facebookGroupDiscoveryService: FacebookGroupDiscoveryService,
     private readonly facebookCookieValidatorService: FacebookCookieValidatorService,
     private readonly cancellationService: CancellationService,
+    private readonly workerBasedWebsiteParserService: WorkerBasedWebsiteParserService,
   ) {}
 
   /**
@@ -92,6 +96,130 @@ export class ParserController {
         `Failed to parse URL: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  /**
+   * Parse website using DeepSeek AI - worker-based parallel processing
+   */
+  @Post('parse-deepseek')
+  async parseWithDeepSeek(
+    @Body()
+    body: {
+      url: string;
+      usePuppeteer?: boolean;
+      maxPages?: number;
+      includeSubdomains?: boolean;
+    },
+  ) {
+    try {
+      this.logger.log(`🔧 DeepSeek worker-based parsing request for: ${body.url}`);
+
+      const options = {
+        url: body.url,
+        maxPages: body.maxPages ?? 10,
+        includeSubdomains: body.includeSubdomains ?? false,
+        maxWorkers: 5,
+      };
+
+      const result = await this.workerBasedWebsiteParserService.parseWebsiteWithWorkers(options);
+
+      return {
+        success: true,
+        parseMethod: 'worker-based-parallel-processing',
+        aiModel: 'deepseek-v3.1',
+        ...result,
+      };
+    } catch (error) {
+      this.logger.error(`❌ DeepSeek parsing failed for ${body.url}: ${error.message}`);
+
+      return {
+        success: false,
+        error: error.message,
+        parseMethod: 'deepseek-website-parser',
+        aiModel: 'deepseek-v3.1',
+      };
+    }
+  }
+
+  /**
+   * Parse website - Now using worker-based architecture for DeepSeek parsing
+   */
+  @Post('parse-website')
+  async parseWebsite(
+    @Body()
+    body: {
+      url: string;
+      usePuppeteer?: boolean;
+      includeSubdomains?: boolean;
+      downloadImages?: boolean;
+      maxImages?: number;
+      aiAnalysis?: boolean;
+    },
+  ) {
+    try {
+      this.logger.log(`🔧 Worker-based website parsing request for: ${body.url}`);
+
+      // Convert to worker-based options
+      const options = {
+        url: body.url,
+        includeSubdomains: body.includeSubdomains ?? false,
+        maxWorkers: 5, // Default worker count
+      };
+
+      const result = await this.workerBasedWebsiteParserService.parseWebsiteWithWorkers(options);
+
+      return {
+        success: true,
+        parseMethod: 'worker-based-parallel-processing',
+        aiModel: 'deepseek-v3.1',
+        ...result,
+      };
+    } catch (error) {
+      this.logger.error(`❌ Worker-based parsing failed for ${body.url}: ${error.message}`);
+
+      return {
+        success: false,
+        error: error.message,
+        parseMethod: 'worker-based-parallel-processing',
+        aiModel: 'deepseek-v3.1',
+      };
+    }
+  }
+
+  /**
+   * Test DeepSeek API connection
+   */
+  @Get('test-deepseek')
+  async testDeepSeekConnection() {
+    try {
+      this.logger.log('🧪 Testing DeepSeek API connection...');
+
+      const result = await this.workerBasedWebsiteParserService.testConnection();
+
+      this.logger.log('✅ DeepSeek API connection test completed');
+
+      return {
+        success: true,
+        status: {
+          workerBasedParser: true,
+          deepSeekParser: result.available,
+          version: '3.0.0-workers',
+        },
+        connectionTest: result,
+      };
+    } catch (error) {
+      this.logger.error(`❌ DeepSeek API connection test failed: ${error.message}`);
+
+      return {
+        success: false,
+        error: error.message,
+        status: {
+          workerBasedParser: false,
+          deepSeekParser: false,
+          version: '3.0.0-workers',
+        },
+      };
     }
   }
 

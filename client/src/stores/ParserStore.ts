@@ -590,11 +590,15 @@ export class ParserStore {
   }
 
   /**
-   * Parse website using experimental DeepSeek-V3.1 AI model
+   * Parse website using DeepSeek-V3.1 AI model with worker-based parallel processing
    */
   async parseWithDeepSeek(
     url: string,
-    parseType: 'karaoke' | 'facebook' = 'karaoke',
+    options: {
+      usePuppeteer?: boolean;
+      maxPages?: number;
+      includeSubdomains?: boolean;
+    } = {},
   ): Promise<{
     success: boolean;
     error?: string;
@@ -608,22 +612,47 @@ export class ParserStore {
 
       this.startParsingTimer();
 
-      this.addLogEntry(`🧪 Starting experimental DeepSeek-V3.1 parsing for: ${url}`, 'info');
-      this.addLogEntry(`🤖 Using DeepSeek-V3.1 AI model for enhanced parsing`, 'info');
+      this.addLogEntry(
+        `🧪 Starting comprehensive DeepSeek-V3.1 worker-based parsing for: ${url}`,
+        'info',
+      );
+      this.addLogEntry(`🔧 Using DeepSeek-V3.1 AI with parallel worker architecture`, 'info');
+      this.addLogEntry(
+        `⚙️ Options: Puppeteer=${options.usePuppeteer ?? true}, MaxPages=${options.maxPages ?? 10}, Subdomains=${options.includeSubdomains ?? false}`,
+        'info',
+      );
 
-      const result = await apiStore.post('/parser/parse-deepseek', {
+      const result = await apiStore.post('/parser/parse-website', {
         url,
-        parseType,
+        usePuppeteer: options.usePuppeteer ?? true,
+        maxPages: options.maxPages ?? 10,
+        includeSubdomains: options.includeSubdomains ?? false,
       });
 
       if (result.success) {
-        this.addLogEntry('✅ DeepSeek parsing completed successfully!', 'success');
+        this.addLogEntry('✅ DeepSeek website parsing completed successfully!', 'success');
 
-        if (result.stats) {
+        if (result.summary) {
           this.addLogEntry(
-            `📊 Found: ${result.stats.shows || 0} shows, ${result.stats.djs || 0} DJs, ${result.stats.vendors || 0} vendors`,
+            `📊 Comprehensive Results: ${result.summary.totalPages} pages, ${result.summary.totalShows} shows, ${result.summary.totalDJs} DJs, ${result.summary.totalVendors} vendors`,
             'success',
           );
+        }
+
+        // Log navigation discovery
+        if (result.navLinks && result.navLinks.length > 0) {
+          this.addLogEntry(`🔗 Discovered ${result.navLinks.length} navigation links`, 'info');
+        }
+
+        // Log per-page breakdown
+        if (result.allPages && result.allPages.length > 0) {
+          this.addLogEntry(`📄 Parsed ${result.allPages.length} pages:`, 'info');
+          result.allPages.forEach((page: any, index: number) => {
+            this.addLogEntry(
+              `   ${index + 1}. ${page.url} - ${page.shows?.length || 0} shows, ${page.djs?.length || 0} DJs`,
+              'info',
+            );
+          });
         }
 
         return {
@@ -673,7 +702,7 @@ export class ParserStore {
     error?: string;
   }> {
     try {
-      const result = await apiStore.get('/parser/deepseek-status');
+      const result = await apiStore.get('/parser/test-deepseek');
       return {
         success: true,
         status: result.status,

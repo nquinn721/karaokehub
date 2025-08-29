@@ -1282,9 +1282,45 @@ export class KaraokeParserService {
 
       this.logAndBroadcast('Step 2: Processing with Gemini Vision...', 'info');
       const geminiStartTime = Date.now();
-      const parsedData = await this.parseScreenshotWithGemini(screenshot, url);
+      let parsedData;
+
+      try {
+        parsedData = await this.parseScreenshotWithGemini(screenshot, url);
+      } catch (geminiError) {
+        this.logAndBroadcast(`❌ Gemini Vision failed: ${geminiError.message}`, 'error');
+        this.logAndBroadcast('🔄 Falling back to standard HTML parsing...', 'warning');
+
+        // Try to fall back to regular HTML-based parsing if screenshot parsing fails
+        try {
+          this.logAndBroadcast('Attempting fallback HTML parsing...', 'info');
+          parsedData = await this.parseWebsite(url);
+          this.logAndBroadcast('✅ Fallback HTML parsing successful', 'success');
+        } catch (fallbackError) {
+          this.logAndBroadcast(
+            `❌ Fallback parsing also failed: ${fallbackError.message}`,
+            'error',
+          );
+          // Return minimal data structure to prevent complete failure
+          parsedData = {
+            vendor: this.generateVendorFromUrl(url),
+            shows: [],
+            djs: [],
+            rawData: {
+              url,
+              title: 'Failed parsing',
+              content: 'Both Gemini Vision and HTML parsing failed',
+              parsedAt: new Date(),
+            },
+          };
+          this.logAndBroadcast(
+            '⚠️ Using minimal data structure to prevent complete failure',
+            'warning',
+          );
+        }
+      }
+
       const geminiTime = Date.now() - geminiStartTime;
-      this.logAndBroadcast(`Gemini Vision completed in ${geminiTime}ms`, 'success');
+      this.logAndBroadcast(`Vision processing completed in ${geminiTime}ms`, 'success');
 
       const processingTime = Date.now() - startTime;
 
@@ -3616,6 +3652,36 @@ Return ONLY valid JSON with no extra text:
       this.logAndBroadcast('Gemini Vision response received, extracting JSON');
       this.logAndBroadcast(`Gemini Vision response length: ${text.length} characters`);
 
+      // Check if Gemini returned a refusal or non-JSON response
+      const refusalPatterns = [
+        /^I am unable/i,
+        /^I cannot/i,
+        /^I can't/i,
+        /^Sorry, I cannot/i,
+        /^I'm unable/i,
+        /^I'm sorry/i,
+        /^This image/i,
+      ];
+
+      const isRefusal = refusalPatterns.some((pattern) => pattern.test(text.trim()));
+      if (isRefusal) {
+        this.logAndBroadcast(
+          `❌ Gemini refused to process image: ${text.substring(0, 200)}...`,
+          'error',
+        );
+        throw new Error(`Gemini Vision refused to process the image: ${text.substring(0, 100)}...`);
+      }
+
+      // Check if response looks like JSON at all
+      const trimmedText = text.trim();
+      if (!trimmedText.startsWith('{') && !trimmedText.startsWith('[')) {
+        this.logAndBroadcast(
+          `❌ Non-JSON response from Gemini: ${text.substring(0, 200)}...`,
+          'error',
+        );
+        throw new Error(`Gemini returned non-JSON response: ${text.substring(0, 100)}...`);
+      }
+
       // Log usage metadata if available
       if (result.response.usageMetadata) {
         const usage = result.response.usageMetadata;
@@ -3905,7 +3971,24 @@ Return ONLY valid JSON with no extra text:
 
       return finalData;
     } catch (error) {
-      this.logAndBroadcast('Error parsing screenshot with Gemini Vision:', 'error');
+      this.logAndBroadcast('❌ Error parsing screenshot with Gemini Vision:', 'error');
+      this.logAndBroadcast(`❌ Error details: ${error.message}`, 'error');
+
+      // Provide specific error context based on error type
+      if (error.message.includes('refused to process')) {
+        this.logAndBroadcast(
+          '🔍 This may be due to image content policy restrictions or image quality issues',
+          'warning',
+        );
+      } else if (error.message.includes('non-JSON response')) {
+        this.logAndBroadcast(
+          '🔍 Gemini returned text instead of the expected JSON format',
+          'warning',
+        );
+      } else if (error.message.includes('JSON parsing failed')) {
+        this.logAndBroadcast('🔍 The JSON response was malformed or incomplete', 'warning');
+      }
+
       throw new Error(`Gemini Vision parsing failed: ${error.message}`);
     }
   }

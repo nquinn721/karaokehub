@@ -134,6 +134,15 @@ export class AuthStore {
       console.warn('Failed to clear API token:', error);
     }
 
+    // Clear persistent storage to prevent rehydration loops
+    try {
+      localStorage.removeItem('AuthStore');
+      localStorage.removeItem('token'); // Clear any legacy token storage
+      console.log('🧹 AuthStore: Cleared persistent storage to prevent loops');
+    } catch (error) {
+      console.warn('Failed to clear persistent storage:', error);
+    }
+
     // Don't clear subscription here to avoid circular dependencies during startup
   }
   setLoading(loading: boolean) {
@@ -451,5 +460,13 @@ export class AuthStore {
       // Navigate to error page on failure
       navigate('/auth/error');
     }
+  }
+
+  // Manual method to clear auth state - useful for debugging loops
+  clearAuthState() {
+    console.log('🧹 Manually clearing auth state...');
+    this.clearAuthStateSilently();
+    // Force a page reload to ensure clean state
+    window.location.reload();
   }
 }
