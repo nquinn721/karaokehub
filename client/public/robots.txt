@@ -1,21 +1,35 @@
 User-agent: *
 Allow: /
 
-# Important pages
+# Important public pages for SEO
 Allow: /
 Allow: /music
+Allow: /music/*
 Allow: /shows
+Allow: /shows/*
 Allow: /submit
+Allow: /about
 Allow: /privacy-policy
 
-# Block admin and API routes  
+# Block protected and admin routes  
 Disallow: /admin
+Disallow: /admin/*
 Disallow: /api
+Disallow: /api/*
 Disallow: /auth
+Disallow: /auth/*
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /settings
+
+# Block query parameters except for search
 Disallow: /*?*
+Allow: /music?q=*
+Allow: /shows?*
 
 # Sitemap location
 Sitemap: https://karaoke-hub.com/sitemap.xml
 
 # Crawl delay to be respectful
+Crawl-delay: 1
 Crawl-delay: 1

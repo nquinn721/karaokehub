@@ -1,5 +1,5 @@
 import { CustomCard } from '@components/CustomCard';
-import { SEO } from '@components/SEO';
+import { SEO, seoConfigs } from '@components/SEO';
 import { faLocationDot, faMicrophone, faMusic, faUsers } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Box, Container, Grid, Typography, useTheme } from '@mui/material';
@@ -8,23 +8,9 @@ import React from 'react';
 const AboutPage: React.FC = () => {
   const theme = useTheme();
 
-  const seoConfig = {
-    title: 'About KaraokeHub - Find Your Perfect Karaoke Experience',
-    description:
-      "Learn about KaraokeHub's mission to connect singers with the best karaoke venues, shows, and community experiences. Discover how we help you find your stage.",
-    keywords: [
-      'about karaoke hub',
-      'karaoke community',
-      'singing venues',
-      'karaoke mission',
-      'music platform',
-    ],
-    canonical: 'https://karaoke-hub.com/about',
-  };
-
   return (
     <Box>
-      <SEO {...seoConfig} />
+      <SEO {...seoConfigs.about} />
 
       {/* Hero Section */}
       <Box

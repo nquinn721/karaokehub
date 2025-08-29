@@ -15,7 +15,7 @@ export interface SEOProps {
 const defaultSEO: Required<SEOProps> = {
   title: 'KaraokeHub - Find Karaoke Bars, Venues & Singing Spots Near You',
   description:
-    'Discover the best karaoke bars, venues, and singing spots in your area. Browse thousands of songs, connect with singers, find live karaoke shows, and unleash your inner performer.',
+    'Discover the best karaoke bars, venues, and singing spots in your area. Browse thousands of songs with lyrics, connect with singers, find live karaoke shows, and unleash your inner performer.',
   keywords: [
     'karaoke',
     'karaoke bars',
@@ -27,6 +27,7 @@ const defaultSEO: Required<SEOProps> = {
     'pubs',
     'entertainment',
     'karaoke songs',
+    'song lyrics',
     'vocal performance',
     'nightlife',
     'karaoke finder',
@@ -40,8 +41,19 @@ const defaultSEO: Required<SEOProps> = {
     'karaoke machine',
     'DJ',
     'KJ',
+    'song database',
+    'music catalog',
+    'popular songs',
+    'hit songs',
+    'classic songs',
+    'duet songs',
+    'group singing',
+    'solo performance',
+    'music search',
+    'artist songs',
+    'song finder',
   ],
-  image: '/images/karaoke-hub-logo.png',
+  image: 'https://karaoke-hub.com/images/karaoke-hub-og.png',
   url: 'https://karaoke-hub.com',
   type: 'website',
   siteName: 'KaraokeHub',
@@ -95,6 +107,10 @@ export const SEO: React.FC<SEOProps> = ({
 
       {/* Canonical URL */}
       <link rel="canonical" href={seoUrl} />
+      
+      {/* Language and geographic targeting */}
+      <link rel="alternate" hrefLang="en-US" href={seoUrl} />
+      <link rel="alternate" hrefLang="en" href={seoUrl} />
 
       {/* Structured Data */}
       {structuredData && Object.keys(structuredData).length > 0 && (
@@ -120,22 +136,41 @@ export const seoConfigs = {
     url: 'https://karaoke-hub.com',
     structuredData: {
       '@context': 'https://schema.org',
-      '@type': 'WebSite',
-      name: 'KaraokeHub',
-      url: 'https://karaoke-hub.com',
-      description: 'Find karaoke bars, venues, and singing spots near you',
-      potentialAction: {
-        '@type': 'SearchAction',
-        target: 'https://karaoke-hub.com/music?q={search_term_string}',
-        'query-input': 'required name=search_term_string',
-      },
+      '@graph': [
+        {
+          '@type': 'WebSite',
+          '@id': 'https://karaoke-hub.com/#website',
+          name: 'KaraokeHub',
+          url: 'https://karaoke-hub.com',
+          description: 'Find karaoke bars, venues, and singing spots near you',
+          publisher: {
+            '@id': 'https://karaoke-hub.com/#organization'
+          },
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: 'https://karaoke-hub.com/music?q={search_term_string}',
+            'query-input': 'required name=search_term_string',
+          },
+        },
+        {
+          '@type': 'Organization',
+          '@id': 'https://karaoke-hub.com/#organization',
+          name: 'KaraokeHub',
+          url: 'https://karaoke-hub.com',
+          logo: 'https://karaoke-hub.com/images/karaoke-hub-logo.png',
+          description: 'The ultimate platform for finding karaoke venues and browsing karaoke songs',
+          sameAs: [
+            // Add social media links here when available
+          ]
+        }
+      ]
     },
   },
 
   music: {
-    title: 'Karaoke Songs Library - Browse Thousands of Karaoke Tracks | KaraokeHub',
+    title: 'Karaoke Songs Library - Browse Thousands of Karaoke Tracks & Lyrics | KaraokeHub',
     description:
-      'Browse our massive library of karaoke songs from every genre and decade. Find popular karaoke hits, classic rock anthems, pop favorites, and hidden gems perfect for your next performance.',
+      'Browse our massive library of karaoke songs from every genre and decade. Find popular karaoke hits, classic rock anthems, pop favorites, country songs, R&B classics, and hidden gems perfect for your next singing performance. Search by artist, song title, or genre.',
     keywords: [
       'karaoke songs',
       'karaoke tracks',
@@ -144,13 +179,29 @@ export const seoConfigs = {
       'popular karaoke songs',
       'karaoke hits',
       'singing songs',
+      'song lyrics',
+      'karaoke catalog',
+      'music database',
+      'artist songs',
+      'hit songs',
+      'classic songs',
+      'pop songs',
+      'rock songs',
+      'country karaoke',
+      'R&B karaoke',
+      'duet songs',
+      'group songs',
+      'solo karaoke',
+      'song search',
+      'music finder',
+      'karaoke playlist',
     ],
     url: 'https://karaoke-hub.com/music',
     structuredData: {
       '@context': 'https://schema.org',
       '@type': 'MusicLibrary',
       name: 'KaraokeHub Song Library',
-      description: 'Comprehensive karaoke song library with thousands of tracks',
+      description: 'Comprehensive karaoke song library with thousands of tracks and lyrics',
       url: 'https://karaoke-hub.com/music',
     },
   },
@@ -174,6 +225,59 @@ export const seoConfigs = {
       '@type': 'LocalBusiness',
       name: 'Karaoke Venues',
       description: 'Find karaoke venues and bars near you',
+    },
+  },
+
+  about: {
+    title: 'About KaraokeHub - Your Ultimate Karaoke Companion | Find Venues & Songs',
+    description:
+      'Learn about KaraokeHub, the leading platform for finding karaoke bars, browsing songs, and connecting with singers. Discover how we help you find the perfect karaoke experience.',
+    keywords: [
+      'about karaokehub',
+      'karaoke platform',
+      'karaoke app',
+      'venue finder',
+      'song database',
+      'karaoke community',
+    ],
+    url: 'https://karaoke-hub.com/about',
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: 'What is KaraokeHub?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'KaraokeHub is the ultimate platform for karaoke enthusiasts. We help you find karaoke bars and venues near you, browse thousands of karaoke songs, and connect with fellow singers.'
+          }
+        },
+        {
+          '@type': 'Question',
+          name: 'How do I find karaoke venues near me?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Simply visit our Shows page and search by your location. We\'ll show you all nearby karaoke venues with live show schedules, venue information, and user reviews.'
+          }
+        },
+        {
+          '@type': 'Question',
+          name: 'Can I browse karaoke songs before I go?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Yes! Our Music page features a comprehensive library of thousands of karaoke songs. You can search by artist, song title, genre, or browse popular categories.'
+          }
+        },
+        {
+          '@type': 'Question',
+          name: 'Is KaraokeHub free to use?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'KaraokeHub offers both free and premium features. You can browse venues and songs for free, while premium members get additional features like favorites, friend connections, and advanced search filters.'
+          }
+        }
+      ]
     },
   },
 
