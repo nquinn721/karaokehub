@@ -92,8 +92,8 @@ export class AuthStore {
 
     // Check for existing loops to prevent infinite auth cycles
     if (this.checkForExistingLoop()) {
-      console.error('🚨 AuthStore: Loop detected, aborting initialization');
-      this.clearAuthState();
+      console.error('🚨 AuthStore: Loop detected during initialization, triggering automatic recovery');
+      this.automaticRecovery();
       return;
     }
 
@@ -146,12 +146,15 @@ export class AuthStore {
   // Check for existing authentication loops to prevent infinite redirects
   private checkForExistingLoop(): boolean {
     const now = Date.now();
-    
+
     // Reset counter if enough time has passed
-    if (this.lastAuthFailureTime !== null && now - this.lastAuthFailureTime > this.AUTH_FAILURE_RESET_TIME) {
+    if (
+      this.lastAuthFailureTime !== null &&
+      now - this.lastAuthFailureTime > this.AUTH_FAILURE_RESET_TIME
+    ) {
       this.authFailureCount = 0;
     }
-    
+
     return this.authFailureCount >= this.MAX_AUTH_FAILURES;
   }
 
@@ -160,10 +163,84 @@ export class AuthStore {
     this.authFailureCount++;
     this.lastAuthFailureTime = Date.now();
     console.warn(`🔄 AuthStore: Auth failure #${this.authFailureCount} recorded`);
-    
+
     if (this.authFailureCount >= this.MAX_AUTH_FAILURES) {
-      console.error('🚨 AuthStore: Maximum auth failures reached, clearing all auth state');
-      this.clearAuthState();
+      console.error('🚨 AuthStore: Maximum auth failures reached, triggering automatic recovery');
+      this.automaticRecovery();
+    }
+  }
+
+  // Automatic recovery when loops are detected - no user intervention required
+  private automaticRecovery() {
+    console.warn('🤖 AuthStore: Automatic recovery triggered - clearing all auth data');
+    
+    runInAction(() => {
+      this.user = null;
+      this.token = null;
+      this.isAuthenticated = false;
+      this.showPostLoginModal = false;
+      this.showStageNameModal = false;
+      this.isNewUser = false;
+      this.isLoading = false;
+      this.authFailureCount = 0;
+      this.lastAuthFailureTime = null;
+    });
+
+    // Clear token from API store
+    try {
+      apiStore.clearToken();
+    } catch (error) {
+      console.warn('Failed to clear API token:', error);
+    }
+
+    // Clear all storage types
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      console.log('🧹 AuthStore: Cleared all browser storage');
+    } catch (error) {
+      console.warn('Failed to clear browser storage:', error);
+    }
+
+    // Clear all cookies automatically
+    try {
+      this.clearAllCookies();
+      console.log('🍪 AuthStore: Cleared all cookies');
+    } catch (error) {
+      console.warn('Failed to clear cookies:', error);
+    }
+
+    // Redirect to login after a brief delay to ensure cleanup completes
+    setTimeout(() => {
+      const currentPath = window.location.pathname;
+      if (currentPath !== '/login') {
+        console.log('🔄 AuthStore: Redirecting to login after automatic recovery');
+        window.location.href = '/login';
+      }
+    }, 100);
+  }
+
+  // Helper method to clear all cookies
+  private clearAllCookies() {
+    if (typeof document === 'undefined') return;
+    
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      const eqPos = cookie.indexOf('=');
+      const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+      
+      if (name) {
+        // Clear cookie for current domain
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        // Clear cookie for parent domains
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+        // Clear cookie for subdomain patterns
+        const domainParts = window.location.hostname.split('.');
+        if (domainParts.length > 1) {
+          const parentDomain = '.' + domainParts.slice(-2).join('.');
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${parentDomain}`;
+        }
+      }
     }
   }
 
@@ -495,9 +572,16 @@ export class AuthStore {
     }
   }
 
-  // Handle OAuth success callback
+  // Handle OAuth success callback with loop safety
   async handleAuthSuccess(token: string, navigate: (path: string) => void) {
     try {
+      // Check if we're in a loop state before proceeding
+      if (this.checkForExistingLoop()) {
+        console.warn('🚨 AuthStore: Loop detected during auth success, triggering recovery');
+        this.automaticRecovery();
+        return;
+      }
+
       // Store the token and set authentication state
       localStorage.setItem('token', token);
       this.setToken(token);
@@ -505,10 +589,15 @@ export class AuthStore {
       // Fetch user profile with the new token
       await this.fetchProfile();
 
+      // Reset any previous auth failures on successful auth
+      this.authFailureCount = 0;
+      this.lastAuthFailureTime = null;
+
       // Navigate to dashboard on success
       navigate('/dashboard');
     } catch (error) {
       console.error('Failed to complete authentication:', error);
+      this.recordAuthFailure();
       // Navigate to error page on failure
       navigate('/auth/error');
     }
@@ -517,11 +606,11 @@ export class AuthStore {
   // Manual method to clear auth state - useful for debugging loops
   clearAuthState() {
     console.log('🧹 Manually clearing auth state...');
-    
+
     // Reset loop detection counters
     this.authFailureCount = 0;
     this.lastAuthFailureTime = null;
-    
+
     this.clearAuthStateSilently();
     // Force a page reload to ensure clean state
     window.location.reload();
@@ -529,43 +618,14 @@ export class AuthStore {
 
   // Emergency recovery method for stuck users - clears everything and redirects to login
   emergencyRecovery() {
-    console.warn('🆘 Emergency recovery triggered - clearing all storage and auth state');
+    console.warn('🆘 Emergency recovery triggered - using automatic recovery with page reload');
     
-    try {
-      // Clear all possible storage locations
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      // Clear cookies by setting them to expire
-      document.cookie.split(";").forEach((c) => {
-        const eqPos = c.indexOf("=");
-        const name = eqPos > -1 ? c.substr(0, eqPos) : c;
-        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-      });
-      
-      // Reset all auth state
-      runInAction(() => {
-        this.user = null;
-        this.token = null;
-        this.isAuthenticated = false;
-        this.showPostLoginModal = false;
-        this.showStageNameModal = false;
-        this.isNewUser = false;
-        this.isLoading = false;
-        this.authFailureCount = 0;
-        this.lastAuthFailureTime = null;
-      });
-      
-      // Clear API token
-      apiStore.clearToken();
-      
-      // Redirect to login with cache busting
-      window.location.href = '/login?recovery=' + Date.now();
-      
-    } catch (error) {
-      console.error('Emergency recovery failed:', error);
-      // Last resort - reload page
+    // Use the automatic recovery logic first
+    this.automaticRecovery();
+    
+    // Then force a page reload as additional measure for emergency cases
+    setTimeout(() => {
       window.location.reload();
-    }
+    }, 200);
   }
 }
