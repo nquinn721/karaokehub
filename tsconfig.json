@@ -23,5 +23,6 @@
       "@common/*": ["src/common/*"],
       "@config/*": ["src/config/*"]
     }
-  }
+  },
+  "exclude": ["scripts/**/*", "client/**/*", "node_modules", "dist"]
 }
