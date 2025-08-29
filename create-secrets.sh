@@ -26,7 +26,7 @@ echo -n "YOUR_GEMINI_API_KEY" | gcloud secrets create KARAOKE_HUB_GEMINI_API_KEY
 
 # Google Maps API Key
 echo "Creating Google Maps API key secret..."
-echo -n "AIzaSyCJgu_sx8VjMTj7iphIekriBeTjeKjHuiY" | gcloud secrets create KARAOKE_HUB_GOOGLE_MAPS_API_KEY --data-file=-
+echo -n "your_google_maps_api_key_here" | gcloud secrets create KARAOKE_HUB_GOOGLE_MAPS_API_KEY --data-file=-
 
 # OpenAI API Key (replace with your actual key)
 echo "Creating OpenAI API key secret..."

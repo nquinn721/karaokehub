@@ -4,7 +4,12 @@ async function testConnecticutPageFix() {
   console.log('🧪 Testing Connecticut page fix...\n');
 
   const testUrl = 'https://karaokeviewpoint.com/karaoke-in-connecticut/';
-  const apiKey = 'sk-8bdd86d4a91646b095a54b6e807da37a';
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+
+  if (!apiKey) {
+    console.log('❌ DEEPSEEK_API_KEY environment variable not set');
+    return;
+  }
 
   try {
     console.log(`📡 Testing improved worker with: ${testUrl}`);

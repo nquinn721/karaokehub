@@ -115,7 +115,7 @@ Return JSON format with this exact structure:
         },
         {
           headers: {
-            Authorization: `Bearer sk-8bdd86d4a91646b095a54b6e807da37a`,
+            Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
             'Content-Type': 'application/json',
           },
           timeout: 25000,

@@ -5,7 +5,7 @@
 
 PROJECT_ID="heroic-footing-460117-k8"
 SECRET_NAME="KARAOKE_HUB_GOOGLE_MAPS_API_KEY"
-API_KEY="AIzaSyCJgu_sx8VjMTj7iphIekriBeTjeKjHuiY"
+API_KEY="your_google_maps_api_key_here"
 
 echo "Creating Google Maps API Key secret in Google Cloud Secret Manager..."
 

@@ -175,7 +175,7 @@ export class DeepSeekParserService {
   }
 
   /**
-   * Build the analysis prompt for DeepSeek
+   * Build the analysis prompt for DeepSeek - focused on karaoke extraction
    */
   private buildAnalysisPrompt(
     url: string,
@@ -183,9 +183,9 @@ export class DeepSeekParserService {
     title: string,
     options: DeepSeekParsingOptions,
   ): string {
-    const contentPreview = content.length > 8000 ? content.substring(0, 8000) + '...' : content;
+    const contentPreview = content.length > 12000 ? content.substring(0, 12000) + '...' : content;
 
-    let prompt = `Analyze this webpage content and extract structured information.
+    let prompt = `Extract ALL karaoke shows from this webpage content. Each venue + day combination is a separate show.
 
 URL: ${url}
 Title: ${title}
@@ -193,27 +193,54 @@ Title: ${title}
 Content:
 ${contentPreview}
 
-Please analyze and return a JSON object with the following structure:
+CRITICAL RESPONSE REQUIREMENTS:
+- Return ONLY valid JSON, no other text
+- Maximum 50 shows per response to prevent truncation
+- Ensure JSON is properly closed with all brackets and braces
+
+🚫 DUPLICATE PREVENTION - CRITICAL RULES:
+- ONLY extract UNIQUE shows - no duplicates allowed
+- Different days at the same venue = separate shows (e.g., "Bar Monday" vs "Bar Saturday")  
+- Different times at the same venue = separate shows (e.g., "Bar 7:00 PM" vs "Bar 10:00 PM")
+- Same address, same day, same time = DUPLICATE, include only once
+
+SHOW EXTRACTION RULES:
+- Each venue name + day of week = one show entry
+- Look for patterns like "Monday: Park St Tavern - 9 pm - DJ Name"
+- Extract venue name, day, time, and DJ/host name for each entry
+- If a venue appears under multiple days, create separate show entries for each day
+
+EXCLUDE: Shows marked "CLOSED", "CANCELLED", "SUSPENDED", "UNAVAILABLE", "DISCONTINUED", "TEMPORARILY CLOSED", "OUT OF BUSINESS", "INACTIVE", "NOT RUNNING"
+
+Return a JSON object with this exact structure:
 {
   "title": "cleaned page title",
   "description": "brief description of the page content",`;
 
     if (options.includeNavigation) {
       prompt += `
-  "navLinks": ["array of navigation URLs found in the content"],`;
+  "navLinks": ["array of karaoke-related navigation URLs found"],`;
     }
 
     if (options.includeShows) {
       prompt += `
   "shows": [
     {
-      "title": "show/event name",
-      "venue": "venue name",
-      "date": "date in YYYY-MM-DD format if found",
-      "time": "time if found",
-      "description": "event description",
-      "dj": "DJ name if mentioned",
-      "location": "location details"
+      "venue": "exact venue name",
+      "address": "street address only (no city/state)",
+      "city": "city name",
+      "state": "state abbreviation (e.g., FL, CA, NY)",
+      "zip": "zip code if available",
+      "day": "monday/tuesday/wednesday/thursday/friday/saturday/sunday",
+      "time": "show time (e.g., 8:00 PM)",
+      "startTime": "start time in 24h format (e.g., 20:00)",
+      "endTime": "end time in 24h format if available",
+      "djName": "DJ or host name if mentioned",
+      "description": "additional details about the show",
+      "venuePhone": "venue phone number if available",
+      "venueWebsite": "venue website if available",
+      "source": "${url}",
+      "confidence": 0.9
     }
   ],`;
     }
@@ -223,9 +250,8 @@ Please analyze and return a JSON object with the following structure:
   "djs": [
     {
       "name": "DJ name",
-      "description": "DJ description or bio",
-      "specialties": ["music genres or specialties"],
-      "contact": "contact info if available"
+      "confidence": 0.8,
+      "context": "where the DJ was mentioned"
     }
   ],`;
     }
@@ -234,38 +260,53 @@ Please analyze and return a JSON object with the following structure:
       prompt += `
   "vendors": [
     {
-      "name": "vendor/business name",
-      "type": "business type (venue, equipment, etc.)",
-      "description": "business description",
-      "contact": "contact information",
-      "location": "location if mentioned"
+      "name": "karaoke company/vendor name",
+      "website": "${url}",
+      "description": "company description",
+      "confidence": 0.9
     }
   ],`;
     }
 
     prompt += `
   "confidence": 0.95,
-  "reasoning": "brief explanation of findings"
+  "reasoning": "brief explanation of what karaoke content was found"
 }
 
-Focus on karaoke, DJ, music, and entertainment-related content. Return only valid JSON.`;
+FOCUS SPECIFICALLY ON:
+- Karaoke nights and shows
+- DJ-hosted karaoke events  
+- Weekly karaoke schedules
+- Venue karaoke information
+- Entertainment venues with karaoke
+
+Return only valid JSON. If no karaoke shows are found, return empty arrays but valid JSON structure.`;
 
     return prompt;
   }
 
   /**
-   * Get the system prompt for DeepSeek
+   * Get the system prompt for DeepSeek - karaoke-focused
    */
   private getSystemPrompt(): string {
-    return `You are an expert web content analyzer specializing in karaoke, DJ, and entertainment industry information. Your task is to:
+    return `You are an expert karaoke schedule parser specializing in extracting structured karaoke show information from websites. Your primary tasks are:
 
-1. Extract structured data from webpage content
-2. Identify karaoke shows, DJ events, and entertainment venues
-3. Parse contact information and event details
-4. Provide confidence scores for your findings
-5. Return only valid JSON responses
+1. Extract karaoke shows with complete venue and schedule details
+2. Identify DJ names, karaoke hosts, and entertainment providers
+3. Parse venue addresses with proper city/state/zip separation
+4. Convert show times to consistent formats
+5. Provide accurate confidence scores
+6. Return only valid, complete JSON responses
 
-Be thorough but accurate. If information is unclear or missing, indicate this rather than guessing.`;
+CRITICAL RULES:
+- Focus ONLY on karaoke-related content and shows
+- Each venue + day combination is a separate show entry
+- Never include duplicate shows (same venue, day, time)
+- Always separate address components properly (street, city, state, zip)
+- Include source URL for traceability
+- If unsure about information, indicate lower confidence rather than guessing
+
+EXCLUDE any shows that are cancelled, closed, or inactive.`;
   }
 
   /**

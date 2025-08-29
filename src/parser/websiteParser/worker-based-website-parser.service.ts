@@ -74,6 +74,15 @@ export class WorkerBasedWebsiteParserService {
     );
 
     try {
+      // Add URL to the urls_to_parse table if not already there
+      try {
+        await this.urlToParseService.create(url);
+        this.logAndBroadcast(`📝 [URL-TRACKING] Added URL to tracking table: ${url}`);
+      } catch (error) {
+        // URL may already exist, continue with parsing
+        this.logAndBroadcast(`📝 [URL-TRACKING] URL already tracked or error: ${error.message}`);
+      }
+
       // ========================================
       // STEP 1: DISCOVERY WORKER - GET ALL URLS
       // ========================================

@@ -240,7 +240,7 @@ const ShowsMapScreen = observer(() => {
         
         window.initMap = initMap;
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC4TJPqXVYJQE7K8zYBqzYPuRrKTd0YjnQ&callback=initMap" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap" async defer></script>
 </body>
 </html>
     `;

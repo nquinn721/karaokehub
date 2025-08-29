@@ -13,6 +13,8 @@ COPY client/tsconfig*.json ./
 RUN mkdir -p ./public
 # Copy public files if they exist
 COPY client/public/ ./public/
+# Copy data folder for imports in components
+COPY data/ ../data/
 ENV DOCKER_BUILD=true
 RUN npm run build
 
@@ -25,6 +27,7 @@ RUN npm ci
 
 # Copy source files more explicitly to ensure structure is preserved
 COPY src/ ./src/
+COPY data/ ./data/
 COPY nest-cli.json ./
 COPY tsconfig*.json ./
 COPY --from=client-builder /app/client/dist ./client/dist
@@ -70,6 +73,7 @@ RUN chmod 755 /usr/bin/chromium-browser
 # Copy built application
 COPY --from=server-builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=server-builder --chown=nestjs:nodejs /app/client/dist ./client/dist
+COPY --from=server-builder --chown=nestjs:nodejs /app/data ./data
 COPY --from=server-builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 COPY --from=server-builder --chown=nestjs:nodejs /app/package*.json ./
 
