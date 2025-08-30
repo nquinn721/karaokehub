@@ -1644,7 +1644,9 @@ const AdminParserPage: React.FC = observer(() => {
                                           fontWeight="bold"
                                           component="div"
                                         >
-                                          {(show.venue && typeof show.venue === "object" ? show.venue.name : show.venue) || "Unknown Venue"}
+                                          {(show.venue && typeof show.venue === 'object'
+                                            ? show.venue.name
+                                            : show.venue) || 'Unknown Venue'}
                                         </Typography>
                                         <Typography variant="caption" color="text.secondary">
                                           {Math.round((show.confidence || 0) * 100)}% confidence
@@ -1673,7 +1675,10 @@ const AdminParserPage: React.FC = observer(() => {
                                           <Box sx={{ ml: 1 }}>
                                             {show.address ? (
                                               <Typography variant="body2">
-                                                <strong>Address:</strong> {show.venue && typeof show.venue === "object" ? show.venue.address : null}
+                                                <strong>Address:</strong>{' '}
+                                                {show.venue && typeof show.venue === 'object'
+                                                  ? show.venue.address
+                                                  : null}
                                               </Typography>
                                             ) : (
                                               <Typography
@@ -1685,16 +1690,26 @@ const AdminParserPage: React.FC = observer(() => {
                                               </Typography>
                                             )}
                                             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                              {(show.venue && typeof show.venue === "object" && show.venue.city) && (
-                                                <Typography variant="body2">
-                                                  <strong>City:</strong> {show.venue && typeof show.venue === "object" ? show.venue.city : null}
-                                                </Typography>
-                                              )}
-                                              {(show.venue && typeof show.venue === "object" && show.venue.state) && (
-                                                <Typography variant="body2">
-                                                  <strong>State:</strong> {show.venue && typeof show.venue === "object" ? show.venue.state : null}
-                                                </Typography>
-                                              )}
+                                              {show.venue &&
+                                                typeof show.venue === 'object' &&
+                                                show.venue.city && (
+                                                  <Typography variant="body2">
+                                                    <strong>City:</strong>{' '}
+                                                    {show.venue && typeof show.venue === 'object'
+                                                      ? show.venue.city
+                                                      : null}
+                                                  </Typography>
+                                                )}
+                                              {show.venue &&
+                                                typeof show.venue === 'object' &&
+                                                show.venue.state && (
+                                                  <Typography variant="body2">
+                                                    <strong>State:</strong>{' '}
+                                                    {show.venue && typeof show.venue === 'object'
+                                                      ? show.venue.state
+                                                      : null}
+                                                  </Typography>
+                                                )}
                                               {show.zip && (
                                                 <Typography variant="body2">
                                                   <strong>ZIP:</strong> {show.zip}

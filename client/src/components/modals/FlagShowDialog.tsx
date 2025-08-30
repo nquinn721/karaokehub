@@ -62,7 +62,9 @@ export const FlagShowDialog: React.FC<FlagShowDialogProps> = ({
         </Typography>
 
         <Typography variant="body2" sx={{ mb: 0.5 }}>
-          <strong>Venue:</strong> {(show.venue && typeof show.venue === 'object' ? show.venue.name : show.venue) || 'Unknown Venue'}
+          <strong>Venue:</strong>{' '}
+          {(show.venue && typeof show.venue === 'object' ? show.venue.name : show.venue) ||
+            'Unknown Venue'}
         </Typography>
 
         <Typography variant="body2" sx={{ mb: 0.5 }}>
@@ -70,7 +72,8 @@ export const FlagShowDialog: React.FC<FlagShowDialogProps> = ({
         </Typography>
 
         <Typography variant="body2" sx={{ mb: 0.5 }}>
-          <strong>Location:</strong> {show.venue && typeof show.venue === 'object' ? show.venue.address : null}
+          <strong>Location:</strong>{' '}
+          {show.venue && typeof show.venue === 'object' ? show.venue.address : null}
         </Typography>
 
         {show.venue && typeof show.venue === 'object' && (show.venue.city || show.venue.state) && (

@@ -205,7 +205,9 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
                                 <Typography variant="body2" color="text.secondary">
                                   {(() => {
                                     const venue = favorite.show.venue;
-                                    return venue && typeof venue === "object" ? (venue as any).name : venue;
+                                    return venue && typeof venue === 'object'
+                                      ? (venue as any).name
+                                      : venue;
                                   })()}
                                 </Typography>
                               </Box>
@@ -213,9 +215,11 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
                               <Typography variant="body2" color="text.secondary" gutterBottom>
                                 {(() => {
                                   const venue = favorite.show.venue;
-                                  if (venue && typeof venue === "object") {
+                                  if (venue && typeof venue === 'object') {
                                     const v = venue as any;
-                                    return `${v.address || ''}, ${v.city || ''}, ${v.state || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',');
+                                    return `${v.address || ''}, ${v.city || ''}, ${v.state || ''}`
+                                      .replace(/^,\s*|,\s*$/g, '')
+                                      .replace(/,\s*,/g, ',');
                                   }
                                   return 'Address not available';
                                 })()}

@@ -545,9 +545,16 @@ const ShowsPage: React.FC = observer(() => {
                                                 wordBreak: 'break-word',
                                               }}
                                             >
-                                              {show.venue && typeof show.venue === "object" ? show.venue.address : null}
+                                              {show.venue && typeof show.venue === 'object'
+                                                ? show.venue.address
+                                                : null}
                                             </Typography>
-                                            {((show.venue && typeof show.venue === "object" && show.venue.city) || (show.venue && typeof show.venue === "object" && show.venue.state)) && (
+                                            {((show.venue &&
+                                              typeof show.venue === 'object' &&
+                                              show.venue.city) ||
+                                              (show.venue &&
+                                                typeof show.venue === 'object' &&
+                                                show.venue.state)) && (
                                               <Typography
                                                 variant="body2"
                                                 color="text.secondary"
@@ -557,7 +564,16 @@ const ShowsPage: React.FC = observer(() => {
                                                   opacity: 0.8,
                                                 }}
                                               >
-                                                {[show.venue && typeof show.venue === "object" ? show.venue.city : null, show.venue && typeof show.venue === "object" ? show.venue.state : null].filter(Boolean).join(', ')}
+                                                {[
+                                                  show.venue && typeof show.venue === 'object'
+                                                    ? show.venue.city
+                                                    : null,
+                                                  show.venue && typeof show.venue === 'object'
+                                                    ? show.venue.state
+                                                    : null,
+                                                ]
+                                                  .filter(Boolean)
+                                                  .join(', ')}
                                               </Typography>
                                             )}
                                           </Box>
@@ -1048,9 +1064,16 @@ const ShowsPage: React.FC = observer(() => {
                                             wordBreak: 'break-word',
                                           }}
                                         >
-                                          {show.venue && typeof show.venue === "object" ? show.venue.address : null}
+                                          {show.venue && typeof show.venue === 'object'
+                                            ? show.venue.address
+                                            : null}
                                         </Typography>
-                                        {((show.venue && typeof show.venue === "object" && show.venue.city) || (show.venue && typeof show.venue === "object" && show.venue.state)) && (
+                                        {((show.venue &&
+                                          typeof show.venue === 'object' &&
+                                          show.venue.city) ||
+                                          (show.venue &&
+                                            typeof show.venue === 'object' &&
+                                            show.venue.state)) && (
                                           <Typography
                                             variant="body2"
                                             color="text.secondary"
@@ -1060,7 +1083,16 @@ const ShowsPage: React.FC = observer(() => {
                                               opacity: 0.8,
                                             }}
                                           >
-                                            {[show.venue && typeof show.venue === "object" ? show.venue.city : null, show.venue && typeof show.venue === "object" ? show.venue.state : null].filter(Boolean).join(', ')}
+                                            {[
+                                              show.venue && typeof show.venue === 'object'
+                                                ? show.venue.city
+                                                : null,
+                                              show.venue && typeof show.venue === 'object'
+                                                ? show.venue.state
+                                                : null,
+                                            ]
+                                              .filter(Boolean)
+                                              .join(', ')}
                                           </Typography>
                                         )}
                                       </Box>

@@ -725,7 +725,11 @@ const ParserReviewPage: React.FC = observer(() => {
                                   color="primary"
                                 />
                                 <Typography variant="subtitle2" flexGrow={1}>
-                                  Select Show: {(show.venue && typeof show.venue === "object" ? show.venue.name : show.venue) || "Unknown Venue"} - {show.time}
+                                  Select Show:{' '}
+                                  {(show.venue && typeof show.venue === 'object'
+                                    ? show.venue.name
+                                    : show.venue) || 'Unknown Venue'}{' '}
+                                  - {show.time}
                                 </Typography>
                               </Box>
                               <Grid container spacing={2}>
@@ -797,7 +801,11 @@ const ParserReviewPage: React.FC = observer(() => {
                                 <Grid item xs={12} sm={6}>
                                   <TextField
                                     label="City"
-                                    value={(show.venue && typeof show.venue === "object" ? show.venue.city : null) || ''}
+                                    value={
+                                      (show.venue && typeof show.venue === 'object'
+                                        ? show.venue.city
+                                        : null) || ''
+                                    }
                                     onChange={(e) => {
                                       const newShows = [...editedData.shows];
                                       newShows[index] = {
@@ -814,7 +822,11 @@ const ParserReviewPage: React.FC = observer(() => {
                                 <Grid item xs={12} sm={6}>
                                   <TextField
                                     label="State"
-                                    value={(show.venue && typeof show.venue === "object" ? show.venue.state : null) || ''}
+                                    value={
+                                      (show.venue && typeof show.venue === 'object'
+                                        ? show.venue.state
+                                        : null) || ''
+                                    }
                                     onChange={(e) => {
                                       const newShows = [...editedData.shows];
                                       newShows[index] = {
@@ -850,7 +862,11 @@ const ParserReviewPage: React.FC = observer(() => {
                                 <Grid item xs={12} sm={6}>
                                   <TextField
                                     label="Latitude"
-                                    value={(show.venue && typeof show.venue === "object" ? show.venue.lat : null) || ''}
+                                    value={
+                                      (show.venue && typeof show.venue === 'object'
+                                        ? show.venue.lat
+                                        : null) || ''
+                                    }
                                     onChange={(e) => {
                                       const newShows = [...editedData.shows];
                                       newShows[index] = {
@@ -868,7 +884,11 @@ const ParserReviewPage: React.FC = observer(() => {
                                 <Grid item xs={12} sm={6}>
                                   <TextField
                                     label="Longitude"
-                                    value={(show.venue && typeof show.venue === "object" ? show.venue.lng : null) || ''}
+                                    value={
+                                      (show.venue && typeof show.venue === 'object'
+                                        ? show.venue.lng
+                                        : null) || ''
+                                    }
                                     onChange={(e) => {
                                       const newShows = [...editedData.shows];
                                       newShows[index] = {

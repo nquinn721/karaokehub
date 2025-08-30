@@ -189,9 +189,10 @@ const PopupContent: React.FC<{
                       wordBreak: 'break-word',
                     }}
                   >
-                    {show.venue && typeof show.venue === "object" ? show.venue.address : null}
+                    {show.venue && typeof show.venue === 'object' ? show.venue.address : null}
                   </Typography>
-                  {((show.venue && typeof show.venue === "object" && show.venue.city) || (show.venue && typeof show.venue === "object" && show.venue.state)) && (
+                  {((show.venue && typeof show.venue === 'object' && show.venue.city) ||
+                    (show.venue && typeof show.venue === 'object' && show.venue.state)) && (
                     <Typography
                       variant="body2"
                       color="text.secondary"
@@ -201,7 +202,13 @@ const PopupContent: React.FC<{
                         opacity: 0.8,
                       }}
                     >
-                      {[show.venue && typeof show.venue === "object" ? show.venue.city : null, show.venue && typeof show.venue === "object" ? show.venue.state : null, show.zip].filter(Boolean).join(', ')}
+                      {[
+                        show.venue && typeof show.venue === 'object' ? show.venue.city : null,
+                        show.venue && typeof show.venue === 'object' ? show.venue.state : null,
+                        show.zip,
+                      ]
+                        .filter(Boolean)
+                        .join(', ')}
                     </Typography>
                   )}
                 </Box>
@@ -367,7 +374,8 @@ const SimpleMapNew: React.FC = observer(() => {
     console.log(`📍 Rendering ${shows.length} show markers`);
 
     return shows.map((show: any) => {
-      if (!(show.venue && typeof show.venue === "object" && show.venue.lat && show.venue.lng)) return null;
+      if (!(show.venue && typeof show.venue === 'object' && show.venue.lat && show.venue.lng))
+        return null;
 
       const lat = typeof show.venue.lat === 'string' ? parseFloat(show.venue.lat) : show.venue.lat;
       const lng = typeof show.venue.lng === 'string' ? parseFloat(show.venue.lng) : show.venue.lng;

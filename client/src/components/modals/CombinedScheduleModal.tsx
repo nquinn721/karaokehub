@@ -210,7 +210,9 @@ export const CombinedScheduleModal: React.FC<CombinedScheduleModalProps> = obser
                   </Box>
 
                   <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
-                    {(show.venue && typeof show.venue === 'object' ? show.venue.name : show.venue) || 'Unknown Venue'}
+                    {(show.venue && typeof show.venue === 'object'
+                      ? show.venue.name
+                      : show.venue) || 'Unknown Venue'}
                   </Typography>
 
                   {show.dj?.name && (
@@ -236,14 +238,16 @@ export const CombinedScheduleModal: React.FC<CombinedScheduleModalProps> = obser
                     />
                     <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4 }}>
                       {show.venue && typeof show.venue === 'object' ? show.venue.address : null}
-                      {show.venue && typeof show.venue === 'object' && (show.venue.city || show.venue.state) && (
-                        <Box
-                          component="span"
-                          sx={{ display: 'block', fontSize: '0.85em', opacity: 0.8 }}
-                        >
-                          {[show.venue.city, show.venue.state].filter(Boolean).join(', ')}
-                        </Box>
-                      )}
+                      {show.venue &&
+                        typeof show.venue === 'object' &&
+                        (show.venue.city || show.venue.state) && (
+                          <Box
+                            component="span"
+                            sx={{ display: 'block', fontSize: '0.85em', opacity: 0.8 }}
+                          >
+                            {[show.venue.city, show.venue.state].filter(Boolean).join(', ')}
+                          </Box>
+                        )}
                     </Typography>
                   </Box>
                 </Box>
@@ -354,7 +358,10 @@ export const CombinedScheduleModal: React.FC<CombinedScheduleModalProps> = obser
             <Tab
               icon={<FontAwesomeIcon icon={faBuilding} style={{ fontSize: '16px' }} />}
               iconPosition="start"
-              label={(show.venue && typeof show.venue === 'object' ? show.venue.name : show.venue) || 'Unknown Venue'}
+              label={
+                (show.venue && typeof show.venue === 'object' ? show.venue.name : show.venue) ||
+                'Unknown Venue'
+              }
               sx={{
                 gap: 1.5,
                 px: 2,
