@@ -83,12 +83,8 @@ const DataUploadModal: React.FC<{
 
       // Helper function to get the production upload URL
       const getProductionUploadURL = () => {
-        const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
-        if (isDevelopment) {
-          return 'http://localhost:8000/api/production-upload/data';
-        } else {
-          return `${window.location.origin}/api/production-upload/data`;
-        }
+        // Always use production URL for uploading data to production
+        return 'https://karaoke-hub.com/api/production-upload/data';
       };
 
       // Helper function to upload in chunks
