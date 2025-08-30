@@ -98,6 +98,8 @@ const DataUploadModal: React.FC<{
               'Content-Type': 'application/json',
               'x-upload-token': 'karaoke-hub-data-integration-system',
             },
+            mode: 'cors',
+            referrerPolicy: 'no-referrer-when-downgrade',
             body: JSON.stringify({
               [type]: chunk,
               vendors: type === 'vendors' ? chunk : [],

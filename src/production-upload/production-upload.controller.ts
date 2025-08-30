@@ -1,6 +1,15 @@
-import { Body, Controller, Headers, Post, UnauthorizedException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Headers,
+  Options,
+  Post,
+  Res,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Response } from 'express';
 import { Repository } from 'typeorm';
 import { DJService } from '../dj/dj.service';
 import { Show } from '../show/show.entity';
@@ -27,11 +36,29 @@ export class ProductionUploadController {
     private readonly showRepository: Repository<Show>,
   ) {}
 
+  @Options('data')
+  async handlePreflight(@Res() res: Response) {
+    // Handle preflight CORS requests for production upload endpoint
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, x-upload-token, Referer, Origin');
+    res.header('Access-Control-Max-Age', '86400'); // 24 hours
+    res.header('Referrer-Policy', 'no-referrer-when-downgrade');
+    res.status(200).send();
+  }
+
   @Post('data')
   async uploadData(
     @Body() data: ProductionUploadData,
     @Headers('x-upload-token') uploadToken: string,
+    @Res() res: Response,
   ) {
+    // Set CORS headers for the actual request
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Credentials', 'false');
+    res.header('Referrer-Policy', 'no-referrer-when-downgrade');
+    res.header('Access-Control-Expose-Headers', 'Referrer-Policy');
+
     // Verify upload token
     const expectedToken = this.configService.get<string>('PRODUCTION_UPLOAD_TOKEN');
     if (!expectedToken || uploadToken !== expectedToken) {
@@ -347,15 +374,17 @@ export class ProductionUploadController {
         }
       }
 
-      return {
+      const responseData = {
         success: true,
         message: 'Data uploaded successfully',
         results,
         summary: `Created: ${results.vendors.created} vendors, ${results.djs.created} DJs, ${results.venues.created} venues, ${results.shows.created} shows. Updated: ${results.vendors.updated} vendors, ${results.djs.updated} DJs, ${results.venues.updated} venues, ${results.shows.updated} shows. Errors: ${results.vendors.errors + results.djs.errors + results.venues.errors + results.shows.errors} total.`,
       };
+
+      return res.json(responseData);
     } catch (error) {
       console.error('Production upload error:', error);
-      throw new Error(`Upload failed: ${error.message}`);
+      return res.status(500).json({ error: `Upload failed: ${error.message}` });
     }
   }
 }

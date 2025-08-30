@@ -146,7 +146,19 @@ export class ShowStore {
   getVenueCoordinates(show: Show): { lat: number; lng: number } | null {
     const lat = show.venue?.lat;
     const lng = show.venue?.lng;
-    return lat && lng ? { lat, lng } : null;
+
+    // Ensure coordinates are numbers (they might come as strings from the API)
+    if (lat && lng) {
+      const numLat = typeof lat === 'string' ? parseFloat(lat) : lat;
+      const numLng = typeof lng === 'string' ? parseFloat(lng) : lng;
+
+      // Validate that the parsed values are valid numbers
+      if (!isNaN(numLat) && !isNaN(numLng)) {
+        return { lat: numLat, lng: numLng };
+      }
+    }
+
+    return null;
   }
 
   /**
