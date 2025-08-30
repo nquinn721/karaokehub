@@ -92,7 +92,9 @@ export class AuthStore {
 
     // Check for existing loops to prevent infinite auth cycles
     if (this.checkForExistingLoop()) {
-      console.error('🚨 AuthStore: Loop detected during initialization, triggering automatic recovery');
+      console.error(
+        '🚨 AuthStore: Loop detected during initialization, triggering automatic recovery',
+      );
       this.automaticRecovery();
       return;
     }
@@ -173,7 +175,7 @@ export class AuthStore {
   // Automatic recovery when loops are detected - no user intervention required
   private automaticRecovery() {
     console.warn('🤖 AuthStore: Automatic recovery triggered - clearing all auth data');
-    
+
     runInAction(() => {
       this.user = null;
       this.token = null;
@@ -223,12 +225,12 @@ export class AuthStore {
   // Helper method to clear all cookies
   private clearAllCookies() {
     if (typeof document === 'undefined') return;
-    
+
     const cookies = document.cookie.split(';');
     for (let cookie of cookies) {
       const eqPos = cookie.indexOf('=');
       const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
-      
+
       if (name) {
         // Clear cookie for current domain
         document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
@@ -619,10 +621,10 @@ export class AuthStore {
   // Emergency recovery method for stuck users - clears everything and redirects to login
   emergencyRecovery() {
     console.warn('🆘 Emergency recovery triggered - using automatic recovery with page reload');
-    
+
     // Use the automatic recovery logic first
     this.automaticRecovery();
-    
+
     // Then force a page reload as additional measure for emergency cases
     setTimeout(() => {
       window.location.reload();

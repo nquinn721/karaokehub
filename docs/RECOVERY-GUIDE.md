@@ -5,6 +5,7 @@
 ## 🤖 Automatic Recovery (No User Action Required)
 
 The system automatically:
+
 - Detects authentication loops (3 failures within 5 minutes)
 - Clears all browser storage (localStorage, sessionStorage)
 - Removes all cookies automatically

@@ -18,15 +18,13 @@ export const BreadcrumbSEO: React.FC<BreadcrumbSEOProps> = ({ items }) => {
       '@type': 'ListItem',
       position: index + 1,
       name: item.name,
-      item: item.url
-    }))
+      item: item.url,
+    })),
   };
 
   return (
     <Helmet>
-      <script type="application/ld+json">
-        {JSON.stringify(breadcrumbList)}
-      </script>
+      <script type="application/ld+json">{JSON.stringify(breadcrumbList)}</script>
     </Helmet>
   );
 };

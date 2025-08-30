@@ -41,7 +41,7 @@ export class ImageParserService {
     htmlContent: string,
     baseUrl: string,
     downloadImages: boolean = false,
-    maxImages: number = 50
+    maxImages: number = 50,
   ): Promise<ImageParsingResult> {
     this.logger.log(`🖼️ Parsing images from ${baseUrl}`);
 
@@ -56,7 +56,7 @@ export class ImageParserService {
 
       const $img = $(element);
       const src = $img.attr('src');
-      
+
       if (src) {
         try {
           const absoluteUrl = new URL(src, baseUrl).href;
@@ -113,7 +113,10 @@ export class ImageParserService {
   /**
    * Download a single image
    */
-  async downloadImage(imageUrl: string, baseUrl: string): Promise<{
+  async downloadImage(
+    imageUrl: string,
+    baseUrl: string,
+  ): Promise<{
     success: boolean;
     localPath?: string;
     size?: number;
@@ -140,13 +143,14 @@ export class ImageParserService {
         responseType: 'arraybuffer',
         timeout: 30000,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
       });
 
       // Write to file
       fs.writeFileSync(localPath, response.data);
-      
+
       return {
         success: true,
         localPath,
@@ -165,7 +169,7 @@ export class ImageParserService {
    */
   async extractTextCandidateImages(
     htmlContent: string,
-    baseUrl: string
+    baseUrl: string,
   ): Promise<ExtractedImage[]> {
     this.logger.log(`📝 Extracting text candidate images from ${baseUrl}`);
 
@@ -205,16 +209,18 @@ export class ImageParserService {
     const textIndicators = [
       // Alt text indicators
       /schedule|calendar|event|show|list|menu|hours|time/i,
-      // Class name indicators  
+      // Class name indicators
       /schedule|calendar|event|show|list|menu/i,
       // File name indicators
       /schedule|calendar|event|show|list|menu|hours/i,
     ];
 
     const combinedText = `${src} ${alt} ${title} ${className}`.toLowerCase();
-    
-    return textIndicators.some(pattern => pattern.test(combinedText)) &&
-           !this.isDecorative(src, alt, className);
+
+    return (
+      textIndicators.some((pattern) => pattern.test(combinedText)) &&
+      !this.isDecorative(src, alt, className)
+    );
   }
 
   /**
@@ -228,8 +234,8 @@ export class ImageParserService {
     ];
 
     const combinedText = `${src} ${alt} ${className}`.toLowerCase();
-    
-    return decorativeIndicators.some(pattern => pattern.test(combinedText));
+
+    return decorativeIndicators.some((pattern) => pattern.test(combinedText));
   }
 
   /**
@@ -238,23 +244,23 @@ export class ImageParserService {
   private generateSafeFileName(urlPath: string, baseUrl: string): string {
     // Extract domain for uniqueness
     const domain = new URL(baseUrl).hostname.replace(/\./g, '_');
-    
+
     // Extract filename from path
     let fileName = path.basename(urlPath);
-    
+
     // If no extension, add .jpg as default
     if (!path.extname(fileName)) {
       fileName += '.jpg';
     }
-    
+
     // Sanitize filename
     fileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-    
+
     // Add timestamp and domain for uniqueness
     const timestamp = Date.now();
     const name = path.parse(fileName).name;
     const ext = path.parse(fileName).ext;
-    
+
     return `${domain}_${timestamp}_${name}${ext}`;
   }
 
@@ -291,12 +297,12 @@ export class ImageParserService {
       totalSize: 0,
     };
 
-    result.images.forEach(image => {
+    result.images.forEach((image) => {
       // Count by format
       if (image.format) {
         stats.byFormat[image.format] = (stats.byFormat[image.format] || 0) + 1;
       }
-      
+
       // Sum total size
       if (image.size) {
         stats.totalSize += image.size;

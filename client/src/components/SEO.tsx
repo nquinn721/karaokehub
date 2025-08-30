@@ -107,7 +107,7 @@ export const SEO: React.FC<SEOProps> = ({
 
       {/* Canonical URL */}
       <link rel="canonical" href={seoUrl} />
-      
+
       {/* Language and geographic targeting */}
       <link rel="alternate" hrefLang="en-US" href={seoUrl} />
       <link rel="alternate" hrefLang="en" href={seoUrl} />
@@ -144,7 +144,7 @@ export const seoConfigs = {
           url: 'https://karaoke-hub.com',
           description: 'Find karaoke bars, venues, and singing spots near you',
           publisher: {
-            '@id': 'https://karaoke-hub.com/#organization'
+            '@id': 'https://karaoke-hub.com/#organization',
           },
           potentialAction: {
             '@type': 'SearchAction',
@@ -158,12 +158,13 @@ export const seoConfigs = {
           name: 'KaraokeHub',
           url: 'https://karaoke-hub.com',
           logo: 'https://karaoke-hub.com/images/karaoke-hub-logo.png',
-          description: 'The ultimate platform for finding karaoke venues and browsing karaoke songs',
+          description:
+            'The ultimate platform for finding karaoke venues and browsing karaoke songs',
           sameAs: [
             // Add social media links here when available
-          ]
-        }
-      ]
+          ],
+        },
+      ],
     },
   },
 
@@ -250,34 +251,34 @@ export const seoConfigs = {
           name: 'What is KaraokeHub?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'KaraokeHub is the ultimate platform for karaoke enthusiasts. We help you find karaoke bars and venues near you, browse thousands of karaoke songs, and connect with fellow singers.'
-          }
+            text: 'KaraokeHub is the ultimate platform for karaoke enthusiasts. We help you find karaoke bars and venues near you, browse thousands of karaoke songs, and connect with fellow singers.',
+          },
         },
         {
           '@type': 'Question',
           name: 'How do I find karaoke venues near me?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Simply visit our Shows page and search by your location. We\'ll show you all nearby karaoke venues with live show schedules, venue information, and user reviews.'
-          }
+            text: "Simply visit our Shows page and search by your location. We'll show you all nearby karaoke venues with live show schedules, venue information, and user reviews.",
+          },
         },
         {
           '@type': 'Question',
           name: 'Can I browse karaoke songs before I go?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Yes! Our Music page features a comprehensive library of thousands of karaoke songs. You can search by artist, song title, genre, or browse popular categories.'
-          }
+            text: 'Yes! Our Music page features a comprehensive library of thousands of karaoke songs. You can search by artist, song title, genre, or browse popular categories.',
+          },
         },
         {
           '@type': 'Question',
           name: 'Is KaraokeHub free to use?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'KaraokeHub offers both free and premium features. You can browse venues and songs for free, while premium members get additional features like favorites, friend connections, and advanced search filters.'
-          }
-        }
-      ]
+            text: 'KaraokeHub offers both free and premium features. You can browse venues and songs for free, while premium members get additional features like favorites, friend connections, and advanced search filters.',
+          },
+        },
+      ],
     },
   },
 
