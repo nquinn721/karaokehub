@@ -187,7 +187,7 @@ export const DJScheduleModal: React.FC<DJScheduleModalProps> = observer(
                                 }}
                               >
                                 <Typography variant="subtitle2" fontWeight={600}>
-                                  {show.venue || 'Unknown Venue'}
+                                  {(show.venue && typeof show.venue === 'object' ? show.venue.name : show.venue) || 'Unknown Venue'}
                                 </Typography>
                                 <Chip
                                   label={`${formatTime(show.startTime)} - ${formatTime(show.endTime)}`}
@@ -206,13 +206,13 @@ export const DJScheduleModal: React.FC<DJScheduleModalProps> = observer(
                                   }}
                                 />
                                 <Typography variant="body2" color="text.secondary">
-                                  {show.address}
+                                  {show.venue && typeof show.venue === 'object' ? show.venue.address : null}
                                 </Typography>
                               </Box>
 
-                              {(show.city || show.state) && (
+                              {show.venue && typeof show.venue === 'object' && (show.venue.city || show.venue.state) && (
                                 <Typography variant="caption" color="text.secondary">
-                                  {[show.city, show.state].filter(Boolean).join(', ')}
+                                  {[show.venue.city, show.venue.state].filter(Boolean).join(', ')}
                                 </Typography>
                               )}
 

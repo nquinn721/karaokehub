@@ -44,8 +44,8 @@ export const CombinedScheduleModal: React.FC<CombinedScheduleModalProps> = obser
 
     useEffect(() => {
       if (open && show) {
-        if (show.venue) {
-          loadVenueSchedule(show.venue);
+        if (show.venue && typeof show.venue === 'object') {
+          loadVenueSchedule(show.venue.name);
         }
         if (show.dj?.id) {
           loadDJSchedule(show.dj.id);
@@ -210,7 +210,7 @@ export const CombinedScheduleModal: React.FC<CombinedScheduleModalProps> = obser
                   </Box>
 
                   <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
-                    {show.venue || 'Unknown Venue'}
+                    {(show.venue && typeof show.venue === 'object' ? show.venue.name : show.venue) || 'Unknown Venue'}
                   </Typography>
 
                   {show.dj?.name && (
@@ -235,13 +235,13 @@ export const CombinedScheduleModal: React.FC<CombinedScheduleModalProps> = obser
                       }}
                     />
                     <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4 }}>
-                      {show.address}
-                      {(show.city || show.state) && (
+                      {show.venue && typeof show.venue === 'object' ? show.venue.address : null}
+                      {show.venue && typeof show.venue === 'object' && (show.venue.city || show.venue.state) && (
                         <Box
                           component="span"
                           sx={{ display: 'block', fontSize: '0.85em', opacity: 0.8 }}
                         >
-                          {[show.city, show.state].filter(Boolean).join(', ')}
+                          {[show.venue.city, show.venue.state].filter(Boolean).join(', ')}
                         </Box>
                       )}
                     </Typography>
@@ -354,7 +354,7 @@ export const CombinedScheduleModal: React.FC<CombinedScheduleModalProps> = obser
             <Tab
               icon={<FontAwesomeIcon icon={faBuilding} style={{ fontSize: '16px' }} />}
               iconPosition="start"
-              label={show.venue || 'Unknown Venue'}
+              label={(show.venue && typeof show.venue === 'object' ? show.venue.name : show.venue) || 'Unknown Venue'}
               sx={{
                 gap: 1.5,
                 px: 2,
