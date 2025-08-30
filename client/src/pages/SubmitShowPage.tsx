@@ -719,7 +719,7 @@ const SubmitShowPage: React.FC = observer(() => {
                             }}
                           >
                             <Typography variant="body1" fontWeight={600} gutterBottom>
-                              📍 {(show.venue && typeof show.venue === "object" ? show.venue.name : show.venue) || "Unknown Venue"}
+                              📍 {typeof show.venue === "string" ? show.venue : (show.venue as any)?.name || "Unknown Venue"}
                             </Typography>
                             <Typography variant="body2" color="text.secondary" gutterBottom>
                               ⏰ {show.time}

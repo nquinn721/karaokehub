@@ -127,12 +127,12 @@ export class GeolocationService {
     const proximities: VenueProximity[] = [];
 
     for (const show of shows) {
-      if (show.lat && show.lng) {
+      if (show.venue && typeof show.venue === 'object' && show.venue.lat && show.venue.lng) {
         const distance = this.calculateDistance(
           userLocation.latitude,
           userLocation.longitude,
-          show.lat,
-          show.lng,
+          show.venue.lat,
+          show.venue.lng,
         );
 
         // Tight thresholds for distinguishing adjacent venues

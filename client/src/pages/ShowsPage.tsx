@@ -547,7 +547,7 @@ const ShowsPage: React.FC = observer(() => {
                                             >
                                               {show.venue && typeof show.venue === "object" ? show.venue.address : null}
                                             </Typography>
-                                            {(show.venue && typeof show.venue === "object" ? show.venue.city : null || show.venue && typeof show.venue === "object" ? show.venue.state : null) && (
+                                            {((show.venue && typeof show.venue === "object" && show.venue.city) || (show.venue && typeof show.venue === "object" && show.venue.state)) && (
                                               <Typography
                                                 variant="body2"
                                                 color="text.secondary"
@@ -1050,7 +1050,7 @@ const ShowsPage: React.FC = observer(() => {
                                         >
                                           {show.venue && typeof show.venue === "object" ? show.venue.address : null}
                                         </Typography>
-                                        {(show.venue && typeof show.venue === "object" ? show.venue.city : null || show.venue && typeof show.venue === "object" ? show.venue.state : null) && (
+                                        {((show.venue && typeof show.venue === "object" && show.venue.city) || (show.venue && typeof show.venue === "object" && show.venue.state)) && (
                                           <Typography
                                             variant="body2"
                                             color="text.secondary"

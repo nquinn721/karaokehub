@@ -191,7 +191,7 @@ const PopupContent: React.FC<{
                   >
                     {show.venue && typeof show.venue === "object" ? show.venue.address : null}
                   </Typography>
-                  {(show.venue && typeof show.venue === "object" ? show.venue.city : null || show.venue && typeof show.venue === "object" ? show.venue.state : null) && (
+                  {((show.venue && typeof show.venue === "object" && show.venue.city) || (show.venue && typeof show.venue === "object" && show.venue.state)) && (
                     <Typography
                       variant="body2"
                       color="text.secondary"
@@ -367,10 +367,10 @@ const SimpleMapNew: React.FC = observer(() => {
     console.log(`📍 Rendering ${shows.length} show markers`);
 
     return shows.map((show: any) => {
-      if (!show.venue && typeof show.venue === "object" ? show.venue.lat : null || !show.venue && typeof show.venue === "object" ? show.venue.lng : null) return null;
+      if (!(show.venue && typeof show.venue === "object" && show.venue.lat && show.venue.lng)) return null;
 
-      const lat = typeof show.venue && typeof show.venue === "object" ? show.venue.lat : null === 'string' ? parseFloat(show.venue && typeof show.venue === "object" ? show.venue.lat : null) : show.venue && typeof show.venue === "object" ? show.venue.lat : null;
-      const lng = typeof show.venue && typeof show.venue === "object" ? show.venue.lng : null === 'string' ? parseFloat(show.venue && typeof show.venue === "object" ? show.venue.lng : null) : show.venue && typeof show.venue === "object" ? show.venue.lng : null;
+      const lat = typeof show.venue.lat === 'string' ? parseFloat(show.venue.lat) : show.venue.lat;
+      const lng = typeof show.venue.lng === 'string' ? parseFloat(show.venue.lng) : show.venue.lng;
 
       return (
         <Marker

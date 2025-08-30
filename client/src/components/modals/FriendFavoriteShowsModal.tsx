@@ -203,12 +203,22 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
                               <Box display="flex" alignItems="center" gap={1} mb={1}>
                                 <FontAwesomeIcon icon={faMapMarkerAlt} size="sm" color="#666" />
                                 <Typography variant="body2" color="text.secondary">
-                                  {favorite.show.venue}
+                                  {(() => {
+                                    const venue = favorite.show.venue;
+                                    return venue && typeof venue === "object" ? (venue as any).name : venue;
+                                  })()}
                                 </Typography>
                               </Box>
 
                               <Typography variant="body2" color="text.secondary" gutterBottom>
-                                {favorite.show.address}, {favorite.show.venue && typeof show.venue === "object" ? show.venue.city : null}, {favorite.show.venue && typeof show.venue === "object" ? show.venue.state : null}
+                                {(() => {
+                                  const venue = favorite.show.venue;
+                                  if (venue && typeof venue === "object") {
+                                    const v = venue as any;
+                                    return `${v.address || ''}, ${v.city || ''}, ${v.state || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',');
+                                  }
+                                  return 'Address not available';
+                                })()}
                               </Typography>
 
                               {favorite.show.dj && (

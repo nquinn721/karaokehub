@@ -1685,12 +1685,12 @@ const AdminParserPage: React.FC = observer(() => {
                                               </Typography>
                                             )}
                                             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                              {show.venue && typeof show.venue === "object" ? show.venue.city : null && (
+                                              {(show.venue && typeof show.venue === "object" && show.venue.city) && (
                                                 <Typography variant="body2">
                                                   <strong>City:</strong> {show.venue && typeof show.venue === "object" ? show.venue.city : null}
                                                 </Typography>
                                               )}
-                                              {show.venue && typeof show.venue === "object" ? show.venue.state : null && (
+                                              {(show.venue && typeof show.venue === "object" && show.venue.state) && (
                                                 <Typography variant="body2">
                                                   <strong>State:</strong> {show.venue && typeof show.venue === "object" ? show.venue.state : null}
                                                 </Typography>

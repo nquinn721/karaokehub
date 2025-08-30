@@ -132,7 +132,7 @@ const PopupContent: React.FC<{
             <Typography variant="body2" color="text.secondary">
               {show.venue && typeof show.venue === "object" ? show.venue.address : null}
             </Typography>
-            {(show.venue && typeof show.venue === "object" ? show.venue.city : null || show.venue && typeof show.venue === "object" ? show.venue.state : null) && (
+            {((show.venue && typeof show.venue === "object" && show.venue.city) || (show.venue && typeof show.venue === "object" && show.venue.state)) && (
               <Typography variant="caption" color="text.secondary">
                 {[show.venue && typeof show.venue === "object" ? show.venue.city : null, show.venue && typeof show.venue === "object" ? show.venue.state : null, show.zip].filter(Boolean).join(', ')}
               </Typography>

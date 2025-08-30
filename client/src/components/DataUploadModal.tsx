@@ -81,12 +81,22 @@ const DataUploadModal: React.FC<{
         venues: { success: 0, failed: 0 },
       };
 
+      // Helper function to get the production upload URL
+      const getProductionUploadURL = () => {
+        const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
+        if (isDevelopment) {
+          return 'http://localhost:8000/api/production-upload/data';
+        } else {
+          return `${window.location.origin}/api/production-upload/data`;
+        }
+      };
+
       // Helper function to upload in chunks
       const uploadInChunks = async (data: any[], type: 'vendors' | 'djs' | 'shows' | 'venues') => {
         for (let i = 0; i < data.length; i += CHUNK_SIZE) {
           const chunk = data.slice(i, i + CHUNK_SIZE);
 
-          const response = await fetch('https://karaoke-hub.com/api/production-upload/data', {
+          const response = await fetch(getProductionUploadURL(), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
