@@ -7,6 +7,8 @@ import { CancellationService } from '../services/cancellation.service';
 import { FacebookService } from '../services/facebook.service';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
+import { Venue } from '../venue/venue.entity';
+import { VenueModule } from '../venue/venue.module';
 import { WebSocketModule } from '../websocket/websocket.module';
 import { FacebookCookieValidatorService } from './facebook-cookie-validator.service';
 import { FacebookGroupDiscoveryService } from './facebook-group-discovery.service';
@@ -24,7 +26,8 @@ import { WorkerBasedWebsiteParserService } from './websiteParser/worker-based-we
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Vendor, DJ, Show, ParsedSchedule, UrlToParse]),
+    TypeOrmModule.forFeature([Vendor, DJ, Show, Venue, ParsedSchedule, UrlToParse]),
+    VenueModule,
     WebSocketModule,
     ConfigModule,
   ],

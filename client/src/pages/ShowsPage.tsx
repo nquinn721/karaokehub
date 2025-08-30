@@ -453,7 +453,7 @@ const ShowsPage: React.FC = observer(() => {
                                           whiteSpace: 'nowrap',
                                         }}
                                       >
-                                        {show.venue || show.dj?.vendor?.name || 'Unknown Venue'}
+                                        {showStore.getVenueName(show)}
                                       </Typography>
 
                                       {/* Time badge */}
@@ -972,7 +972,7 @@ const ShowsPage: React.FC = observer(() => {
                                       whiteSpace: 'nowrap',
                                     }}
                                   >
-                                    {show.venue || show.dj?.vendor?.name || 'Unknown Venue'}
+                                    {showStore.getVenueName(show)}
                                   </Typography>
 
                                   {/* Time badge */}

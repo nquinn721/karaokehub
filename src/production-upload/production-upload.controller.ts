@@ -6,11 +6,13 @@ import { DJService } from '../dj/dj.service';
 import { Show } from '../show/show.entity';
 import { ShowService } from '../show/show.service';
 import { VendorService } from '../vendor/vendor.service';
+import { VenueService } from '../venue/venue.service';
 
 export interface ProductionUploadData {
   vendors: any[];
   djs: any[];
   shows: any[];
+  venues: any[];
 }
 
 @Controller('production-upload')
@@ -20,6 +22,7 @@ export class ProductionUploadController {
     private readonly showService: ShowService,
     private readonly vendorService: VendorService,
     private readonly djService: DJService,
+    private readonly venueService: VenueService,
     @InjectRepository(Show)
     private readonly showRepository: Repository<Show>,
   ) {}
@@ -40,12 +43,14 @@ export class ProductionUploadController {
         vendors: data.vendors?.length || 0,
         djs: data.djs?.length || 0,
         shows: data.shows?.length || 0,
+        venues: data.venues?.length || 0,
       });
 
       const results = {
         vendors: { created: 0, updated: 0, errors: 0 },
         djs: { created: 0, updated: 0, errors: 0 },
         shows: { created: 0, updated: 0, errors: 0 },
+        venues: { created: 0, updated: 0, errors: 0 },
       };
 
       // Upload vendors with duplicate detection
@@ -121,6 +126,79 @@ export class ProductionUploadController {
         }
       }
 
+      // Upload venues with duplicate detection
+      for (const venueData of data.venues || []) {
+        try {
+          // Check for existing venue by name and address combination
+          const existingVenue = await this.venueService.findByNameAndLocation(
+            venueData.name,
+            venueData.city,
+            venueData.state,
+            venueData.address,
+          );
+
+          if (existingVenue) {
+            // Update existing venue with any missing information
+            let venueUpdated = false;
+            const updateData: any = {};
+
+            if (!existingVenue.address && venueData.address) {
+              updateData.address = venueData.address;
+              venueUpdated = true;
+            }
+            if (!existingVenue.city && venueData.city) {
+              updateData.city = venueData.city;
+              venueUpdated = true;
+            }
+            if (!existingVenue.state && venueData.state) {
+              updateData.state = venueData.state;
+              venueUpdated = true;
+            }
+            if (!existingVenue.zip && venueData.zip) {
+              updateData.zip = venueData.zip;
+              venueUpdated = true;
+            }
+            if (!existingVenue.phone && venueData.phone) {
+              updateData.phone = venueData.phone;
+              venueUpdated = true;
+            }
+            if (!existingVenue.website && venueData.website) {
+              updateData.website = venueData.website;
+              venueUpdated = true;
+            }
+            if (!existingVenue.description && venueData.description) {
+              updateData.description = venueData.description;
+              venueUpdated = true;
+            }
+            if ((!existingVenue.lat || !existingVenue.lng) && venueData.lat && venueData.lng) {
+              updateData.lat = parseFloat(venueData.lat);
+              updateData.lng = parseFloat(venueData.lng);
+              venueUpdated = true;
+            }
+
+            if (venueUpdated) {
+              await this.venueService.update(existingVenue.id, updateData);
+              results.venues.updated++;
+            } else {
+              // Venue exists and no updates needed
+              results.venues.updated++;
+            }
+          } else {
+            // Create new venue - convert lat/lng strings to numbers
+            const createData = {
+              ...venueData,
+              lat: venueData.lat ? parseFloat(venueData.lat) : null,
+              lng: venueData.lng ? parseFloat(venueData.lng) : null,
+            };
+            await this.venueService.create(createData);
+            results.venues.created++;
+          }
+        } catch (error) {
+          console.error('Error uploading venue:', error);
+          results.venues.errors++;
+        }
+      }
+
       // Upload shows with duplicate detection
       for (const showData of data.shows || []) {
         try {
@@ -134,14 +212,43 @@ export class ProductionUploadController {
             dj = vendorDJs.find((d) => d.name === showData.djName);
           }
 
-          // Prepare show data with resolved IDs
+          // Find venue by name and location
+          let venue = null;
+          if (showData.venue) {
+            // First try to find existing venue by name and location
+            venue = await this.venueService.findByNameAndLocation(
+              showData.venue,
+              showData.city,
+              showData.state,
+              showData.address,
+            );
+
+            // If not found, fall back to findOrCreate for backward compatibility
+            if (!venue && (showData.venue || showData.address)) {
+              venue = await this.venueService.findOrCreate({
+                name: showData.venue || 'Unknown Venue',
+                address: showData.address || null,
+                city: showData.city || null,
+                state: showData.state || null,
+                zip: showData.zip || null,
+                phone: showData.venuePhone || null,
+                website: showData.venueWebsite || null,
+                lat: showData.lat ? parseFloat(showData.lat) : null,
+                lng: showData.lng ? parseFloat(showData.lng) : null,
+              });
+            }
+          }
+
+          // Prepare show data with resolved IDs (excluding venue fields now stored in venue relationship)
           const resolvedShowData = {
-            ...showData,
-            djId: dj?.id || null,
+            day: showData.day,
             time: showData.startTime, // Map startTime to time field for compatibility
-            // Keep original startTime and endTime fields as well
             startTime: showData.startTime,
             endTime: showData.endTime,
+            description: showData.description,
+            source: showData.source,
+            djId: dj?.id || null,
+            venueId: venue?.id || null,
           };
 
           // Check for existing show with same day, time, venue, and DJ
@@ -149,10 +256,10 @@ export class ProductionUploadController {
             where: {
               day: resolvedShowData.day,
               time: resolvedShowData.time,
-              venue: resolvedShowData.venue,
+              venueId: resolvedShowData.venueId,
               djId: resolvedShowData.djId,
             },
-            relations: ['dj', 'dj.vendor'], // Load DJ and vendor relationships to check vendor match
+            relations: ['dj', 'dj.vendor', 'venue'], // Load DJ, vendor, and venue relationships
           });
 
           if (existingShow) {
@@ -162,46 +269,56 @@ export class ProductionUploadController {
             if (isSameVendor) {
               // Update existing show with any missing information
               let showUpdated = false;
+              let venueUpdated = false;
 
-              if (!existingShow.address && resolvedShowData.address) {
-                existingShow.address = resolvedShowData.address;
-                showUpdated = true;
+              // Update venue information if missing
+              if (existingShow.venue) {
+                if (!existingShow.venue.address && showData.address) {
+                  existingShow.venue.address = showData.address;
+                  venueUpdated = true;
+                }
+                if (!existingShow.venue.phone && showData.venuePhone) {
+                  existingShow.venue.phone = showData.venuePhone;
+                  venueUpdated = true;
+                }
+                if (!existingShow.venue.website && showData.venueWebsite) {
+                  existingShow.venue.website = showData.venueWebsite;
+                  venueUpdated = true;
+                }
+                if (!existingShow.venue.city && showData.city) {
+                  existingShow.venue.city = showData.city;
+                  venueUpdated = true;
+                }
+                if (!existingShow.venue.state && showData.state) {
+                  existingShow.venue.state = showData.state;
+                  venueUpdated = true;
+                }
+                if (!existingShow.venue.zip && showData.zip) {
+                  existingShow.venue.zip = showData.zip;
+                  venueUpdated = true;
+                }
+                if (
+                  (!existingShow.venue.lat || !existingShow.venue.lng) &&
+                  showData.lat &&
+                  showData.lng
+                ) {
+                  existingShow.venue.lat = showData.lat;
+                  existingShow.venue.lng = showData.lng;
+                  venueUpdated = true;
+                }
+
+                if (venueUpdated) {
+                  await this.venueService.update(existingShow.venue.id, existingShow.venue);
+                }
               }
-              if (!existingShow.venuePhone && resolvedShowData.venuePhone) {
-                existingShow.venuePhone = resolvedShowData.venuePhone;
-                showUpdated = true;
-              }
-              if (!existingShow.venueWebsite && resolvedShowData.venueWebsite) {
-                existingShow.venueWebsite = resolvedShowData.venueWebsite;
-                showUpdated = true;
-              }
+
+              // Update show information if missing
               if (!existingShow.description && resolvedShowData.description) {
                 existingShow.description = resolvedShowData.description;
                 showUpdated = true;
               }
               if (!existingShow.source && resolvedShowData.source) {
                 existingShow.source = resolvedShowData.source;
-                showUpdated = true;
-              }
-              if (!existingShow.city && resolvedShowData.city) {
-                existingShow.city = resolvedShowData.city;
-                showUpdated = true;
-              }
-              if (!existingShow.state && resolvedShowData.state) {
-                existingShow.state = resolvedShowData.state;
-                showUpdated = true;
-              }
-              if (!existingShow.zip && resolvedShowData.zip) {
-                existingShow.zip = resolvedShowData.zip;
-                showUpdated = true;
-              }
-              if (
-                (!existingShow.lat || !existingShow.lng) &&
-                resolvedShowData.lat &&
-                resolvedShowData.lng
-              ) {
-                existingShow.lat = resolvedShowData.lat;
-                existingShow.lng = resolvedShowData.lng;
                 showUpdated = true;
               }
 
@@ -234,7 +351,7 @@ export class ProductionUploadController {
         success: true,
         message: 'Data uploaded successfully',
         results,
-        summary: `Created: ${results.vendors.created} vendors, ${results.djs.created} DJs, ${results.shows.created} shows. Updated: ${results.vendors.updated} vendors, ${results.djs.updated} DJs, ${results.shows.updated} shows. Errors: ${results.vendors.errors + results.djs.errors + results.shows.errors} total.`,
+        summary: `Created: ${results.vendors.created} vendors, ${results.djs.created} DJs, ${results.venues.created} venues, ${results.shows.created} shows. Updated: ${results.vendors.updated} vendors, ${results.djs.updated} DJs, ${results.venues.updated} venues, ${results.shows.updated} shows. Errors: ${results.vendors.errors + results.djs.errors + results.venues.errors + results.shows.errors} total.`,
       };
     } catch (error) {
       console.error('Production upload error:', error);

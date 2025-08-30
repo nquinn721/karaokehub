@@ -33,6 +33,7 @@ import {
   IconButton,
   InputAdornment,
   InputLabel,
+  Link,
   List,
   ListItem,
   ListItemText,
@@ -59,6 +60,7 @@ import type {
   AdminShow,
   AdminShowReview,
   AdminUser,
+  AdminVendor,
   AdminVenue,
 } from '@stores/AdminStore';
 import { adminStore, authStore, uiStore } from '@stores/index';
@@ -66,6 +68,62 @@ import { observer } from 'mobx-react-lite';
 import React, { useCallback, useEffect, useState } from 'react';
 import CustomModal from './CustomModal';
 import { UserFeatureOverrideModal } from './UserFeatureOverrideModal';
+
+// Helper function to get venue name from AdminShow
+const getAdminShowVenueName = (show: AdminShow): string => {
+  if (show.venue && typeof show.venue === 'object') {
+    return show.venue.name || 'Unknown Venue';
+  }
+  if (show.venue && typeof show.venue === 'string') {
+    return show.venue;
+  }
+  return 'N/A';
+};
+
+// Helper function to get venue address from AdminShow
+const getAdminShowVenueAddress = (show: AdminShow): string | null => {
+  if (show.venue && typeof show.venue === 'object') {
+    return show.venue.address || null;
+  }
+  return null;
+};
+
+// Helper function to get venue location (city, state, zip) from AdminShow
+const getAdminShowVenueLocation = (show: AdminShow): string | null => {
+  if (show.venue && typeof show.venue === 'object') {
+    const parts = [show.venue.city, show.venue.state, show.venue.zip].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : null;
+  }
+  return null;
+};
+
+// Helper function to get venue coordinates from AdminShow
+const getAdminShowVenueCoordinates = (show: AdminShow): { lat: number; lng: number } | null => {
+  if (show.venue && typeof show.venue === 'object' && show.venue.lat && show.venue.lng) {
+    const lat = parseFloat(show.venue.lat);
+    const lng = parseFloat(show.venue.lng);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { lat, lng };
+    }
+  }
+  return null;
+};
+
+// Helper function to get venue phone from AdminShow
+const getAdminShowVenuePhone = (show: AdminShow): string | null => {
+  if (show.venue && typeof show.venue === 'object') {
+    return show.venue.phone || null;
+  }
+  return null;
+};
+
+// Helper function to get venue website from AdminShow
+const getAdminShowVenueWebsite = (show: AdminShow): string | null => {
+  if (show.venue && typeof show.venue === 'object') {
+    return show.venue.website || null;
+  }
+  return null;
+};
 
 // Separate non-observer component for search input to prevent focus loss
 // Non-observer component for stable search input
@@ -176,9 +234,9 @@ const AdminDataTables: React.FC = observer(() => {
 
   // Edit state
   const [editingItem, setEditingItem] = useState<any>(null);
-  const [editType, setEditType] = useState<'venue' | 'show' | 'dj' | 'feedback' | 'reviews' | null>(
-    null,
-  );
+  const [editType, setEditType] = useState<
+    'venue' | 'show' | 'dj' | 'vendor' | 'feedback' | 'reviews' | null
+  >(null);
 
   // Feedback view state
   const [viewingFeedback, setViewingFeedback] = useState<AdminFeedback | null>(null);
@@ -253,7 +311,7 @@ const AdminDataTables: React.FC = observer(() => {
       return;
     }
 
-    const tables = ['users', 'venues', 'shows', 'djs', 'feedback', 'reviews'];
+    const tables = ['users', 'venues', 'shows', 'djs', 'vendors', 'feedback', 'reviews'];
     const currentTable = tables[tabValue];
     if (currentTable) {
       fetchData(currentTable, pages[currentTable] || 0, searchTerms[currentTable] || undefined);
@@ -283,6 +341,9 @@ const AdminDataTables: React.FC = observer(() => {
       case 'djs':
         await adminStore.fetchDjs(page + 1, rowsPerPage, search);
         break;
+      case 'vendors':
+        await adminStore.fetchVendors(page + 1, rowsPerPage, search);
+        break;
       case 'feedback':
         await adminStore.fetchFeedback(page + 1, rowsPerPage, search);
         break;
@@ -293,12 +354,12 @@ const AdminDataTables: React.FC = observer(() => {
   };
 
   // Action handlers
-  const handleEdit = (item: any, type: 'venue' | 'show' | 'dj' | 'feedback') => {
+  const handleEdit = (item: any, type: 'venue' | 'show' | 'dj' | 'vendor' | 'feedback') => {
     setEditingItem(item);
     setEditType(type);
   };
 
-  const handleDelete = async (item: any, type: 'venue' | 'show' | 'dj' | 'feedback') => {
+  const handleDelete = async (item: any, type: 'venue' | 'show' | 'dj' | 'vendor' | 'feedback') => {
     try {
       // Show loading notification
       uiStore.addNotification(`Deleting ${type}...`, 'info');
@@ -313,6 +374,9 @@ const AdminDataTables: React.FC = observer(() => {
           break;
         case 'dj':
           await adminStore.deleteDj(item.id);
+          break;
+        case 'vendor':
+          await adminStore.deleteVendor(item.id);
           break;
         case 'feedback':
           await adminStore.deleteFeedback(item.id);
@@ -329,7 +393,7 @@ const AdminDataTables: React.FC = observer(() => {
       await adminStore.fetchStatistics();
 
       // Refresh the current tab's data
-      const tables = ['users', 'venues', 'shows', 'djs', 'feedback'];
+      const tables = ['users', 'venues', 'shows', 'djs', 'vendors', 'feedback'];
       const currentTable = tables[tabValue];
       if (currentTable) {
         fetchData(currentTable, pages[currentTable] || 0, searchTerms[currentTable] || undefined);
@@ -497,7 +561,7 @@ const AdminDataTables: React.FC = observer(() => {
     }
 
     // Initial load when tab changes (without search terms initially)
-    const tables = ['users', 'venues', 'shows', 'djs', 'feedback', 'reviews'];
+    const tables = ['users', 'venues', 'shows', 'djs', 'vendors', 'feedback', 'reviews'];
     const currentTable = tables[tabValue];
     if (currentTable && !searchTerms[currentTable]) {
       fetchData(currentTable, pages[currentTable] || 0);
@@ -623,7 +687,7 @@ const AdminDataTables: React.FC = observer(() => {
             />
             <Tab
               icon={<FontAwesomeIcon icon={faMapMarkerAlt} />}
-              label={`Venues${adminStore.statistics?.totalVendors ? ` (${adminStore.statistics.totalVendors})` : ''}`}
+              label={`Venues${adminStore.statistics?.totalVenues ? ` (${adminStore.statistics.totalVenues})` : ''}`}
             />
             <Tab
               icon={<FontAwesomeIcon icon={faMusic} />}
@@ -632,6 +696,10 @@ const AdminDataTables: React.FC = observer(() => {
             <Tab
               icon={<FontAwesomeIcon icon={faMicrophone} />}
               label={`DJs${adminStore.statistics?.totalDJs ? ` (${adminStore.statistics.totalDJs})` : ''}`}
+            />
+            <Tab
+              icon={<FontAwesomeIcon icon={faUsers} />}
+              label={`Vendors${adminStore.statistics?.totalVendors ? ` (${adminStore.statistics.totalVendors})` : ''}`}
             />
             <Tab
               icon={<FontAwesomeIcon icon={faComment} />}
@@ -937,7 +1005,7 @@ const AdminDataTables: React.FC = observer(() => {
                     <TableCell>{show.dj?.vendor?.name || 'N/A'}</TableCell>
                     <TableCell>
                       <Box>
-                        <Typography variant="subtitle2">{show.venue || 'N/A'}</Typography>
+                        <Typography variant="subtitle2">{getAdminShowVenueName(show)}</Typography>
                         {show.description && (
                           <Typography
                             variant="caption"
@@ -953,31 +1021,28 @@ const AdminDataTables: React.FC = observer(() => {
                     </TableCell>
                     <TableCell>
                       <Box>
-                        {show.address && (
-                          <Typography variant="body2" title={show.address}>
-                            {show.address.length > 30
-                              ? `${show.address.substring(0, 27)}...`
-                              : show.address}
+                        {getAdminShowVenueAddress(show) && (
+                          <Typography variant="body2" title={getAdminShowVenueAddress(show)!}>
+                            {getAdminShowVenueAddress(show)!.length > 30
+                              ? `${getAdminShowVenueAddress(show)!.substring(0, 27)}...`
+                              : getAdminShowVenueAddress(show)}
                           </Typography>
                         )}
-                        {(show.city || show.state) && (
+                        {getAdminShowVenueLocation(show) && (
                           <Typography variant="caption" color="text.secondary">
-                            {[show.city, show.state].filter(Boolean).join(', ')}
-                            {show.zip && ` ${show.zip}`}
+                            {getAdminShowVenueLocation(show)}
                           </Typography>
                         )}
-                        {show.lat &&
-                          show.lng &&
-                          !isNaN(Number(show.lat)) &&
-                          !isNaN(Number(show.lng)) && (
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ display: 'block' }}
-                            >
-                              📍 {Number(show.lat).toFixed(4)}, {Number(show.lng).toFixed(4)}
-                            </Typography>
-                          )}
+                        {getAdminShowVenueCoordinates(show) && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: 'block' }}
+                          >
+                            📍 {getAdminShowVenueCoordinates(show)!.lat.toFixed(4)},{' '}
+                            {getAdminShowVenueCoordinates(show)!.lng.toFixed(4)}
+                          </Typography>
+                        )}
                       </Box>
                     </TableCell>
                     <TableCell>
@@ -1000,23 +1065,23 @@ const AdminDataTables: React.FC = observer(() => {
                     <TableCell>{show.dj?.name || 'N/A'}</TableCell>
                     <TableCell>
                       <Box>
-                        {show.venuePhone && (
+                        {getAdminShowVenuePhone(show) && (
                           <Typography variant="caption" sx={{ display: 'block' }}>
-                            📞 {show.venuePhone}
+                            📞 {getAdminShowVenuePhone(show)}
                           </Typography>
                         )}
-                        {show.venueWebsite && (
+                        {getAdminShowVenueWebsite(show) && (
                           <Button
                             size="small"
                             variant="outlined"
-                            href={show.venueWebsite}
+                            href={getAdminShowVenueWebsite(show)!}
                             target="_blank"
                             sx={{ textTransform: 'none', fontSize: '0.7rem', mt: 0.5 }}
                           >
                             Website
                           </Button>
                         )}
-                        {!show.venuePhone && !show.venueWebsite && 'N/A'}
+                        {!getAdminShowVenuePhone(show) && !getAdminShowVenueWebsite(show) && 'N/A'}
                       </Box>
                     </TableCell>
                     <TableCell>
@@ -1028,13 +1093,21 @@ const AdminDataTables: React.FC = observer(() => {
                     </TableCell>
                     <TableCell>
                       {show.readableSource || show.source ? (
-                        <Chip
-                          label={show.readableSource || show.source}
-                          size="small"
-                          color="info"
-                          variant="outlined"
-                          title={show.source} // Show full URL on hover
-                        />
+                        <Link
+                          href={show.source}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ textDecoration: 'none' }}
+                        >
+                          <Chip
+                            label="Source"
+                            size="small"
+                            color="info"
+                            variant="outlined"
+                            title={show.source} // Show full URL on hover
+                            component="span"
+                          />
+                        </Link>
                       ) : (
                         'Manual'
                       )}
@@ -1185,6 +1258,131 @@ const AdminDataTables: React.FC = observer(() => {
 
       <TabPanel value={tabValue} index={4}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6">Vendor Management</Typography>
+          <SearchField table="vendors" placeholder="Search Vendors..." />
+        </Box>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>DJ Count</TableCell>
+                <TableCell>Website</TableCell>
+                <TableCell>Social Media</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Created</TableCell>
+                <TableCell align="center">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {adminStore.vendors?.items.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center">
+                    <Typography color="text.secondary">No vendors found</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                adminStore.vendors?.items.map((vendor: AdminVendor) => (
+                  <TableRow key={vendor.id}>
+                    <TableCell>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {vendor.name}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={vendor.djCount || 0}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {vendor.website ? (
+                        <Link
+                          href={vendor.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ textDecoration: 'none' }}
+                        >
+                          <Chip label="Website" size="small" clickable />
+                        </Link>
+                      ) : (
+                        <Typography color="text.secondary">-</Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        {vendor.instagram && (
+                          <Link
+                            href={vendor.instagram}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            sx={{ textDecoration: 'none' }}
+                          >
+                            <Chip label="Instagram" size="small" clickable />
+                          </Link>
+                        )}
+                        {vendor.facebook && (
+                          <Link
+                            href={vendor.facebook}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            sx={{ textDecoration: 'none' }}
+                          >
+                            <Chip label="Facebook" size="small" clickable />
+                          </Link>
+                        )}
+                        {!vendor.instagram && !vendor.facebook && (
+                          <Typography color="text.secondary">-</Typography>
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={vendor.isActive ? 'Active' : 'Inactive'}
+                        color={vendor.isActive ? 'success' : 'error'}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {vendor.createdAt.toLocaleDateString()}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                        <Tooltip title="Edit vendor">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEdit(vendor, 'vendor')}
+                            color="primary"
+                          >
+                            <FontAwesomeIcon icon={faEdit} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete vendor">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDelete(vendor, 'vendor')}
+                            color="error"
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <PaginationControls table="vendors" data={adminStore.vendors} />
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={5}>
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Feedback Management</Typography>
           <IconButton onClick={() => adminStore.fetchFeedback()}>
             <FontAwesomeIcon icon={faRefresh} />
@@ -1289,7 +1487,7 @@ const AdminDataTables: React.FC = observer(() => {
         <PaginationControls table="feedback" data={adminStore.feedback} />
       </TabPanel>
 
-      <TabPanel value={tabValue} index={5}>
+      <TabPanel value={tabValue} index={6}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Show Reviews Management</Typography>
           <IconButton onClick={() => adminStore.fetchShowReviews()}>
@@ -1317,10 +1515,10 @@ const AdminDataTables: React.FC = observer(() => {
                   <TableCell>
                     <Box>
                       <Typography variant="body2" fontWeight="bold">
-                        {review.show?.venue || 'Unknown Venue'}
+                        {review.show ? getAdminShowVenueName(review.show) : 'Unknown Venue'}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {review.show?.address}
+                        {review.show ? getAdminShowVenueAddress(review.show) : null}
                       </Typography>
                       {review.show?.dj?.name && (
                         <Typography variant="caption" display="block" color="text.secondary">
@@ -1503,6 +1701,48 @@ const AdminDataTables: React.FC = observer(() => {
             </Box>
           )}
 
+          {editingItem && editType === 'vendor' && (
+            <Box sx={{ pt: 1 }}>
+              <TextField
+                label="Name"
+                fullWidth
+                margin="normal"
+                value={editingItem.name || ''}
+                onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+              />
+              <TextField
+                label="Website"
+                fullWidth
+                margin="normal"
+                value={editingItem.website || ''}
+                onChange={(e) => setEditingItem({ ...editingItem, website: e.target.value })}
+              />
+              <TextField
+                label="Instagram"
+                fullWidth
+                margin="normal"
+                value={editingItem.instagram || ''}
+                onChange={(e) => setEditingItem({ ...editingItem, instagram: e.target.value })}
+              />
+              <TextField
+                label="Facebook"
+                fullWidth
+                margin="normal"
+                value={editingItem.facebook || ''}
+                onChange={(e) => setEditingItem({ ...editingItem, facebook: e.target.value })}
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={editingItem.isActive || false}
+                    onChange={(e) => setEditingItem({ ...editingItem, isActive: e.target.checked })}
+                  />
+                }
+                label="Active"
+              />
+            </Box>
+          )}
+
           {editingItem && editType === 'feedback' && (
             <Box sx={{ pt: 1 }}>
               <FormControl fullWidth margin="normal">
@@ -1556,6 +1796,15 @@ const AdminDataTables: React.FC = observer(() => {
                       name: editingItem.name,
                     });
                     break;
+                  case 'vendor':
+                    await adminStore.updateVendor(editingItem.id, {
+                      name: editingItem.name,
+                      website: editingItem.website,
+                      instagram: editingItem.instagram,
+                      facebook: editingItem.facebook,
+                      isActive: editingItem.isActive,
+                    });
+                    break;
                   case 'feedback':
                     await adminStore.updateFeedback(editingItem.id, {
                       status: editingItem.status,
@@ -1566,7 +1815,7 @@ const AdminDataTables: React.FC = observer(() => {
                 }
 
                 // Refresh data
-                const tables = ['users', 'venues', 'shows', 'djs', 'feedback'];
+                const tables = ['users', 'venues', 'shows', 'djs', 'vendors', 'feedback'];
                 const currentTable = tables[tabValue];
                 if (currentTable) {
                   fetchData(
@@ -1795,10 +2044,16 @@ const AdminDataTables: React.FC = observer(() => {
               </Typography>
               <Box sx={{ mb: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
                 <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>Venue:</strong> {reviewingShowReview.show?.venue || 'Not specified'}
+                  <strong>Venue:</strong>{' '}
+                  {reviewingShowReview.show
+                    ? getAdminShowVenueName(reviewingShowReview.show)
+                    : 'Not specified'}
                 </Typography>
                 <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>Address:</strong> {reviewingShowReview.show?.address || 'Not specified'}
+                  <strong>Address:</strong>{' '}
+                  {reviewingShowReview.show
+                    ? getAdminShowVenueAddress(reviewingShowReview.show) || 'Not specified'
+                    : 'Not specified'}
                 </Typography>
                 <Typography variant="body2" sx={{ mb: 0.5 }}>
                   <strong>DJ/Host:</strong> {reviewingShowReview.show?.dj?.name || 'Not specified'}

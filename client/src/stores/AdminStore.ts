@@ -4,17 +4,18 @@ import { apiStore } from './ApiStore';
 export interface AdminStatistics {
   totalUsers: number;
   activeUsers: number;
-  totalVendors: number;
+  totalVenues: number;
   totalShows: number;
   activeShows: number;
   totalDJs: number;
+  totalVendors: number;
   totalFeedback: number;
   totalFavorites: number;
   pendingReviews: number;
   pendingShowReviews: number;
   growth: {
     newUsersLast30Days: number;
-    newVendorsLast30Days: number;
+    newVenuesLast30Days: number;
     newShowsLast30Days: number;
   };
 }
@@ -108,24 +109,28 @@ export interface AdminVenue {
 export interface AdminShow {
   id: string;
   djId?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  venue?: string;
+  venueId?: string;
   time?: string;
   day?: string;
   startTime?: string;
   endTime?: string;
   description?: string;
-  venuePhone?: string;
-  venueWebsite?: string;
   source?: string;
   readableSource?: string;
-  lat?: number;
-  lng?: number;
   isActive: boolean;
   dj?: AdminDJ;
+  venue?: {
+    id: string;
+    name: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    lat?: string;
+    lng?: string;
+    phone?: string;
+    website?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -145,6 +150,18 @@ export interface AdminDJ {
     platform?: string;
     isActive: boolean;
   }[];
+}
+
+export interface AdminVendor {
+  id: string;
+  name: string;
+  website?: string;
+  instagram?: string;
+  facebook?: string;
+  isActive: boolean;
+  djCount?: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AdminFavorite {
@@ -233,6 +250,7 @@ export class AdminStore {
   venues: PaginatedResponse<AdminVenue> | null = null;
   shows: PaginatedResponse<AdminShow> | null = null;
   djs: PaginatedResponse<AdminDJ> | null = null;
+  vendors: PaginatedResponse<AdminVendor> | null = null;
   favorites: PaginatedResponse<AdminFavorite> | null = null;
   songs: PaginatedResponse<AdminSong> | null = null;
   feedback: PaginatedResponse<AdminFeedback> | null = null;
@@ -341,10 +359,10 @@ export class AdminStore {
 
   get venueGrowthPercentage(): string {
     if (!this.statistics) return '+0%';
-    const { totalVendors, growth } = this.statistics;
-    if (totalVendors === 0) return '+0%';
+    const { totalVenues, growth } = this.statistics;
+    if (totalVenues === 0) return '+0%';
 
-    const percentage = Math.round((growth.newVendorsLast30Days / totalVendors) * 100);
+    const percentage = Math.round((growth.newVenuesLast30Days / totalVenues) * 100);
     return `+${percentage}%`;
   }
 
@@ -536,6 +554,44 @@ export class AdminStore {
         return;
       }
       const errorMessage = error.response?.data?.message || 'Failed to fetch DJs';
+      this.setTableError(errorMessage);
+    } finally {
+      this.setTableLoading(false);
+    }
+  }
+
+  async fetchVendors(page = 1, limit = 10, search?: string): Promise<void> {
+    try {
+      this.setTableLoading(true);
+      this.setTableError(null);
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+
+      if (search) {
+        params.append('search', search);
+      }
+
+      const response = await apiStore.get(`/admin/vendors?${params.toString()}`);
+
+      runInAction(() => {
+        this.vendors = {
+          ...response,
+          items: response.items.map((vendor: any) => ({
+            ...vendor,
+            createdAt: new Date(vendor.createdAt),
+            updatedAt: new Date(vendor.updatedAt),
+          })),
+        };
+      });
+    } catch (error: any) {
+      // Don't show error for authentication issues since they're handled by interceptor
+      if (error.response?.status === 401) {
+        return;
+      }
+      const errorMessage = error.response?.data?.message || 'Failed to fetch vendors';
       this.setTableError(errorMessage);
     } finally {
       this.setTableLoading(false);
@@ -793,6 +849,14 @@ export class AdminStore {
     }
   }
 
+  async deleteVendor(id: string): Promise<void> {
+    try {
+      await apiStore.delete(`/admin/vendors/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to delete vendor');
+    }
+  }
+
   // Update methods
   async updateVenue(id: string, data: any): Promise<void> {
     try {
@@ -815,6 +879,14 @@ export class AdminStore {
       await apiStore.put(`/admin/djs/${id}`, data);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to update DJ');
+    }
+  }
+
+  async updateVendor(id: string, data: any): Promise<void> {
+    try {
+      await apiStore.put(`/admin/vendors/${id}`, data);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to update vendor');
     }
   }
 

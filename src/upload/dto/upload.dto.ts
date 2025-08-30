@@ -1,10 +1,5 @@
-import { 
-  IsString, 
-  IsOptional, 
-  IsArray, 
-  ValidateNested
-} from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 export class VendorUploadDto {
   @IsString()
@@ -29,6 +24,47 @@ export class DjUploadDto {
 
   @IsString()
   vendorName: string;
+}
+
+export class VenueUploadDto {
+  @IsString()
+  name: string;
+
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @IsString()
+  @IsOptional()
+  zip?: string;
+
+  @IsString()
+  @IsOptional()
+  lat?: string;
+
+  @IsString()
+  @IsOptional()
+  lng?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @IsString()
+  @IsOptional()
+  website?: string;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
 }
 
 export class ShowUploadDto {
@@ -125,6 +161,11 @@ export class UploadDataDto {
   @ValidateNested({ each: true })
   @Type(() => ShowUploadDto)
   shows: ShowUploadDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => VenueUploadDto)
+  venues: VenueUploadDto[];
 
   @ValidateNested()
   @Type(() => UploadMetadataDto)

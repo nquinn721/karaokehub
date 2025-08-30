@@ -13,6 +13,7 @@ import { Show } from './src/show/show.entity';
 import { Subscription } from './src/subscription/subscription.entity';
 import { UserFeatureOverride } from './src/user-feature-override/user-feature-override.entity';
 import { Vendor } from './src/vendor/vendor.entity';
+import { Venue } from './src/venue/venue.entity';
 
 export default new DataSource({
   type: 'mysql',
@@ -24,6 +25,7 @@ export default new DataSource({
   entities: [
     User,
     Vendor,
+    Venue,
     DJ,
     Show,
     FavoriteShow,

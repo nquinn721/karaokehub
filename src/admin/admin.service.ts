@@ -9,6 +9,7 @@ import { ParsedSchedule, ParseStatus } from '../parser/parsed-schedule.entity';
 import { ReviewStatus, ShowReview } from '../show-review/show-review.entity';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
+import { Venue } from '../venue/venue.entity';
 
 @Injectable()
 export class AdminService {
@@ -17,6 +18,8 @@ export class AdminService {
     private userRepository: Repository<User>,
     @InjectRepository(Vendor)
     private vendorRepository: Repository<Vendor>,
+    @InjectRepository(Venue)
+    private venueRepository: Repository<Venue>,
     @InjectRepository(Show)
     private showRepository: Repository<Show>,
     @InjectRepository(DJ)
@@ -35,10 +38,11 @@ export class AdminService {
     const [
       totalUsers,
       activeUsers,
-      totalVendors,
+      totalVenues,
       totalShows,
       activeShows,
       totalDJs,
+      totalVendors,
       totalFavorites,
       pendingParserReviews,
       pendingShowReviews,
@@ -46,10 +50,11 @@ export class AdminService {
     ] = await Promise.all([
       this.userRepository.count(),
       this.userRepository.count({ where: { isActive: true } }),
-      this.vendorRepository.count(),
+      this.venueRepository.count(),
       this.showRepository.count(),
       this.showRepository.count({ where: { isActive: true } }),
       this.djRepository.count(),
+      this.vendorRepository.count(),
       this.favoriteShowRepository.count(),
       this.parsedScheduleRepository.count({ where: { status: ParseStatus.PENDING_REVIEW } }),
       this.showReviewRepository.count({ where: { status: ReviewStatus.PENDING } }),
@@ -60,14 +65,14 @@ export class AdminService {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const [newUsersLast30Days, newVendorsLast30Days, newShowsLast30Days] = await Promise.all([
+    const [newUsersLast30Days, newVenuesLast30Days, newShowsLast30Days] = await Promise.all([
       this.userRepository
         .createQueryBuilder('user')
         .where('user.createdAt >= :thirtyDaysAgo', { thirtyDaysAgo })
         .getCount(),
-      this.vendorRepository
-        .createQueryBuilder('vendor')
-        .where('vendor.createdAt >= :thirtyDaysAgo', { thirtyDaysAgo })
+      this.venueRepository
+        .createQueryBuilder('venue')
+        .where('venue.createdAt >= :thirtyDaysAgo', { thirtyDaysAgo })
         .getCount(),
       this.showRepository
         .createQueryBuilder('show')
@@ -78,17 +83,18 @@ export class AdminService {
     return {
       totalUsers,
       activeUsers,
-      totalVendors,
+      totalVenues,
       totalShows,
       activeShows,
       totalDJs,
+      totalVendors,
       totalFavorites,
       pendingReviews: pendingParserReviews + pendingShowReviews,
       pendingShowReviews,
       totalFeedback,
       growth: {
         newUsersLast30Days,
-        newVendorsLast30Days,
+        newVenuesLast30Days,
         newShowsLast30Days,
       },
     };
@@ -274,11 +280,10 @@ export class AdminService {
   }
 
   async getVenues(page = 1, limit = 10, search?: string) {
-    const query = this.vendorRepository
-      .createQueryBuilder('vendor')
-      .leftJoin('vendor.djs', 'djs', 'djs.isActive = :djActive', { djActive: true })
+    const query = this.venueRepository
+      .createQueryBuilder('venue')
       .leftJoin(
-        'djs.shows',
+        'venue.shows',
         'shows',
         'shows.isActive = :showActive AND shows.isValid = :showValid',
         {
@@ -287,18 +292,17 @@ export class AdminService {
         },
       )
       .addSelect('COUNT(DISTINCT shows.id)', 'showCount')
-      .addSelect('COUNT(DISTINCT djs.id)', 'djCount')
-      .where('vendor.isActive = :vendorActive', { vendorActive: true })
-      .groupBy('vendor.id');
+      .where('venue.isActive = :venueActive', { venueActive: true })
+      .groupBy('venue.id');
 
     if (search) {
-      query.andWhere('vendor.name LIKE :search', {
+      query.andWhere('venue.name LIKE :search OR venue.address LIKE :search', {
         search: `%${search}%`,
       });
     }
 
     const result = await query
-      .orderBy('vendor.createdAt', 'DESC')
+      .orderBy('venue.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit)
       .getRawAndEntities();
@@ -307,13 +311,12 @@ export class AdminService {
     const itemsWithCounts = result.entities.map((venue, index) => ({
       ...venue,
       showCount: parseInt(result.raw[index].showCount) || 0,
-      djCount: parseInt(result.raw[index].djCount) || 0,
     }));
 
     // Get total count separately for pagination
-    const totalQuery = this.vendorRepository
-      .createQueryBuilder('vendor')
-      .where('vendor.isActive = :vendorActive', { vendorActive: true });
+    const totalQuery = this.venueRepository
+      .createQueryBuilder('venue')
+      .where('venue.isActive = :venueActive', { venueActive: true });
     if (search) {
       totalQuery.andWhere('vendor.name LIKE :search', {
         search: `%${search}%`,
@@ -347,6 +350,85 @@ export class AdminService {
 
     const [items, total] = await query
       .orderBy('dj.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getVendors(page = 1, limit = 10, search?: string) {
+    const query = this.vendorRepository
+      .createQueryBuilder('vendor')
+      .leftJoin('vendor.djs', 'djs', 'djs.isActive = :djActive', {
+        djActive: true,
+      })
+      .addSelect('COUNT(DISTINCT djs.id)', 'djCount')
+      .where('vendor.isActive = :vendorActive', { vendorActive: true })
+      .groupBy('vendor.id');
+
+    if (search) {
+      query.andWhere('vendor.name LIKE :search', {
+        search: `%${search}%`,
+      });
+    }
+
+    const result = await query
+      .orderBy('vendor.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getRawAndEntities();
+
+    // Combine entity data with counts
+    const itemsWithCounts = result.entities.map((vendor, index) => ({
+      ...vendor,
+      djCount: parseInt(result.raw[index].djCount) || 0,
+    }));
+
+    // Get total count separately for pagination
+    const totalQuery = this.vendorRepository
+      .createQueryBuilder('vendor')
+      .where('vendor.isActive = :vendorActive', { vendorActive: true });
+    if (search) {
+      totalQuery.andWhere('vendor.name LIKE :search', {
+        search: `%${search}%`,
+      });
+    }
+    const totalCount = await totalQuery.getCount();
+
+    return {
+      items: itemsWithCounts,
+      total: totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit),
+    };
+  }
+
+  async getShows(page = 1, limit = 10, search?: string) {
+    const query = this.showRepository
+      .createQueryBuilder('show')
+      .leftJoinAndSelect('show.dj', 'dj')
+      .leftJoinAndSelect('dj.vendor', 'vendor')
+      .leftJoinAndSelect('show.venue', 'venue');
+
+    if (search) {
+      query.where(
+        'venue.name LIKE :search OR dj.name LIKE :search OR vendor.name LIKE :search OR show.description LIKE :search',
+        {
+          search: `%${search}%`,
+        },
+      );
+    }
+
+    const [items, total] = await query
+      .orderBy('show.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
@@ -457,47 +539,28 @@ export class AdminService {
   // Delete methods
   async deleteVenue(id: string) {
     try {
-      const venue = await this.vendorRepository.findOne({
+      const venue = await this.venueRepository.findOne({
         where: { id },
-        relations: ['shows', 'djs'],
+        relations: ['shows'],
       });
 
       if (!venue) {
         throw new Error('Venue not found');
       }
 
-      // First, delete all related favorites for shows belonging to this vendor's DJs
-      const vendorShows = await this.showRepository.find({
-        where: {
-          dj: {
-            vendor: {
-              id: id,
-            },
-          },
-        },
-        relations: ['dj', 'dj.vendor'],
-      });
-
-      if (vendorShows && vendorShows.length > 0) {
-        for (const show of vendorShows) {
+      // First, delete all related favorites for shows at this venue
+      if (venue.shows && venue.shows.length > 0) {
+        for (const show of venue.shows) {
           // Delete favorites for this show
           await this.favoriteShowRepository.delete({ show: { id: show.id } });
         }
 
-        // Delete all shows for this vendor (through DJs)
-        await this.showRepository.delete(vendorShows.map((show) => show.id));
+        // Delete all shows at this venue
+        await this.showRepository.delete(venue.shows.map((show) => show.id));
       }
-
-      // Delete all DJs for this venue
-      if (venue.djs && venue.djs.length > 0) {
-        await this.djRepository.delete({ vendorId: id });
-      }
-
-      // Delete any parsed schedules for this venue
-      await this.parsedScheduleRepository.delete({ vendorId: id });
 
       // Finally, delete the venue itself
-      await this.vendorRepository.remove(venue);
+      await this.venueRepository.remove(venue);
 
       return { message: 'Venue and all related data deleted successfully' };
     } catch (error) {
@@ -506,7 +569,43 @@ export class AdminService {
     }
   }
 
-  // Test comment for recompilation
+  async deleteVendor(id: string) {
+    try {
+      const vendor = await this.vendorRepository.findOne({
+        where: { id },
+        relations: ['djs', 'djs.shows'],
+      });
+
+      if (!vendor) {
+        throw new Error('Vendor not found');
+      }
+
+      // First, delete all related favorites and shows for DJs under this vendor
+      if (vendor.djs && vendor.djs.length > 0) {
+        for (const dj of vendor.djs) {
+          if (dj.shows && dj.shows.length > 0) {
+            for (const show of dj.shows) {
+              // Delete favorites for this show
+              await this.favoriteShowRepository.delete({ show: { id: show.id } });
+            }
+            // Delete all shows for this DJ
+            await this.showRepository.delete(dj.shows.map((show) => show.id));
+          }
+        }
+
+        // Delete all DJs under this vendor
+        await this.djRepository.delete(vendor.djs.map((dj) => dj.id));
+      }
+
+      // Finally, delete the vendor itself
+      await this.vendorRepository.remove(vendor);
+
+      return { message: 'Vendor and all related data deleted successfully' };
+    } catch (error) {
+      console.error('Error in deleteVendor:', error);
+      throw error;
+    }
+  }
 
   async deleteShow(id: string) {
     try {
@@ -564,14 +663,23 @@ export class AdminService {
 
   // Update methods
   async updateVenue(id: string, updateData: any) {
-    const venue = await this.vendorRepository.findOne({ where: { id } });
+    const venue = await this.venueRepository.findOne({ where: { id } });
 
     if (!venue) {
       throw new Error('Venue not found');
     }
 
-    await this.vendorRepository.update(id, {
+    await this.venueRepository.update(id, {
       name: updateData.name,
+      address: updateData.address,
+      city: updateData.city,
+      state: updateData.state,
+      zip: updateData.zip,
+      phone: updateData.phone,
+      website: updateData.website,
+      description: updateData.description,
+      lat: updateData.lat,
+      lng: updateData.lng,
     });
 
     return { message: 'Venue updated successfully' };
@@ -607,32 +715,38 @@ export class AdminService {
     return { message: 'DJ updated successfully' };
   }
 
+  async updateVendor(id: string, updateData: any) {
+    const vendor = await this.vendorRepository.findOne({ where: { id } });
+
+    if (!vendor) {
+      throw new Error('Vendor not found');
+    }
+
+    await this.vendorRepository.update(id, {
+      name: updateData.name,
+      website: updateData.website,
+      instagram: updateData.instagram,
+      facebook: updateData.facebook,
+      isActive: updateData.isActive,
+    });
+
+    return { message: 'Vendor updated successfully' };
+  }
+
   // Relationship methods
   async getVenueRelationships(id: string) {
-    const venue = await this.vendorRepository.findOne({
+    const venue = await this.venueRepository.findOne({
       where: { id },
-      relations: ['djs'],
+      relations: ['shows', 'shows.dj', 'shows.dj.vendor'],
     });
 
     if (!venue) {
       throw new Error('Venue not found');
     }
 
-    // Get shows through DJs
-    const shows = await this.showRepository.find({
-      where: {
-        dj: {
-          vendor: {
-            id: id,
-          },
-        },
-      },
-      relations: ['dj', 'dj.vendor'],
-    });
-
     return {
-      shows: shows,
-      djs: venue.djs,
+      venue: venue,
+      shows: venue.shows,
     };
   }
 

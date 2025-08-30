@@ -89,13 +89,13 @@ export class LocationController {
 
     // Filter shows with coordinates and calculate distances
     const showsWithDistances = shows
-      .filter((show) => show.lat && show.lng)
+      .filter((show) => show.venue?.lat && show.venue?.lng)
       .map((show) => {
         const distanceMiles = this.geocodingService.calculateDistance(
           latitude,
           longitude,
-          show.lat!,
-          show.lng!,
+          show.venue!.lat!,
+          show.venue!.lng!,
         );
         const distanceMeters = distanceMiles * 1609.34; // Convert miles to meters
 
@@ -151,13 +151,13 @@ export class LocationController {
 
     // Calculate distances for all shows
     const allShowsWithDistance = shows
-      .filter((show) => show.lat && show.lng)
+      .filter((show) => show.venue?.lat && show.venue?.lng)
       .map((show) => {
         const distanceMiles = this.geocodingService.calculateDistance(
           latitude,
           longitude,
-          show.lat!,
-          show.lng!,
+          show.venue!.lat!,
+          show.venue!.lng!,
         );
         const distanceMeters = distanceMiles * 1609.34; // Convert miles to meters
 

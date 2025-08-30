@@ -53,6 +53,15 @@ export class AdminController {
     return await this.adminService.getDjs(+page, +limit, search);
   }
 
+  @Get('shows')
+  async getShows(
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('search') search?: string,
+  ) {
+    return await this.adminService.getShows(+page, +limit, search);
+  }
+
   @Get('favorites')
   async getFavorites(
     @Query('page') page = 1,
@@ -69,6 +78,15 @@ export class AdminController {
     @Query('search') search?: string,
   ) {
     return await this.adminService.getSongs(+page, +limit, search);
+  }
+
+  @Get('vendors')
+  async getVendors(
+    @Query('page') page = 1,
+    @Query('limit') limit = 10,
+    @Query('search') search?: string,
+  ) {
+    return await this.adminService.getVendors(+page, +limit, search);
   }
 
   @Get('parser/status')
@@ -97,6 +115,16 @@ export class AdminController {
     return await this.adminService.deleteDj(id);
   }
 
+  @Delete('vendors/:id')
+  async deleteVendor(@Param('id') id: string) {
+    try {
+      return await this.adminService.deleteVendor(id);
+    } catch (error) {
+      console.error('Controller error in deleteVendor:', error);
+      throw error;
+    }
+  }
+
   // Update Endpoints
   @Put('venues/:id')
   async updateVenue(@Param('id') id: string, @Body() updateData: any) {
@@ -111,6 +139,11 @@ export class AdminController {
   @Put('djs/:id')
   async updateDj(@Param('id') id: string, @Body() updateData: any) {
     return await this.adminService.updateDj(id, updateData);
+  }
+
+  @Put('vendors/:id')
+  async updateVendor(@Param('id') id: string, @Body() updateData: any) {
+    return await this.adminService.updateVendor(id, updateData);
   }
 
   @Get('feedback')

@@ -8,6 +8,7 @@ import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { ShowReview } from '../show-review/show-review.entity';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
+import { Venue } from '../venue/venue.entity';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { DeduplicationService } from './deduplication.service';
@@ -17,6 +18,7 @@ import { DeduplicationService } from './deduplication.service';
     TypeOrmModule.forFeature([
       User,
       Vendor,
+      Venue,
       Show,
       DJ,
       ParsedSchedule,

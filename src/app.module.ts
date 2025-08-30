@@ -16,7 +16,7 @@ import { FeedbackModule } from './feedback/feedback.module';
 import { FriendsModule } from './friends/friends.module';
 import { LocationModule } from './location/location.module';
 import { MusicModule } from './music/music.module';
-import { ParserModule } from './parser/parser.module';
+// import { ParserModule } from './parser/parser.module';
 import { ProductionUploadModule } from './production-upload/production-upload.module';
 import { ShowReviewModule } from './show-review/show-review.module';
 import { ShowModule } from './show/show.module';
@@ -25,6 +25,7 @@ import { UploadModule } from './upload/upload.module';
 import { UserFeatureOverrideModule } from './user-feature-override/user-feature-override.module';
 import { UserModule } from './user/user.module';
 import { VendorModule } from './vendor/vendor.module';
+import { VenueModule } from './venue/venue.module';
 import { WebSocketModule } from './websocket/websocket.module';
 
 @Module({
@@ -64,6 +65,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     UserModule,
     UserFeatureOverrideModule,
     VendorModule,
+    VenueModule,
     DJModule,
     ShowModule,
     ShowReviewModule,
@@ -71,7 +73,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     FeedbackModule,
     FriendsModule,
     LocationModule,
-    ParserModule,
+    // ParserModule,
     MusicModule,
     SubscriptionModule,
     UploadModule,

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Show } from '../show/show.entity';
 import { ShowService } from '../show/show.service';
+import { VenueService } from '../venue/venue.service';
 import { ReviewStatus, ShowReview } from './show-review.entity';
 
 export interface CreateShowReviewDto {
@@ -33,6 +34,7 @@ export class ShowReviewService {
     @InjectRepository(Show)
     private readonly showRepository: Repository<Show>,
     private readonly showService: ShowService,
+    private readonly venueService: VenueService,
   ) {}
 
   async create(createDto: CreateShowReviewDto): Promise<ShowReview> {
@@ -154,7 +156,7 @@ export class ShowReviewService {
     try {
       const show = await this.showRepository.findOne({
         where: { id: review.showId },
-        relations: ['dj', 'dj.vendor'],
+        relations: ['dj', 'dj.vendor', 'venue'],
       });
 
       if (!show) {
@@ -162,16 +164,19 @@ export class ShowReviewService {
       }
 
       // Update show fields if provided in review
-      if (review.venueName) {
-        show.venue = review.venueName;
+      if (review.venueName && show.venue) {
+        // Update the venue name
+        await this.venueService.update(show.venue.id, { name: review.venueName });
       }
 
-      if (review.venuePhone) {
-        show.venuePhone = review.venuePhone;
+      if (review.venuePhone && show.venue) {
+        // Update the venue phone
+        await this.venueService.update(show.venue.id, { phone: review.venuePhone });
       }
 
-      if (review.venueWebsite) {
-        show.venueWebsite = review.venueWebsite;
+      if (review.venueWebsite && show.venue) {
+        // Update the venue website
+        await this.venueService.update(show.venue.id, { website: review.venueWebsite });
       }
 
       if (review.description) {

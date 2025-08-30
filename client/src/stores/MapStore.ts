@@ -140,11 +140,9 @@ export class MapStore {
     this.showStore.setSelectedShow(show);
 
     // Center map on the selected show if needed
-    if (this.mapInstance && show.lat && show.lng) {
-      const lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
-      const lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
-
-      this.mapInstance.panTo({ lat, lng });
+    const coordinates = this.showStore.getVenueCoordinates(show);
+    if (this.mapInstance && coordinates) {
+      this.mapInstance.panTo(coordinates);
     }
   };
 
@@ -162,11 +160,9 @@ export class MapStore {
     this.handleMarkerClick(show);
 
     // Zoom to show location if map is available
-    if (this.mapInstance && show.lat && show.lng) {
-      const lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
-      const lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
-
-      this.mapInstance.setCenter({ lat, lng });
+    const coordinates = this.showStore.getVenueCoordinates(show);
+    if (this.mapInstance && coordinates) {
+      this.mapInstance.setCenter(coordinates);
 
       // Zoom in if we're too far out to see individual shows
       if (this.currentZoom <= 9) {

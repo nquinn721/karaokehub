@@ -1,4 +1,4 @@
-import { faCheck, faTimes, faUpload } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faUpload } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Accordion,
@@ -9,12 +9,7 @@ import {
   Button,
   Card,
   CardContent,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Grid,
-  IconButton,
   LinearProgress,
   List,
   ListItem,
@@ -23,11 +18,13 @@ import {
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React, { useState } from 'react';
+import CustomModal from './CustomModal';
 
 interface UploadData {
   vendors: any[];
   djs: any[];
   shows: any[];
+  venues: any[];
   metadata?: {
     uploadedBy?: string;
     uploadedAt?: string;
@@ -81,13 +78,14 @@ const DataUploadModal: React.FC<{
         vendors: { success: 0, failed: 0 },
         djs: { success: 0, failed: 0 },
         shows: { success: 0, failed: 0 },
+        venues: { success: 0, failed: 0 },
       };
 
       // Helper function to upload in chunks
-      const uploadInChunks = async (data: any[], type: 'vendors' | 'djs' | 'shows') => {
+      const uploadInChunks = async (data: any[], type: 'vendors' | 'djs' | 'shows' | 'venues') => {
         for (let i = 0; i < data.length; i += CHUNK_SIZE) {
           const chunk = data.slice(i, i + CHUNK_SIZE);
-          
+
           const response = await fetch('https://karaoke-hub.com/api/production-upload/data', {
             method: 'POST',
             headers: {
@@ -99,6 +97,7 @@ const DataUploadModal: React.FC<{
               vendors: type === 'vendors' ? chunk : [],
               djs: type === 'djs' ? chunk : [],
               shows: type === 'shows' ? chunk : [],
+              venues: type === 'venues' ? chunk : [],
               metadata: {
                 uploadedBy: 'Admin',
                 uploadedAt: new Date().toISOString(),
@@ -132,20 +131,32 @@ const DataUploadModal: React.FC<{
       if (uploadData.vendors?.length > 0) {
         await uploadInChunks(uploadData.vendors, 'vendors');
       }
-      
+
       if (uploadData.djs?.length > 0) {
         await uploadInChunks(uploadData.djs, 'djs');
       }
-      
+
       if (uploadData.shows?.length > 0) {
         await uploadInChunks(uploadData.shows, 'shows');
+      }
+
+      if (uploadData.venues?.length > 0) {
+        await uploadInChunks(uploadData.venues, 'venues');
       }
 
       setUploadResult({
         message: 'Chunked upload completed',
         results,
-        totalProcessed: results.vendors.success + results.djs.success + results.shows.success,
-        totalFailed: results.vendors.failed + results.djs.failed + results.shows.failed,
+        totalProcessed:
+          results.vendors.success +
+          results.djs.success +
+          results.shows.success +
+          results.venues.success,
+        totalFailed:
+          results.vendors.failed +
+          results.djs.failed +
+          results.shows.failed +
+          results.venues.failed,
       });
       setStep('complete');
     } catch (err) {
@@ -181,7 +192,8 @@ const DataUploadModal: React.FC<{
             {uploadData && (
               <Alert severity="success" sx={{ mb: 2 }}>
                 Successfully fetched {uploadData.vendors?.length || 0} vendors,{' '}
-                {uploadData.djs?.length || 0} DJs, and {uploadData.shows?.length || 0} shows!
+                {uploadData.djs?.length || 0} DJs, {uploadData.shows?.length || 0} shows, and{' '}
+                {uploadData.venues?.length || 0} venues!
               </Alert>
             )}
 
@@ -209,7 +221,7 @@ const DataUploadModal: React.FC<{
             {uploadData && (
               <>
                 <Grid container spacing={2} sx={{ mb: 3 }}>
-                  <Grid item xs={4}>
+                  <Grid item xs={3}>
                     <Card variant="outlined">
                       <CardContent sx={{ textAlign: 'center', py: 2 }}>
                         <Typography variant="h4" color="primary.main">
@@ -219,7 +231,7 @@ const DataUploadModal: React.FC<{
                       </CardContent>
                     </Card>
                   </Grid>
-                  <Grid item xs={4}>
+                  <Grid item xs={3}>
                     <Card variant="outlined">
                       <CardContent sx={{ textAlign: 'center', py: 2 }}>
                         <Typography variant="h4" color="success.main">
@@ -229,13 +241,23 @@ const DataUploadModal: React.FC<{
                       </CardContent>
                     </Card>
                   </Grid>
-                  <Grid item xs={4}>
+                  <Grid item xs={3}>
                     <Card variant="outlined">
                       <CardContent sx={{ textAlign: 'center', py: 2 }}>
                         <Typography variant="h4" color="warning.main">
                           {uploadData.shows.length}
                         </Typography>
                         <Typography variant="caption">Shows</Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={3}>
+                    <Card variant="outlined">
+                      <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                        <Typography variant="h4" color="info.main">
+                          {uploadData.venues.length}
+                        </Typography>
+                        <Typography variant="caption">Venues</Typography>
                       </CardContent>
                     </Card>
                   </Grid>
@@ -325,6 +347,37 @@ const DataUploadModal: React.FC<{
                     </List>
                   </AccordionDetails>
                 </Accordion>
+
+                <Accordion sx={{ mb: 2 }}>
+                  <AccordionSummary>
+                    <Typography variant="subtitle2">
+                      View Venues ({uploadData.venues.length})
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <List dense>
+                      {uploadData.venues.slice(0, 5).map((venue, index) => (
+                        <ListItem key={index}>
+                          <ListItemText
+                            primary={venue.name}
+                            secondary={`${venue.address}, ${venue.city}, ${venue.state} ${venue.zip}`}
+                          />
+                        </ListItem>
+                      ))}
+                      {uploadData.venues.length > 5 && (
+                        <ListItem>
+                          <ListItemText
+                            primary={`... and ${uploadData.venues.length - 5} more venues`}
+                            primaryTypographyProps={{
+                              fontStyle: 'italic',
+                              color: 'text.secondary',
+                            }}
+                          />
+                        </ListItem>
+                      )}
+                    </List>
+                  </AccordionDetails>
+                </Accordion>
               </>
             )}
           </Box>
@@ -364,10 +417,10 @@ const DataUploadModal: React.FC<{
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   Data has been successfully uploaded to production in chunks.
                 </Typography>
-                
+
                 {uploadResult.results && (
                   <Grid container spacing={2} sx={{ mt: 2, justifyContent: 'center' }}>
-                    <Grid item xs={12} sm={4}>
+                    <Grid item xs={12} sm={3}>
                       <Card variant="outlined">
                         <CardContent sx={{ textAlign: 'center', py: 2 }}>
                           <Typography variant="h6" color="primary">
@@ -384,8 +437,8 @@ const DataUploadModal: React.FC<{
                         </CardContent>
                       </Card>
                     </Grid>
-                    
-                    <Grid item xs={12} sm={4}>
+
+                    <Grid item xs={12} sm={3}>
                       <Card variant="outlined">
                         <CardContent sx={{ textAlign: 'center', py: 2 }}>
                           <Typography variant="h6" color="primary">
@@ -402,8 +455,8 @@ const DataUploadModal: React.FC<{
                         </CardContent>
                       </Card>
                     </Grid>
-                    
-                    <Grid item xs={12} sm={4}>
+
+                    <Grid item xs={12} sm={3}>
                       <Card variant="outlined">
                         <CardContent sx={{ textAlign: 'center', py: 2 }}>
                           <Typography variant="h6" color="primary">
@@ -415,6 +468,24 @@ const DataUploadModal: React.FC<{
                           {uploadResult.results.shows.failed > 0 && (
                             <Typography variant="caption" color="error">
                               {uploadResult.results.shows.failed} failed
+                            </Typography>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+
+                    <Grid item xs={12} sm={3}>
+                      <Card variant="outlined">
+                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                          <Typography variant="h6" color="primary">
+                            {uploadResult.results.venues.success}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Venues Uploaded
+                          </Typography>
+                          {uploadResult.results.venues.failed > 0 && (
+                            <Typography variant="caption" color="error">
+                              {uploadResult.results.venues.failed} failed
                             </Typography>
                           )}
                         </CardContent>
@@ -477,37 +548,34 @@ const DataUploadModal: React.FC<{
   };
 
   return (
-    <Dialog
+    <CustomModal
       open={open}
-      onClose={uploading ? undefined : handleClose}
+      onClose={uploading ? () => {} : handleClose}
+      title="Upload Data to Production"
+      icon={<FontAwesomeIcon icon={faUpload} />}
       maxWidth="md"
-      fullWidth
-      PaperProps={{
-        sx: { minHeight: '400px' },
-      }}
     >
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6" component="div">
-          Upload Data to Production
-        </Typography>
-        {!uploading && (
-          <IconButton onClick={handleClose} size="small">
-            <FontAwesomeIcon icon={faTimes} />
-          </IconButton>
-        )}
-      </DialogTitle>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+      {renderStepContent()}
 
-      <DialogContent sx={{ minHeight: '300px' }}>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
-        {renderStepContent()}
-      </DialogContent>
-
-      <DialogActions sx={{ px: 3, pb: 2 }}>{getDialogActions()}</DialogActions>
-    </Dialog>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: 2,
+          mt: 3,
+          pt: 2,
+          borderTop: 1,
+          borderColor: 'divider',
+        }}
+      >
+        {getDialogActions()}
+      </Box>
+    </CustomModal>
   );
 });
 

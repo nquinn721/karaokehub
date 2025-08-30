@@ -3,13 +3,13 @@ import { Response } from 'express';
 import { join } from 'path';
 import { AppService } from './app.service';
 import { UrlService } from './config/url.service';
-import { KaraokeParserService } from './parser/karaoke-parser.service';
+// import { KaraokeParserService } from './parser/karaoke-parser.service';
 
 @Controller()
 export class AppController {
   constructor(
     private readonly appService: AppService,
-    private readonly parserService: KaraokeParserService,
+    // private readonly parserService: KaraokeParserService,
     private readonly urlService: UrlService,
   ) {}
 
@@ -101,8 +101,15 @@ export class AppController {
   @Get('api/test-parser')
   async testParser() {
     try {
+      // Parser temporarily disabled during venue migration
+      return {
+        success: false,
+        message: 'Parser temporarily disabled during venue migration',
+        data: null,
+      };
       // Testing with a generic website instead of the hardcoded Steve's DJ method
-      const result = await this.parserService.parseWebsite('https://stevesdj.com/karaoke-schedule');
+      // const result = await this.parserService.parseWebsite('https://stevesdj.com/karaoke-schedule');
+      /*
       return {
         success: true,
         message: 'Website parsed successfully',
@@ -123,6 +130,7 @@ export class AppController {
         },
         rawShows: result.shows || [], // Include raw show data for debugging
       };
+      */
     } catch (error) {
       return {
         success: false,

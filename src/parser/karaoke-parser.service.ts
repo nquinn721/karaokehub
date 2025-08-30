@@ -10,6 +10,7 @@ import { DJ } from '../dj/dj.entity';
 import { GeocodingService } from '../geocoding/geocoding.service';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
+import { VenueService } from '../venue/venue.service';
 import { KaraokeWebSocketGateway } from '../websocket/websocket.gateway';
 import { FacebookParserService } from './facebook-parser.service';
 import { ParsedSchedule, ParseStatus } from './parsed-schedule.entity';
@@ -97,6 +98,7 @@ export class KaraokeParserService {
     private webSocketGateway: KaraokeWebSocketGateway,
     private facebookParserService: FacebookParserService,
     private urlToParseService: UrlToParseService,
+    private venueService: VenueService,
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -2713,31 +2715,25 @@ ${htmlContent}`;
           showVendor = primaryVendor; // Use primary vendor as fallback
         }
 
-        // Check for cross-vendor duplicates (address-day-starttime) that should be rejected
-        if (showData.address && showData.startTime) {
-          const crossVendorDuplicate = await this.showRepository.findOne({
-            where: {
-              address: showData.address,
-              day: normalizedDay as any,
-              startTime: showData.startTime,
-            },
-            relations: ['dj', 'dj.vendor'],
+        // Check for cross-vendor duplicates (venue-day-starttime) that should be rejected
+        // For now, we'll skip this check since we need venue relationships
+        // TODO: Implement venue-based duplicate checking after venue migration is complete
+        if (false && showData.address && showData.startTime) {
+          // Placeholder for future venue-based duplicate checking
+        }
+
+        // Find or create venue for this show
+        let venue = null;
+        if (showData.venue || showData.address) {
+          venue = await this.venueService.findOrCreate({
+            name: showData.venue || 'Unknown Venue',
+            address: showData.address || null,
+            city: showData.city || null,
+            state: showData.state || null,
+            zip: showData.zip || null,
+            lat: showData.lat || null,
+            lng: showData.lng || null,
           });
-
-          // If we find a duplicate from a different vendor, reject this show
-          if (crossVendorDuplicate) {
-            const existingVendorId = crossVendorDuplicate.dj?.vendor?.id;
-            const currentVendorId = showVendor?.id;
-
-            if (existingVendorId && existingVendorId !== currentVendorId) {
-              this.logAndBroadcast(
-                `Rejecting cross-vendor duplicate: ${showData.venue} at ${showData.address} on ${normalizedDay} at ${showData.startTime} (already exists for different vendor)`,
-                'warning',
-              );
-              showsDuplicated++;
-              return null; // Skip this show entirely
-            }
-          }
         }
 
         // Check for existing show with same vendor, day, time, venue, and DJ
@@ -2745,22 +2741,22 @@ ${htmlContent}`;
           where: {
             day: normalizedDay as any,
             time: showData.time,
-            venue: showData.venue,
+            venueId: venue?.id || null,
             djId: djId || null, // Handle both null and undefined DJs
           },
-          relations: ['dj', 'dj.vendor'], // Load DJ and vendor relationships to check vendor match
+          relations: ['dj', 'dj.vendor', 'venue'], // Load DJ, vendor, and venue relationships
         });
 
-        // Also check for address-day-starttime duplicates (more strict duplicate detection)
+        // Also check for venue-day-starttime duplicates (more strict duplicate detection)
         let addressBasedDuplicate = null;
-        if (showData.address && showData.startTime) {
+        if (venue && showData.startTime) {
           addressBasedDuplicate = await this.showRepository.findOne({
             where: {
-              address: showData.address,
+              venueId: venue.id,
               day: normalizedDay as any,
               startTime: showData.startTime,
             },
-            relations: ['dj', 'dj.vendor'],
+            relations: ['dj', 'dj.vendor', 'venue'],
           });
         }
 
@@ -2979,20 +2975,12 @@ ${htmlContent}`;
 
         const show = this.showRepository.create({
           djId: djId,
-          venue: showData.venue,
-          address: cleanedAddress,
-          city: city,
-          state: state,
-          zip: zip,
-          lat: lat,
-          lng: lng,
+          venueId: venue?.id || null,
           day: normalizedDay as any, // Cast to DayOfWeek enum
           time: showData.time,
           startTime: validatedStartTime,
           endTime: validatedEndTime,
           description: showData.description,
-          venuePhone: showData.venuePhone,
-          venueWebsite: showData.venueWebsite,
           source: showData.source,
           isActive: true,
         });

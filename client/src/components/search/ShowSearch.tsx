@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { showStore } from '../../stores';
 import { Show } from '../../stores/ShowStore';
 
 interface ShowSearchProps {
@@ -44,10 +45,10 @@ export const ShowSearch: React.FC<ShowSearchProps> = observer(
       return showList
         .filter((show) => {
           const searchableText = [
-            show.venue,
-            show.address,
-            show.city,
-            show.state,
+            showStore.getVenueName(show),
+            showStore.getVenueAddress(show),
+            show.venue?.city,
+            show.venue?.state,
             show.dj?.vendor?.name,
             show.dj?.name,
           ]
@@ -157,11 +158,12 @@ export const ShowSearch: React.FC<ShowSearchProps> = observer(
     const formatShowDisplay = (show: Show): string => {
       const parts = [];
 
-      if (show.venue) parts.push(show.venue);
+      if (showStore.getVenueName(show)) parts.push(showStore.getVenueName(show));
       if (show.dj?.name) parts.push(`DJ: ${show.dj.name}`);
-      if (show.city && show.state) parts.push(`${show.city}, ${show.state}`);
-      else if (show.city) parts.push(show.city);
-      else if (show.state) parts.push(show.state);
+      if (show.venue?.city && show.venue?.state)
+        parts.push(`${show.venue.city}, ${show.venue.state}`);
+      else if (show.venue?.city) parts.push(show.venue.city);
+      else if (show.venue?.state) parts.push(show.venue.state);
 
       return parts.join(' • ');
     };

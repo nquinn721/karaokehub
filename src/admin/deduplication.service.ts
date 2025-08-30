@@ -6,7 +6,7 @@ import { Repository } from 'typeorm';
 import { getGeminiModel } from '../config/gemini.config';
 import { DJ } from '../dj/dj.entity';
 import { Show } from '../show/show.entity';
-import { Vendor } from '../vendor/vendor.entity';
+import { Venue } from '../venue/venue.entity';
 
 export interface DeduplicationResult {
   duplicateGroups: Array<{
@@ -26,8 +26,8 @@ export class DeduplicationService {
   private genAI: GoogleGenerativeAI;
 
   constructor(
-    @InjectRepository(Vendor)
-    private vendorRepository: Repository<Vendor>,
+    @InjectRepository(Venue)
+    private venueRepository: Repository<Venue>,
     @InjectRepository(Show)
     private showRepository: Repository<Show>,
     @InjectRepository(DJ)
@@ -44,7 +44,7 @@ export class DeduplicationService {
     this.logger.log('Starting venue deduplication process...');
 
     try {
-      const venues = await this.vendorRepository.find({
+      const venues = await this.venueRepository.find({
         select: ['id', 'name', 'website', 'description'],
       });
 
@@ -117,8 +117,9 @@ export class DeduplicationService {
 
     try {
       const shows = await this.showRepository.find({
-        select: ['id', 'venue', 'address', 'day', 'startTime', 'endTime'],
+        select: ['id', 'venueId', 'day', 'startTime', 'endTime'],
         where: { isActive: true },
+        relations: ['venue'],
       });
 
       const prompt = `
@@ -269,7 +270,7 @@ export class DeduplicationService {
 
       switch (type) {
         case 'venues':
-          deleteResult = await this.vendorRepository.delete(idsToDelete);
+          deleteResult = await this.venueRepository.delete(idsToDelete);
           break;
         case 'shows':
           deleteResult = await this.showRepository.delete(idsToDelete);

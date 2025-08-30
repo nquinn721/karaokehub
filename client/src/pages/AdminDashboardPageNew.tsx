@@ -160,7 +160,7 @@ const AdminDashboardPage = observer(() => {
           <Grid item xs={12} md={4}>
             <StatCard
               title="Total Venues"
-              value={adminStore.statistics.totalVendors || 0}
+              value={adminStore.statistics.totalVenues || 0}
               icon={faMapMarkerAlt}
               color="success"
             />

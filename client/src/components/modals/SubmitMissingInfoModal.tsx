@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Alert, Box, Button, Snackbar, TextField, Typography } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React, { useState } from 'react';
-import { authStore } from '../../stores';
+import { authStore, showStore } from '../../stores';
 import { showReviewStore } from '../../stores/ShowReviewStore';
 import { Show } from '../../stores/ShowStore';
 import CustomModal from '../CustomModal';
@@ -117,7 +117,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
               Current Show Information:
             </Typography>
             <Typography variant="body2" sx={{ mb: 0.5 }}>
-              <strong>Venue:</strong> {show.venue || 'Not specified'}
+              <strong>Venue:</strong> {showStore.getVenueName(show) || 'Not specified'}
             </Typography>
             <Typography variant="body2" sx={{ mb: 0.5 }}>
               <strong>DJ/Host:</strong> {show.dj?.name || 'Not specified'}
@@ -126,7 +126,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
               <strong>Vendor:</strong> {show.dj?.vendor?.name || 'Not specified'}
             </Typography>
             <Typography variant="body2">
-              <strong>Location:</strong> {show.address}
+              <strong>Location:</strong> {showStore.getVenueAddress(show) || 'Not specified'}
             </Typography>
           </Box>
 
@@ -171,7 +171,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
               value={formData.venuePhone}
               onChange={handleInputChange('venuePhone')}
               placeholder={
-                show.venuePhone ? `Currently: ${show.venuePhone}` : 'Enter venue phone number'
+                show.venue?.phone ? `Currently: ${show.venue.phone}` : 'Enter venue phone number'
               }
               fullWidth
               disabled={loading}
@@ -183,7 +183,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
               value={formData.venueWebsite}
               onChange={handleInputChange('venueWebsite')}
               placeholder={
-                show.venueWebsite ? `Currently: ${show.venueWebsite}` : 'Enter venue website URL'
+                show.venue?.website ? `Currently: ${show.venue.website}` : 'Enter venue website URL'
               }
               fullWidth
               disabled={loading}

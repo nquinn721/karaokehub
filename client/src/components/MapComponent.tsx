@@ -293,10 +293,10 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
       const markers: google.maps.Marker[] = [];
 
       filteredShows.forEach((show: any) => {
-        if (!show.lat || !show.lng) return;
+        const coordinates = showStore.getVenueCoordinates(show);
+        if (!coordinates) return;
 
-        const lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
-        const lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
+        const { lat, lng } = coordinates;
 
         const marker = new google.maps.Marker({
           position: { lat, lng },
@@ -365,10 +365,10 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
     console.log(`📍 Rendering ${shows.length} individual show markers at zoom ${zoom}`);
 
     return shows.map((show: any) => {
-      if (!show.lat || !show.lng) return null;
+      const coordinates = showStore.getVenueCoordinates(show);
+      if (!coordinates) return null;
 
-      const lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
-      const lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
+      const { lat, lng } = coordinates;
 
       const isSelected = mapStore.selectedShow?.id === show.id;
       const iconColor = isSelected ? '#ff5722' : '#f44336'; // Red colors

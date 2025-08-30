@@ -214,7 +214,7 @@ const AdminDashboardPage = observer(() => {
                   variant="h6"
                   sx={{ fontWeight: 700, color: theme.palette.success.main }}
                 >
-                  {adminStore.statistics.totalVendors?.toLocaleString() || 0}
+                  {adminStore.statistics.totalVenues?.toLocaleString() || 0}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Venues

@@ -15,20 +15,12 @@ export enum DayOfWeek {
 export interface Show {
   id: string;
   djId: string;
-  address: string;
-  city?: string; // City component of address
-  state?: string; // State component of address
-  zip?: string; // ZIP code component of address
-  venue?: string; // The bar/restaurant name
-  venuePhone?: string; // Venue contact phone number
-  venueWebsite?: string; // Venue website URL
+  venueId?: string; // Reference to venue
   source?: string; // Source URL/image that this show was parsed from
   day: DayOfWeek | string;
   startTime: string;
   endTime: string;
   description?: string;
-  lat?: number; // Latitude coordinate
-  lng?: number; // Longitude coordinate
   isFlagged?: boolean; // Whether the show has been flagged as non-existent
   dj?: {
     id: string;
@@ -38,6 +30,20 @@ export interface Show {
       name: string;
       owner?: string;
     };
+  };
+  venue?: {
+    id: string;
+    name: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    lat?: number;
+    lng?: number;
+    phone?: string;
+    website?: string;
+    fullAddress?: string;
+    cityState?: string;
   };
   favorites?: Array<{
     id: string;
@@ -102,6 +108,100 @@ export class ShowStore {
 
     // Set initial sidebar state based on device
     this.initializeSidebarState();
+  }
+
+  // ============ VENUE HELPER METHODS ============
+
+  /**
+   * Get venue name for a show
+   */
+  getVenueName(show: Show): string {
+    return show.venue?.name || 'Unknown Venue';
+  }
+
+  /**
+   * Get venue address for a show
+   */
+  getVenueAddress(show: Show): string | undefined {
+    return show.venue?.address;
+  }
+
+  /**
+   * Get venue city for a show
+   */
+  getVenueCity(show: Show): string | undefined {
+    return show.venue?.city;
+  }
+
+  /**
+   * Get venue state for a show
+   */
+  getVenueState(show: Show): string | undefined {
+    return show.venue?.state;
+  }
+
+  /**
+   * Get venue coordinates for a show
+   */
+  getVenueCoordinates(show: Show): { lat: number; lng: number } | null {
+    const lat = show.venue?.lat;
+    const lng = show.venue?.lng;
+    return lat && lng ? { lat, lng } : null;
+  }
+
+  /**
+   * Get venue phone for a show
+   */
+  getVenuePhone(show: Show): string | undefined {
+    return show.venue?.phone;
+  }
+
+  /**
+   * Get venue website for a show
+   */
+  getVenueWebsite(show: Show): string | undefined {
+    return show.venue?.website;
+  }
+
+  /**
+   * Get full address for a show (handles legacy and new format)
+   */
+  getFullAddress(show: Show): string {
+    if (show.venue?.fullAddress) {
+      return show.venue.fullAddress;
+    }
+
+    // Legacy format
+    const parts = [
+      this.getVenueAddress(show),
+      this.getVenueCity(show),
+      this.getVenueState(show),
+    ].filter(Boolean);
+
+    return parts.length > 0 ? parts.join(', ') : 'Address not available';
+  }
+
+  /**
+   * Get city/state for a show (handles legacy and new format)
+   */
+  getCityState(show: Show): string {
+    if (show.venue?.cityState) {
+      return show.venue.cityState;
+    }
+
+    // Legacy format
+    const city = this.getVenueCity(show);
+    const state = this.getVenueState(show);
+
+    if (city && state) {
+      return `${city}, ${state}`;
+    } else if (city) {
+      return city;
+    } else if (state) {
+      return state;
+    }
+
+    return 'Location not available';
   }
 
   private initializeSidebarState() {

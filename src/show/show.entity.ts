@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
+import { Venue } from '../venue/venue.entity';
 
 export enum DayOfWeek {
   MONDAY = 'monday',
@@ -29,20 +30,8 @@ export class Show {
   @Column('uuid', { nullable: true })
   djId: string;
 
-  @Column({ nullable: true })
-  address: string;
-
-  @Column({ nullable: true })
-  city: string;
-
-  @Column({ nullable: true })
-  state: string;
-
-  @Column({ nullable: true })
-  zip: string;
-
-  @Column({ nullable: true })
-  venue: string;
+  @Column('uuid', { nullable: true })
+  venueId: string;
 
   @Column({ nullable: true })
   time: string;
@@ -63,20 +52,8 @@ export class Show {
   @Column({ nullable: true })
   description: string;
 
-  @Column({ nullable: true })
-  venuePhone: string;
-
-  @Column({ nullable: true })
-  venueWebsite: string;
-
   @Column({ type: 'text', nullable: true })
   source: string;
-
-  @Column({ type: 'decimal', precision: 10, scale: 8, nullable: true })
-  lat: number;
-
-  @Column({ type: 'decimal', precision: 11, scale: 8, nullable: true })
-  lng: number;
 
   @Column({ default: true })
   isActive: boolean;
@@ -98,8 +75,58 @@ export class Show {
   @JoinColumn({ name: 'djId' })
   dj: DJ;
 
+  @ManyToOne(() => Venue, (venue) => venue.shows)
+  @JoinColumn({ name: 'venueId' })
+  venue: Venue;
+
   @OneToMany(() => FavoriteShow, (favoriteShow) => favoriteShow.show)
   favoriteShows: FavoriteShow[];
+
+  // Helper methods for accessing venue data
+  getVenueName(): string {
+    return this.venue?.name || 'Unknown Venue';
+  }
+
+  getVenueAddress(): string {
+    return this.venue?.address || '';
+  }
+
+  getVenueCity(): string {
+    return this.venue?.city || '';
+  }
+
+  getVenueState(): string {
+    return this.venue?.state || '';
+  }
+
+  getVenueZip(): string {
+    return this.venue?.zip || '';
+  }
+
+  getVenuePhone(): string {
+    return this.venue?.phone || '';
+  }
+
+  getVenueWebsite(): string {
+    return this.venue?.website || '';
+  }
+
+  getVenueCoordinates(): { lat: number; lng: number } | null {
+    if (this.venue?.lat && this.venue?.lng) {
+      return { lat: this.venue.lat, lng: this.venue.lng };
+    }
+    return null;
+  }
+
+  getFullVenueAddress(): string {
+    const parts = [
+      this.venue?.address,
+      this.venue?.city,
+      this.venue?.state,
+      this.venue?.zip,
+    ].filter(Boolean);
+    return parts.join(', ');
+  }
 
   // Computed properties
   get readableSource(): string {

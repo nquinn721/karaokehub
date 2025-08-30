@@ -8,7 +8,7 @@ import helmet from 'helmet';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { UrlService } from './config/url.service';
-import { CancellationService } from './services/cancellation.service';
+// import { CancellationService } from './services/cancellation.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -19,7 +19,7 @@ async function bootstrap() {
   });
   const configService = app.get(ConfigService);
   const urlService = app.get(UrlService);
-  const cancellationService = app.get(CancellationService);
+  // const cancellationService = app.get(CancellationService);
 
   // Configure global prefix BEFORE static assets
   app.setGlobalPrefix('api');
@@ -110,14 +110,14 @@ async function bootstrap() {
   // Add graceful shutdown handlers for cancellation service
   process.on('SIGTERM', async () => {
     console.log('🛑 SIGTERM received, shutting down gracefully...');
-    await cancellationService.cancelAll();
+    // await cancellationService.cancelAll();
     await app.close();
     process.exit(0);
   });
 
   process.on('SIGINT', async () => {
     console.log('🛑 SIGINT received, shutting down gracefully...');
-    await cancellationService.cancelAll();
+    // await cancellationService.cancelAll();
     await app.close();
     process.exit(0);
   });
@@ -125,13 +125,13 @@ async function bootstrap() {
   // Handle uncaught exceptions
   process.on('uncaughtException', async (error) => {
     console.error('💥 Uncaught Exception:', error);
-    await cancellationService.cancelAll();
+    // await cancellationService.cancelAll();
     process.exit(1);
   });
 
   process.on('unhandledRejection', async (reason, promise) => {
     console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
-    await cancellationService.cancelAll();
+    // await cancellationService.cancelAll();
     process.exit(1);
   });
 

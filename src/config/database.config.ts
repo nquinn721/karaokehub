@@ -15,6 +15,7 @@ import { Show } from '../show/show.entity';
 import { Subscription } from '../subscription/subscription.entity';
 import { UserFeatureOverride } from '../user-feature-override/user-feature-override.entity';
 import { Vendor } from '../vendor/vendor.entity';
+import { Venue } from '../venue/venue.entity';
 
 export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => {
   const isProduction = configService.get('NODE_ENV') === 'production';
@@ -29,6 +30,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     entities: [
       User,
       Vendor,
+      Venue,
       DJ,
       Show,
       ShowReview,

@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import React from 'react';
 import { VenueProximity } from '../services/GeolocationService';
+import { showStore } from '../stores';
 
 interface VenueDetectionModalProps {
   open: boolean;
@@ -114,13 +115,13 @@ export const VenueDetectionModal: React.FC<VenueDetectionModalProps> = ({
           }}
         >
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-            {show.venue || 'Karaoke Show'}
+            {showStore.getVenueName(show)}
           </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
             <FontAwesomeIcon icon={faLocationDot} style={{ fontSize: '14px', opacity: 0.7 }} />
             <Typography variant="body2" color="text.secondary">
-              {show.address}
+              {showStore.getVenueAddress(show)}
             </Typography>
           </Box>
 

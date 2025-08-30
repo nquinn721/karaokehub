@@ -9,7 +9,12 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { DJ } from '../dj/dj.entity';
 import { CancellationService } from '../services/cancellation.service';
+import { Show } from '../show/show.entity';
+import { VenueService } from '../venue/venue.service';
 import { FacebookCookieValidatorService } from './facebook-cookie-validator.service';
 import { FacebookGroupDiscoveryService } from './facebook-group-discovery.service';
 import { FacebookParserService } from './facebook-parser.service';
@@ -30,6 +35,11 @@ export class ParserController {
     private readonly facebookCookieValidatorService: FacebookCookieValidatorService,
     private readonly cancellationService: CancellationService,
     private readonly workerBasedWebsiteParserService: WorkerBasedWebsiteParserService,
+    private readonly venueService: VenueService,
+    @InjectRepository(DJ)
+    private readonly djRepository: Repository<DJ>,
+    @InjectRepository(Show)
+    private readonly showRepository: Repository<Show>,
   ) {}
 
   /**
@@ -245,55 +255,65 @@ export class ParserController {
     },
   ) {
     try {
-      // Create show objects for each selected day
-      const shows = body.days.map((day) => ({
-        venue: body.venue,
-        date: day,
-        time: body.startTime,
-        endTime: body.endTime,
-        djName: body.djName,
-        description: body.description,
+      // Handle DJ creation/finding
+      let djId: string | null = null;
+      if (body.djName && body.djName.trim()) {
+        // Check if DJ already exists for this vendor
+        const existingDJ = await this.djRepository.findOne({
+          where: {
+            name: body.djName.trim(),
+            vendorId: body.vendorId,
+          },
+        });
+
+        if (existingDJ) {
+          djId = existingDJ.id;
+        } else {
+          // Create new DJ
+          const newDJ = this.djRepository.create({
+            name: body.djName.trim(),
+            vendorId: body.vendorId,
+            isActive: true,
+          });
+          const savedDJ = await this.djRepository.save(newDJ);
+          djId = savedDJ.id;
+        }
+      }
+
+      // Handle venue creation/finding with coordinates
+      const venue = await this.venueService.findOrCreate({
+        name: body.venue,
         address: body.address,
         city: body.city,
         state: body.state,
         zip: body.zip,
+        phone: body.venuePhone,
+        website: body.venueWebsite,
         lat: body.lat,
         lng: body.lng,
-        venuePhone: body.venuePhone,
-        venueWebsite: body.venueWebsite,
-        confidence: 1.0,
-      }));
+      });
 
-      // Create manual show submission in a format similar to parsed data
-      const manualShowData = {
-        vendor: {
-          name: 'Manual Submission', // This will be updated to match the actual vendor
-          website: body.venueWebsite || '',
-          description: body.description || '',
-          confidence: 1.0,
-        },
-        djs: body.djName
-          ? [
-              {
-                name: body.djName,
-                confidence: 1.0,
-              },
-            ]
-          : [],
-        shows: shows, // Multiple shows, one for each day
-      };
+      // Create shows for each selected day
+      const createdShows = [];
+      for (const day of body.days) {
+        const show = this.showRepository.create({
+          djId: djId,
+          venueId: venue.id,
+          day: day as any, // DayOfWeek enum
+          startTime: body.startTime,
+          endTime: body.endTime,
+          description: body.description,
+          source: 'manual_submission',
+        });
 
-      // For now, we'll add this to the parsed schedules for admin review
-      // This ensures manual submissions go through the same review process
-      const manualEntry = await this.karaokeParserService.saveManualSubmissionForReview(
-        body.vendorId,
-        manualShowData,
-      );
+        const savedShow = await this.showRepository.save(show);
+        createdShows.push(savedShow);
+      }
 
       return {
         success: true,
-        message: 'Manual show submitted successfully for review',
-        data: manualEntry,
+        message: `Successfully created ${createdShows.length} show(s)`,
+        data: createdShows,
       };
     } catch (error) {
       console.error('Error submitting manual show:', error);
