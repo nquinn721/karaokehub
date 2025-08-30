@@ -189,9 +189,9 @@ const PopupContent: React.FC<{
                       wordBreak: 'break-word',
                     }}
                   >
-                    {show.address}
+                    {show.venue && typeof show.venue === "object" ? show.venue.address : null}
                   </Typography>
-                  {(show.city || show.state) && (
+                  {(show.venue && typeof show.venue === "object" ? show.venue.city : null || show.venue && typeof show.venue === "object" ? show.venue.state : null) && (
                     <Typography
                       variant="body2"
                       color="text.secondary"
@@ -201,7 +201,7 @@ const PopupContent: React.FC<{
                         opacity: 0.8,
                       }}
                     >
-                      {[show.city, show.state, show.zip].filter(Boolean).join(', ')}
+                      {[show.venue && typeof show.venue === "object" ? show.venue.city : null, show.venue && typeof show.venue === "object" ? show.venue.state : null, show.zip].filter(Boolean).join(', ')}
                     </Typography>
                   )}
                 </Box>
@@ -367,10 +367,10 @@ const SimpleMapNew: React.FC = observer(() => {
     console.log(`📍 Rendering ${shows.length} show markers`);
 
     return shows.map((show: any) => {
-      if (!show.lat || !show.lng) return null;
+      if (!show.venue && typeof show.venue === "object" ? show.venue.lat : null || !show.venue && typeof show.venue === "object" ? show.venue.lng : null) return null;
 
-      const lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
-      const lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
+      const lat = typeof show.venue && typeof show.venue === "object" ? show.venue.lat : null === 'string' ? parseFloat(show.venue && typeof show.venue === "object" ? show.venue.lat : null) : show.venue && typeof show.venue === "object" ? show.venue.lat : null;
+      const lng = typeof show.venue && typeof show.venue === "object" ? show.venue.lng : null === 'string' ? parseFloat(show.venue && typeof show.venue === "object" ? show.venue.lng : null) : show.venue && typeof show.venue === "object" ? show.venue.lng : null;
 
       return (
         <Marker

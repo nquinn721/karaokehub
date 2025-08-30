@@ -376,7 +376,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                                 }}
                               >
                                 <Typography variant="subtitle1" fontWeight={600}>
-                                  {show.venue}
+                                  {(show.venue && typeof show.venue === "object" ? show.venue.name : show.venue) || "Unknown Venue"}
                                 </Typography>
                                 <Typography variant="body2" color="primary">
                                   {formatDistance(show.distance || 0)}
@@ -386,7 +386,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                             secondary={
                               <Box>
                                 <Typography variant="body2" color="text.secondary">
-                                  {show.address}
+                                  {show.venue && typeof show.venue === "object" ? show.venue.address : null}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
                                   DJ: {show.dj?.name || 'Unknown'} • {formatTime(show.startTime)} -{' '}
@@ -429,7 +429,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                                 }}
                               >
                                 <Typography variant="subtitle1" fontWeight={600}>
-                                  {show.venue}
+                                  {(show.venue && typeof show.venue === "object" ? show.venue.name : show.venue) || "Unknown Venue"}
                                 </Typography>
                                 <Typography variant="body2" color="primary">
                                   {formatDistance(show.distance || 0)}
@@ -439,7 +439,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                             secondary={
                               <Box>
                                 <Typography variant="body2" color="text.secondary">
-                                  {show.address}
+                                  {show.venue && typeof show.venue === "object" ? show.venue.address : null}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
                                   DJ: {show.dj?.name || 'Unknown'} • {formatTime(show.startTime)} -{' '}
@@ -508,7 +508,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                                 }}
                               >
                                 <Typography variant="subtitle1" fontWeight={600}>
-                                  {show.venue}
+                                  {(show.venue && typeof show.venue === "object" ? show.venue.name : show.venue) || "Unknown Venue"}
                                 </Typography>
                                 <Typography variant="body2" color="primary" fontWeight={600}>
                                   {formatDistance(show.distance || 0)}
@@ -518,7 +518,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                             secondary={
                               <Box>
                                 <Typography variant="body2" color="text.secondary">
-                                  {show.address}
+                                  {show.venue && typeof show.venue === "object" ? show.venue.address : null}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
                                   DJ: {show.dj?.name || 'Unknown'} • {formatTime(show.startTime)} -{' '}

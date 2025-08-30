@@ -130,11 +130,11 @@ const PopupContent: React.FC<{
           />
           <Box>
             <Typography variant="body2" color="text.secondary">
-              {show.address}
+              {show.venue && typeof show.venue === "object" ? show.venue.address : null}
             </Typography>
-            {(show.city || show.state) && (
+            {(show.venue && typeof show.venue === "object" ? show.venue.city : null || show.venue && typeof show.venue === "object" ? show.venue.state : null) && (
               <Typography variant="caption" color="text.secondary">
-                {[show.city, show.state, show.zip].filter(Boolean).join(', ')}
+                {[show.venue && typeof show.venue === "object" ? show.venue.city : null, show.venue && typeof show.venue === "object" ? show.venue.state : null, show.zip].filter(Boolean).join(', ')}
               </Typography>
             )}
           </Box>

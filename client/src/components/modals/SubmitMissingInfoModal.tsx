@@ -160,7 +160,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
               label="Venue Name"
               value={formData.venueName}
               onChange={handleInputChange('venueName')}
-              placeholder={show.venue ? `Currently: ${show.venue}` : 'Enter venue name'}
+              placeholder={show.venue ? `Currently: ${(show.venue && typeof show.venue === "object" ? show.venue.name : show.venue) || "Unknown Venue"}` : 'Enter venue name'}
               fullWidth
               disabled={loading}
               size="small"

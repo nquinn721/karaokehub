@@ -208,7 +208,7 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
                               </Box>
 
                               <Typography variant="body2" color="text.secondary" gutterBottom>
-                                {favorite.show.address}, {favorite.show.city}, {favorite.show.state}
+                                {favorite.show.address}, {favorite.show.venue && typeof show.venue === "object" ? show.venue.city : null}, {favorite.show.venue && typeof show.venue === "object" ? show.venue.state : null}
                               </Typography>
 
                               {favorite.show.dj && (

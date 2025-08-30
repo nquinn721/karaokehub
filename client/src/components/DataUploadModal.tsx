@@ -328,8 +328,8 @@ const DataUploadModal: React.FC<{
                       {uploadData.shows.slice(0, 5).map((show, index) => (
                         <ListItem key={index}>
                           <ListItemText
-                            primary={show.venue}
-                            secondary={`${show.city}, ${show.state} - ${show.day} at ${show.startTime} with ${show.djName}`}
+                            primary={(show.venue && typeof show.venue === "object" ? show.venue.name : show.venue) || "Unknown Venue"}
+                            secondary={`${show.venue && typeof show.venue === "object" ? show.venue.city : null}, ${show.venue && typeof show.venue === "object" ? show.venue.state : null} - ${show.day} at ${show.startTime} with ${show.djName}`}
                           />
                         </ListItem>
                       ))}
