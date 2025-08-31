@@ -40,6 +40,12 @@ export class Venue {
   @Column({ nullable: true })
   website: string;
 
+  @Column({ nullable: true })
+  instagram: string;
+
+  @Column({ nullable: true })
+  facebook: string;
+
   @Column({ nullable: true, type: 'text' })
   description: string;
 

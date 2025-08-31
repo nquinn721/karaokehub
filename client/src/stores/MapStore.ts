@@ -100,20 +100,20 @@ export class MapStore {
     });
 
     try {
-      // At zoom 9 or lower, load all shows nationwide without distance filtering
-      if (this.currentZoom <= 9) {
+      // At zoom 8 or lower, load all shows nationwide without distance filtering
+      if (this.currentZoom <= 8) {
         console.log(
-          '🌎 MapStore: Fetching ALL shows nationwide (zoom 9 or lower)',
+          '🌎 MapStore: Fetching ALL shows nationwide (zoom 8 or lower)',
           this.currentZoom,
         );
 
         await this.showStore.fetchAllShows(day, this.showStore.vendorFilter);
       } else {
-        // For zoom levels 10+, use location-based filtering with smaller radius
-        console.log('📍 MapStore: Fetching regional shows (zoom 10+)', this.currentZoom);
+        // For zoom levels 9+, use location-based filtering with smaller radius
+        console.log('📍 MapStore: Fetching regional shows (zoom 9+)', this.currentZoom);
 
         // Use appropriate radius for higher zoom levels
-        const radius = this.currentZoom <= 12 ? 100 : 50; // 100 miles for medium zoom, 50 miles for detailed view
+        const radius = this.currentZoom <= 11 ? 100 : 50; // 100 miles for medium zoom, 50 miles for detailed view
 
         const mapCenter = this.currentCenter
           ? { lat: this.currentCenter.lat, lng: this.currentCenter.lng, radius }

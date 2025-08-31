@@ -580,6 +580,8 @@ class ApiStore {
         if (maxMiles) url += `&maxMiles=${maxMiles}`;
         return url;
       },
+      calculateDistance: (lat1: number, lng1: number, lat2: number, lng2: number) =>
+        `/location/calculate-distance?lat1=${lat1}&lng1=${lng1}&lat2=${lat2}&lng2=${lng2}`,
     },
 
     // Favorite endpoints

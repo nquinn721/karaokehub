@@ -31,8 +31,10 @@ export class AdminController {
     @Query('page') page = 1,
     @Query('limit') limit = 10,
     @Query('search') search?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC' = 'ASC',
   ) {
-    return await this.adminService.getUsers(+page, +limit, search);
+    return await this.adminService.getUsers(+page, +limit, search, sortBy, sortOrder);
   }
 
   @Get('venues')
@@ -40,8 +42,10 @@ export class AdminController {
     @Query('page') page = 1,
     @Query('limit') limit = 10,
     @Query('search') search?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC' = 'ASC',
   ) {
-    return await this.adminService.getVenues(+page, +limit, search);
+    return await this.adminService.getVenues(+page, +limit, search, sortBy, sortOrder);
   }
 
   @Get('djs')
@@ -49,8 +53,10 @@ export class AdminController {
     @Query('page') page = 1,
     @Query('limit') limit = 10,
     @Query('search') search?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC' = 'ASC',
   ) {
-    return await this.adminService.getDjs(+page, +limit, search);
+    return await this.adminService.getDjs(+page, +limit, search, sortBy, sortOrder);
   }
 
   @Get('shows')
@@ -58,8 +64,10 @@ export class AdminController {
     @Query('page') page = 1,
     @Query('limit') limit = 10,
     @Query('search') search?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC' = 'ASC',
   ) {
-    return await this.adminService.getShows(+page, +limit, search);
+    return await this.adminService.getShows(+page, +limit, search, sortBy, sortOrder);
   }
 
   @Get('favorites')

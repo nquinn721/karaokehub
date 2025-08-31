@@ -1,5 +1,7 @@
 import { Show } from '../stores/ShowStore';
 
+import { geocodingService } from '@utils/geocoding';
+
 export interface UserLocation {
   latitude: number;
   longitude: number;
@@ -21,20 +23,22 @@ export class GeolocationService {
   private isTracking = false;
   private lastKnownLocation: UserLocation | null = null;
 
-  // Haversine formula to calculate distance between two points
-  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371e3; // Earth's radius in meters
-    const φ1 = (lat1 * Math.PI) / 180;
-    const φ2 = (lat2 * Math.PI) / 180;
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+  // Calculate distance with Google Maps API (with Haversine fallback)
+  private async calculateDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): Promise<number> {
+    // Try Google Maps Distance Matrix API first
+    const realDistance = await geocodingService.calculateDistance(lat1, lon1, lat2, lon2);
+    if (realDistance !== null) {
+      return realDistance;
+    }
 
-    const a =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c; // Distance in meters
+    // Fallback to Haversine formula
+    console.warn('Falling back to Haversine distance calculation');
+    return geocodingService.calculateDistanceHaversine(lat1, lon1, lat2, lon2);
   }
 
   // Check if geolocation is supported
@@ -123,12 +127,12 @@ export class GeolocationService {
   }
 
   // Check proximity to shows with high precision for adjacent venues
-  checkShowProximity(userLocation: UserLocation, shows: Show[]): VenueProximity[] {
+  async checkShowProximity(userLocation: UserLocation, shows: Show[]): Promise<VenueProximity[]> {
     const proximities: VenueProximity[] = [];
 
     for (const show of shows) {
       if (show.venue && typeof show.venue === 'object' && show.venue.lat && show.venue.lng) {
-        const distance = this.calculateDistance(
+        const distance = await this.calculateDistance(
           userLocation.latitude,
           userLocation.longitude,
           show.venue.lat,

@@ -122,23 +122,79 @@ export class GeocodingService {
   }
 
   /**
-   * Calculate distance between two coordinates in miles using Haversine formula
+   * Calculate distance between two coordinates using Google Maps Distance Matrix API
+   * Falls back to Haversine formula if API fails
    */
-  calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-    // Debug: Log coordinates for troubleshooting
-    const distance = this.calculateHaversineDistance(lat1, lng1, lat2, lng2);
-
-    // If distance is very small but not zero, log for debugging
-    if (distance < 0.1 && distance > 0) {
-      console.log('Small distance calculation:', {
-        from: { lat: lat1, lng: lng1 },
-        to: { lat: lat2, lng: lng2 },
-        distance: distance,
-        distanceMeters: Math.round(distance * 1609.34),
-      });
+  async calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): Promise<number> {
+    // Try Google Maps Distance Matrix API first for real driving distance
+    const realDistance = await this.calculateRealDistance(lat1, lng1, lat2, lng2);
+    if (realDistance !== null) {
+      return realDistance;
     }
 
-    return distance;
+    // Fallback to Haversine formula
+    this.logger.warn('Falling back to Haversine distance calculation');
+    return this.calculateHaversineDistance(lat1, lng1, lat2, lng2);
+  }
+
+  /**
+   * Calculate distance between two coordinates in miles using Haversine formula (synchronous)
+   */
+  calculateDistanceSync(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    return this.calculateHaversineDistance(lat1, lng1, lat2, lng2);
+  }
+
+  /**
+   * Calculate real driving distance using Google Maps Distance Matrix API
+   */
+  async calculateRealDistance(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number,
+  ): Promise<number | null> {
+    if (!this.googleMapsApiKey) {
+      this.logger.warn('Google Maps API key not configured for distance calculation');
+      return null;
+    }
+
+    try {
+      const origins = `${lat1},${lng1}`;
+      const destinations = `${lat2},${lng2}`;
+      const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origins}&destinations=${destinations}&units=imperial&key=${this.googleMapsApiKey}`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status === 'OK' && data.rows && data.rows.length > 0) {
+        const element = data.rows[0].elements[0];
+
+        if (element.status === 'OK' && element.distance) {
+          // Google returns distance in meters, convert to miles
+          const distanceInMiles = element.distance.value * 0.000621371;
+
+          this.logger.debug(
+            `Real distance calculated: ${distanceInMiles.toFixed(2)} miles (${element.distance.text})`,
+          );
+          return distanceInMiles;
+        } else if (element.status === 'ZERO_RESULTS') {
+          this.logger.warn('No route found between coordinates');
+        } else {
+          this.logger.warn(`Distance calculation failed: ${element.status}`);
+        }
+      } else {
+        this.logger.warn(`Distance Matrix API failed with status: ${data.status}`);
+      }
+    } catch (error) {
+      this.logger.error('Error during real distance calculation:', error);
+    }
+
+    return null;
   }
 
   /**
@@ -414,7 +470,7 @@ export class GeocodingService {
           continue;
         }
 
-        const distance = this.calculateDistance(
+        const distance = await this.calculateDistance(
           userLat,
           userLng,
           geocodeResult.lat,

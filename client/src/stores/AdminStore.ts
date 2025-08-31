@@ -91,7 +91,8 @@ export interface AdminUserFeatureOverride {
 export interface AdminVenue {
   id: string;
   name: string;
-  owner?: string;
+  lat?: number;
+  lng?: number;
   website?: string;
   description?: string;
   instagram?: string;
@@ -396,7 +397,7 @@ export class AdminStore {
     });
   }
 
-  async fetchUsers(page = 1, limit = 10, search?: string): Promise<void> {
+  async fetchUsers(page = 1, limit = 10, search?: string, sortBy?: string, sortOrder?: 'ASC' | 'DESC'): Promise<void> {
     try {
       this.setTableLoading(true);
       this.setTableError(null);
@@ -408,6 +409,14 @@ export class AdminStore {
 
       if (search) {
         params.append('search', search);
+      }
+
+      if (sortBy) {
+        params.append('sortBy', sortBy);
+      }
+
+      if (sortOrder) {
+        params.append('sortOrder', sortOrder);
       }
 
       const response = await apiStore.get(`/admin/users?${params.toString()}`);
@@ -433,7 +442,7 @@ export class AdminStore {
     }
   }
 
-  async fetchVenues(page = 1, limit = 10, search?: string): Promise<void> {
+  async fetchVenues(page = 1, limit = 10, search?: string, sortBy?: string, sortOrder?: 'ASC' | 'DESC'): Promise<void> {
     try {
       this.setTableLoading(true);
       this.setTableError(null);
@@ -445,6 +454,14 @@ export class AdminStore {
 
       if (search) {
         params.append('search', search);
+      }
+
+      if (sortBy) {
+        params.append('sortBy', sortBy);
+      }
+
+      if (sortOrder) {
+        params.append('sortOrder', sortOrder);
       }
 
       const response = await apiStore.get(`/admin/venues?${params.toString()}`);
@@ -470,45 +487,37 @@ export class AdminStore {
     }
   }
 
-  async fetchShows(page = 1, limit = 10, search?: string): Promise<void> {
+  async fetchShows(page = 1, limit = 10, search?: string, sortBy?: string, sortOrder?: 'ASC' | 'DESC'): Promise<void> {
     try {
       this.setTableLoading(true);
       this.setTableError(null);
 
-      // Use the regular shows endpoint instead of admin endpoint
-      const response = await apiStore.get('/shows');
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+
+      if (search) {
+        params.append('search', search);
+      }
+
+      if (sortBy) {
+        params.append('sortBy', sortBy);
+      }
+
+      if (sortOrder) {
+        params.append('sortOrder', sortOrder);
+      }
+
+      const response = await apiStore.get(`/admin/shows?${params.toString()}`);
 
       runInAction(() => {
-        let items = response || [];
-
-        // Apply search filter if provided
-        if (search) {
-          const searchLower = search.toLowerCase();
-          items = items.filter(
-            (show: any) =>
-              show.venue?.toLowerCase().includes(searchLower) ||
-              show.day?.toLowerCase().includes(searchLower) ||
-              show.dj?.name?.toLowerCase().includes(searchLower) ||
-              show.dj?.vendor?.name?.toLowerCase().includes(searchLower) ||
-              show.address?.toLowerCase().includes(searchLower),
-          );
-        }
-
-        // Calculate pagination
-        const total = items.length;
-        const startIndex = (page - 1) * limit;
-        const endIndex = startIndex + limit;
-        const paginatedItems = items.slice(startIndex, endIndex);
-
         this.shows = {
-          items: paginatedItems.map((show: any) => ({
+          ...response,
+          items: response.items.map((show: any) => ({
             ...show,
             createdAt: new Date(show.createdAt),
           })),
-          total,
-          page,
-          limit,
-          totalPages: Math.ceil(total / limit),
         };
       });
     } catch (error: any) {
@@ -523,7 +532,7 @@ export class AdminStore {
     }
   }
 
-  async fetchDjs(page = 1, limit = 10, search?: string): Promise<void> {
+  async fetchDjs(page = 1, limit = 10, search?: string, sortBy?: string, sortOrder?: 'ASC' | 'DESC'): Promise<void> {
     try {
       this.setTableLoading(true);
       this.setTableError(null);
@@ -535,6 +544,14 @@ export class AdminStore {
 
       if (search) {
         params.append('search', search);
+      }
+
+      if (sortBy) {
+        params.append('sortBy', sortBy);
+      }
+
+      if (sortOrder) {
+        params.append('sortOrder', sortOrder);
       }
 
       const response = await apiStore.get(`/admin/djs?${params.toString()}`);

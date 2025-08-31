@@ -1,14 +1,60 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Logger, Query } from '@nestjs/common';
 import { GeocodingService } from '../geocoding/geocoding.service';
 import { DayOfWeek } from '../show/show.entity';
 import { ShowService } from '../show/show.service';
 
 @Controller('location')
 export class LocationController {
+  private readonly logger = new Logger(LocationController.name);
+
   constructor(
     private readonly showService: ShowService,
     private readonly geocodingService: GeocodingService,
   ) {}
+
+  /**
+   * Calculate distance between two points using Google Maps Distance Matrix API
+   */
+  @Get('calculate-distance')
+  async calculateDistance(
+    @Query('lat1') lat1: string,
+    @Query('lng1') lng1: string,
+    @Query('lat2') lat2: string,
+    @Query('lng2') lng2: string,
+  ) {
+    const latitude1 = parseFloat(lat1);
+    const longitude1 = parseFloat(lng1);
+    const latitude2 = parseFloat(lat2);
+    const longitude2 = parseFloat(lng2);
+
+    if (isNaN(latitude1) || isNaN(longitude1) || isNaN(latitude2) || isNaN(longitude2)) {
+      throw new Error('Invalid coordinates provided');
+    }
+
+    try {
+      const distanceMiles = await this.geocodingService.calculateDistance(
+        latitude1,
+        longitude1,
+        latitude2,
+        longitude2,
+      );
+
+      const distanceMeters = distanceMiles * 1609.34;
+
+      return {
+        origin: { lat: latitude1, lng: longitude1 },
+        destination: { lat: latitude2, lng: longitude2 },
+        distance: {
+          miles: Math.round(distanceMiles * 100) / 100,
+          meters: Math.round(distanceMeters),
+          kilometers: Math.round((distanceMeters / 1000) * 100) / 100,
+        },
+      };
+    } catch (error) {
+      this.logger.error('Distance calculation failed:', error);
+      throw new Error('Failed to calculate distance');
+    }
+  }
 
   /**
    * Test endpoint to verify location services are working
@@ -87,11 +133,11 @@ export class LocationController {
     // Get shows for the day
     const shows = await this.showService.findByDay(targetDay);
 
-    // Filter shows with coordinates and calculate distances
-    const showsWithDistances = shows
-      .filter((show) => show.venue?.lat && show.venue?.lng)
-      .map((show) => {
-        const distanceMiles = this.geocodingService.calculateDistance(
+    // Filter shows with coordinates and calculate distances (async for real distance calculation)
+    const showsWithDistances = [];
+    for (const show of shows.filter((show) => show.venue?.lat && show.venue?.lng)) {
+      try {
+        const distanceMiles = await this.geocodingService.calculateDistance(
           latitude,
           longitude,
           show.venue!.lat!,
@@ -99,11 +145,27 @@ export class LocationController {
         );
         const distanceMeters = distanceMiles * 1609.34; // Convert miles to meters
 
-        return {
+        showsWithDistances.push({
           ...show,
           distance: Math.round(distanceMeters),
-        };
-      });
+        });
+      } catch (error) {
+        this.logger.warn(`Failed to calculate distance for show ${show.id}:`, error);
+        // Fallback to sync Haversine calculation
+        const distanceMiles = this.geocodingService.calculateDistanceSync(
+          latitude,
+          longitude,
+          show.venue!.lat!,
+          show.venue!.lng!,
+        );
+        const distanceMeters = distanceMiles * 1609.34;
+
+        showsWithDistances.push({
+          ...show,
+          distance: Math.round(distanceMeters),
+        });
+      }
+    }
 
     // Filter by distance and sort
     const filteredShows = showsWithDistances
@@ -149,11 +211,11 @@ export class LocationController {
     const today = this.getTodayDay();
     const shows = await this.showService.findByDay(today);
 
-    // Calculate distances for all shows
-    const allShowsWithDistance = shows
-      .filter((show) => show.venue?.lat && show.venue?.lng)
-      .map((show) => {
-        const distanceMiles = this.geocodingService.calculateDistance(
+    // Calculate distances for all shows (async for real distance calculation)
+    const showsWithDistance = [];
+    for (const show of shows.filter((show) => show.venue?.lat && show.venue?.lng)) {
+      try {
+        const distanceMiles = await this.geocodingService.calculateDistance(
           latitude,
           longitude,
           show.venue!.lat!,
@@ -161,24 +223,41 @@ export class LocationController {
         );
         const distanceMeters = distanceMiles * 1609.34; // Convert miles to meters
 
-        return {
+        showsWithDistance.push({
           ...show,
           distance: Math.round(distanceMeters),
           distanceMiles: Math.round(distanceMiles * 100) / 100, // Round to 2 decimal places
-        };
-      });
+        });
+      } catch (error) {
+        this.logger.warn(`Failed to calculate distance for show ${show.id}:`, error);
+        // Fallback to sync Haversine calculation
+        const distanceMiles = this.geocodingService.calculateDistanceSync(
+          latitude,
+          longitude,
+          show.venue!.lat!,
+          show.venue!.lng!,
+        );
+        const distanceMeters = distanceMiles * 1609.34;
+
+        showsWithDistance.push({
+          ...show,
+          distance: Math.round(distanceMeters),
+          distanceMiles: Math.round(distanceMiles * 100) / 100,
+        });
+      }
+    }
 
     // Sort by distance
-    allShowsWithDistance.sort((a, b) => a.distance - b.distance);
+    showsWithDistance.sort((a, b) => a.distance - b.distance);
 
     // Find shows within specified radius (default 10 meters)
-    const nearbyShows = allShowsWithDistance.filter((show) => show.distance <= radiusMeters);
+    const nearbyShows = showsWithDistance.filter((show) => show.distance <= radiusMeters);
 
     // Find shows within 100 meters
-    const showsWithin100m = allShowsWithDistance.filter((show) => show.distance <= 100);
+    const showsWithin100m = showsWithDistance.filter((show) => show.distance <= 100);
 
     // Filter all shows by maximum miles distance
-    const showsWithinMaxDistance = allShowsWithDistance.filter(
+    const showsWithinMaxDistance = showsWithDistance.filter(
       (show) => show.distanceMiles <= maxMilesDistance,
     );
 

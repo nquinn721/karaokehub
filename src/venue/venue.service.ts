@@ -13,6 +13,8 @@ export interface CreateVenueDto {
   lng?: number;
   phone?: string;
   website?: string;
+  instagram?: string;
+  facebook?: string;
   description?: string;
   userSubmitted?: boolean;
 }

@@ -366,7 +366,7 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
 
   // Current state
   const currentZoom = mapStore.currentZoom;
-  const isZoomedOut = currentZoom <= 9;
+  const isZoomedOut = currentZoom <= 6; // Temporarily lower threshold for debugging
   const shows = showStore.shows;
   const citySummaries = showStore.citySummaries;
 
@@ -402,16 +402,60 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
 
   // Render individual show markers
   const renderShowMarkers = () => {
-    if (isZoomedOut || shows.length === 0) return null;
+    console.log(
+      `🔍 renderShowMarkers called: isZoomedOut=${isZoomedOut}, shows.length=${shows.length}`,
+    );
+
+    if (isZoomedOut || shows.length === 0) {
+      console.log(
+        `❌ Not rendering markers: isZoomedOut=${isZoomedOut}, shows.length=${shows.length}`,
+      );
+      return null;
+    }
 
     console.log(`📍 Rendering ${shows.length} show markers`);
 
-    return shows.map((show: any) => {
-      if (!(show.venue && typeof show.venue === 'object' && show.venue.lat && show.venue.lng))
-        return null;
+    // Log a sample of the first few shows to check data structure
+    if (shows.length > 0) {
+      console.log(
+        'Sample show data:',
+        shows.slice(0, 2).map((show) => ({
+          id: show.id,
+          venue: show.venue
+            ? {
+                name: typeof show.venue === 'string' ? show.venue : show.venue.name,
+                lat: show.venue.lat,
+                lng: show.venue.lng,
+              }
+            : null,
+          directCoords: { lat: (show as any).lat, lng: (show as any).lng },
+        })),
+      );
+    }
 
-      const lat = typeof show.venue.lat === 'string' ? parseFloat(show.venue.lat) : show.venue.lat;
-      const lng = typeof show.venue.lng === 'string' ? parseFloat(show.venue.lng) : show.venue.lng;
+    return shows.map((show: any) => {
+      // Try multiple ways to get coordinates
+      let lat, lng;
+
+      // First try venue coordinates
+      if (show.venue && typeof show.venue === 'object' && show.venue.lat && show.venue.lng) {
+        lat = typeof show.venue.lat === 'string' ? parseFloat(show.venue.lat) : show.venue.lat;
+        lng = typeof show.venue.lng === 'string' ? parseFloat(show.venue.lng) : show.venue.lng;
+      }
+      // Fallback to direct show coordinates
+      else if (show.lat && show.lng) {
+        lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
+        lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
+      }
+
+      // Skip if no valid coordinates
+      if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+        console.log(`⚠️ Show ${show.id} missing/invalid coordinates:`, {
+          venueCoords: show.venue ? { lat: show.venue.lat, lng: show.venue.lng } : null,
+          directCoords: { lat: (show as any).lat, lng: (show as any).lng },
+        });
+        return null;
+      }
 
       return (
         <Marker

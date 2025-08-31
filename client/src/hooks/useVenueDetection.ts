@@ -87,7 +87,7 @@ export const useVenueDetection = ({
       setLocation(currentLocation);
 
       // Check for nearby venues
-      const proximities = geolocationService.checkShowProximity(currentLocation, shows);
+      const proximities = await geolocationService.checkShowProximity(currentLocation, shows);
       setNearbyVenues(proximities);
 
       console.log(`Found ${proximities.length} nearby venues:`, proximities);
