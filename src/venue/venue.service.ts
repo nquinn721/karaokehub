@@ -14,6 +14,7 @@ export interface CreateVenueDto {
   phone?: string;
   website?: string;
   description?: string;
+  userSubmitted?: boolean;
 }
 
 export interface UpdateVenueDto extends Partial<CreateVenueDto> {}
@@ -36,7 +37,10 @@ export class VenueService {
    * Create a new venue
    */
   async create(createVenueDto: CreateVenueDto): Promise<Venue> {
-    const venue = this.venueRepository.create(createVenueDto);
+    const venue = this.venueRepository.create({
+      ...createVenueDto,
+      userSubmitted: createVenueDto.userSubmitted || false,
+    });
     return await this.venueRepository.save(venue);
   }
 
@@ -158,12 +162,25 @@ export class VenueService {
     );
 
     if (existing) {
+      let updated = false;
+
       // Update location data if we have better information
       if (venueData.lat && venueData.lng && (!existing.lat || !existing.lng)) {
         existing.lat = venueData.lat;
         existing.lng = venueData.lng;
+        updated = true;
+      }
+
+      // Mark as user submitted if this submission is user-generated
+      if (venueData.userSubmitted && !existing.userSubmitted) {
+        existing.userSubmitted = true;
+        updated = true;
+      }
+
+      if (updated) {
         return await this.venueRepository.save(existing);
       }
+
       return existing;
     }
 

@@ -45,6 +45,9 @@ export class Vendor {
   @Column({ nullable: true, type: 'text' })
   parseNotes: string;
 
+  @Column({ default: false })
+  userSubmitted: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

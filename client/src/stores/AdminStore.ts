@@ -1037,8 +1037,21 @@ export class AdminStore {
     }
   }
 
+  async analyzeVendorDuplicates(): Promise<any> {
+    try {
+      this.isLoadingTable = true;
+      const response = await apiStore.post('/admin/deduplicate/vendors/analyze');
+      return response;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to analyze vendor duplicates';
+      throw new Error(errorMessage);
+    } finally {
+      this.isLoadingTable = false;
+    }
+  }
+
   async executeDuplicateDeletion(
-    type: 'venues' | 'shows' | 'djs',
+    type: 'venues' | 'shows' | 'djs' | 'vendors',
     idsToDelete: string[],
   ): Promise<any> {
     try {
@@ -1055,6 +1068,9 @@ export class AdminStore {
           break;
         case 'djs':
           await this.fetchDjs(1, 10);
+          break;
+        case 'vendors':
+          await this.fetchVendors(1, 10);
           break;
       }
 

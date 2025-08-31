@@ -46,6 +46,7 @@ export interface ParsedScheduleItem {
   stats?: {
     showsFound: number;
     djsFound: number;
+    venuesFound: number;
     vendorsFound: number;
   };
   shows?: any[];
@@ -266,7 +267,7 @@ export class ParserStore {
       if (this.parsingLog.length > 50) {
         this.parsingLog = this.parsingLog.slice(-50);
       }
-      
+
       // Update parser summary based on log content
       this.updateSummaryFromLogMessage(message, level);
     });
@@ -289,8 +290,9 @@ export class ParserStore {
     }
 
     // Extract images parsed
-    const imagesParsedMatch = message.match(/Parsed (\d+)\/(\d+) images?/i) || 
-                            message.match(/Processing image (\d+) of (\d+)/i);
+    const imagesParsedMatch =
+      message.match(/Parsed (\d+)\/(\d+) images?/i) ||
+      message.match(/Processing image (\d+) of (\d+)/i);
     if (imagesParsedMatch) {
       updates.imagesParsed = parseInt(imagesParsedMatch[1]);
       updates.imagesFound = parseInt(imagesParsedMatch[2]);
@@ -505,7 +507,7 @@ export class ParserStore {
     try {
       this.setLoading(true);
       this.setError(null);
-      
+
       // Reset parser summary for new parsing session
       this.resetParserSummary();
 
@@ -621,7 +623,7 @@ export class ParserStore {
 
       // Clear previous logs when starting a new parse
       this.clearLog();
-      
+
       // Reset parser summary for new parsing session
       this.resetParserSummary();
 

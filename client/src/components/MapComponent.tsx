@@ -1,5 +1,4 @@
 import {
-  faCalendarAlt,
   faClock,
   faGlobe,
   faMapMarkerAlt,
@@ -7,7 +6,6 @@ import {
   faPhone,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { MarkerClusterer } from '@googlemaps/markerclusterer';
 import { MyLocationRounded } from '@mui/icons-material';
 import {
   Box,
@@ -18,6 +16,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { APIProvider, InfoWindow, Map, Marker } from '@vis.gl/react-google-maps';
+import { runInAction } from 'mobx';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import { apiStore, showStore } from '../stores';
@@ -27,7 +26,7 @@ interface MapComponentProps {
   onScheduleModalOpen?: (show: any) => void;
 }
 
-// PopupContent component for InfoWindow
+// Popup content component for InfoWindow
 const PopupContent: React.FC<{
   show: any;
   onScheduleModalOpen?: (show: any) => void;
@@ -54,7 +53,7 @@ const PopupContent: React.FC<{
   return (
     <Box
       sx={{
-        backgroundColor: theme.palette.background.paper,
+        backgroundColor: theme.palette.mode === 'dark' ? '#1E1E1E' : theme.palette.background.paper,
         color: 'text.primary',
         p: isMobile ? 1.5 : 2,
         minWidth: isMobile ? 200 : 280,
@@ -64,140 +63,227 @@ const PopupContent: React.FC<{
         boxShadow: theme.shadows[4],
       }}
     >
-      {/* Venue Header */}
-      <Typography
-        variant={isMobile ? 'subtitle2' : 'subtitle1'}
-        fontWeight={600}
+      {/* Main content layout similar to show cards */}
+      <Box
         sx={{
-          fontSize: isMobile ? '0.95rem' : '1.1rem',
-          lineHeight: 1.2,
-          mb: 1,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: isMobile ? 1.5 : 2,
         }}
       >
-        {show.venue || show.dj?.vendor?.name || 'Unknown Venue'}
-      </Typography>
-
-      {/* Time Information */}
-      {(show.startTime || show.time) && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-          <FontAwesomeIcon
-            icon={faClock}
-            style={{
-              fontSize: '12px',
-              color: theme.palette.primary.main,
-            }}
-          />
-          <Typography
-            variant="body2"
-            sx={{
-              fontWeight: 600,
-              color: theme.palette.primary.main,
-            }}
-          >
-            {show.startTime && show.endTime
-              ? `${formatTime(show.startTime)} - ${formatTime(show.endTime)}`
-              : show.time}
-          </Typography>
-        </Box>
-      )}
-
-      {/* DJ Information */}
-      {(show.djName || show.dj?.name) && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+        {/* Icon column */}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 0.5,
+            minWidth: isMobile ? '24px' : '28px',
+          }}
+        >
           <FontAwesomeIcon
             icon={faMicrophone}
             style={{
-              fontSize: '12px',
-              color: theme.palette.text.secondary,
+              fontSize: '16px',
+              color: theme.palette.primary.main,
             }}
           />
-          <Typography variant="body2" color="text.secondary">
-            {show.djName || show.dj?.name}
-          </Typography>
+          <Box
+            sx={{
+              width: '2px',
+              height: isMobile ? '20px' : '30px',
+              backgroundColor: theme.palette.primary.main,
+              opacity: 0.3,
+              borderRadius: '1px',
+            }}
+          />
         </Box>
-      )}
 
-      {/* Address */}
-      {show.address && (
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 1 }}>
-          <FontAwesomeIcon
-            icon={faMapMarkerAlt}
-            style={{
-              fontSize: '12px',
-              color: theme.palette.text.secondary,
-              marginTop: '2px',
+        {/* Main content */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          {/* Venue Header */}
+          <Typography
+            variant={isMobile ? 'subtitle2' : 'subtitle1'}
+            fontWeight={600}
+            sx={{
+              fontSize: isMobile ? '0.95rem' : '1.1rem',
+              lineHeight: 1.2,
+              mb: 0.5,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
             }}
-          />
-          <Box>
-            <Typography variant="body2" color="text.secondary">
-              {show.venue && typeof show.venue === 'object' ? show.venue.address : null}
-            </Typography>
-            {((show.venue && typeof show.venue === 'object' && show.venue.city) ||
-              (show.venue && typeof show.venue === 'object' && show.venue.state)) && (
-              <Typography variant="caption" color="text.secondary">
-                {[
-                  show.venue && typeof show.venue === 'object' ? show.venue.city : null,
-                  show.venue && typeof show.venue === 'object' ? show.venue.state : null,
-                  show.zip,
-                ]
-                  .filter(Boolean)
-                  .join(', ')}
+          >
+            {showStore.getVenueName(show)}
+          </Typography>
+
+          {/* Time Information */}
+          {(show.startTime || show.time) && (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                mb: 0.5,
+              }}
+            >
+              <FontAwesomeIcon
+                icon={faClock}
+                style={{
+                  fontSize: '10px',
+                  color: theme.palette.primary.main,
+                }}
+              />
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: isMobile ? '0.7rem' : '0.75rem',
+                  color: theme.palette.primary.main,
+                }}
+              >
+                {show.startTime && show.endTime
+                  ? `${formatTime(show.startTime)} - ${formatTime(show.endTime)}`
+                  : show.time}
               </Typography>
+            </Box>
+          )}
+
+          {/* Compact info rows */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            {/* DJ Information */}
+            {(show.djName || show.dj?.name) && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <FontAwesomeIcon
+                  icon={faMicrophone}
+                  style={{
+                    fontSize: '11px',
+                    color: theme.palette.text.secondary,
+                  }}
+                />
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
+                    fontSize: isMobile ? '0.75rem' : '0.8rem',
+                    fontWeight: 500,
+                  }}
+                >
+                  {show.djName || show.dj?.name}
+                </Typography>
+              </Box>
+            )}
+
+            {/* Address */}
+            {show.address && (
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
+                <FontAwesomeIcon
+                  icon={faMapMarkerAlt}
+                  style={{
+                    fontSize: '11px',
+                    color: theme.palette.text.secondary,
+                    marginTop: '2px',
+                  }}
+                />
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      fontSize: isMobile ? '0.75rem' : '0.8rem',
+                      lineHeight: 1.3,
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {show.venue && typeof show.venue === 'object' ? show.venue.address : null}
+                  </Typography>
+                  {((show.venue && typeof show.venue === 'object' && show.venue.city) ||
+                    (show.venue && typeof show.venue === 'object' && show.venue.state)) && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        fontSize: isMobile ? '0.7rem' : '0.75rem',
+                        lineHeight: 1.2,
+                        opacity: 0.8,
+                      }}
+                    >
+                      {[
+                        show.venue && typeof show.venue === 'object' ? show.venue.city : null,
+                        show.venue && typeof show.venue === 'object' ? show.venue.state : null,
+                        show.zip,
+                      ]
+                        .filter(Boolean)
+                        .join(', ')}
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            )}
+
+            {/* Contact Information - Desktop Only */}
+            {!isMobile && (
+              <>
+                {show.venuePhone && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <FontAwesomeIcon
+                      icon={faPhone}
+                      style={{
+                        fontSize: '11px',
+                        color: theme.palette.text.secondary,
+                      }}
+                    />
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        fontSize: '0.75rem',
+                      }}
+                    >
+                      {show.venuePhone}
+                    </Typography>
+                  </Box>
+                )}
+
+                {show.venueWebsite && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <FontAwesomeIcon
+                      icon={faGlobe}
+                      style={{
+                        fontSize: '11px',
+                        color: theme.palette.text.secondary,
+                      }}
+                    />
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontSize: '0.75rem',
+                        color: 'primary.main',
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => window.open(show.venueWebsite, '_blank')}
+                    >
+                      Visit Website
+                    </Typography>
+                  </Box>
+                )}
+              </>
             )}
           </Box>
         </Box>
-      )}
+      </Box>
 
-      {/* Contact Information */}
-      {!isMobile && show.venuePhone && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-          <FontAwesomeIcon
-            icon={faPhone}
-            style={{
-              fontSize: '12px',
-              color: theme.palette.text.secondary,
-            }}
-          />
-          <Typography variant="body2" color="text.secondary">
-            {show.venuePhone}
-          </Typography>
-        </Box>
-      )}
-
-      {!isMobile && show.venueWebsite && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <FontAwesomeIcon
-            icon={faGlobe}
-            style={{
-              fontSize: '12px',
-              color: theme.palette.text.secondary,
-            }}
-          />
-          <Typography
-            variant="body2"
-            sx={{
-              color: 'primary.main',
-              textDecoration: 'underline',
-              cursor: 'pointer',
-            }}
-            onClick={() => window.open(show.venueWebsite, '_blank')}
-          >
-            Visit Website
-          </Typography>
-        </Box>
-      )}
-
-      {/* Description */}
+      {/* Description - if available */}
       {show.description && (
         <Typography
           variant="body2"
           sx={{
-            fontSize: '0.8rem',
+            fontSize: isMobile ? '0.75rem' : '0.8rem',
             color: 'text.secondary',
             fontStyle: 'italic',
             lineHeight: 1.3,
-            mt: 1,
-            mb: 1,
+            mt: 0.5,
             display: '-webkit-box',
             WebkitLineClamp: isMobile ? 2 : 3,
             WebkitBoxOrient: 'vertical',
@@ -208,178 +294,124 @@ const PopupContent: React.FC<{
         </Typography>
       )}
 
-      {/* Action Buttons */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: 1,
-          mt: show.description ? 1 : 1.5,
-          pt: 1,
-          borderTop: `1px solid ${theme.palette.divider}`,
-        }}
-      >
-        <IconButton
-          size="small"
-          onClick={() => {
-            if (onScheduleModalOpen) {
-              onScheduleModalOpen(show);
-            } else {
-              console.log('Schedule clicked for show:', show);
-            }
-          }}
+      {/* Schedule Button */}
+      {onScheduleModalOpen && (
+        <Box
           sx={{
-            color: theme.palette.primary.main,
-            backgroundColor: theme.palette.primary.main + '10',
-            '&:hover': {
-              backgroundColor: theme.palette.primary.main + '20',
-            },
+            display: 'flex',
+            justifyContent: 'center',
+            mt: 1,
+            pt: 1,
+            borderTop: `1px solid ${theme.palette.divider}`,
           }}
         >
-          <FontAwesomeIcon icon={faCalendarAlt} style={{ fontSize: '14px' }} />
-        </IconButton>
-      </Box>
+          <IconButton
+            size="small"
+            onClick={() => onScheduleModalOpen(show)}
+            sx={{
+              color: theme.palette.primary.main,
+              backgroundColor: theme.palette.primary.main + '10',
+              '&:hover': {
+                backgroundColor: theme.palette.primary.main + '20',
+              },
+            }}
+          >
+            <FontAwesomeIcon icon={faClock} style={{ fontSize: '14px' }} />
+          </IconButton>
+        </Box>
+      )}
     </Box>
   );
 };
 
+const darkMapStyles = [
+  { elementType: 'geometry', stylers: [{ color: '#212121' }] },
+  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
+  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#757575' }] },
+  {
+    featureType: 'administrative.country',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#9e9e9e' }],
+  },
+  {
+    featureType: 'administrative.locality',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#bdbdbd' }],
+  },
+  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#181818' }] },
+  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+  { featureType: 'poi.park', elementType: 'labels.text.stroke', stylers: [{ color: '#1b1b1b' }] },
+  { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#2c2c2c' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
+  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#373737' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3c3c3c' }] },
+  {
+    featureType: 'road.highway.controlled_access',
+    elementType: 'geometry',
+    stylers: [{ color: '#4e4e4e' }],
+  },
+  { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+  { featureType: 'transit', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000000' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3d3d3d' }] },
+];
+
 const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpen }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isDarkMode = theme.palette.mode === 'dark';
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [clusterer, setClusterer] = useState<MarkerClusterer | null>(null);
 
-  // Wait for mapStore to be initialized
+  // Current state
+  const currentZoom = mapStore.currentZoom;
+  const isZoomedOut = currentZoom <= 9;
+  const shows = showStore.shows;
+  const citySummaries = showStore.citySummaries;
+
+  console.log('🗺️ SimpleMapNew render:', {
+    currentZoom,
+    isZoomedOut,
+    showsCount: shows.length,
+    citySummariesCount: citySummaries.length,
+    selectedDay: showStore.selectedDay,
+    useDayFilter: showStore.useDayFilter,
+    isDarkMode: isDarkMode,
+    darkMapStyles: darkMapStyles.length,
+  });
+
+  // Initialize stores only (no API calls in component)
   useEffect(() => {
-    const initializeMap = async () => {
+    const initializeStores = async () => {
       if (!mapStore.isInitialized) {
         await mapStore.initialize();
       }
-
-      // Get user location with mobile awareness
-      await mapStore.goToCurrentLocation(isMobile);
     };
 
-    initializeMap();
-  }, [isMobile]);
+    initializeStores();
+  }, []);
 
-  // Set map instance when map loads
+  // Set map instance
   useEffect(() => {
-    if (map && mapStore) {
-      console.log('🗺️ Map instance ready, setting in MapStore');
+    if (map) {
+      console.log('🗺️ Setting map instance');
       mapStore.setMapInstance(map);
     }
   }, [map]);
 
-  // Trigger data fetch when filters change
-  useEffect(() => {
-    if (mapStore?.isInitialized && mapStore.mapInstance) {
-      console.log('🔄 Filter changed, triggering data fetch');
-      mapStore.fetchDataForCurrentView();
-    }
-  }, [showStore.selectedDay, showStore.vendorFilter, mapStore?.isInitialized]);
-
-  // Set up clustering for low zoom levels
-  useEffect(() => {
-    if (!map || !mapStore) return;
-
-    const zoom = mapStore.currentZoom;
-    const filteredShows = showStore.filteredShows;
-
-    // Clear existing clusterer
-    if (clusterer) {
-      clusterer.clearMarkers();
-      setClusterer(null);
-    }
-
-    // Cluster at zoom 9 or less for better country-wide visibility
-    if (zoom <= 9 && filteredShows.length > 0) {
-      console.log('🎯 Setting up clustering for zoom', zoom, 'with', filteredShows.length, 'shows');
-
-      // Create markers for clustering using filtered shows
-      const markers: google.maps.Marker[] = [];
-
-      filteredShows.forEach((show: any) => {
-        const coordinates = showStore.getVenueCoordinates(show);
-        if (!coordinates) return;
-
-        const { lat, lng } = coordinates;
-
-        const marker = new google.maps.Marker({
-          position: { lat, lng },
-          map: null, // Don't add to map yet
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 0.1,
-            fillOpacity: 0,
-            strokeWeight: 0,
-          },
-        });
-
-        markers.push(marker);
-      });
-      console.log('🗂️ Created', markers.length, 'markers for clustering', filteredShows);
-      if (markers.length > 0) {
-        const newClusterer = new MarkerClusterer({
-          map,
-          markers,
-          renderer: {
-            render: ({ count, position }) => {
-              const marker = new google.maps.Marker({
-                position,
-                icon: {
-                  url: `data:image/svg+xml,${encodeURIComponent(`
-                    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="20" cy="20" r="18" fill="#f44336" stroke="white" stroke-width="2"/>
-                      <text x="20" y="26" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12" font-weight="bold">${count}</text>
-                    </svg>
-                  `)}`,
-                  scaledSize: new google.maps.Size(40, 40),
-                  anchor: new google.maps.Point(20, 20),
-                },
-                zIndex: 1000,
-              });
-
-              // Zoom in when cluster is clicked
-              marker.addListener('click', () => {
-                map.setZoom(12);
-                map.setCenter(position);
-              });
-
-              return marker;
-            },
-          },
-        });
-
-        setClusterer(newClusterer);
-      }
-    }
-  }, [map, mapStore?.currentZoom, showStore.filteredShows]);
-
-  // Render individual show markers (only when not clustering)
+  // Render individual show markers
   const renderShowMarkers = () => {
-    if (!mapStore) return null;
+    if (isZoomedOut || shows.length === 0) return null;
 
-    const zoom = mapStore.currentZoom;
-    const shows = showStore.filteredShows;
-
-    // Don't render individual markers when clustering (zoom 9 or less)
-    if (zoom <= 9) {
-      console.log(`🎯 Skipping individual markers at zoom ${zoom} (clustering mode)`);
-      return null;
-    }
-
-    console.log(`📍 Rendering ${shows.length} individual show markers at zoom ${zoom}`);
+    console.log(`📍 Rendering ${shows.length} show markers`);
 
     return shows.map((show: any) => {
-      const coordinates = showStore.getVenueCoordinates(show);
-      if (!coordinates) return null;
+      if (!(show.venue && typeof show.venue === 'object' && show.venue.lat && show.venue.lng))
+        return null;
 
-      const { lat, lng } = coordinates;
-
-      const isSelected = mapStore.selectedShow?.id === show.id;
-      const iconColor = isSelected ? '#ff5722' : '#f44336'; // Red colors
-      const size = isSelected ? 36 : 32;
+      const lat = typeof show.venue.lat === 'string' ? parseFloat(show.venue.lat) : show.venue.lat;
+      const lng = typeof show.venue.lng === 'string' ? parseFloat(show.venue.lng) : show.venue.lng;
 
       return (
         <Marker
@@ -387,26 +419,62 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
           position={{ lat, lng }}
           onClick={() => mapStore.handleMarkerClick(show)}
           icon={{
-            url: `data:image/svg+xml,${encodeURIComponent(`
-              <svg width="${size}" height="${size}" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="16" cy="16" r="14" fill="${iconColor}" stroke="white" stroke-width="2"/>
-                <!-- Microphone body -->
-                <rect x="14" y="8" width="4" height="10" rx="2" fill="white"/>
-                <!-- Microphone base -->
-                <path d="M12 16c0 2.2 1.8 4 4 4s4-1.8 4-4" stroke="white" stroke-width="1.5" fill="none"/>
-                <!-- Microphone stand -->
-                <line x1="16" y1="20" x2="16" y2="24" stroke="white" stroke-width="1.5"/>
-                <line x1="12" y1="24" x2="20" y2="24" stroke="white" stroke-width="1.5"/>
-              </svg>
-            `)}`,
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 12,
+            fillColor: theme.palette.primary.main,
+            fillOpacity: 1,
+            strokeColor: 'white',
+            strokeWeight: 2,
           }}
         />
       );
     });
   };
 
-  // Show loading if API key is not ready
-  if (!apiStore.googleMapsApiKey) {
+  // Render city summary markers
+  const renderCityMarkers = () => {
+    if (!isZoomedOut || citySummaries.length === 0) return null;
+
+    console.log(`🏙️ Rendering ${citySummaries.length} city markers`);
+
+    return citySummaries.map((city: any, index: number) => {
+      if (!city.lat || !city.lng) return null;
+
+      const lat = typeof city.lat === 'string' ? parseFloat(city.lat) : city.lat;
+      const lng = typeof city.lng === 'string' ? parseFloat(city.lng) : city.lng;
+
+      return (
+        <Marker
+          key={`${city.city}-${city.state}-${index}`}
+          position={{ lat, lng }}
+          onClick={() => {
+            console.log(`🏙️ City clicked: ${city.city}, ${city.state} (${city.showCount} shows)`);
+            // Could expand to show individual shows for this city
+          }}
+          icon={{
+            url: `data:image/svg+xml,${encodeURIComponent(`
+              <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="16" cy="16" r="14" fill="${theme.palette.primary.main}" stroke="white" stroke-width="2"/>
+                <text x="16" y="20" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10" font-weight="bold">${city.showCount}</text>
+              </svg>
+            `)}`,
+            scaledSize: new google.maps.Size(32, 32),
+            anchor: new google.maps.Point(16, 16),
+          }}
+        />
+      );
+    });
+  };
+
+  // Show loading state while waiting for API key
+  const apiKey = apiStore.googleMapsApiKey;
+  console.log('🗺️ SimpleMapNew API key check:', {
+    apiKey: apiKey ? `${apiKey.substring(0, 10)}...` : 'undefined',
+    configLoaded: apiStore.configLoaded,
+    hasClientConfig: !!apiStore.clientConfig,
+  });
+
+  if (!apiKey) {
     return (
       <Box
         sx={{
@@ -425,9 +493,14 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
         <Typography variant="body2" color="text.secondary">
           Loading map...
         </Typography>
-        {apiStore.configLoaded && !apiStore.googleMapsApiKey && (
+        <Typography variant="caption" color="text.secondary">
+          {apiStore.configLoaded
+            ? 'Config loaded - checking API key...'
+            : 'Loading config from server...'}
+        </Typography>
+        {apiStore.configLoaded && !apiKey && (
           <Typography variant="caption" color="error">
-            Google Maps API key not available
+            Google Maps API key not available. Check server configuration.
           </Typography>
         )}
       </Box>
@@ -435,8 +508,27 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
   }
 
   return (
-    <APIProvider apiKey={apiStore.googleMapsApiKey}>
+    <APIProvider apiKey={apiKey}>
       <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+        {/* Zoom indicator */}
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: 16,
+            left: 16,
+            zIndex: 1000,
+            backgroundColor: theme.palette.background.paper,
+            padding: '4px 8px',
+            borderRadius: 1,
+            boxShadow: theme.shadows[2],
+            border: `1px solid ${theme.palette.divider}`,
+          }}
+        >
+          <Typography variant="caption" color="textSecondary">
+            Zoom: {currentZoom} {isZoomedOut ? '(Cities)' : '(Shows)'}
+          </Typography>
+        </Box>
+
         {/* Current location button */}
         <Box
           sx={{
@@ -447,14 +539,38 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
           }}
         >
           <IconButton
-            onClick={() => mapStore?.goToCurrentLocation()}
+            onClick={() => {
+              if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                  (position) => {
+                    const { latitude, longitude } = position.coords;
+                    mapStore.goToCurrentLocation();
+                    if (map) {
+                      map.setCenter({ lat: latitude, lng: longitude });
+                      map.setZoom(12);
+                    }
+                  },
+                  (error) => {
+                    console.error('Error getting current location:', error);
+                  },
+                );
+              }
+            }}
             size="small"
             sx={{
-              backgroundColor: theme.palette.background.paper,
-              color: theme.palette.primary.main,
-              boxShadow: theme.shadows[2],
+              backgroundColor: (theme) => (theme.palette.mode === 'dark' ? '#2a2a2a' : '#f5f5f5'),
+              color: '#1a73e8',
+              boxShadow: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? '0 2px 8px rgba(0,0,0,0.5)'
+                  : '0 2px 8px rgba(0,0,0,0.15)',
               '&:hover': {
-                backgroundColor: theme.palette.background.paper,
+                backgroundColor: (theme) => (theme.palette.mode === 'dark' ? '#2a2a2a' : '#f5f5f5'),
+                color: '#1a73e8',
+                boxShadow: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? '0 2px 8px rgba(0,0,0,0.5)'
+                    : '0 2px 8px rgba(0,0,0,0.15)',
               },
             }}
           >
@@ -462,46 +578,45 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
           </IconButton>
         </Box>
 
-        {/* Zoom indicator */}
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: 66,
-            left: 16,
-            zIndex: 1000,
-            backgroundColor: theme.palette.background.paper,
-            padding: '4px 8px',
-            borderRadius: 1,
-            boxShadow: theme.shadows[2],
-          }}
-        >
-          <Typography variant="caption" color="textSecondary">
-            Zoom: {mapStore?.currentZoom}
-            {mapStore?.currentZoom <= 10 && ' (Clustering)'}
-            {mapStore?.currentZoom >= 14 && ' (All Shows)'}
-            {mapStore?.currentZoom > 10 && mapStore?.currentZoom < 14 && ' (Regional)'}
-          </Typography>
-        </Box>
-
-        {/* Map with built-in dark theme */}
+        {/* Map */}
         <Map
           style={{ width: '100%', height: '100%' }}
-          defaultCenter={mapStore?.userLocation || { lat: 39.8283, lng: -98.5795 }}
-          defaultZoom={isMobile ? 10 : 11}
+          defaultCenter={mapStore.userLocation || { lat: 39.8283, lng: -98.5795 }}
+          defaultZoom={11}
           gestureHandling={'greedy'}
           disableDefaultUI={true}
-          colorScheme={theme.palette.mode === 'dark' ? 'DARK' : 'LIGHT'}
+          styles={isDarkMode ? darkMapStyles : undefined}
           onCameraChanged={(ev) => {
-            if (ev.map && !map) {
-              console.log('🗺️ Map loaded');
-              setMap(ev.map);
+            if (ev.map) {
+              // Always update zoom level when camera changes
+              const currentMapZoom = ev.map.getZoom() || 11;
+              if (currentMapZoom !== mapStore.currentZoom) {
+                console.log('🔍 Zoom changed:', mapStore.currentZoom, '->', currentMapZoom);
+                // Use runInAction to ensure MobX observability
+                runInAction(() => {
+                  mapStore.currentZoom = currentMapZoom;
+                });
+              }
+
+              // Set map instance if not already set
+              if (!map) {
+                console.log('🗺️ Map loaded, setting map instance');
+                console.log(
+                  '🎨 Dark mode:',
+                  isDarkMode,
+                  'Styles applied:',
+                  isDarkMode ? 'dark' : 'none',
+                );
+                setMap(ev.map);
+              }
             }
           }}
         >
           {renderShowMarkers()}
+          {renderCityMarkers()}
 
           {/* InfoWindow for selected show */}
-          {mapStore?.selectedShow && (
+          {mapStore.selectedShow && (
             <InfoWindow
               position={{
                 lat:

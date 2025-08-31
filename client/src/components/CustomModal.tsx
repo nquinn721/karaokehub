@@ -15,7 +15,7 @@ interface CustomModalProps {
   open: boolean;
   onClose: () => void;
   title: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   children: React.ReactNode;
   maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   fullWidth?: boolean;
@@ -59,23 +59,25 @@ const CustomModal: React.FC<CustomModalProps> = ({
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box
-            sx={{
-              p: 1,
-              borderRadius: 2,
-              backgroundColor: theme.palette.primary.main + '15',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {React.cloneElement(icon as React.ReactElement, {
-              style: {
-                color: theme.palette.primary.main,
-                fontSize: '20px',
-              },
-            })}
-          </Box>
+          {icon && (
+            <Box
+              sx={{
+                p: 1,
+                borderRadius: 2,
+                backgroundColor: theme.palette.primary.main + '15',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {React.cloneElement(icon as React.ReactElement, {
+                style: {
+                  color: theme.palette.primary.main,
+                  fontSize: '20px',
+                },
+              })}
+            </Box>
+          )}
           <Box>
             <Typography variant="h5" component="div" fontWeight={600}>
               {title}
@@ -99,7 +101,8 @@ const CustomModal: React.FC<CustomModalProps> = ({
       <DialogContent
         sx={{
           px: 3,
-          py: 2,
+          pt: 3,
+          pb: 2,
           '&::-webkit-scrollbar': {
             width: 8,
           },

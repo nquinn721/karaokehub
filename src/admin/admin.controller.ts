@@ -211,9 +211,14 @@ export class AdminController {
     return await this.deduplicationService.deduplicateDJs();
   }
 
+  @Post('deduplicate/vendors/analyze')
+  async analyzeVendorDuplicates() {
+    return await this.deduplicationService.deduplicateVendors();
+  }
+
   @Post('deduplicate/:type/execute')
   async executeDuplicateDeletion(
-    @Param('type') type: 'venues' | 'shows' | 'djs',
+    @Param('type') type: 'venues' | 'shows' | 'djs' | 'vendors',
     @Body() body: { idsToDelete: string[] },
   ) {
     return await this.deduplicationService.executeDeletion(type, body.idsToDelete);

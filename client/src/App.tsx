@@ -9,7 +9,7 @@ import FeedbackModal from './components/FeedbackModal';
 import FloatingVolumeControl from './components/FloatingVolumeControl';
 import FooterComponent from './components/FooterComponent';
 import GlobalNotifications from './components/GlobalNotifications';
-import PostLoginModal from './components/PostLoginModalNew';
+import PostLoginModal from './components/PostLoginModal';
 import StageNameRequiredModal from './components/StageNameRequiredModal';
 import VenueDetectionModal from './components/VenueDetectionModal';
 import useVenueDetection from './hooks/useVenueDetection';
@@ -17,7 +17,7 @@ import { VenueProximity } from './services/GeolocationService';
 
 // Pages
 import AboutPage from './pages/AboutPage';
-import AdminDashboardPageTabbed from './pages/AdminDashboardPageTabbed';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminParserPage from './pages/AdminParserPage';
 import AuthError from './pages/AuthError';
 import AuthSuccess from './pages/AuthSuccess';
@@ -294,7 +294,7 @@ const AppContent: React.FC = observer(() => {
               path="/admin"
               element={
                 <ProtectedRoute>
-                  <AdminDashboardPageTabbed />
+                  <AdminDashboardPage />
                 </ProtectedRoute>
               }
             />

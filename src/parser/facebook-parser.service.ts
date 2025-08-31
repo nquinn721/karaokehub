@@ -625,10 +625,14 @@ export class FacebookParserService {
     const shows = [];
     const djs = new Set<string>();
     const vendors = new Set<string>();
+    const venues = new Set<string>();
 
     // Process each parsed image result
     for (const item of data) {
       if (item.show && item.show.venue) {
+        // Add venue to set for tracking
+        venues.add(item.show.venue);
+
         // Transform show object to expected format
         const show = {
           venue: item.show.venue,
@@ -667,6 +671,7 @@ export class FacebookParserService {
       stats: {
         showsFound: shows.length,
         djsFound: djs.size,
+        venuesFound: venues.size,
         vendorsFound: vendors.size,
         totalImages: data.length,
         pageName: pageName,

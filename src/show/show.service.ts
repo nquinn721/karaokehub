@@ -22,6 +22,7 @@ export interface CreateShowDto {
   endTime: string;
   description?: string;
   source?: string;
+  userSubmitted?: boolean;
 }
 
 export interface UpdateShowDto {
@@ -33,6 +34,7 @@ export interface UpdateShowDto {
   description?: string;
   isActive?: boolean;
   source?: string;
+  userSubmitted?: boolean;
 }
 
 export interface GeocodedShow extends Show {
@@ -117,6 +119,7 @@ export class ShowService {
         zip: createShowDto.venueZip,
         phone: createShowDto.venuePhone,
         website: createShowDto.venueWebsite,
+        userSubmitted: createShowDto.userSubmitted || false,
       });
       venueId = venue.id;
     }
@@ -129,6 +132,7 @@ export class ShowService {
       endTime: createShowDto.endTime,
       description: createShowDto.description,
       source: createShowDto.source,
+      userSubmitted: createShowDto.userSubmitted || false,
     });
 
     return await this.showRepository.save(show);

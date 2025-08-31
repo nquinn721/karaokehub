@@ -9,7 +9,9 @@ export class ShowController {
 
   @Post()
   create(@Body() createShowDto: CreateShowDto) {
-    return this.showService.create(createShowDto);
+    // Mark shows created through the API as user submitted
+    const showData = { ...createShowDto, userSubmitted: true };
+    return this.showService.create(showData);
   }
 
   @Get()

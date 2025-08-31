@@ -405,21 +405,29 @@ CRITICAL: Extract ALL geographical data available including:
 Return structured JSON:
 {
   "vendor": "business/venue name",
+  "venues": [
+    {
+      "name": "venue name",
+      "address": "complete street address",
+      "city": "city name",
+      "state": "state name or abbreviation", 
+      "zip": "zip or postal code",
+      "lat": "latitude if available",
+      "lng": "longitude if available",
+      "phone": "phone number",
+      "website": "website if visible",
+      "confidence": 0.8
+    }
+  ],
   "dj": "dj or host name if visible",
   "show": {
-    "venue": "venue name",
-    "address": "complete street address",
-    "city": "city name",
-    "state": "state name or abbreviation",
-    "zip": "zip or postal code",
-    "lat": "latitude if available",
-    "lng": "longitude if available",
+    "venueName": "venue name (must match a venue from venues array)",
     "day": "day(s) of week",
     "time": "time range",
     "startTime": "start time",
     "endTime": "end time",
-    "venuePhone": "phone number",
-    "venueWebsite": "website if visible"
+    "vendor": "vendor/company providing service",
+    "confidence": 0.8
   },
   "success": true
 }

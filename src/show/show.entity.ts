@@ -64,6 +64,9 @@ export class Show {
   @Column({ default: false })
   isFlagged: boolean;
 
+  @Column({ default: false })
+  userSubmitted: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

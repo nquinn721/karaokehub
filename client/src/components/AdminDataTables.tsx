@@ -24,10 +24,6 @@ import {
   Checkbox,
   Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   FormControlLabel,
   IconButton,
@@ -258,7 +254,7 @@ const AdminDataTables: React.FC = observer(() => {
 
   // Deduplication state
   const [dedupeDialogOpen, setDedupeDialogOpen] = useState(false);
-  const [dedupeType, setDedupeType] = useState<'venues' | 'shows' | 'djs' | null>(null);
+  const [dedupeType, setDedupeType] = useState<'venues' | 'shows' | 'djs' | 'vendors' | null>(null);
   const [duplicatesFound, setDuplicatesFound] = useState<any[]>([]);
   const [selectedDuplicates, setSelectedDuplicates] = useState<string[]>([]);
   const [dedupeLoading, setDedupeLoading] = useState(false);
@@ -458,7 +454,7 @@ const AdminDataTables: React.FC = observer(() => {
   };
 
   // Deduplication handlers
-  const handleStartDeduplication = async (type: 'venues' | 'shows' | 'djs') => {
+  const handleStartDeduplication = async (type: 'venues' | 'shows' | 'djs' | 'vendors') => {
     try {
       setDedupeLoading(true);
       setDedupeType(type);
@@ -473,6 +469,9 @@ const AdminDataTables: React.FC = observer(() => {
           break;
         case 'djs':
           result = await adminStore.analyzeDjDuplicates();
+          break;
+        case 'vendors':
+          result = await adminStore.analyzeVendorDuplicates();
           break;
       }
 
@@ -588,7 +587,13 @@ const AdminDataTables: React.FC = observer(() => {
     [handleSearch, fetchData, setSearchTerms, setPages],
   );
 
-  const DedupeButton = ({ type, label }: { type: 'venues' | 'shows' | 'djs'; label: string }) => (
+  const DedupeButton = ({
+    type,
+    label,
+  }: {
+    type: 'venues' | 'shows' | 'djs' | 'vendors';
+    label: string;
+  }) => (
     <Tooltip title={`Find and remove duplicate ${label.toLowerCase()}`}>
       <Button
         variant="outlined"
@@ -1259,7 +1264,10 @@ const AdminDataTables: React.FC = observer(() => {
       <TabPanel value={tabValue} index={4}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Vendor Management</Typography>
-          <SearchField table="vendors" placeholder="Search Vendors..." />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SearchField table="vendors" placeholder="Search Vendors..." />
+            <DedupeButton type="vendors" label="Vendors" />
+          </Box>
         </Box>
         <TableContainer component={Paper}>
           <Table>
@@ -1637,140 +1645,142 @@ const AdminDataTables: React.FC = observer(() => {
       </TabPanel>
 
       {/* Edit Dialog */}
-      <Dialog open={!!editingItem} onClose={() => setEditingItem(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          Edit {editType && editType.charAt(0).toUpperCase() + editType.slice(1)}
-        </DialogTitle>
-        <DialogContent>
-          {editingItem && editType === 'venue' && (
-            <Box sx={{ pt: 1 }}>
-              <TextField
-                label="Name"
-                fullWidth
-                margin="normal"
-                value={editingItem.name || ''}
-                onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-              />
-              <TextField
-                label="Location"
-                fullWidth
-                margin="normal"
-                value={editingItem.location || ''}
-                onChange={(e) => setEditingItem({ ...editingItem, location: e.target.value })}
-              />
-            </Box>
-          )}
+      <CustomModal
+        open={!!editingItem}
+        onClose={() => setEditingItem(null)}
+        title={`Edit ${editType && editType.charAt(0).toUpperCase() + editType.slice(1)}`}
+        icon={<FontAwesomeIcon icon={faEdit} />}
+        maxWidth="sm"
+      >
+        {editingItem && editType === 'venue' && (
+          <Box sx={{ pt: 1 }}>
+            <TextField
+              label="Name"
+              fullWidth
+              margin="normal"
+              value={editingItem.name || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+            />
+            <TextField
+              label="Location"
+              fullWidth
+              margin="normal"
+              value={editingItem.location || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, location: e.target.value })}
+            />
+          </Box>
+        )}
 
-          {editingItem && editType === 'show' && (
-            <Box sx={{ pt: 1 }}>
-              <TextField
-                label="Day"
-                fullWidth
-                margin="normal"
-                value={editingItem.day || ''}
-                onChange={(e) => setEditingItem({ ...editingItem, day: e.target.value })}
-              />
-              <TextField
-                label="Time"
-                fullWidth
-                margin="normal"
-                value={editingItem.time || ''}
-                onChange={(e) => setEditingItem({ ...editingItem, time: e.target.value })}
-              />
-              <TextField
-                label="Description"
-                fullWidth
-                margin="normal"
-                multiline
-                rows={3}
-                value={editingItem.description || ''}
-                onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
-              />
-            </Box>
-          )}
+        {editingItem && editType === 'show' && (
+          <Box sx={{ pt: 1 }}>
+            <TextField
+              label="Day"
+              fullWidth
+              margin="normal"
+              value={editingItem.day || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, day: e.target.value })}
+            />
+            <TextField
+              label="Time"
+              fullWidth
+              margin="normal"
+              value={editingItem.time || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, time: e.target.value })}
+            />
+            <TextField
+              label="Description"
+              fullWidth
+              margin="normal"
+              multiline
+              rows={3}
+              value={editingItem.description || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
+            />
+          </Box>
+        )}
 
-          {editingItem && editType === 'dj' && (
-            <Box sx={{ pt: 1 }}>
-              <TextField
-                label="Name"
-                fullWidth
-                margin="normal"
-                value={editingItem.name || ''}
-                onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-              />
-            </Box>
-          )}
+        {editingItem && editType === 'dj' && (
+          <Box sx={{ pt: 1 }}>
+            <TextField
+              label="Name"
+              fullWidth
+              margin="normal"
+              value={editingItem.name || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+            />
+          </Box>
+        )}
 
-          {editingItem && editType === 'vendor' && (
-            <Box sx={{ pt: 1 }}>
-              <TextField
-                label="Name"
-                fullWidth
-                margin="normal"
-                value={editingItem.name || ''}
-                onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-              />
-              <TextField
-                label="Website"
-                fullWidth
-                margin="normal"
-                value={editingItem.website || ''}
-                onChange={(e) => setEditingItem({ ...editingItem, website: e.target.value })}
-              />
-              <TextField
-                label="Instagram"
-                fullWidth
-                margin="normal"
-                value={editingItem.instagram || ''}
-                onChange={(e) => setEditingItem({ ...editingItem, instagram: e.target.value })}
-              />
-              <TextField
-                label="Facebook"
-                fullWidth
-                margin="normal"
-                value={editingItem.facebook || ''}
-                onChange={(e) => setEditingItem({ ...editingItem, facebook: e.target.value })}
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={editingItem.isActive || false}
-                    onChange={(e) => setEditingItem({ ...editingItem, isActive: e.target.checked })}
-                  />
-                }
-                label="Active"
-              />
-            </Box>
-          )}
+        {editingItem && editType === 'vendor' && (
+          <Box sx={{ pt: 1 }}>
+            <TextField
+              label="Name"
+              fullWidth
+              margin="normal"
+              value={editingItem.name || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
+            />
+            <TextField
+              label="Website"
+              fullWidth
+              margin="normal"
+              value={editingItem.website || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, website: e.target.value })}
+            />
+            <TextField
+              label="Instagram"
+              fullWidth
+              margin="normal"
+              value={editingItem.instagram || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, instagram: e.target.value })}
+            />
+            <TextField
+              label="Facebook"
+              fullWidth
+              margin="normal"
+              value={editingItem.facebook || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, facebook: e.target.value })}
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={editingItem.isActive || false}
+                  onChange={(e) => setEditingItem({ ...editingItem, isActive: e.target.checked })}
+                />
+              }
+              label="Active"
+            />
+          </Box>
+        )}
 
-          {editingItem && editType === 'feedback' && (
-            <Box sx={{ pt: 1 }}>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={editingItem.status || 'pending'}
-                  onChange={(e) => setEditingItem({ ...editingItem, status: e.target.value })}
-                  label="Status"
-                >
-                  <MenuItem value="pending">Pending</MenuItem>
-                  <MenuItem value="reviewed">Reviewed</MenuItem>
-                  <MenuItem value="resolved">Resolved</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                label="Admin Response"
-                fullWidth
-                margin="normal"
-                multiline
-                rows={4}
-                value={editingItem.response || ''}
-                onChange={(e) => setEditingItem({ ...editingItem, response: e.target.value })}
-                helperText="Optional response to the user's feedback"
-              />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
+        {editingItem && editType === 'feedback' && (
+          <Box sx={{ pt: 1 }}>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={editingItem.status || 'pending'}
+                onChange={(e) => setEditingItem({ ...editingItem, status: e.target.value })}
+                label="Status"
+              >
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="reviewed">Reviewed</MenuItem>
+                <MenuItem value="resolved">Resolved</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="Admin Response"
+              fullWidth
+              margin="normal"
+              multiline
+              rows={4}
+              value={editingItem.response || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, response: e.target.value })}
+              helperText="Optional response to the user's feedback"
+            />
+          </Box>
+        )}
+
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
           <Button onClick={() => setEditingItem(null)}>Cancel</Button>
           <Button
             onClick={async () => {
@@ -1836,163 +1846,150 @@ const AdminDataTables: React.FC = observer(() => {
           >
             Save
           </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </CustomModal>
 
       {/* Feedback View Dialog */}
-      <Dialog
+      <CustomModal
         open={!!viewingFeedback}
         onClose={() => setViewingFeedback(null)}
+        title="Feedback Details"
+        icon={<FontAwesomeIcon icon={faComment} />}
         maxWidth="md"
-        fullWidth
       >
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <FontAwesomeIcon icon={faComment} />
-            Feedback Details
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          {viewingFeedback && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {/* Header Info */}
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <Chip
-                  label={viewingFeedback.type}
-                  size="medium"
-                  color={
-                    viewingFeedback.type === 'bug' || viewingFeedback.type === 'complaint'
-                      ? 'error'
-                      : viewingFeedback.type === 'feature' || viewingFeedback.type === 'improvement'
-                        ? 'info'
-                        : viewingFeedback.type === 'compliment'
-                          ? 'success'
-                          : 'default'
-                  }
-                />
-                <Chip
-                  label={viewingFeedback.status}
-                  size="medium"
-                  color={
-                    viewingFeedback.status === 'resolved'
-                      ? 'success'
-                      : viewingFeedback.status === 'reviewed'
-                        ? 'info'
-                        : 'warning'
-                  }
-                />
-              </Box>
+        {viewingFeedback && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Header Info */}
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Chip
+                label={viewingFeedback.type}
+                size="medium"
+                color={
+                  viewingFeedback.type === 'bug' || viewingFeedback.type === 'complaint'
+                    ? 'error'
+                    : viewingFeedback.type === 'feature' || viewingFeedback.type === 'improvement'
+                      ? 'info'
+                      : viewingFeedback.type === 'compliment'
+                        ? 'success'
+                        : 'default'
+                }
+              />
+              <Chip
+                label={viewingFeedback.status}
+                size="medium"
+                color={
+                  viewingFeedback.status === 'resolved'
+                    ? 'success'
+                    : viewingFeedback.status === 'reviewed'
+                      ? 'info'
+                      : 'warning'
+                }
+              />
+            </Box>
 
-              {/* Subject */}
+            {/* Subject */}
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Subject
+              </Typography>
+              <Typography variant="body1">
+                {viewingFeedback.subject || 'No subject provided'}
+              </Typography>
+            </Box>
+
+            {/* Message */}
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Message
+              </Typography>
+              <Paper sx={{ p: 2, backgroundColor: 'background.default' }}>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {viewingFeedback.message}
+                </Typography>
+              </Paper>
+            </Box>
+
+            {/* User Info */}
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                User Information
+              </Typography>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: 2,
+                }}
+              >
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Name
+                  </Typography>
+                  <Typography variant="body1">
+                    {viewingFeedback.user?.name || viewingFeedback.name || 'Not provided'}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Email
+                  </Typography>
+                  <Typography variant="body1">
+                    {viewingFeedback.user?.email || viewingFeedback.email || 'Not provided'}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Submitted
+                  </Typography>
+                  <Typography variant="body1">
+                    {viewingFeedback.createdAt.toLocaleString()}
+                  </Typography>
+                </Box>
+                {viewingFeedback.responseDate && (
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Responded
+                    </Typography>
+                    <Typography variant="body1">
+                      {viewingFeedback.responseDate.toLocaleString()}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+
+            {/* Response (if any) */}
+            {viewingFeedback.response && (
               <Box>
                 <Typography variant="h6" gutterBottom>
-                  Subject
+                  Response
                 </Typography>
-                <Typography variant="body1">
-                  {viewingFeedback.subject || 'No subject provided'}
-                </Typography>
-              </Box>
-
-              {/* Message */}
-              <Box>
-                <Typography variant="h6" gutterBottom>
-                  Message
-                </Typography>
-                <Paper sx={{ p: 2, backgroundColor: 'background.default' }}>
+                <Paper
+                  sx={{
+                    p: 2,
+                    backgroundColor: 'primary.50',
+                    border: '1px solid',
+                    borderColor: 'primary.200',
+                  }}
+                >
                   <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {viewingFeedback.message}
+                    {viewingFeedback.response}
                   </Typography>
                 </Paper>
               </Box>
-
-              {/* User Info */}
-              <Box>
-                <Typography variant="h6" gutterBottom>
-                  User Information
-                </Typography>
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: 2,
-                  }}
-                >
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Name
-                    </Typography>
-                    <Typography variant="body1">
-                      {viewingFeedback.user?.name || viewingFeedback.name || 'Not provided'}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Email
-                    </Typography>
-                    <Typography variant="body1">
-                      {viewingFeedback.user?.email || viewingFeedback.email || 'Not provided'}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Submitted
-                    </Typography>
-                    <Typography variant="body1">
-                      {viewingFeedback.createdAt.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  {viewingFeedback.responseDate && (
-                    <Box>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Responded
-                      </Typography>
-                      <Typography variant="body1">
-                        {viewingFeedback.responseDate.toLocaleString()}
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              </Box>
-
-              {/* Response (if any) */}
-              {viewingFeedback.response && (
-                <Box>
-                  <Typography variant="h6" gutterBottom>
-                    Response
-                  </Typography>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      backgroundColor: 'primary.50',
-                      border: '1px solid',
-                      borderColor: 'primary.200',
-                    }}
-                  >
-                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                      {viewingFeedback.response}
-                    </Typography>
-                  </Paper>
-                </Box>
-              )}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
+            )}
+          </Box>
+        )}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
           <Button onClick={() => setViewingFeedback(null)}>Close</Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </CustomModal>
 
-      {/* User Image View Dialog */}
-      <Dialog
+      {/* User Image View Modal */}
+      <CustomModal
         open={!!viewingUserImage}
         onClose={() => setViewingUserImage(null)}
-        PaperProps={{
-          sx: {
-            background: 'transparent',
-            boxShadow: 'none',
-            overflow: 'visible',
-          },
-        }}
+        title={viewingUserImage ? `${viewingUserImage.userName}'s Profile Image` : ''}
       >
         {viewingUserImage && (
           <Box
@@ -2010,7 +2007,7 @@ const AdminDataTables: React.FC = observer(() => {
             onClick={() => setViewingUserImage(null)}
           />
         )}
-      </Dialog>
+      </CustomModal>
 
       {/* User Feature Override Modal */}
       <UserFeatureOverrideModal
@@ -2019,141 +2016,141 @@ const AdminDataTables: React.FC = observer(() => {
         user={selectedUser}
       />
 
-      {/* Show Review Dialog */}
-      <Dialog
+      {/* Show Review Modal */}
+      <CustomModal
         open={!!reviewingShowReview}
         onClose={() => {
           setReviewingShowReview(null);
           setReviewAction(null);
           setAdminNotes('');
         }}
+        title={
+          reviewAction
+            ? `${reviewAction === 'approve' ? 'Approve' : 'Decline'} Review`
+            : 'Review Details'
+        }
+        icon={<FontAwesomeIcon icon={faComment} />}
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>
-          {reviewAction
-            ? `${reviewAction === 'approve' ? 'Approve' : 'Decline'} Review`
-            : 'Review Details'}
-        </DialogTitle>
-        <DialogContent>
-          {reviewingShowReview && (
-            <Box>
-              {/* Original Show Info */}
-              <Typography variant="subtitle2" sx={{ mb: 1, color: 'primary.main' }}>
-                Current Show Information:
+        {reviewingShowReview && (
+          <Box>
+            {/* Original Show Info */}
+            <Typography variant="subtitle2" sx={{ mb: 1, color: 'primary.main' }}>
+              Current Show Information:
+            </Typography>
+            <Box sx={{ mb: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Venue:</strong>{' '}
+                {reviewingShowReview.show
+                  ? getAdminShowVenueName(reviewingShowReview.show)
+                  : 'Not specified'}
               </Typography>
-              <Box sx={{ mb: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>Venue:</strong>{' '}
-                  {reviewingShowReview.show
-                    ? getAdminShowVenueName(reviewingShowReview.show)
-                    : 'Not specified'}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>Address:</strong>{' '}
-                  {reviewingShowReview.show
-                    ? getAdminShowVenueAddress(reviewingShowReview.show) || 'Not specified'
-                    : 'Not specified'}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>DJ/Host:</strong> {reviewingShowReview.show?.dj?.name || 'Not specified'}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Vendor:</strong>{' '}
-                  {reviewingShowReview.show?.dj?.vendor?.name || 'Not specified'}
-                </Typography>
-              </Box>
-
-              {/* Submitted Changes */}
-              <Typography variant="subtitle2" sx={{ mb: 1, color: 'secondary.main' }}>
-                Submitted Changes:
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Address:</strong>{' '}
+                {reviewingShowReview.show
+                  ? getAdminShowVenueAddress(reviewingShowReview.show) || 'Not specified'
+                  : 'Not specified'}
               </Typography>
-              <Box
-                sx={{
-                  mb: 3,
-                  p: 2,
-                  bgcolor: 'success.50',
-                  borderRadius: 1,
-                  border: '1px solid',
-                  borderColor: 'success.200',
-                }}
-              >
-                {reviewingShowReview.djName && (
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>DJ/Host:</strong> {reviewingShowReview.djName}
-                  </Typography>
-                )}
-                {reviewingShowReview.vendorName && (
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>Vendor:</strong> {reviewingShowReview.vendorName}
-                  </Typography>
-                )}
-                {reviewingShowReview.venueName && (
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>Venue:</strong> {reviewingShowReview.venueName}
-                  </Typography>
-                )}
-                {reviewingShowReview.venuePhone && (
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>Phone:</strong> {reviewingShowReview.venuePhone}
-                  </Typography>
-                )}
-                {reviewingShowReview.venueWebsite && (
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>Website:</strong> {reviewingShowReview.venueWebsite}
-                  </Typography>
-                )}
-                {reviewingShowReview.description && (
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    <strong>Description:</strong> {reviewingShowReview.description}
-                  </Typography>
-                )}
-              </Box>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>DJ/Host:</strong> {reviewingShowReview.show?.dj?.name || 'Not specified'}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Vendor:</strong>{' '}
+                {reviewingShowReview.show?.dj?.vendor?.name || 'Not specified'}
+              </Typography>
+            </Box>
 
-              {/* User Comments */}
-              {reviewingShowReview.comments && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    User Comments:
-                  </Typography>
-                  <Paper sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                    <Typography variant="body2">{reviewingShowReview.comments}</Typography>
-                  </Paper>
-                </Box>
+            {/* Submitted Changes */}
+            <Typography variant="subtitle2" sx={{ mb: 1, color: 'secondary.main' }}>
+              Submitted Changes:
+            </Typography>
+            <Box
+              sx={{
+                mb: 3,
+                p: 2,
+                bgcolor: 'success.50',
+                borderRadius: 1,
+                border: '1px solid',
+                borderColor: 'success.200',
+              }}
+            >
+              {reviewingShowReview.djName && (
+                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <strong>DJ/Host:</strong> {reviewingShowReview.djName}
+                </Typography>
               )}
-
-              {/* Submission Info */}
-              <Box sx={{ mb: 3, p: 2, bgcolor: 'info.50', borderRadius: 1 }}>
+              {reviewingShowReview.vendorName && (
                 <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>Submitted by:</strong>{' '}
-                  {reviewingShowReview.submittedByUser?.name || 'Unknown User'}
+                  <strong>Vendor:</strong> {reviewingShowReview.vendorName}
                 </Typography>
+              )}
+              {reviewingShowReview.venueName && (
                 <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>Date:</strong> {new Date(reviewingShowReview.createdAt).toLocaleString()}
+                  <strong>Venue:</strong> {reviewingShowReview.venueName}
                 </Typography>
-                <Typography variant="body2">
-                  <strong>Status:</strong> <Chip label={reviewingShowReview.status} size="small" />
+              )}
+              {reviewingShowReview.venuePhone && (
+                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <strong>Phone:</strong> {reviewingShowReview.venuePhone}
                 </Typography>
-              </Box>
-
-              {/* Admin Notes (if taking action) */}
-              {reviewAction && (
-                <Box sx={{ mb: 2 }}>
-                  <TextField
-                    label="Admin Notes"
-                    multiline
-                    rows={3}
-                    fullWidth
-                    value={adminNotes}
-                    onChange={(e) => setAdminNotes(e.target.value)}
-                    placeholder="Add notes about your decision..."
-                  />
-                </Box>
+              )}
+              {reviewingShowReview.venueWebsite && (
+                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <strong>Website:</strong> {reviewingShowReview.venueWebsite}
+                </Typography>
+              )}
+              {reviewingShowReview.description && (
+                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <strong>Description:</strong> {reviewingShowReview.description}
+                </Typography>
               )}
             </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
+
+            {/* User Comments */}
+            {reviewingShowReview.comments && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  User Comments:
+                </Typography>
+                <Paper sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <Typography variant="body2">{reviewingShowReview.comments}</Typography>
+                </Paper>
+              </Box>
+            )}
+
+            {/* Submission Info */}
+            <Box sx={{ mb: 3, p: 2, bgcolor: 'info.50', borderRadius: 1 }}>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Submitted by:</strong>{' '}
+                {reviewingShowReview.submittedByUser?.name || 'Unknown User'}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Date:</strong> {new Date(reviewingShowReview.createdAt).toLocaleString()}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Status:</strong> <Chip label={reviewingShowReview.status} size="small" />
+              </Typography>
+            </Box>
+
+            {/* Admin Notes (if taking action) */}
+            {reviewAction && (
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  label="Admin Notes"
+                  multiline
+                  rows={3}
+                  fullWidth
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  placeholder="Add notes about your decision..."
+                />
+              </Box>
+            )}
+          </Box>
+        )}
+
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', pt: 2 }}>
           <Button
             onClick={() => {
               setReviewingShowReview(null);
@@ -2188,107 +2185,105 @@ const AdminDataTables: React.FC = observer(() => {
               {reviewAction === 'approve' ? 'Approve' : 'Decline'}
             </Button>
           )}
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </CustomModal>
 
       {/* Deduplication Dialog */}
-      <Dialog open={dedupeDialogOpen} onClose={handleCloseDedupe} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {duplicatesFound.length > 0
+      <CustomModal
+        open={dedupeDialogOpen}
+        onClose={handleCloseDedupe}
+        title={
+          duplicatesFound.length > 0
             ? `Found ${duplicatesFound.length} Duplicate Groups`
-            : 'No Duplicates Found'}
-        </DialogTitle>
-        <DialogContent>
-          {duplicatesFound.length > 0 ? (
-            <Box>
-              <Typography variant="body2" sx={{ mb: 2 }}>
-                Select the records you want to delete. The first record in each group will be kept.
-              </Typography>
-              {duplicatesFound.map((group, groupIndex) => (
-                <Box
-                  key={groupIndex}
-                  sx={{ mb: 3, p: 2, border: '1px solid #ddd', borderRadius: 1 }}
-                >
-                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                    Duplicate Group {groupIndex + 1}
-                  </Typography>
-                  <List dense>
-                    {group.records.map((record: any, recordIndex: number) => (
-                      <ListItem key={record.id} sx={{ py: 0.5 }}>
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={selectedDuplicates.includes(record.id)}
-                              onChange={(e) =>
-                                handleDuplicateSelection(record.id, e.target.checked)
-                              }
-                              disabled={recordIndex === 0} // Keep first record
-                            />
-                          }
-                          label={
-                            <ListItemText
-                              primary={record.name || record.title || 'Unnamed'}
-                              secondary={
-                                <Box>
+            : 'No Duplicates Found'
+        }
+        icon={<FontAwesomeIcon icon={faCopy} />}
+        maxWidth="md"
+      >
+        {duplicatesFound.length > 0 ? (
+          <Box>
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              Select the records you want to delete. The first record in each group will be kept.
+            </Typography>
+            {duplicatesFound.map((group, groupIndex) => (
+              <Box key={groupIndex} sx={{ mb: 3, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  Duplicate Group {groupIndex + 1}
+                </Typography>
+                <List dense>
+                  {group.records.map((record: any, recordIndex: number) => (
+                    <ListItem key={record.id} sx={{ py: 0.5 }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={selectedDuplicates.includes(record.id)}
+                            onChange={(e) => handleDuplicateSelection(record.id, e.target.checked)}
+                            disabled={recordIndex === 0} // Keep first record
+                          />
+                        }
+                        label={
+                          <ListItemText
+                            primary={record.name || record.title || 'Unnamed'}
+                            secondary={
+                              <Box>
+                                <Typography variant="caption" display="block">
+                                  ID: {record.id}
+                                </Typography>
+                                {record.venue && (
                                   <Typography variant="caption" display="block">
-                                    ID: {record.id}
+                                    Venue: {record.venue}
                                   </Typography>
-                                  {record.venue && (
-                                    <Typography variant="caption" display="block">
-                                      Venue: {record.venue}
-                                    </Typography>
-                                  )}
-                                  {record.website && (
-                                    <Typography variant="caption" display="block">
-                                      Website: {record.website}
-                                    </Typography>
-                                  )}
-                                  {recordIndex === 0 && (
-                                    <Chip
-                                      label="KEEP"
-                                      size="small"
-                                      color="success"
-                                      sx={{ mt: 0.5 }}
-                                    />
-                                  )}
-                                </Box>
-                              }
-                            />
-                          }
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                </Box>
-              ))}
+                                )}
+                                {record.website && (
+                                  <Typography variant="caption" display="block">
+                                    Website: {record.website}
+                                  </Typography>
+                                )}
+                                {recordIndex === 0 && (
+                                  <Chip
+                                    label="KEEP"
+                                    size="small"
+                                    color="success"
+                                    sx={{ mt: 0.5 }}
+                                  />
+                                )}
+                              </Box>
+                            }
+                          />
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            ))}
+            {selectedDuplicates.length > 0 && (
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                {selectedDuplicates.length} record(s) will be permanently deleted.
+              </Alert>
+            )}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
+              <Button onClick={handleCloseDedupe}>Cancel</Button>
               {selectedDuplicates.length > 0 && (
-                <Alert severity="warning" sx={{ mt: 2 }}>
-                  {selectedDuplicates.length} record(s) will be permanently deleted.
-                </Alert>
+                <Button
+                  onClick={handleExecuteDeduplication}
+                  variant="contained"
+                  color="error"
+                  disabled={dedupeLoading}
+                >
+                  {dedupeLoading ? (
+                    <CircularProgress size={20} />
+                  ) : (
+                    `Delete ${selectedDuplicates.length} Records`
+                  )}
+                </Button>
               )}
             </Box>
-          ) : (
-            <Typography>No duplicate records were found.</Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDedupe}>Cancel</Button>
-          {duplicatesFound.length > 0 && selectedDuplicates.length > 0 && (
-            <Button
-              onClick={handleExecuteDeduplication}
-              variant="contained"
-              color="error"
-              disabled={dedupeLoading}
-            >
-              {dedupeLoading ? (
-                <CircularProgress size={20} />
-              ) : (
-                `Delete ${selectedDuplicates.length} Records`
-              )}
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
+          </Box>
+        ) : (
+          <Typography>No duplicate records were found.</Typography>
+        )}
+      </CustomModal>
 
       {/* Deduplication Results Modal */}
       <CustomModal
@@ -2371,22 +2366,20 @@ const AdminDataTables: React.FC = observer(() => {
       </CustomModal>
 
       {/* Error Dialog */}
-      <Dialog open={errorDialogOpen} onClose={handleCloseErrorDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          <Box display="flex" alignItems="center" gap={1}>
-            <FontAwesomeIcon icon={faExclamationTriangle} color="red" />
-            Error
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Typography color="text.primary">{errorMessage}</Typography>
-        </DialogContent>
-        <DialogActions>
+      <CustomModal
+        open={errorDialogOpen}
+        onClose={handleCloseErrorDialog}
+        title="Error"
+        icon={<FontAwesomeIcon icon={faExclamationTriangle} color="red" />}
+        maxWidth="sm"
+      >
+        <Typography color="text.primary">{errorMessage}</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
           <Button onClick={handleCloseErrorDialog} variant="outlined">
             Close
           </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </CustomModal>
     </Box>
   );
 });

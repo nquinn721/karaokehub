@@ -25,6 +25,9 @@ export class DJ {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ default: false })
+  userSubmitted: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

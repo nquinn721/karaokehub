@@ -32,6 +32,18 @@ export interface ParsedKaraokeData {
     description?: string;
     confidence: number;
   }>;
+  venues?: Array<{
+    name: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    lat?: number;
+    lng?: number;
+    phone?: string;
+    website?: string;
+    confidence: number;
+  }>;
   djs: Array<{
     name: string;
     confidence: number;
@@ -39,13 +51,14 @@ export interface ParsedKaraokeData {
     aliases?: string[];
   }>;
   shows: Array<{
-    venue: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    zip?: string;
-    lat?: number;
-    lng?: number;
+    venueName: string; // Reference to venue by name
+    venue?: string; // Legacy field for backward compatibility
+    address?: string; // Legacy field - will be moved to venue
+    city?: string; // Legacy field - will be moved to venue
+    state?: string; // Legacy field - will be moved to venue
+    zip?: string; // Legacy field - will be moved to venue
+    lat?: number; // Legacy field - will be moved to venue
+    lng?: number; // Legacy field - will be moved to venue
     time: string;
     startTime?: string;
     endTime?: string;
@@ -53,8 +66,8 @@ export interface ParsedKaraokeData {
     djName?: string;
     vendor?: string; // Vendor/Company providing karaoke service
     description?: string;
-    venuePhone?: string;
-    venueWebsite?: string;
+    venuePhone?: string; // Legacy field - will be moved to venue
+    venueWebsite?: string; // Legacy field - will be moved to venue
     source?: string;
     confidence: number;
   }>;
@@ -900,7 +913,8 @@ export class KaraokeParserService {
     if (extractedData.shows && extractedData.shows.length > 0) {
       extractedData.shows.forEach((show) => {
         result.shows.push({
-          venue: show.venue,
+          venueName: show.venue,
+          venue: show.venue, // Legacy compatibility
           time: show.time,
           day: show.day,
           djName: extractedData.name,
@@ -925,7 +939,8 @@ export class KaraokeParserService {
       extractedData.posts.forEach((post) => {
         if (post.venue) {
           result.shows.push({
-            venue: post.venue,
+            venueName: post.venue,
+            venue: post.venue, // Legacy compatibility
             djName: post.author,
             time: 'Check post for details',
             description: post.content?.substring(0, 200),
@@ -1152,6 +1167,8 @@ export class KaraokeParserService {
     stats: {
       showsFound: number;
       djsFound: number;
+      venuesFound: number;
+      vendorsFound: number;
       vendorName: string;
       htmlLength: number;
       processingTime: number;
@@ -1221,6 +1238,8 @@ export class KaraokeParserService {
         stats: {
           showsFound: parsedData.shows?.length || 0,
           djsFound: parsedData.djs?.length || 0,
+          venuesFound: parsedData.venues?.length || 0,
+          vendorsFound: (parsedData.vendors?.length || 0) + (parsedData.vendor ? 1 : 0),
           vendorName: parsedData.vendor?.name || 'Unknown',
           htmlLength: htmlContent.length,
           processingTime,
@@ -1256,6 +1275,8 @@ export class KaraokeParserService {
     stats: {
       showsFound: number;
       djsFound: number;
+      venuesFound: number;
+      vendorsFound: number;
       vendorName: string;
       htmlLength: number;
       processingTime: number;
@@ -1387,6 +1408,8 @@ export class KaraokeParserService {
         stats: {
           showsFound: parsedData.shows?.length || 0,
           djsFound: parsedData.djs?.length || 0,
+          venuesFound: parsedData.venues?.length || 0,
+          vendorsFound: (parsedData.vendors?.length || 0) + (parsedData.vendor ? 1 : 0),
           vendorName: parsedData.vendor?.name || 'Unknown',
           htmlLength: htmlContent.length,
           processingTime,
@@ -1787,6 +1810,20 @@ Return JSON (no extra text):
     "description": "Brief description",
     "confidence": 0.9
   },
+  "venues": [
+    {
+      "name": "Venue Name",
+      "address": "Street address ONLY (e.g., '8939 South Old State Road', '630 North High Street') OR null if no street address",
+      "city": "City name ONLY (e.g., 'Lewis Center', 'Panama City Beach', 'Columbus', 'Delaware')",
+      "state": "State abbreviation ONLY (e.g., 'OH', 'FL', 'CA', 'NY')",
+      "zip": "ZIP code ONLY (e.g., '12345' or '12345-6789') OR null",
+      "lat": "REQUIRED: Precise latitude as decimal number (e.g., 39.961176)",
+      "lng": "REQUIRED: Precise longitude as decimal number (e.g., -82.998794)",
+      "phone": "Phone number",
+      "website": "Venue website if available",
+      "confidence": 0.8
+    }
+  ],
   "djs": [
     {
       "name": "Professional DJ/host name",
@@ -1797,20 +1834,13 @@ Return JSON (no extra text):
   ],
   "shows": [
     {
-      "venue": "Venue Name",
-      "address": "Street address ONLY (e.g., '8939 South Old State Road', '630 North High Street') OR null if no street address",
-      "city": "City name ONLY (e.g., 'Lewis Center', 'Panama City Beach', 'Columbus', 'Delaware')",
-      "state": "State abbreviation ONLY (e.g., 'OH', 'FL', 'CA', 'NY')",
-      "zip": "ZIP code ONLY (e.g., '12345' or '12345-6789') OR null",
-      "lat": "REQUIRED: Precise latitude as decimal number (e.g., 39.961176)",
-      "lng": "REQUIRED: Precise longitude as decimal number (e.g., -82.998794)",
-      "venuePhone": "Phone number",
-      "venueWebsite": "Venue website if available",
+      "venueName": "Venue Name (must match a venue from venues array)",
       "time": "REQUIRED: original time format like '9 pm' or '10:00 pm'",
       "startTime": "REQUIRED: 24-hour format like '21:00' or '22:00'",
       "endTime": "HH:MM format or venue closing time or 'close' (default to '00:00' if unknown)",
       "day": "day_of_week", 
       "djName": "DJ/host name",
+      "vendor": "Vendor/company providing service",
       "description": "Additional details",
       "confidence": 0.8
     }
@@ -2036,25 +2066,27 @@ ${htmlContent}`;
    */
   private standardizeAddress(address: string): string {
     if (!address) return '';
-    
-    return address
-      .toLowerCase()
-      .trim()
-      // Standardize street types
-      .replace(/\bstreet\b/g, 'st')
-      .replace(/\bavenue\b/g, 'ave') 
-      .replace(/\bboulevard\b/g, 'blvd')
-      .replace(/\bdrive\b/g, 'dr')
-      .replace(/\broad\b/g, 'rd')
-      .replace(/\bcourt\b/g, 'ct')
-      .replace(/\blane\b/g, 'ln')
-      .replace(/\bplace\b/g, 'pl')
-      .replace(/\bcircle\b/g, 'cir')
-      .replace(/\bparkway\b/g, 'pkwy')
-      // Remove extra spaces and punctuation
-      .replace(/[.,#]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+
+    return (
+      address
+        .toLowerCase()
+        .trim()
+        // Standardize street types
+        .replace(/\bstreet\b/g, 'st')
+        .replace(/\bavenue\b/g, 'ave')
+        .replace(/\bboulevard\b/g, 'blvd')
+        .replace(/\bdrive\b/g, 'dr')
+        .replace(/\broad\b/g, 'rd')
+        .replace(/\bcourt\b/g, 'ct')
+        .replace(/\blane\b/g, 'ln')
+        .replace(/\bplace\b/g, 'pl')
+        .replace(/\bcircle\b/g, 'cir')
+        .replace(/\bparkway\b/g, 'pkwy')
+        // Remove extra spaces and punctuation
+        .replace(/[.,#]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    );
   }
 
   /**
@@ -2062,16 +2094,18 @@ ${htmlContent}`;
    */
   private standardizeDJName(name: string): string {
     if (!name) return '';
-    
-    return name
-      .toLowerCase()
-      .trim()
-      // Remove common prefixes/suffixes
-      .replace(/\b(?:dj|host|karaoke|with)\s+/g, '')
-      .replace(/\s+(?:dj|host|karaoke)$/g, '')
-      // Normalize spacing
-      .replace(/\s+/g, ' ')
-      .trim();
+
+    return (
+      name
+        .toLowerCase()
+        .trim()
+        // Remove common prefixes/suffixes
+        .replace(/\b(?:dj|host|karaoke|with)\s+/g, '')
+        .replace(/\s+(?:dj|host|karaoke)$/g, '')
+        // Normalize spacing
+        .replace(/\s+/g, ' ')
+        .trim()
+    );
   }
 
   /**
@@ -2090,20 +2124,20 @@ ${htmlContent}`;
       const day = show.day?.toLowerCase().trim() || '';
       const startTime =
         show.startTime?.toLowerCase().trim() || show.time?.toLowerCase().trim() || '';
-      
+
       // Create deduplication key with standardized values
       const key = `${standardizedAddress}-${day}-${startTime}`;
 
       if (key && !seenShows.has(key)) {
         seenShows.add(key);
-        
+
         // Apply standardization to the actual show data but keep it readable
         // Only standardize for storage, not for display
         if (show.address) {
           // Keep original for display but ensure consistent format for storage
           show.address = show.address.trim();
         }
-        
+
         unique.push(show);
         this.logger.debug(`Added show: ${show.venue} at ${show.address} on ${day} at ${startTime}`);
       } else {
@@ -2133,7 +2167,7 @@ ${htmlContent}`;
       if (show.djName && typeof show.djName === 'string') {
         const djName = show.djName.trim();
         const standardizedName = this.standardizeDJName(djName);
-        
+
         if (djName && !djSet.has(standardizedName)) {
           djSet.add(standardizedName);
           extractedDJs.push({
@@ -2151,13 +2185,46 @@ ${htmlContent}`;
   }
 
   /**
+   * Extract venues from individual show fields and create venues array
+   */
+  private extractVenuesFromShows(shows: any[]): any[] {
+    const venueMap = new Map<string, any>();
+
+    this.logAndBroadcast('🔄 Extracting and deduplicating venues from shows', 'info');
+
+    for (const show of shows) {
+      const venueName = show.venueName || show.venue;
+      if (venueName && typeof venueName === 'string') {
+        const standardizedName = venueName.trim().toLowerCase();
+
+        if (!venueMap.has(standardizedName)) {
+          venueMap.set(standardizedName, {
+            name: venueName.trim(), // Keep original readable name
+            address: show.address || null,
+            city: show.city || null,
+            state: show.state || null,
+            zip: show.zip || null,
+            lat: show.lat || null,
+            lng: show.lng || null,
+            phone: show.venuePhone || null,
+            website: show.venueWebsite || null,
+            confidence: 0.85,
+          });
+        }
+      }
+    }
+
+    const extractedVenues = Array.from(venueMap.values());
+    this.logAndBroadcast(`Extracted ${extractedVenues.length} unique venues`, 'success');
+    return extractedVenues;
+  }
+
+  /**
    * Merge two DJ arrays, avoiding duplicates with standardized name comparison
    */
   private mergeDJArrays(existingDJs: any[], newDJs: any[]): any[] {
     const merged = [...existingDJs];
-    const existingNames = new Set(
-      existingDJs.map((dj) => this.standardizeDJName(dj.name || ''))
-    );
+    const existingNames = new Set(existingDJs.map((dj) => this.standardizeDJName(dj.name || '')));
 
     for (const newDJ of newDJs) {
       const standardizedName = this.standardizeDJName(newDJ.name || '');
@@ -2504,6 +2571,15 @@ ${htmlContent}`;
     this.logAndBroadcast(`Starting approval process for schedule ${parsedScheduleId}`, 'info');
 
     try {
+      // Ensure venues array exists - extract from shows if missing
+      if (!approvedData.venues || approvedData.venues.length === 0) {
+        approvedData.venues = this.extractVenuesFromShows(approvedData.shows || []);
+        this.logAndBroadcast(
+          `Extracted ${approvedData.venues.length} unique venues from show data`,
+          'info',
+        );
+      }
+
       // Remove duplicates from approved data before processing
       const originalShowCount = approvedData.shows.length;
       approvedData.shows = this.removeDuplicateShows(approvedData.shows);
@@ -2785,15 +2861,26 @@ ${htmlContent}`;
 
         // Find or create venue for this show
         let venue = null;
-        if (showData.venue || showData.address) {
+        const venueName = showData.venueName || showData.venue; // Support both new and legacy field names
+
+        if (venueName) {
+          // Try to find venue info from the venues array in approvedData
+          let venueInfo = null;
+          if (approvedData.venues && approvedData.venues.length > 0) {
+            venueInfo = approvedData.venues.find((v) => v.name === venueName);
+          }
+
+          // Create venue with information from venues array or legacy show fields
           venue = await this.venueService.findOrCreate({
-            name: showData.venue || 'Unknown Venue',
-            address: showData.address || null,
-            city: showData.city || null,
-            state: showData.state || null,
-            zip: showData.zip || null,
-            lat: showData.lat || null,
-            lng: showData.lng || null,
+            name: venueName,
+            address: venueInfo?.address || showData.address || null,
+            city: venueInfo?.city || showData.city || null,
+            state: venueInfo?.state || showData.state || null,
+            zip: venueInfo?.zip || showData.zip || null,
+            lat: venueInfo?.lat || showData.lat || null,
+            lng: venueInfo?.lng || showData.lng || null,
+            phone: venueInfo?.phone || showData.venuePhone || null,
+            website: venueInfo?.website || showData.venueWebsite || null,
           });
         }
 
@@ -3647,6 +3734,20 @@ Return ONLY valid JSON with no extra text:
     "description": "Brief description",
     "confidence": 0.9
   },
+  "venues": [
+    {
+      "name": "Venue Name",
+      "address": "ONLY street address (no city/state/zip)",
+      "city": "ONLY city name",
+      "state": "ONLY 2-letter state code",
+      "zip": "ONLY zip code",
+      "lat": 39.961176,
+      "lng": -82.998794,
+      "phone": "Phone number",
+      "website": "Venue website if available",
+      "confidence": 0.9
+    }
+  ],
   "djs": [
     {
       "name": "DJ Name (like Mattallica, Dr Rockso, Frankie the Intern, etc.)",
@@ -3657,20 +3758,14 @@ Return ONLY valid JSON with no extra text:
   ],
   "shows": [
     {
-      "venue": "Venue Name",
-      "address": "ONLY street address (no city/state/zip)",
-      "city": "ONLY city name",
-      "state": "ONLY 2-letter state code",
-      "zip": "ONLY zip code",
-      "lat": 39.961176,
-      "lng": -82.998794,
-      "venuePhone": "Phone number",
+      "venueName": "Venue Name (must match a venue from venues array)",
       "date": "day_of_week",
       "time": "time like '7 pm'",
       "startTime": "24-hour format like '19:00'",
       "endTime": "close",
       "day": "day_of_week",
       "djName": "DJ/host name from 'hosted by' text (REQUIRED if visible)",
+      "vendor": "Vendor/company providing service",
       "confidence": 0.9
     }
   ]
@@ -4170,6 +4265,20 @@ Return ONLY valid JSON:
     "description": "Profile bio/description text",
     "confidence": 0.9
   },
+  "venues": [
+    {
+      "name": "COMPLETE Venue Name",
+      "address": "COMPLETE street address ONLY (no city/state/zip)",
+      "city": "City name ONLY",
+      "state": "2-letter state code ONLY", 
+      "zip": "ZIP code ONLY",
+      "lat": "REQUIRED precise latitude",
+      "lng": "REQUIRED precise longitude",
+      "phone": "Phone number if found",
+      "website": "Website if found",
+      "confidence": 0.8
+    }
+  ],
   "djs": [
     {
       "name": "DJ Name from profile",
@@ -4179,20 +4288,13 @@ Return ONLY valid JSON:
   ],
   "shows": [
     {
-      "venue": "COMPLETE Venue Name",
-      "address": "COMPLETE street address ONLY (no city/state/zip)",
-      "city": "City name ONLY",
-      "state": "2-letter state code ONLY", 
-      "zip": "ZIP code ONLY",
-      "lat": "REQUIRED precise latitude",
-      "lng": "REQUIRED precise longitude",
-      "venuePhone": "Phone number if found",
-      "venueWebsite": "Website if found",
+      "venueName": "Venue Name (must match a venue from venues array)",
       "time": "EXACT time like '9 pm'",
       "startTime": "REQUIRED 24-hour format like '21:00'",
       "endTime": "End time or 'close'",
       "day": "EXACT day_of_week",
       "djName": "DJ/host name",
+      "vendor": "Vendor/company providing service",
       "description": "Additional show details",
       "confidence": 0.8
     }
@@ -4281,6 +4383,8 @@ Return ONLY valid JSON:
     stats: {
       showsFound: number;
       djsFound: number;
+      venuesFound: number;
+      vendorsFound: number;
       vendorName: string;
       htmlLength: number;
       processingTime: number;
@@ -4348,6 +4452,8 @@ Return ONLY valid JSON:
         stats: {
           showsFound: parsedData.shows?.length || 0,
           djsFound: parsedData.djs?.length || 0,
+          venuesFound: parsedData.venues?.length || 0,
+          vendorsFound: (parsedData.vendors?.length || 0) + (parsedData.vendor ? 1 : 0),
           vendorName: parsedData.vendor?.name || 'Instagram Profile',
           htmlLength: 0, // No HTML for Instagram
           processingTime,
@@ -4727,6 +4833,20 @@ Return ONLY valid JSON:
     "description": "Profile bio text",
     "confidence": 0.9
   },
+  "venues": [
+    {
+      "name": "Complete Venue Name",
+      "address": "COMPLETE street address (no city/state/zip)",
+      "city": "City name only",
+      "state": "2-letter state code only",
+      "zip": "ZIP code only",
+      "lat": "REQUIRED precise latitude",
+      "lng": "REQUIRED precise longitude", 
+      "phone": "Phone if found in posts",
+      "website": "Website if found",
+      "confidence": 0.9
+    }
+  ],
   "djs": [
     {
       "name": "djmax614 (from 'Hosted by' text)",
@@ -4736,20 +4856,13 @@ Return ONLY valid JSON:
   ],
   "shows": [
     {
-      "venue": "Complete Venue Name",
-      "address": "COMPLETE street address (no city/state/zip)",
-      "city": "City name only",
-      "state": "2-letter state code only",
-      "zip": "ZIP code only",
-      "lat": "REQUIRED precise latitude",
-      "lng": "REQUIRED precise longitude", 
-      "venuePhone": "Phone if found in posts",
-      "venueWebsite": "Website if found",
+      "venueName": "Venue Name (must match a venue from venues array)",
       "time": "EXACT time from bio/posts like '6 pm' or '9 pm'",
       "startTime": "24-hour format like '18:00' or '21:00'",
       "endTime": "End time or 'close'",
       "day": "exact_day_of_week",
       "djName": "djmax614 (from 'Hosted by' text)",
+      "vendor": "Vendor/company providing service",
       "description": "Show details",
       "confidence": 0.9
     }

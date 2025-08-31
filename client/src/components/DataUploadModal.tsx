@@ -92,6 +92,32 @@ const DataUploadModal: React.FC<{
         for (let i = 0; i < data.length; i += CHUNK_SIZE) {
           const chunk = data.slice(i, i + CHUNK_SIZE);
 
+          // Prepare the upload payload - only send the specific type being uploaded
+          const uploadPayload: any = {
+            vendors: [],
+            djs: [],
+            shows: [],
+            venues: [],
+            metadata: {
+              uploadedBy: 'Admin',
+              uploadedAt: new Date().toISOString(),
+              source: 'Local Database',
+              notes: `Chunk ${Math.floor(i / CHUNK_SIZE) + 1} of ${Math.ceil(data.length / CHUNK_SIZE)} for ${type}`,
+              isChunked: true,
+              chunkInfo: {
+                current: Math.floor(i / CHUNK_SIZE) + 1,
+                total: Math.ceil(data.length / CHUNK_SIZE),
+                type: type,
+                startIndex: i,
+                endIndex: Math.min(i + CHUNK_SIZE, data.length),
+              },
+              ...uploadData.metadata,
+            },
+          };
+
+          // Set only the relevant data type
+          uploadPayload[type] = chunk;
+
           const response = await fetch(getProductionUploadURL(), {
             method: 'POST',
             headers: {
@@ -100,28 +126,7 @@ const DataUploadModal: React.FC<{
             },
             mode: 'cors',
             referrerPolicy: 'no-referrer-when-downgrade',
-            body: JSON.stringify({
-              [type]: chunk,
-              vendors: type === 'vendors' ? chunk : [],
-              djs: type === 'djs' ? chunk : [],
-              shows: type === 'shows' ? chunk : [],
-              venues: type === 'venues' ? chunk : [],
-              metadata: {
-                uploadedBy: 'Admin',
-                uploadedAt: new Date().toISOString(),
-                source: 'Local Database',
-                notes: `Chunk ${Math.floor(i / CHUNK_SIZE) + 1} of ${Math.ceil(data.length / CHUNK_SIZE)} for ${type}`,
-                isChunked: true,
-                chunkInfo: {
-                  current: Math.floor(i / CHUNK_SIZE) + 1,
-                  total: Math.ceil(data.length / CHUNK_SIZE),
-                  type: type,
-                  startIndex: i,
-                  endIndex: Math.min(i + CHUNK_SIZE, data.length),
-                },
-                ...uploadData.metadata,
-              },
-            }),
+            body: JSON.stringify(uploadPayload),
           });
 
           if (!response.ok) {

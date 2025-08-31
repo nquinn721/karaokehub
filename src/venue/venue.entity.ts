@@ -52,6 +52,9 @@ export class Venue {
   @Column({ default: false })
   isFlagged: boolean;
 
+  @Column({ default: false })
+  userSubmitted: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 
