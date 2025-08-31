@@ -18,7 +18,7 @@ import { VenueProximity } from './services/GeolocationService';
 // Pages
 import AboutPage from './pages/AboutPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
-import AdminParserPage from './pages/AdminParserPage';
+import AdminParserPageModern from './pages/AdminParserPageModern';
 import AuthError from './pages/AuthError';
 import AuthSuccess from './pages/AuthSuccess';
 import DashboardPage from './pages/DashboardPage';
@@ -302,7 +302,7 @@ const AppContent: React.FC = observer(() => {
               path="/admin/parser"
               element={
                 <ProtectedRoute>
-                  <AdminParserPage />
+                  <AdminParserPageModern />
                 </ProtectedRoute>
               }
             />

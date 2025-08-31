@@ -255,7 +255,13 @@ export class AdminService {
   }
 
   // Data Table Methods
-  async getUsers(page = 1, limit = 10, search?: string, sortBy?: string, sortOrder: 'ASC' | 'DESC' = 'ASC') {
+  async getUsers(
+    page = 1,
+    limit = 10,
+    search?: string,
+    sortBy?: string,
+    sortOrder: 'ASC' | 'DESC' = 'ASC',
+  ) {
     const query = this.userRepository.createQueryBuilder('user');
 
     if (search) {
@@ -268,15 +274,15 @@ export class AdminService {
     if (sortBy) {
       // Map frontend column names to database field names
       const sortMap: { [key: string]: string } = {
-        'name': 'user.name',
-        'stageName': 'user.stageName',
-        'email': 'user.email',
-        'provider': 'user.provider',
-        'isAdmin': 'user.isAdmin',
-        'isActive': 'user.isActive',
-        'createdAt': 'user.createdAt',
+        name: 'user.name',
+        stageName: 'user.stageName',
+        email: 'user.email',
+        provider: 'user.provider',
+        isAdmin: 'user.isAdmin',
+        isActive: 'user.isActive',
+        createdAt: 'user.createdAt',
       };
-      
+
       const dbField = sortMap[sortBy] || 'user.createdAt';
       query.orderBy(dbField, sortOrder);
     } else {
@@ -297,7 +303,13 @@ export class AdminService {
     };
   }
 
-  async getVenues(page = 1, limit = 10, search?: string, sortBy?: string, sortOrder: 'ASC' | 'DESC' = 'ASC') {
+  async getVenues(
+    page = 1,
+    limit = 10,
+    search?: string,
+    sortBy?: string,
+    sortOrder: 'ASC' | 'DESC' = 'ASC',
+  ) {
     const query = this.venueRepository
       .createQueryBuilder('venue')
       .leftJoin(
@@ -322,15 +334,15 @@ export class AdminService {
     // Handle sorting
     if (sortBy) {
       const sortMap: { [key: string]: string } = {
-        'name': 'venue.name',
-        'address': 'venue.address',
-        'city': 'venue.city',
-        'state': 'venue.state',
-        'website': 'venue.website',
-        'createdAt': 'venue.createdAt',
-        'showCount': 'showCount',
+        name: 'venue.name',
+        address: 'venue.address',
+        city: 'venue.city',
+        state: 'venue.state',
+        website: 'venue.website',
+        createdAt: 'venue.createdAt',
+        showCount: 'showCount',
       };
-      
+
       const dbField = sortMap[sortBy] || 'venue.createdAt';
       query.orderBy(dbField, sortOrder);
     } else {
@@ -368,7 +380,13 @@ export class AdminService {
     };
   }
 
-  async getDjs(page = 1, limit = 10, search?: string, sortBy?: string, sortOrder: 'ASC' | 'DESC' = 'ASC') {
+  async getDjs(
+    page = 1,
+    limit = 10,
+    search?: string,
+    sortBy?: string,
+    sortOrder: 'ASC' | 'DESC' = 'ASC',
+  ) {
     const query = this.djRepository
       .createQueryBuilder('dj')
       .leftJoinAndSelect('dj.vendor', 'vendor');
@@ -382,12 +400,12 @@ export class AdminService {
     // Handle sorting
     if (sortBy) {
       const sortMap: { [key: string]: string } = {
-        'name': 'dj.name',
-        'nicknames': 'dj.nicknames',
-        'vendor': 'vendor.name',
-        'createdAt': 'dj.createdAt',
+        name: 'dj.name',
+        nicknames: 'dj.nicknames',
+        vendor: 'vendor.name',
+        createdAt: 'dj.createdAt',
       };
-      
+
       const dbField = sortMap[sortBy] || 'dj.createdAt';
       query.orderBy(dbField, sortOrder);
     } else {
@@ -456,7 +474,13 @@ export class AdminService {
     };
   }
 
-  async getShows(page = 1, limit = 10, search?: string, sortBy?: string, sortOrder: 'ASC' | 'DESC' = 'ASC') {
+  async getShows(
+    page = 1,
+    limit = 10,
+    search?: string,
+    sortBy?: string,
+    sortOrder: 'ASC' | 'DESC' = 'ASC',
+  ) {
     const query = this.showRepository
       .createQueryBuilder('show')
       .leftJoinAndSelect('show.dj', 'dj')
@@ -475,16 +499,16 @@ export class AdminService {
     // Handle sorting
     if (sortBy) {
       const sortMap: { [key: string]: string } = {
-        'dj': 'dj.name',
-        'vendor': 'vendor.name',
-        'venue': 'venue.name',
-        'description': 'show.description',
-        'startTime': 'show.startTime',
-        'endTime': 'show.endTime',
-        'isActive': 'show.isActive',
-        'createdAt': 'show.createdAt',
+        dj: 'dj.name',
+        vendor: 'vendor.name',
+        venue: 'venue.name',
+        description: 'show.description',
+        startTime: 'show.startTime',
+        endTime: 'show.endTime',
+        isActive: 'show.isActive',
+        createdAt: 'show.createdAt',
       };
-      
+
       const dbField = sortMap[sortBy] || 'show.createdAt';
       query.orderBy(dbField, sortOrder);
     } else {

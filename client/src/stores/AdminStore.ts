@@ -397,7 +397,13 @@ export class AdminStore {
     });
   }
 
-  async fetchUsers(page = 1, limit = 10, search?: string, sortBy?: string, sortOrder?: 'ASC' | 'DESC'): Promise<void> {
+  async fetchUsers(
+    page = 1,
+    limit = 10,
+    search?: string,
+    sortBy?: string,
+    sortOrder?: 'ASC' | 'DESC',
+  ): Promise<void> {
     try {
       this.setTableLoading(true);
       this.setTableError(null);
@@ -442,7 +448,13 @@ export class AdminStore {
     }
   }
 
-  async fetchVenues(page = 1, limit = 10, search?: string, sortBy?: string, sortOrder?: 'ASC' | 'DESC'): Promise<void> {
+  async fetchVenues(
+    page = 1,
+    limit = 10,
+    search?: string,
+    sortBy?: string,
+    sortOrder?: 'ASC' | 'DESC',
+  ): Promise<void> {
     try {
       this.setTableLoading(true);
       this.setTableError(null);
@@ -487,7 +499,13 @@ export class AdminStore {
     }
   }
 
-  async fetchShows(page = 1, limit = 10, search?: string, sortBy?: string, sortOrder?: 'ASC' | 'DESC'): Promise<void> {
+  async fetchShows(
+    page = 1,
+    limit = 10,
+    search?: string,
+    sortBy?: string,
+    sortOrder?: 'ASC' | 'DESC',
+  ): Promise<void> {
     try {
       this.setTableLoading(true);
       this.setTableError(null);
@@ -532,7 +550,13 @@ export class AdminStore {
     }
   }
 
-  async fetchDjs(page = 1, limit = 10, search?: string, sortBy?: string, sortOrder?: 'ASC' | 'DESC'): Promise<void> {
+  async fetchDjs(
+    page = 1,
+    limit = 10,
+    search?: string,
+    sortBy?: string,
+    sortOrder?: 'ASC' | 'DESC',
+  ): Promise<void> {
     try {
       this.setTableLoading(true);
       this.setTableError(null);

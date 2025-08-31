@@ -238,7 +238,7 @@ const AdminDataTables: React.FC = observer(() => {
     feedback: '',
     reviews: '',
   });
-  
+
   const [sortOrder, setSortOrder] = useState<Record<string, 'ASC' | 'DESC'>>({
     users: 'ASC',
     venues: 'ASC',
@@ -362,7 +362,13 @@ const AdminDataTables: React.FC = observer(() => {
         await adminStore.fetchUsers(page + 1, rowsPerPage, search, currentSortBy, currentSortOrder);
         break;
       case 'venues':
-        await adminStore.fetchVenues(page + 1, rowsPerPage, search, currentSortBy, currentSortOrder);
+        await adminStore.fetchVenues(
+          page + 1,
+          rowsPerPage,
+          search,
+          currentSortBy,
+          currentSortOrder,
+        );
         break;
       case 'shows':
         await adminStore.fetchShows(page + 1, rowsPerPage, search, currentSortBy, currentSortOrder);
@@ -769,7 +775,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.users === 'name'}
-                    direction={sortBy.users === 'name' ? (sortOrder.users.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.users === 'name'
+                        ? (sortOrder.users.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('users', 'name')}
                   >
                     Name
@@ -778,7 +788,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.users === 'stageName'}
-                    direction={sortBy.users === 'stageName' ? (sortOrder.users.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.users === 'stageName'
+                        ? (sortOrder.users.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('users', 'stageName')}
                   >
                     Stage Name
@@ -787,7 +801,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.users === 'email'}
-                    direction={sortBy.users === 'email' ? (sortOrder.users.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.users === 'email'
+                        ? (sortOrder.users.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('users', 'email')}
                   >
                     Email
@@ -796,7 +814,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.users === 'provider'}
-                    direction={sortBy.users === 'provider' ? (sortOrder.users.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.users === 'provider'
+                        ? (sortOrder.users.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('users', 'provider')}
                   >
                     Provider
@@ -805,7 +827,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.users === 'isAdmin'}
-                    direction={sortBy.users === 'isAdmin' ? (sortOrder.users.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.users === 'isAdmin'
+                        ? (sortOrder.users.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('users', 'isAdmin')}
                   >
                     Admin
@@ -814,7 +840,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.users === 'isActive'}
-                    direction={sortBy.users === 'isActive' ? (sortOrder.users.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.users === 'isActive'
+                        ? (sortOrder.users.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('users', 'isActive')}
                   >
                     Status
@@ -823,7 +853,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.users === 'createdAt'}
-                    direction={sortBy.users === 'createdAt' ? (sortOrder.users.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.users === 'createdAt'
+                        ? (sortOrder.users.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('users', 'createdAt')}
                   >
                     Created
@@ -935,7 +969,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.venues === 'name'}
-                    direction={sortBy.venues === 'name' ? (sortOrder.venues.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.venues === 'name'
+                        ? (sortOrder.venues.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('venues', 'name')}
                   >
                     Name
@@ -945,7 +983,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.venues === 'website'}
-                    direction={sortBy.venues === 'website' ? (sortOrder.venues.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.venues === 'website'
+                        ? (sortOrder.venues.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('venues', 'website')}
                   >
                     Website
@@ -955,7 +997,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.venues === 'showCount'}
-                    direction={sortBy.venues === 'showCount' ? (sortOrder.venues.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.venues === 'showCount'
+                        ? (sortOrder.venues.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('venues', 'showCount')}
                   >
                     Shows
@@ -967,7 +1013,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.venues === 'createdAt'}
-                    direction={sortBy.venues === 'createdAt' ? (sortOrder.venues.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.venues === 'createdAt'
+                        ? (sortOrder.venues.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('venues', 'createdAt')}
                   >
                     Created
@@ -1115,15 +1165,87 @@ const AdminDataTables: React.FC = observer(() => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Vendor</TableCell>
-                <TableCell>Venue</TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortBy.shows === 'vendor'}
+                    direction={
+                      sortBy.shows === 'vendor'
+                        ? (sortOrder.shows.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
+                    onClick={() => handleSort('shows', 'vendor')}
+                  >
+                    Vendor
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortBy.shows === 'venue'}
+                    direction={
+                      sortBy.shows === 'venue'
+                        ? (sortOrder.shows.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
+                    onClick={() => handleSort('shows', 'venue')}
+                  >
+                    Venue
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell>Location</TableCell>
-                <TableCell>Schedule</TableCell>
-                <TableCell>DJ</TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortBy.shows === 'startTime'}
+                    direction={
+                      sortBy.shows === 'startTime'
+                        ? (sortOrder.shows.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
+                    onClick={() => handleSort('shows', 'startTime')}
+                  >
+                    Schedule
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortBy.shows === 'dj'}
+                    direction={
+                      sortBy.shows === 'dj'
+                        ? (sortOrder.shows.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
+                    onClick={() => handleSort('shows', 'dj')}
+                  >
+                    DJ
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell>Contact</TableCell>
-                <TableCell>Status</TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortBy.shows === 'isActive'}
+                    direction={
+                      sortBy.shows === 'isActive'
+                        ? (sortOrder.shows.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
+                    onClick={() => handleSort('shows', 'isActive')}
+                  >
+                    Status
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell>Source</TableCell>
-                <TableCell>Created</TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortBy.shows === 'createdAt'}
+                    direction={
+                      sortBy.shows === 'createdAt'
+                        ? (sortOrder.shows.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
+                    onClick={() => handleSort('shows', 'createdAt')}
+                  >
+                    Created
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -1294,7 +1416,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.djs === 'name'}
-                    direction={sortBy.djs === 'name' ? (sortOrder.djs.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.djs === 'name'
+                        ? (sortOrder.djs.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('djs', 'name')}
                   >
                     Name
@@ -1303,7 +1429,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.djs === 'vendor'}
-                    direction={sortBy.djs === 'vendor' ? (sortOrder.djs.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.djs === 'vendor'
+                        ? (sortOrder.djs.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('djs', 'vendor')}
                   >
                     Vendor
@@ -1312,7 +1442,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.djs === 'nicknames'}
-                    direction={sortBy.djs === 'nicknames' ? (sortOrder.djs.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.djs === 'nicknames'
+                        ? (sortOrder.djs.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('djs', 'nicknames')}
                   >
                     Nicknames
@@ -1322,7 +1456,11 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.djs === 'createdAt'}
-                    direction={sortBy.djs === 'createdAt' ? (sortOrder.djs.toLowerCase() as 'asc' | 'desc') : 'asc'}
+                    direction={
+                      sortBy.djs === 'createdAt'
+                        ? (sortOrder.djs.toLowerCase() as 'asc' | 'desc')
+                        : 'asc'
+                    }
                     onClick={() => handleSort('djs', 'createdAt')}
                   >
                     Created
