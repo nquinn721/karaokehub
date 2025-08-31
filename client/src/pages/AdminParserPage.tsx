@@ -1673,12 +1673,10 @@ const AdminParserPage: React.FC = observer(() => {
                                             📍 Location:
                                           </Typography>
                                           <Box sx={{ ml: 1 }}>
-                                            {show.address ? (
+                                            {show.venue?.address ? (
                                               <Typography variant="body2">
                                                 <strong>Address:</strong>{' '}
-                                                {show.venue && typeof show.venue === 'object'
-                                                  ? show.venue.address
-                                                  : null}
+                                                {show.venue.address}
                                               </Typography>
                                             ) : (
                                               <Typography
