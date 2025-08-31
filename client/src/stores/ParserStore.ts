@@ -83,16 +83,40 @@ export interface ParserLogEntry {
   level: 'info' | 'success' | 'warning' | 'error';
 }
 
+export interface ParserSummary {
+  pageName?: string;
+  imagesFound: number;
+  imagesParsed: number;
+  totalVenues: number;
+  totalShows: number;
+  totalDJs: number;
+  totalVendors: number;
+  status: 'idle' | 'parsing' | 'completed' | 'error';
+  currentStep?: string;
+  lastUpdated: Date;
+}
+
 export class ParserStore {
   pendingReviews: ParsedScheduleItem[] = [];
   urlsToParse: UrlToParse[] = [];
   parsingLog: ParserLogEntry[] = [];
+  parserSummary: ParserSummary = {
+    imagesFound: 0,
+    imagesParsed: 0,
+    totalVenues: 0,
+    totalShows: 0,
+    totalDJs: 0,
+    totalVendors: 0,
+    status: 'idle',
+    lastUpdated: new Date(),
+  };
   isLoading = false;
   error: string | null = null;
   isInitialized = false;
   parsingStartTime: Date | null = null;
   parsingElapsedTime = 0;
   parsingTimer: number | null = null;
+  summaryUpdateTimer: number | null = null;
   lastCompletedParsingTime: number | null = null; // Track the final completion time
   socket: Socket | null = null;
   urlFilter: 'all' | 'unparsed' | 'approved-and-unparsed' = 'all';
@@ -242,12 +266,116 @@ export class ParserStore {
       if (this.parsingLog.length > 50) {
         this.parsingLog = this.parsingLog.slice(-50);
       }
+      
+      // Update parser summary based on log content
+      this.updateSummaryFromLogMessage(message, level);
     });
+  }
+
+  private updateSummaryFromLogMessage(message: string, level: string) {
+    const updates: Partial<ParserSummary> = {};
+
+    // Extract page name
+    const pageNameMatch = message.match(/Page name.*?:\s*(.+?)(?:\s*$|\s*\[)/i);
+    if (pageNameMatch) {
+      updates.pageName = pageNameMatch[1].trim();
+    }
+
+    // Extract images found
+    const imagesFoundMatch = message.match(/Found (\d+) images?/i);
+    if (imagesFoundMatch) {
+      updates.imagesFound = parseInt(imagesFoundMatch[1]);
+      updates.status = 'parsing';
+    }
+
+    // Extract images parsed
+    const imagesParsedMatch = message.match(/Parsed (\d+)\/(\d+) images?/i) || 
+                            message.match(/Processing image (\d+) of (\d+)/i);
+    if (imagesParsedMatch) {
+      updates.imagesParsed = parseInt(imagesParsedMatch[1]);
+      updates.imagesFound = parseInt(imagesParsedMatch[2]);
+      updates.status = 'parsing';
+    }
+
+    // Extract venues/shows/DJs/vendors found
+    const venuesMatch = message.match(/(\d+) venues?/i);
+    if (venuesMatch) {
+      updates.totalVenues = parseInt(venuesMatch[1]);
+    }
+
+    const showsMatch = message.match(/(\d+) shows?/i);
+    if (showsMatch) {
+      updates.totalShows = parseInt(showsMatch[1]);
+    }
+
+    const djsMatch = message.match(/(\d+) (?:DJs?|hosts?)/i);
+    if (djsMatch) {
+      updates.totalDJs = parseInt(djsMatch[1]);
+    }
+
+    const vendorsMatch = message.match(/(\d+) vendors?/i);
+    if (vendorsMatch) {
+      updates.totalVendors = parseInt(vendorsMatch[1]);
+    }
+
+    // Detect current step
+    if (message.includes('Starting') || message.includes('Initializing')) {
+      updates.status = 'parsing';
+      updates.currentStep = 'Initializing';
+    } else if (message.includes('Analyzing page')) {
+      updates.currentStep = 'Analyzing page structure';
+    } else if (message.includes('Finding images')) {
+      updates.currentStep = 'Finding images';
+    } else if (message.includes('Processing image')) {
+      updates.currentStep = 'Processing images';
+    } else if (message.includes('Extracting data')) {
+      updates.currentStep = 'Extracting data';
+    } else if (message.includes('Validating')) {
+      updates.currentStep = 'Validating results';
+    } else if (message.includes('Completed') || message.includes('Finished')) {
+      updates.status = 'completed';
+      updates.currentStep = 'Completed';
+    }
+
+    // Detect errors
+    if (level === 'error') {
+      updates.status = 'error';
+    }
+
+    // Apply updates if any
+    if (Object.keys(updates).length > 0) {
+      this.updateParserSummary(updates);
+    }
   }
 
   clearLog() {
     runInAction(() => {
       this.parsingLog = [];
+    });
+  }
+
+  updateParserSummary(updates: Partial<ParserSummary>) {
+    runInAction(() => {
+      this.parserSummary = {
+        ...this.parserSummary,
+        ...updates,
+        lastUpdated: new Date(),
+      };
+    });
+  }
+
+  resetParserSummary() {
+    runInAction(() => {
+      this.parserSummary = {
+        imagesFound: 0,
+        imagesParsed: 0,
+        totalVenues: 0,
+        totalShows: 0,
+        totalDJs: 0,
+        totalVendors: 0,
+        status: 'idle',
+        lastUpdated: new Date(),
+      };
     });
   }
 
@@ -269,12 +397,23 @@ export class ParserStore {
         });
       }
     }, 1000);
+
+    // Start the summary update timer (every 10 seconds)
+    this.summaryUpdateTimer = window.setInterval(() => {
+      runInAction(() => {
+        this.parserSummary.lastUpdated = new Date();
+      });
+    }, 10000);
   }
 
   stopParsingTimer() {
     if (this.parsingTimer) {
       window.clearInterval(this.parsingTimer);
       this.parsingTimer = null;
+    }
+    if (this.summaryUpdateTimer) {
+      window.clearInterval(this.summaryUpdateTimer);
+      this.summaryUpdateTimer = null;
     }
     runInAction(() => {
       // Save the final completion time before clearing
@@ -366,6 +505,9 @@ export class ParserStore {
     try {
       this.setLoading(true);
       this.setError(null);
+      
+      // Reset parser summary for new parsing session
+      this.resetParserSummary();
 
       const result = await apiStore.post('/parser/parse-url', { url });
 
@@ -479,6 +621,9 @@ export class ParserStore {
 
       // Clear previous logs when starting a new parse
       this.clearLog();
+      
+      // Reset parser summary for new parsing session
+      this.resetParserSummary();
 
       this.startParsingTimer();
 

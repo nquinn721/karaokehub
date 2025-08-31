@@ -2031,25 +2031,79 @@ ${htmlContent}`;
   }
 
   /**
-   * Remove duplicate shows based on address, day, and startTime
+   * Standardize address for consistent deduplication
+   * Examples: "1234 Main Street" -> "1234 main st", "123 First Ave" -> "123 first ave"
+   */
+  private standardizeAddress(address: string): string {
+    if (!address) return '';
+    
+    return address
+      .toLowerCase()
+      .trim()
+      // Standardize street types
+      .replace(/\bstreet\b/g, 'st')
+      .replace(/\bavenue\b/g, 'ave') 
+      .replace(/\bboulevard\b/g, 'blvd')
+      .replace(/\bdrive\b/g, 'dr')
+      .replace(/\broad\b/g, 'rd')
+      .replace(/\bcourt\b/g, 'ct')
+      .replace(/\blane\b/g, 'ln')
+      .replace(/\bplace\b/g, 'pl')
+      .replace(/\bcircle\b/g, 'cir')
+      .replace(/\bparkway\b/g, 'pkwy')
+      // Remove extra spaces and punctuation
+      .replace(/[.,#]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
+   * Standardize DJ/host name for consistent deduplication
+   */
+  private standardizeDJName(name: string): string {
+    if (!name) return '';
+    
+    return name
+      .toLowerCase()
+      .trim()
+      // Remove common prefixes/suffixes
+      .replace(/\b(?:dj|host|karaoke|with)\s+/g, '')
+      .replace(/\s+(?:dj|host|karaoke)$/g, '')
+      // Normalize spacing
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
+   * Remove duplicate shows based on standardized address, day, and startTime
    */
   private removeDuplicateShows(shows: any[]): any[] {
     const unique: any[] = [];
     const seenShows = new Set<string>();
 
     this.logAndBroadcast(`Starting deduplication with ${shows.length} shows`, 'info');
+    this.logAndBroadcast('🔄 Standardizing addresses and names for deduplication', 'info');
 
     for (const show of shows) {
-      // Create a key that includes address, day, and startTime for deduplication
-      // This handles cases where venue names might vary but it's the same physical location
-      const address = show.address?.toLowerCase().trim() || '';
+      // Standardize address for consistent comparison
+      const standardizedAddress = this.standardizeAddress(show.address || '');
       const day = show.day?.toLowerCase().trim() || '';
       const startTime =
         show.startTime?.toLowerCase().trim() || show.time?.toLowerCase().trim() || '';
-      const key = `${address}-${day}-${startTime}`;
+      
+      // Create deduplication key with standardized values
+      const key = `${standardizedAddress}-${day}-${startTime}`;
 
       if (key && !seenShows.has(key)) {
         seenShows.add(key);
+        
+        // Apply standardization to the actual show data but keep it readable
+        // Only standardize for storage, not for display
+        if (show.address) {
+          // Keep original for display but ensure consistent format for storage
+          show.address = show.address.trim();
+        }
+        
         unique.push(show);
         this.logger.debug(`Added show: ${show.venue} at ${show.address} on ${day} at ${startTime}`);
       } else {
@@ -2060,26 +2114,30 @@ ${htmlContent}`;
     }
 
     this.logAndBroadcast(
-      `Deduplication: ${shows.length} shows → ${unique.length} unique shows (address + day + startTime)`,
+      `Deduplication: ${shows.length} shows → ${unique.length} unique shows (standardized addresses)`,
       'success',
     );
     return unique;
   }
 
   /**
-   * Extract DJs from individual show djName fields
+   * Extract DJs from individual show djName fields with deduplication
    */
   private extractDJsFromShows(shows: any[]): any[] {
     const djSet = new Set<string>();
     const extractedDJs: any[] = [];
 
+    this.logAndBroadcast('🔄 Extracting and deduplicating DJs from shows', 'info');
+
     for (const show of shows) {
       if (show.djName && typeof show.djName === 'string') {
         const djName = show.djName.trim();
-        if (djName && !djSet.has(djName.toLowerCase())) {
-          djSet.add(djName.toLowerCase());
+        const standardizedName = this.standardizeDJName(djName);
+        
+        if (djName && !djSet.has(standardizedName)) {
+          djSet.add(standardizedName);
           extractedDJs.push({
-            name: djName,
+            name: djName, // Keep original readable name
             confidence: 0.85,
             context: `Host at ${show.venue || 'venue'}`,
             aliases: [],
@@ -2088,21 +2146,24 @@ ${htmlContent}`;
       }
     }
 
+    this.logAndBroadcast(`Extracted ${extractedDJs.length} unique DJs`, 'success');
     return extractedDJs;
   }
 
   /**
-   * Merge two DJ arrays, avoiding duplicates
+   * Merge two DJ arrays, avoiding duplicates with standardized name comparison
    */
   private mergeDJArrays(existingDJs: any[], newDJs: any[]): any[] {
     const merged = [...existingDJs];
-    const existingNames = new Set(existingDJs.map((dj) => dj.name?.toLowerCase().trim()));
+    const existingNames = new Set(
+      existingDJs.map((dj) => this.standardizeDJName(dj.name || ''))
+    );
 
     for (const newDJ of newDJs) {
-      const normalizedName = newDJ.name?.toLowerCase().trim();
-      if (normalizedName && !existingNames.has(normalizedName)) {
+      const standardizedName = this.standardizeDJName(newDJ.name || '');
+      if (standardizedName && !existingNames.has(standardizedName)) {
         merged.push(newDJ);
-        existingNames.add(normalizedName);
+        existingNames.add(standardizedName);
       }
     }
 

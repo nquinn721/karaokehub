@@ -27,6 +27,7 @@ import {
   alpha,
   Box,
   Button,
+  Card,
   Chip,
   CircularProgress,
   Dialog,
@@ -40,6 +41,7 @@ import {
   Grid,
   IconButton,
   InputLabel,
+  LinearProgress,
   List,
   ListItem,
   ListItemText,
@@ -1062,6 +1064,131 @@ const AdminParserPage: React.FC = observer(() => {
 
                 {/* Parser Live Log */}
                 <Divider sx={{ my: 2 }} />
+                
+                {/* Parser Summary */}
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mb: 2 }}>
+                    Parser Summary:
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <Card sx={{ p: 2, bgcolor: 'background.paper' }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          Current Status
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box
+                            sx={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: '50%',
+                              bgcolor:
+                                parserStore.parserSummary.status === 'parsing'
+                                  ? 'warning.main'
+                                  : parserStore.parserSummary.status === 'completed'
+                                  ? 'success.main'
+                                  : parserStore.parserSummary.status === 'error'
+                                  ? 'error.main'
+                                  : 'grey.500',
+                            }}
+                          />
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {parserStore.parserSummary.status.charAt(0).toUpperCase() +
+                              parserStore.parserSummary.status.slice(1)}
+                          </Typography>
+                        </Box>
+                        {parserStore.parserSummary.pageName && (
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            Page: {parserStore.parserSummary.pageName}
+                          </Typography>
+                        )}
+                        {parserStore.parserSummary.currentStep && (
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                            Step: {parserStore.parserSummary.currentStep}
+                          </Typography>
+                        )}
+                      </Card>
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                      <Card sx={{ p: 2, bgcolor: 'background.paper' }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          Image Processing
+                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="body2">Found:</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {parserStore.parserSummary.imagesFound}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2">Parsed:</Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {parserStore.parserSummary.imagesParsed} / {parserStore.parserSummary.imagesFound}
+                          </Typography>
+                        </Box>
+                        {parserStore.parserSummary.imagesFound > 0 && (
+                          <LinearProgress
+                            variant="determinate"
+                            value={(parserStore.parserSummary.imagesParsed / parserStore.parserSummary.imagesFound) * 100}
+                            sx={{ mt: 1, height: 4, borderRadius: 2 }}
+                          />
+                        )}
+                      </Card>
+                    </Grid>
+                    
+                    <Grid item xs={12}>
+                      <Card sx={{ p: 2, bgcolor: 'background.paper' }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          Extracted Data
+                        </Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={3}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" color="primary">
+                                {parserStore.parserSummary.totalVenues}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Venues
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={3}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" color="primary">
+                                {parserStore.parserSummary.totalShows}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Shows
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={3}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" color="primary">
+                                {parserStore.parserSummary.totalDJs}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                DJs
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={3}>
+                            <Box sx={{ textAlign: 'center' }}>
+                              <Typography variant="h6" color="primary">
+                                {parserStore.parserSummary.totalVendors}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Vendors
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        </Grid>
+                      </Card>
+                    </Grid>
+                  </Grid>
+                </Box>
+
                 <Box>
                   <Box
                     sx={{
