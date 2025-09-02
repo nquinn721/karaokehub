@@ -139,6 +139,41 @@ export class DeduplicationService {
     this.logger.log('Starting show deduplication process...');
 
     try {
+      // First, find and delete invalid shows (without venue or without DJ/vendor)
+      const invalidShows = await this.showRepository.find({
+        where: { isActive: true },
+        relations: ['venue', 'dj', 'dj.vendor'],
+      });
+
+      const showsToDelete = invalidShows.filter((show) => {
+        // Delete if no venue
+        if (!show.venue || !show.venueId) {
+          this.logger.log(`Marking show ${show.id} for deletion: no venue`);
+          return true;
+        }
+
+        // Delete if no DJ and no vendor information
+        if (!show.dj || !show.djId) {
+          this.logger.log(`Marking show ${show.id} for deletion: no DJ`);
+          return true;
+        }
+
+        // Delete if DJ exists but has no vendor
+        if (show.dj && !show.dj.vendor && !show.dj.vendorId) {
+          this.logger.log(`Marking show ${show.id} for deletion: DJ has no vendor`);
+          return true;
+        }
+
+        return false;
+      });
+
+      if (showsToDelete.length > 0) {
+        this.logger.log(`Deleting ${showsToDelete.length} invalid shows...`);
+        await this.showRepository.remove(showsToDelete);
+        this.logger.log(`Successfully deleted ${showsToDelete.length} invalid shows`);
+      }
+
+      // Now get the remaining valid shows for duplicate analysis
       const shows = await this.showRepository.find({
         select: ['id', 'venueId', 'day', 'startTime', 'endTime', 'description'],
         where: { isActive: true },
@@ -219,13 +254,18 @@ export class DeduplicationService {
       }));
 
       this.logger.log(
-        `Show deduplication completed. Found ${geminiResult.duplicatesFound} duplicates to remove.`,
+        `Show deduplication completed. Deleted ${showsToDelete.length} invalid shows. Found ${geminiResult.duplicatesFound} duplicates to remove.`,
       );
+
+      const enhancedSummary =
+        showsToDelete.length > 0
+          ? `${geminiResult.summary} Additionally, ${showsToDelete.length} invalid shows (missing venue or DJ/vendor information) were automatically deleted.`
+          : geminiResult.summary;
 
       return {
         duplicateGroups,
-        summary: geminiResult.summary,
-        totalFound: geminiResult.duplicatesFound,
+        summary: enhancedSummary,
+        totalFound: geminiResult.duplicatesFound + showsToDelete.length,
       };
     } catch (error) {
       this.logger.error('Error in show deduplication:', error);

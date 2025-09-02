@@ -104,16 +104,9 @@ export class AuthStore {
       try {
         apiStore.setToken(this.token);
 
-        console.log('👤 AuthStore: Fetching profile to validate token');
         // Always fetch fresh profile data from API to ensure it's up to date
         await this.getProfile();
-        console.log('✅ AuthStore: Profile fetched successfully, user authenticated');
       } catch (error: any) {
-        console.log(
-          '❌ AuthStore: Profile fetch failed:',
-          error.response?.status || error.status || 'unknown',
-        );
-
         // Handle different error types safely without causing loops
         if (error?.response?.status === 401 || error?.status === 401) {
           console.log('🚪 AuthStore: 401 error - clearing auth state (token expired/invalid)');
@@ -132,7 +125,6 @@ export class AuthStore {
       // Fetch subscription status for authenticated users (only if still authenticated)
       if (this.isAuthenticated && this.token) {
         try {
-          console.log('💳 AuthStore: Fetching subscription status');
           const { subscriptionStore } = await import('./index');
           await subscriptionStore.fetchSubscriptionStatus();
         } catch (error) {
