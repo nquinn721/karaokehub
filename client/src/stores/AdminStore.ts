@@ -144,13 +144,6 @@ export interface AdminDJ {
   vendor?: AdminVenue;
   createdAt: Date;
   updatedAt: Date;
-  nicknames?: {
-    id: string;
-    nickname: string;
-    type: 'stage_name' | 'alias' | 'social_handle' | 'real_name';
-    platform?: string;
-    isActive: boolean;
-  }[];
 }
 
 export interface AdminVendor {
@@ -876,7 +869,7 @@ export class AdminStore {
 
   async deleteShow(id: string): Promise<void> {
     try {
-      await apiStore.delete(`/shows/${id}`);
+      await apiStore.delete(`/admin/shows/${id}`);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to delete show');
     }

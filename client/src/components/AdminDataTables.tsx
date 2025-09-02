@@ -1439,19 +1439,7 @@ const AdminDataTables: React.FC = observer(() => {
                     Vendor
                   </TableSortLabel>
                 </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortBy.djs === 'nicknames'}
-                    direction={
-                      sortBy.djs === 'nicknames'
-                        ? (sortOrder.djs.toLowerCase() as 'asc' | 'desc')
-                        : 'asc'
-                    }
-                    onClick={() => handleSort('djs', 'nicknames')}
-                  >
-                    Nicknames
-                  </TableSortLabel>
-                </TableCell>
+
                 <TableCell>Status</TableCell>
                 <TableCell>
                   <TableSortLabel
@@ -1472,7 +1460,7 @@ const AdminDataTables: React.FC = observer(() => {
             <TableBody>
               {adminStore.isLoadingTable ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={5} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
@@ -1492,36 +1480,7 @@ const AdminDataTables: React.FC = observer(() => {
                         'N/A'
                       )}
                     </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {dj.nicknames && dj.nicknames.length > 0 ? (
-                          dj.nicknames
-                            .filter((nickname) => nickname.isActive)
-                            .map((nickname) => (
-                              <Chip
-                                key={nickname.id}
-                                label={nickname.nickname}
-                                size="small"
-                                color={
-                                  nickname.type === 'stage_name'
-                                    ? 'primary'
-                                    : nickname.type === 'social_handle'
-                                      ? 'secondary'
-                                      : nickname.type === 'real_name'
-                                        ? 'success'
-                                        : 'default'
-                                }
-                                variant="outlined"
-                                title={`${nickname.type}${nickname.platform ? ` (${nickname.platform})` : ''}`}
-                              />
-                            ))
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            No nicknames
-                          </Typography>
-                        )}
-                      </Box>
-                    </TableCell>
+
                     <TableCell>
                       <Chip
                         label={dj.isActive ? 'Active' : 'Inactive'}

@@ -356,13 +356,11 @@ const PopupContent: React.FC<{
 
 const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpen }) => {
   const theme = useTheme();
-  const isDarkMode = theme.palette.mode === 'dark';
   const [map, setMap] = useState<google.maps.Map | null>(null);
   // Current state
   const currentZoom = mapStore.currentZoom;
   const isZoomedOut = currentZoom <= 6; // Temporarily lower threshold for debugging
   const shows = showStore.shows;
-  const citySummaries = showStore.citySummaries;
 
   // Initialize stores only (no API calls in component)
   useEffect(() => {
@@ -378,7 +376,6 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
   // Set map instance
   useEffect(() => {
     if (map) {
-      console.log('🗺️ Setting map instance');
       mapStore.setMapInstance(map);
     }
   }, [map]);
@@ -406,10 +403,6 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
 
       // Skip if no valid coordinates
       if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-        console.log(`⚠️ Show ${show.id} missing/invalid coordinates:`, {
-          venueCoords: show.venue ? { lat: show.venue.lat, lng: show.venue.lng } : null,
-          directCoords: { lat: (show as any).lat, lng: (show as any).lng },
-        });
         return null;
       }
 
@@ -423,39 +416,8 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
     });
   };
 
-  // Render city summary markers
-  const renderCityMarkers = () => {
-    if (!isZoomedOut || citySummaries.length === 0) return null;
-
-    console.log(`🏙️ Rendering ${citySummaries.length} city markers`);
-
-    return citySummaries.map((city: any, index: number) => {
-      if (!city.lat || !city.lng) return null;
-
-      const lat = typeof city.lat === 'string' ? parseFloat(city.lat) : city.lat;
-      const lng = typeof city.lng === 'string' ? parseFloat(city.lng) : city.lng;
-
-      return (
-        <Marker
-          key={`${city.city}-${city.state}-${index}`}
-          position={{ lat, lng }}
-          onClick={() => {
-            console.log(`🏙️ City clicked: ${city.city}, ${city.state} (${city.showCount} shows)`);
-            // Could expand to show individual shows for this city
-          }}
-          title={`${city.city}, ${city.state} (${city.showCount} shows)`}
-        />
-      );
-    });
-  };
-
   // Show loading state while waiting for API key
   const apiKey = apiStore.googleMapsApiKey;
-  console.log('🗺️ SimpleMapNew API key check:', {
-    apiKey: apiKey ? `${apiKey.substring(0, 10)}...` : 'undefined',
-    configLoaded: apiStore.configLoaded,
-    hasClientConfig: !!apiStore.clientConfig,
-  });
 
   if (!apiKey) {
     return (
@@ -575,7 +537,6 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
               // Always update zoom level when camera changes
               const currentMapZoom = ev.map.getZoom() || 11;
               if (currentMapZoom !== mapStore.currentZoom) {
-                console.log('🔍 Zoom changed:', mapStore.currentZoom, '->', currentMapZoom);
                 // Use runInAction to ensure MobX observability
                 runInAction(() => {
                   mapStore.currentZoom = currentMapZoom;
@@ -584,20 +545,12 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
 
               // Set map instance if not already set
               if (!map) {
-                console.log('🗺️ Map loaded, setting map instance');
-                console.log(
-                  '🎨 Dark mode:',
-                  isDarkMode,
-                  'Styles applied:',
-                  isDarkMode ? 'dark' : 'none',
-                );
                 setMap(ev.map);
               }
             }
           }}
         >
           {renderShowMarkers()}
-          {renderCityMarkers()}
 
           {/* InfoWindow for selected show */}
           {mapStore.selectedShow &&
@@ -623,7 +576,6 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
 
               // Only render InfoWindow if we have valid coordinates
               if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-                console.log('⚠️ InfoWindow: Invalid coordinates for selected show:', show);
                 return null;
               }
 

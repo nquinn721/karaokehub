@@ -401,7 +401,6 @@ export class AdminService {
     if (sortBy) {
       const sortMap: { [key: string]: string } = {
         name: 'dj.name',
-        nicknames: 'dj.nicknames',
         vendor: 'vendor.name',
         createdAt: 'dj.createdAt',
       };
@@ -734,7 +733,7 @@ export class AdminService {
   async deleteDj(id: string) {
     const dj = await this.djRepository.findOne({
       where: { id },
-      relations: ['shows', 'nicknames'],
+      relations: ['shows'],
     });
 
     if (!dj) {
