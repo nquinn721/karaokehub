@@ -624,6 +624,200 @@ export class ParserController {
   }
 
   /**
+   * Save user-submitted parsed image data directly to database with proper deduplication
+   */
+  @Post('submit-parsed-image-data')
+  async submitParsedImageData(
+    @Body()
+    body: {
+      venues: Array<{
+        name: string;
+        address?: string;
+        city?: string;
+        state?: string;
+        zip?: string;
+        lat?: number;
+        lng?: number;
+        phone?: string;
+        website?: string;
+        confidence?: number;
+      }>;
+      djs: Array<{
+        name: string;
+        confidence?: number;
+        context?: string;
+      }>;
+      shows: Array<{
+        venueName: string;
+        time?: string;
+        startTime?: string;
+        endTime?: string;
+        day: string;
+        djName: string;
+        description?: string;
+        confidence?: number;
+      }>;
+      sourceUrl?: string;
+      description?: string;
+    },
+  ) {
+    try {
+      const createdShows = [];
+      const createdDJs = [];
+      const createdVenues = [];
+
+      // Process each venue
+      for (const venueData of body.venues) {
+        const venue = await this.venueService.findOrCreate({
+          name: venueData.name,
+          address: venueData.address,
+          city: venueData.city,
+          state: venueData.state,
+          zip: venueData.zip,
+          phone: venueData.phone,
+          website: venueData.website,
+          lat: venueData.lat,
+          lng: venueData.lng,
+        });
+        createdVenues.push(venue);
+      }
+
+      // Process each DJ - first check if they exist by name across all vendors
+      for (const djData of body.djs) {
+        // Look for existing DJ by name (without vendor restriction for image uploads)
+        let existingDJ = await this.djRepository.findOne({
+          where: {
+            name: djData.name.trim(),
+          },
+          relations: ['vendor'],
+        });
+
+        if (existingDJ) {
+          createdDJs.push(existingDJ);
+          console.log(
+            `Found existing DJ: ${existingDJ.name} with vendor: ${existingDJ.vendor?.name || 'No vendor'}`,
+          );
+        } else {
+          // Create DJ without vendor (will be managed by admin later)
+          const newDJ = this.djRepository.create({
+            name: djData.name.trim(),
+            isActive: true,
+            // No vendorId for image-uploaded DJs - they'll be assigned by admin
+          });
+          const savedDJ = await this.djRepository.save(newDJ);
+          createdDJs.push(savedDJ);
+          console.log(`Created new DJ: ${savedDJ.name}`);
+        }
+      }
+
+      // Process each show
+      for (const showData of body.shows) {
+        // Find the corresponding venue
+        const venue = createdVenues.find((v) => v.name === showData.venueName);
+        if (!venue) {
+          console.error(`Venue not found for show: ${showData.venueName}`);
+          continue;
+        }
+
+        // Find the corresponding DJ
+        const dj = createdDJs.find((d) => d.name === showData.djName);
+        if (!dj) {
+          console.error(`DJ not found for show: ${showData.djName}`);
+          continue;
+        }
+
+        // Convert start/end times to proper format
+        let startTime = showData.startTime;
+        let endTime = showData.endTime;
+
+        // If we have a time range like "6 pm - 9 pm", parse it
+        if (showData.time && !startTime) {
+          const timeMatch = showData.time.match(/(\d{1,2})\s*([ap]m)\s*-\s*(\d{1,2})\s*([ap]m)/i);
+          if (timeMatch) {
+            const [, startHour, startMeridiem, endHour, endMeridiem] = timeMatch;
+
+            // Convert to 24-hour format
+            let start24 = parseInt(startHour);
+            let end24 = parseInt(endHour);
+
+            if (startMeridiem.toLowerCase() === 'pm' && start24 !== 12) start24 += 12;
+            if (startMeridiem.toLowerCase() === 'am' && start24 === 12) start24 = 0;
+            if (endMeridiem.toLowerCase() === 'pm' && end24 !== 12) end24 += 12;
+            if (endMeridiem.toLowerCase() === 'am' && end24 === 12) end24 = 0;
+
+            startTime = `${start24.toString().padStart(2, '0')}:00`;
+            endTime = `${end24.toString().padStart(2, '0')}:00`;
+          }
+        }
+
+        const finalStartTime = startTime || '18:00'; // Default to 6 PM
+        const finalEndTime = endTime || '21:00'; // Default to 9 PM
+
+        // Check for existing show with same venue/day/startTime (deduplication)
+        const existingShow = await this.showRepository.findOne({
+          where: {
+            venueId: venue.id,
+            day: showData.day.toLowerCase() as any,
+            startTime: finalStartTime,
+          },
+        });
+
+        if (existingShow) {
+          console.log(
+            `Show already exists for ${venue.name} on ${showData.day} at ${finalStartTime} - skipping`,
+          );
+          createdShows.push(existingShow); // Include in response but don't create duplicate
+          continue;
+        }
+
+        const show = this.showRepository.create({
+          djId: dj.id,
+          venueId: venue.id,
+          day: showData.day.toLowerCase() as any, // DayOfWeek enum
+          startTime: finalStartTime,
+          endTime: finalEndTime,
+          description: showData.description || `Karaoke with ${dj.name}`,
+          source: 'image_upload',
+          userSubmitted: true, // Mark as user-submitted from image upload
+        });
+
+        const savedShow = await this.showRepository.save(show);
+        createdShows.push(savedShow);
+        console.log(`Created new show for ${venue.name} on ${showData.day} at ${finalStartTime}`);
+      }
+
+      // Count what was actually created vs found
+      const newShows = createdShows.filter((show) => show.source === 'image_upload');
+      const newDJs = createdDJs.filter((dj) => !dj.vendor);
+      const newVenues = createdVenues.filter(
+        (venue) => venue.createdAt && new Date(venue.createdAt).getTime() > Date.now() - 10000,
+      ); // Created in last 10 seconds
+
+      return {
+        success: true,
+        message: `Successfully processed: ${newShows.length} new show(s), ${createdShows.length - newShows.length} existing show(s), ${newDJs.length} new DJ(s), ${createdVenues.length} venue(s)`,
+        data: {
+          shows: createdShows,
+          djs: createdDJs,
+          venues: createdVenues,
+          stats: {
+            newShows: newShows.length,
+            existingShows: createdShows.length - newShows.length,
+            newDJs: newDJs.length,
+            totalVenues: createdVenues.length,
+          },
+        },
+      };
+    } catch (error) {
+      console.error('Error submitting parsed image data:', error);
+      throw new HttpException(
+        `Failed to submit parsed data: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
    * EMERGENCY CANCELLATION ENDPOINT
    * Immediately stops all parsing operations, workers, and browsers
    */

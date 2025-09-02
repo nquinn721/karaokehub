@@ -1,16 +1,9 @@
 import { faFlag } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Typography,
-} from '@mui/material';
+import { Box, Button, Typography } from '@mui/material';
 import React from 'react';
 import { Show } from '../../stores/ShowStore';
+import CustomModal from '../CustomModal';
 
 interface FlagShowDialogProps {
   open: boolean;
@@ -30,64 +23,48 @@ export const FlagShowDialog: React.FC<FlagShowDialogProps> = ({
   if (!show) return null;
 
   return (
-    <Dialog
+    <CustomModal
       open={open}
       onClose={onClose}
-      aria-labelledby="flag-show-dialog-title"
-      aria-describedby="flag-show-dialog-description"
+      title="Flag Show as Non-Existent"
+      icon={<FontAwesomeIcon icon={faFlag} style={{ color: '#ff9800' }} />}
       maxWidth="sm"
-      fullWidth
     >
-      <DialogTitle
-        id="flag-show-dialog-title"
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          pb: 1,
-        }}
-      >
-        <FontAwesomeIcon icon={faFlag} style={{ fontSize: '20px', color: '#ff9800' }} />
-        Flag Show as Non-Existent
-      </DialogTitle>
+      <Typography variant="body1" sx={{ mb: 2 }}>
+        Are you sure this show doesn't exist? This will mark the show as flagged and help us improve
+        our data quality.
+      </Typography>
 
-      <DialogContent>
-        <DialogContentText id="flag-show-dialog-description" sx={{ mb: 2 }}>
-          Are you sure this show doesn't exist? This will mark the show as flagged and help us
-          improve our data quality.
-        </DialogContentText>
+      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+        Show Details:
+      </Typography>
 
-        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-          Show Details:
-        </Typography>
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        <strong>Venue:</strong>{' '}
+        {(show.venue && typeof show.venue === 'object' ? show.venue.name : show.venue) ||
+          'Unknown Venue'}
+      </Typography>
 
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        <strong>DJ/Host:</strong> {show.dj?.name || 'Unknown Host'}
+      </Typography>
+
+      <Typography variant="body2" sx={{ mb: 0.5 }}>
+        <strong>Location:</strong>{' '}
+        {show.venue && typeof show.venue === 'object' ? show.venue.address : null}
+      </Typography>
+
+      {show.venue && typeof show.venue === 'object' && (show.venue.city || show.venue.state) && (
         <Typography variant="body2" sx={{ mb: 0.5 }}>
-          <strong>Venue:</strong>{' '}
-          {(show.venue && typeof show.venue === 'object' ? show.venue.name : show.venue) ||
-            'Unknown Venue'}
+          <strong>City:</strong> {[show.venue.city, show.venue.state].filter(Boolean).join(', ')}
         </Typography>
+      )}
 
-        <Typography variant="body2" sx={{ mb: 0.5 }}>
-          <strong>DJ/Host:</strong> {show.dj?.name || 'Unknown Host'}
-        </Typography>
+      <Typography variant="body2" sx={{ mb: 3 }}>
+        <strong>Time:</strong> {show.startTime} - {show.endTime}
+      </Typography>
 
-        <Typography variant="body2" sx={{ mb: 0.5 }}>
-          <strong>Location:</strong>{' '}
-          {show.venue && typeof show.venue === 'object' ? show.venue.address : null}
-        </Typography>
-
-        {show.venue && typeof show.venue === 'object' && (show.venue.city || show.venue.state) && (
-          <Typography variant="body2" sx={{ mb: 0.5 }}>
-            <strong>City:</strong> {[show.venue.city, show.venue.state].filter(Boolean).join(', ')}
-          </Typography>
-        )}
-
-        <Typography variant="body2">
-          <strong>Time:</strong> {show.startTime} - {show.endTime}
-        </Typography>
-      </DialogContent>
-
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
         <Button onClick={onClose} color="inherit">
           Cancel
         </Button>
@@ -100,7 +77,7 @@ export const FlagShowDialog: React.FC<FlagShowDialogProps> = ({
         >
           {loading ? 'Flagging...' : 'Flag Show'}
         </Button>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </CustomModal>
   );
 };

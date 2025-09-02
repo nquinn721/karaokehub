@@ -424,7 +424,7 @@ const ParserReviewPage: React.FC = observer(() => {
                                 border: `1px solid ${theme.palette.primary.main}`,
                               }),
                             }}
-                            onClick={() => handleReviewItem(review.id)}
+                            onClick={() => review.id && handleReviewItem(review.id)}
                           >
                             <ListItemText
                               primary={

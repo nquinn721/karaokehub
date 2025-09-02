@@ -35,20 +35,49 @@ export interface ParsedShowData {
 }
 
 export interface ParsedScheduleItem {
-  id: string;
+  id?: string; // Optional for image-parsed data that hasn't been saved yet
   url: string;
   aiAnalysis?: {
-    vendor: ParsedVendorData;
+    vendor?: ParsedVendorData;
+    vendors?: any[];
+    venues?: any[];
     djs: ParsedDJData[];
     shows: ParsedShowData[];
   };
+  // Direct properties for image-parsed data
+  venues?: Array<{
+    name: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    lat?: number;
+    lng?: number;
+    phone?: string;
+    website?: string;
+    confidence?: number;
+  }>;
+  djs?: Array<{
+    name: string;
+    confidence?: number;
+    context?: string;
+  }>;
+  shows?: Array<{
+    venueName: string;
+    time?: string;
+    startTime?: string;
+    endTime?: string;
+    day: string;
+    djName: string;
+    description?: string;
+    confidence?: number;
+  }>;
   stats?: {
     showsFound: number;
     djsFound: number;
     venuesFound: number;
     vendorsFound: number;
   };
-  shows?: any[];
   vendors?: any[];
   status: 'pending' | 'pending_review' | 'approved' | 'rejected' | 'needs_review';
   createdAt: string;

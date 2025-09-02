@@ -4,7 +4,7 @@ const fs = require('fs');
 
 async function testImprovedStevesdjParsing() {
   console.log('🔍 Testing improved Stevesdj parsing with specialized prompt...');
-  
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     console.log('❌ GEMINI_API_KEY not set. Set it with: export GEMINI_API_KEY=your_api_key');
@@ -17,28 +17,30 @@ async function testImprovedStevesdjParsing() {
   const browser = await puppeteer.launch({
     headless: true,
     defaultViewport: { width: 1920, height: 1080 },
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
   try {
     const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-    
+    await page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    );
+
     console.log('📍 Navigating to: https://stevesdj.com/karaoke-schedule');
-    await page.goto('https://stevesdj.com/karaoke-schedule', { 
+    await page.goto('https://stevesdj.com/karaoke-schedule', {
       waitUntil: 'networkidle2',
-      timeout: 60000 
+      timeout: 60000,
     });
-    
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    
-    const screenshot = await page.screenshot({ 
+
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    const screenshot = await page.screenshot({
       fullPage: true,
-      encoding: 'base64'
+      encoding: 'base64',
     });
-    
+
     console.log('📸 Screenshot captured, analyzing with specialized DJ schedule prompt...');
-    
+
     // Specialized prompt for DJ schedule pages
     const djSchedulePrompt = `You are analyzing a screenshot of a DJ's karaoke schedule website. This shows where and when a DJ performs karaoke shows at different venues.
 
@@ -102,15 +104,15 @@ Analyze the screenshot and extract ALL karaoke shows/events you can find:`;
       {
         inlineData: {
           data: screenshot,
-          mimeType: 'image/png'
-        }
-      }
+          mimeType: 'image/png',
+        },
+      },
     ]);
-    
+
     const responseText = result.response.text();
     console.log('🤖 AI Response:');
     console.log(responseText);
-    
+
     // Try to parse JSON response
     try {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -120,11 +122,13 @@ Analyze the screenshot and extract ALL karaoke shows/events you can find:`;
         console.log('Vendor:', parsedResult.vendor?.name || 'Not found');
         console.log('DJs found:', parsedResult.djs?.length || 0);
         console.log('Shows found:', parsedResult.shows?.length || 0);
-        
+
         if (parsedResult.shows && parsedResult.shows.length > 0) {
           console.log('\n🎤 Shows detected:');
           parsedResult.shows.forEach((show, index) => {
-            console.log(`${index + 1}. ${show.dayOfWeek}: ${show.venue} (${show.time}) with ${show.djName}`);
+            console.log(
+              `${index + 1}. ${show.dayOfWeek}: ${show.venue} (${show.time}) with ${show.djName}`,
+            );
             console.log(`   Address: ${show.address}, ${show.city}, ${show.state} ${show.zip}`);
             console.log(`   Phone: ${show.venuePhone || 'N/A'}`);
             console.log(`   Confidence: ${show.confidence}`);
@@ -135,7 +139,6 @@ Analyze the screenshot and extract ALL karaoke shows/events you can find:`;
     } catch (parseError) {
       console.log('❌ Failed to parse JSON response:', parseError.message);
     }
-    
   } catch (error) {
     console.error('❌ Error:', error.message);
   } finally {

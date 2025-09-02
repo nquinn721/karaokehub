@@ -17,7 +17,6 @@ import {
   Box,
   Button,
   Card,
-  CardActions,
   CardContent,
   Checkbox,
   Chip,
@@ -242,40 +241,54 @@ const SubmitShowPage: React.FC = observer(() => {
 
     setLoading(true);
     try {
-      const result = await parserStore.approveAllItems(parsedData.id);
-      if (result.success) {
-        setSuccess('Data confirmed and saved successfully!');
-        setParsedData(null);
-        setUrl('');
-        setShowConfirmDialog(false);
+      // Check if this is image-parsed data (no ID) or URL-parsed data (has ID)
+      if (parsedData.id) {
+        // URL-parsed data - use existing approval flow
+        const result = await parserStore.approveAllItems(parsedData.id);
+        if (result.success) {
+          setSuccess('Data confirmed and saved successfully!');
+          setParsedData(null);
+          setUrl('');
+          setShowConfirmDialog(false);
+        } else {
+          setError(result.error || 'Failed to save confirmed data.');
+        }
       } else {
-        setError(result.error || 'Failed to save confirmed data.');
+        // Image-parsed data - save as user-submitted
+        const response = await fetch(
+          `${apiStore.environmentInfo.baseURL}/parser/submit-parsed-image-data`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${authStore.token}`,
+            },
+            body: JSON.stringify({
+              venues: parsedData.venues || [],
+              djs: parsedData.djs || [],
+              shows: parsedData.shows || [],
+              sourceUrl: `user-uploaded-image-${Date.now()}`,
+              description: 'User uploaded karaoke show image',
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.success) {
+          setSuccess(result.message || 'Shows saved successfully to the database!');
+          setParsedData(null);
+          setShowConfirmDialog(false);
+        } else {
+          setError('Failed to save show data to database.');
+        }
       }
     } catch (err) {
       setError('Failed to save confirmed data.');
       console.error('Confirm error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRejectParsedData = async () => {
-    if (!parsedData) return;
-
-    setLoading(true);
-    try {
-      const result = await parserStore.rejectParsedData(parsedData.id, 'Rejected by user');
-      if (result.success) {
-        setSuccess('Data rejected successfully.');
-        setParsedData(null);
-        setUrl('');
-        setShowConfirmDialog(false);
-      } else {
-        setError(result.error || 'Failed to reject data.');
-      }
-    } catch (err) {
-      setError('Failed to reject data.');
-      console.error('Reject error:', err);
     } finally {
       setLoading(false);
     }
@@ -348,7 +361,7 @@ const SubmitShowPage: React.FC = observer(() => {
       const result = await response.json();
 
       if (result.success && result.data) {
-        // Store the parsed data and immediately show it in the confirmation modal
+        // Store the parsed data and show it in the confirmation modal for user approval
         setParsedData(result.data);
         setShowConfirmDialog(true);
         setSuccess('Image analyzed successfully! Please review the extracted data.');
@@ -1593,19 +1606,171 @@ const SubmitShowPage: React.FC = observer(() => {
             Are you sure you want to save this parsed data to our karaoke database? This will
             create:
           </Typography>
-          <Box component="ul" sx={{ pl: 2, mb: 2 }}>
-            <Typography component="li" variant="body2" gutterBottom>
-              <strong>1 Vendor:</strong> {parsedData?.aiAnalysis?.vendor?.name || 'Unknown'}
-            </Typography>
-            <Typography component="li" variant="body2" gutterBottom>
-              <strong>{parsedData?.aiAnalysis?.djs?.length || 0} DJs/KJs:</strong>{' '}
-              {parsedData?.aiAnalysis?.djs?.map((dj) => dj.name).join(', ') || 'None'}
-            </Typography>
-            <Typography component="li" variant="body2">
-              <strong>{parsedData?.aiAnalysis?.shows?.length || 0} Shows:</strong> All scheduled
-              karaoke events
-            </Typography>
-          </Box>
+
+          {/* Venues Section */}
+          {((parsedData?.venues?.length ?? 0) > 0 ||
+            (parsedData?.aiAnalysis?.venues?.length ?? 0) > 0) && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
+                📍 Venues (
+                {parsedData?.venues?.length || parsedData?.aiAnalysis?.venues?.length || 0})
+              </Typography>
+              {(parsedData?.venues || parsedData?.aiAnalysis?.venues || []).map((venue, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    mb: 2,
+                    p: 2,
+                    bgcolor: 'background.paper',
+                    borderRadius: 1,
+                    border: 1,
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    {venue.name}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    📍 {venue.address}, {venue.city}, {venue.state} {venue.zip}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    🌍 GPS: {venue.lat?.toFixed(6)}, {venue.lng?.toFixed(6)}
+                  </Typography>
+                  {venue.phone && (
+                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      📞 {venue.phone}
+                    </Typography>
+                  )}
+                  {venue.website && (
+                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      🌐 {venue.website}
+                    </Typography>
+                  )}
+                  <Typography variant="caption" color="text.secondary">
+                    Confidence: {(venue.confidence * 100).toFixed(0)}%
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+
+          {/* DJs Section */}
+          {((parsedData?.djs?.length ?? 0) > 0 ||
+            (parsedData?.aiAnalysis?.djs?.length ?? 0) > 0) && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
+                🎤 DJs/KJs ({parsedData?.djs?.length || parsedData?.aiAnalysis?.djs?.length || 0})
+              </Typography>
+              {(parsedData?.djs || parsedData?.aiAnalysis?.djs || []).map((dj, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    mb: 1,
+                    p: 1.5,
+                    bgcolor: 'background.paper',
+                    borderRadius: 1,
+                    border: 1,
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                    {dj.name}
+                  </Typography>
+                  {dj.context && (
+                    <Typography variant="body2" color="text.secondary">
+                      {dj.context}
+                    </Typography>
+                  )}
+                  <Typography variant="caption" color="text.secondary">
+                    Confidence: {((dj.confidence ?? 0.9) * 100).toFixed(0)}%
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+
+          {/* Shows Section */}
+          {((parsedData?.shows?.length ?? 0) > 0 ||
+            (parsedData?.aiAnalysis?.shows?.length ?? 0) > 0) && (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
+                🎵 Shows ({parsedData?.shows?.length || parsedData?.aiAnalysis?.shows?.length || 0})
+              </Typography>
+              {(parsedData?.shows || parsedData?.aiAnalysis?.shows || []).map((show, index) => {
+                // Helper function to get show properties from either data structure
+                const getShowProp = (prop: string) => {
+                  if ('venueName' in show) {
+                    // Image-parsed show data
+                    return (show as any)[prop];
+                  } else {
+                    // URL-parsed show data (ParsedShowData)
+                    switch (prop) {
+                      case 'venueName':
+                        return show.venue || show.address || 'Unknown venue';
+                      case 'day':
+                        return 'Unknown day'; // ParsedShowData doesn't have day
+                      case 'time':
+                        return show.time;
+                      case 'startTime':
+                        return 'Unknown start'; // ParsedShowData doesn't have startTime
+                      case 'endTime':
+                        return 'Unknown end'; // ParsedShowData doesn't have endTime
+                      case 'djName':
+                        return show.djName || 'Unknown DJ';
+                      case 'description':
+                        return show.description;
+                      case 'confidence':
+                        return show.confidence || 0.9;
+                      default:
+                        return (show as any)[prop];
+                    }
+                  }
+                };
+
+                return (
+                  <Box
+                    key={index}
+                    sx={{
+                      mb: 2,
+                      p: 2,
+                      bgcolor: 'background.paper',
+                      borderRadius: 1,
+                      border: 1,
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                      {getShowProp('venueName')} - {getShowProp('day')}s
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      ⏰ {getShowProp('time')} ({getShowProp('startTime')} -{' '}
+                      {getShowProp('endTime')})
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      🎤 Hosted by: {getShowProp('djName')}
+                    </Typography>
+                    {getShowProp('description') && (
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        📝 {getShowProp('description')}
+                      </Typography>
+                    )}
+                    <Typography variant="caption" color="text.secondary">
+                      Confidence: {((getShowProp('confidence') ?? 0.9) * 100).toFixed(0)}%
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Box>
+          )}
+
+          {/* Legacy vendor support */}
+          {parsedData?.aiAnalysis?.vendor && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                <strong>Vendor:</strong> {parsedData.aiAnalysis.vendor.name}
+              </Typography>
+            </Box>
+          )}
           <Alert severity="info" sx={{ mt: 2, mb: 3 }}>
             This action will make the data available to all users on KaraokeHub.
           </Alert>

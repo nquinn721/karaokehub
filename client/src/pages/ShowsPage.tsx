@@ -31,6 +31,7 @@ import MapComponent from '../components/MapComponent';
 import { AuthRequiredModal } from '../components/modals/AuthRequiredModal';
 import { CombinedScheduleModal } from '../components/modals/CombinedScheduleModal';
 import { DJScheduleModal } from '../components/modals/DJScheduleModal';
+import { FlagShowDialog } from '../components/modals/FlagShowDialog';
 import { SubmitMissingInfoModal } from '../components/modals/SubmitMissingInfoModal';
 import { ShowSearch } from '../components/search/ShowSearch';
 import { SEO } from '../components/SEO';
@@ -47,9 +48,12 @@ const ShowsPage: React.FC = observer(() => {
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [submitInfoModalOpen, setSubmitInfoModalOpen] = useState(false);
+  const [flagModalOpen, setFlagModalOpen] = useState(false);
   const [selectedDJ, setSelectedDJ] = useState<{ id: string; name: string } | null>(null);
   const [selectedShow, setSelectedShow] = useState<Show | null>(null);
   const [showToEdit, setShowToEdit] = useState<Show | null>(null);
+  const [showToFlag, setShowToFlag] = useState<Show | null>(null);
+  const [flagLoading, setFlagLoading] = useState(false);
 
   // Initialize stores only (no duplicate API calls)
   useEffect(() => {
@@ -111,15 +115,16 @@ const ShowsPage: React.FC = observer(() => {
   };
 
   // Handle flag button click - immediate flagging
-  const handleFlagClick = async (event: React.MouseEvent, show: Show) => {
+  const handleFlagClick = (event: React.MouseEvent, show: Show) => {
     event.stopPropagation();
     if (!authStore.isAuthenticated || !authStore.user?.id) {
       setAuthModalOpen(true);
       return;
     }
 
-    // Flag the show immediately
-    await showStore.flagShow(show.id, authStore.user.id);
+    // Show flag confirmation modal
+    setShowToFlag(show);
+    setFlagModalOpen(true);
   };
 
   // Handle edit button click
@@ -137,6 +142,28 @@ const ShowsPage: React.FC = observer(() => {
   const handleCloseSubmitInfoModal = () => {
     setSubmitInfoModalOpen(false);
     setShowToEdit(null);
+  };
+
+  // Handle flag confirmation
+  const handleFlagConfirm = async () => {
+    if (!showToFlag || !authStore.user?.id) return;
+
+    setFlagLoading(true);
+    try {
+      await showStore.flagShow(showToFlag.id, authStore.user.id);
+      setFlagModalOpen(false);
+      setShowToFlag(null);
+    } catch (error) {
+      console.error('Error flagging show:', error);
+    } finally {
+      setFlagLoading(false);
+    }
+  };
+
+  // Handle close flag modal
+  const handleCloseFlagModal = () => {
+    setFlagModalOpen(false);
+    setShowToFlag(null);
   };
 
   return (
@@ -1299,6 +1326,14 @@ const ShowsPage: React.FC = observer(() => {
         open={submitInfoModalOpen}
         onClose={handleCloseSubmitInfoModal}
         show={showToEdit}
+      />
+
+      <FlagShowDialog
+        open={flagModalOpen}
+        onClose={handleCloseFlagModal}
+        onConfirm={handleFlagConfirm}
+        show={showToFlag}
+        loading={flagLoading}
       />
     </>
   );

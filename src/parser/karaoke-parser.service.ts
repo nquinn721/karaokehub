@@ -2692,7 +2692,7 @@ ${htmlContent}`;
             `Using existing DJ: ${dj.name} (ID: ${dj.id}) with vendor: ${dj.vendor?.name || 'none'}`,
             'info',
           );
-          
+
           // Update DJ to active if it was inactive
           if (!dj.isActive) {
             dj.isActive = true;
@@ -2710,7 +2710,7 @@ ${htmlContent}`;
           djsToCreate.push(newDJ);
           djMap.set(djData.name, newDJ);
           djsCreated++;
-          
+
           this.logAndBroadcast(
             `Creating new DJ: ${djData.name} ${primaryVendor ? `with vendor: ${primaryVendor.name}` : 'without vendor'}`,
             'info',
@@ -3214,6 +3214,50 @@ ${htmlContent}`;
     });
 
     return this.parsedScheduleRepository.save(parsedSchedule);
+  }
+
+  /**
+   * Save user-submitted parsed image data for admin review
+   */
+  async saveUserSubmittedImageData(
+    parsedData: ParsedKaraokeData,
+    sourceUrl: string,
+    description: string,
+  ): Promise<{
+    parsedScheduleId: string;
+    data: ParsedKaraokeData;
+  }> {
+    try {
+      // Save to parsed_schedules table for admin review
+      const parsedSchedule = this.parsedScheduleRepository.create({
+        url: sourceUrl,
+        aiAnalysis: parsedData,
+        status: ParseStatus.PENDING_REVIEW,
+        reviewComments: `User-submitted image: ${description}`, // Use reviewComments to flag as user-submitted
+        parsingLogs: [
+          {
+            timestamp: new Date(),
+            level: 'info',
+            message: 'User uploaded karaoke image for AI analysis',
+          },
+        ],
+      });
+
+      const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
+
+      this.logAndBroadcast(
+        `Successfully saved user-submitted image data for admin review. ID: ${savedSchedule.id}`,
+        'success',
+      );
+
+      return {
+        parsedScheduleId: savedSchedule.id,
+        data: parsedData,
+      };
+    } catch (error) {
+      this.logAndBroadcast('Error saving user-submitted image data:', 'error');
+      throw new Error(`Failed to save user-submitted image data: ${error.message}`);
+    }
   }
 
   /**
