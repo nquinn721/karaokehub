@@ -198,7 +198,8 @@ const PopupContent: React.FC<{
             )}
 
             {/* Address */}
-            {(show.address || (show.venue && typeof show.venue === 'object' && show.venue.address)) && (
+            {(show.address ||
+              (show.venue && typeof show.venue === 'object' && show.venue.address)) && (
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
                 <FontAwesomeIcon
                   icon={faMapMarkerAlt}
@@ -219,11 +220,13 @@ const PopupContent: React.FC<{
                       fontWeight: 500,
                     }}
                   >
-                    {show.address || (show.venue && typeof show.venue === 'object' ? show.venue.address : null)}
+                    {show.address ||
+                      (show.venue && typeof show.venue === 'object' ? show.venue.address : null)}
                   </Typography>
                   {((show.venue && typeof show.venue === 'object' && show.venue.city) ||
-                    (show.venue && typeof show.venue === 'object' && show.venue.state) || 
-                    show.city || show.state) && (
+                    (show.venue && typeof show.venue === 'object' && show.venue.state) ||
+                    show.city ||
+                    show.state) && (
                     <Typography
                       variant="body2"
                       color="text.secondary"
@@ -234,8 +237,10 @@ const PopupContent: React.FC<{
                       }}
                     >
                       {[
-                        show.city || (show.venue && typeof show.venue === 'object' ? show.venue.city : null),
-                        show.state || (show.venue && typeof show.venue === 'object' ? show.venue.state : null),
+                        show.city ||
+                          (show.venue && typeof show.venue === 'object' ? show.venue.city : null),
+                        show.state ||
+                          (show.venue && typeof show.venue === 'object' ? show.venue.state : null),
                         show.zip,
                       ]
                         .filter(Boolean)
@@ -349,62 +354,15 @@ const PopupContent: React.FC<{
   );
 };
 
-const darkMapStyles = [
-  { elementType: 'geometry', stylers: [{ color: '#212121' }] },
-  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
-  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#757575' }] },
-  {
-    featureType: 'administrative.country',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#9e9e9e' }],
-  },
-  {
-    featureType: 'administrative.locality',
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#bdbdbd' }],
-  },
-  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#181818' }] },
-  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-  { featureType: 'poi.park', elementType: 'labels.text.stroke', stylers: [{ color: '#1b1b1b' }] },
-  { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#2c2c2c' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
-  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#373737' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3c3c3c' }] },
-  {
-    featureType: 'road.highway.controlled_access',
-    elementType: 'geometry',
-    stylers: [{ color: '#4e4e4e' }],
-  },
-  { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-  { featureType: 'transit', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000000' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3d3d3d' }] },
-];
-
 const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpen }) => {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const [map, setMap] = useState<google.maps.Map | null>(null);
-
   // Current state
   const currentZoom = mapStore.currentZoom;
   const isZoomedOut = currentZoom <= 6; // Temporarily lower threshold for debugging
   const shows = showStore.shows;
   const citySummaries = showStore.citySummaries;
-
-  console.log('🗺️ SimpleMapNew render:', {
-    currentZoom,
-    isZoomedOut,
-    showsCount: shows.length,
-    citySummariesCount: citySummaries.length,
-    selectedDay: showStore.selectedDay,
-    useDayFilter: showStore.useDayFilter,
-    isDarkMode: isDarkMode,
-    darkMapStyles: darkMapStyles.length,
-  });
 
   // Initialize stores only (no API calls in component)
   useEffect(() => {
@@ -427,36 +385,9 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
 
   // Render individual show markers
   const renderShowMarkers = () => {
-    console.log(
-      `🔍 renderShowMarkers called: isZoomedOut=${isZoomedOut}, shows.length=${shows.length}`,
-    );
-
-    if (isZoomedOut || shows.length === 0) {
-      console.log(
-        `❌ Not rendering markers: isZoomedOut=${isZoomedOut}, shows.length=${shows.length}`,
-      );
-      return null;
-    }
-
-    console.log(`📍 Rendering ${shows.length} show markers`);
+    if (shows.length === 0) return null;
 
     // Log a sample of the first few shows to check data structure
-    if (shows.length > 0) {
-      console.log(
-        'Sample show data:',
-        shows.slice(0, 2).map((show) => ({
-          id: show.id,
-          venue: show.venue
-            ? {
-                name: typeof show.venue === 'string' ? show.venue : show.venue.name,
-                lat: show.venue.lat,
-                lng: show.venue.lng,
-              }
-            : null,
-          directCoords: { lat: (show as any).lat, lng: (show as any).lng },
-        })),
-      );
-    }
 
     return shows.map((show: any) => {
       // Try multiple ways to get coordinates
@@ -637,6 +568,7 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
           defaultZoom={11}
           gestureHandling={'greedy'}
           disableDefaultUI={true}
+          colorScheme="DARK"
           styles={undefined} // Use standard Google Maps styling for better venue visibility
           onCameraChanged={(ev) => {
             if (ev.map) {
@@ -668,39 +600,44 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
           {renderCityMarkers()}
 
           {/* InfoWindow for selected show */}
-          {mapStore.selectedShow && (() => {
-            const show = mapStore.selectedShow;
-            let lat, lng;
+          {mapStore.selectedShow &&
+            (() => {
+              const show = mapStore.selectedShow;
+              let lat, lng;
 
-            // Use same coordinate extraction logic as markers
-            if (show.venue && typeof show.venue === 'object' && show.venue.lat && show.venue.lng) {
-              lat = typeof show.venue.lat === 'string' ? parseFloat(show.venue.lat) : show.venue.lat;
-              lng = typeof show.venue.lng === 'string' ? parseFloat(show.venue.lng) : show.venue.lng;
-            } else if (show.lat && show.lng) {
-              lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
-              lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
-            }
+              // Use same coordinate extraction logic as markers
+              if (
+                show.venue &&
+                typeof show.venue === 'object' &&
+                show.venue.lat &&
+                show.venue.lng
+              ) {
+                lat =
+                  typeof show.venue.lat === 'string' ? parseFloat(show.venue.lat) : show.venue.lat;
+                lng =
+                  typeof show.venue.lng === 'string' ? parseFloat(show.venue.lng) : show.venue.lng;
+              } else if (show.lat && show.lng) {
+                lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
+                lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
+              }
 
-            // Only render InfoWindow if we have valid coordinates
-            if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-              console.log('⚠️ InfoWindow: Invalid coordinates for selected show:', show);
-              return null;
-            }
+              // Only render InfoWindow if we have valid coordinates
+              if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+                console.log('⚠️ InfoWindow: Invalid coordinates for selected show:', show);
+                return null;
+              }
 
-            return (
-              <InfoWindow
-                position={{ lat, lng }}
-                onCloseClick={() => mapStore.clearSelectedShow()}
-                pixelOffset={[0, -10]}
-                maxWidth={400}
-              >
-                <PopupContent
-                  show={show}
-                  onScheduleModalOpen={onScheduleModalOpen}
-                />
-              </InfoWindow>
-            );
-          })()}
+              return (
+                <InfoWindow
+                  position={{ lat, lng }}
+                  onCloseClick={() => mapStore.clearSelectedShow()}
+                  pixelOffset={[0, -10]}
+                  maxWidth={400}
+                >
+                  <PopupContent show={show} onScheduleModalOpen={onScheduleModalOpen} />
+                </InfoWindow>
+              );
+            })()}
         </Map>
       </Box>
     </APIProvider>
