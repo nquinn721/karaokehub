@@ -282,13 +282,17 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
       this.parserLogs = this.parserLogs.slice(-50);
     }
 
-    // Broadcast to all clients subscribed to parser logs
-    this.server.to('parser-logs').emit('parser-log', logEntry);
+    // Broadcast to all clients subscribed to parser logs (only if server is available)
+    if (this.server && this.server.to) {
+      this.server.to('parser-logs').emit('parser-log', logEntry);
+    }
 
     // Auto-remove log entry after 10 seconds
     setTimeout(() => {
       this.parserLogs = this.parserLogs.filter((log) => log.id !== logEntry.id);
-      this.server.to('parser-logs').emit('parser-log-expired', logEntry.id);
+      if (this.server && this.server.to) {
+        this.server.to('parser-logs').emit('parser-log-expired', logEntry.id);
+      }
     }, 10000);
 
     return logEntry;
@@ -297,7 +301,9 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
   // Method to clear all parser logs
   clearParserLogs() {
     this.parserLogs = [];
-    this.server.to('parser-logs').emit('parser-logs-cleared');
+    if (this.server && this.server.to) {
+      this.server.to('parser-logs').emit('parser-logs-cleared');
+    }
   }
 
   // Facebook Authentication Methods

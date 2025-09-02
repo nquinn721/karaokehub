@@ -166,16 +166,39 @@ const PopupContent: React.FC<{
                   color="text.secondary"
                   sx={{
                     fontSize: isMobile ? '0.75rem' : '0.8rem',
-                    fontWeight: 500,
+                    fontWeight: 600,
                   }}
                 >
-                  {show.djName || show.dj?.name}
+                  DJ: {show.djName || show.dj?.name}
+                </Typography>
+              </Box>
+            )}
+
+            {/* Host Information */}
+            {(show.hostName || show.host?.name || show.organizer) && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <FontAwesomeIcon
+                  icon={faMicrophone}
+                  style={{
+                    fontSize: '11px',
+                    color: theme.palette.primary.main,
+                  }}
+                />
+                <Typography
+                  variant="body2"
+                  color="primary.main"
+                  sx={{
+                    fontSize: isMobile ? '0.75rem' : '0.8rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  Host: {show.hostName || show.host?.name || show.organizer}
                 </Typography>
               </Box>
             )}
 
             {/* Address */}
-            {show.address && (
+            {(show.address || (show.venue && typeof show.venue === 'object' && show.venue.address)) && (
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
                 <FontAwesomeIcon
                   icon={faMapMarkerAlt}
@@ -193,12 +216,14 @@ const PopupContent: React.FC<{
                       fontSize: isMobile ? '0.75rem' : '0.8rem',
                       lineHeight: 1.3,
                       wordBreak: 'break-word',
+                      fontWeight: 500,
                     }}
                   >
-                    {show.venue && typeof show.venue === 'object' ? show.venue.address : null}
+                    {show.address || (show.venue && typeof show.venue === 'object' ? show.venue.address : null)}
                   </Typography>
                   {((show.venue && typeof show.venue === 'object' && show.venue.city) ||
-                    (show.venue && typeof show.venue === 'object' && show.venue.state)) && (
+                    (show.venue && typeof show.venue === 'object' && show.venue.state) || 
+                    show.city || show.state) && (
                     <Typography
                       variant="body2"
                       color="text.secondary"
@@ -209,8 +234,8 @@ const PopupContent: React.FC<{
                       }}
                     >
                       {[
-                        show.venue && typeof show.venue === 'object' ? show.venue.city : null,
-                        show.venue && typeof show.venue === 'object' ? show.venue.state : null,
+                        show.city || (show.venue && typeof show.venue === 'object' ? show.venue.city : null),
+                        show.state || (show.venue && typeof show.venue === 'object' ? show.venue.state : null),
                         show.zip,
                       ]
                         .filter(Boolean)
@@ -462,14 +487,6 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
           key={show.id}
           position={{ lat, lng }}
           onClick={() => mapStore.handleMarkerClick(show)}
-          icon={{
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 12,
-            fillColor: theme.palette.primary.main,
-            fillOpacity: 1,
-            strokeColor: 'white',
-            strokeWeight: 2,
-          }}
         />
       );
     });
@@ -495,16 +512,7 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
             console.log(`🏙️ City clicked: ${city.city}, ${city.state} (${city.showCount} shows)`);
             // Could expand to show individual shows for this city
           }}
-          icon={{
-            url: `data:image/svg+xml,${encodeURIComponent(`
-              <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="16" cy="16" r="14" fill="${theme.palette.primary.main}" stroke="white" stroke-width="2"/>
-                <text x="16" y="20" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10" font-weight="bold">${city.showCount}</text>
-              </svg>
-            `)}`,
-            scaledSize: new google.maps.Size(32, 32),
-            anchor: new google.maps.Point(16, 16),
-          }}
+          title={`${city.city}, ${city.state} (${city.showCount} shows)`}
         />
       );
     });
@@ -629,7 +637,7 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
           defaultZoom={11}
           gestureHandling={'greedy'}
           disableDefaultUI={true}
-          styles={isDarkMode ? darkMapStyles : undefined}
+          styles={undefined} // Use standard Google Maps styling for better venue visibility
           onCameraChanged={(ev) => {
             if (ev.map) {
               // Always update zoom level when camera changes
@@ -660,28 +668,39 @@ const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpe
           {renderCityMarkers()}
 
           {/* InfoWindow for selected show */}
-          {mapStore.selectedShow && (
-            <InfoWindow
-              position={{
-                lat:
-                  typeof mapStore.selectedShow.lat === 'string'
-                    ? parseFloat(mapStore.selectedShow.lat)
-                    : mapStore.selectedShow.lat,
-                lng:
-                  typeof mapStore.selectedShow.lng === 'string'
-                    ? parseFloat(mapStore.selectedShow.lng)
-                    : mapStore.selectedShow.lng,
-              }}
-              onCloseClick={() => mapStore.clearSelectedShow()}
-              pixelOffset={[0, -10]}
-              maxWidth={400}
-            >
-              <PopupContent
-                show={mapStore.selectedShow}
-                onScheduleModalOpen={onScheduleModalOpen}
-              />
-            </InfoWindow>
-          )}
+          {mapStore.selectedShow && (() => {
+            const show = mapStore.selectedShow;
+            let lat, lng;
+
+            // Use same coordinate extraction logic as markers
+            if (show.venue && typeof show.venue === 'object' && show.venue.lat && show.venue.lng) {
+              lat = typeof show.venue.lat === 'string' ? parseFloat(show.venue.lat) : show.venue.lat;
+              lng = typeof show.venue.lng === 'string' ? parseFloat(show.venue.lng) : show.venue.lng;
+            } else if (show.lat && show.lng) {
+              lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
+              lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
+            }
+
+            // Only render InfoWindow if we have valid coordinates
+            if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+              console.log('⚠️ InfoWindow: Invalid coordinates for selected show:', show);
+              return null;
+            }
+
+            return (
+              <InfoWindow
+                position={{ lat, lng }}
+                onCloseClick={() => mapStore.clearSelectedShow()}
+                pixelOffset={[0, -10]}
+                maxWidth={400}
+              >
+                <PopupContent
+                  show={show}
+                  onScheduleModalOpen={onScheduleModalOpen}
+                />
+              </InfoWindow>
+            );
+          })()}
         </Map>
       </Box>
     </APIProvider>
