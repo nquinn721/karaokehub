@@ -37,7 +37,6 @@ export interface ParsedShowData {
 export interface ParsedScheduleItem {
   id: string;
   url: string;
-  rawData: any;
   aiAnalysis?: {
     vendor: ParsedVendorData;
     djs: ParsedDJData[];

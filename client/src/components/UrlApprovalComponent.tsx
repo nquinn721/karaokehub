@@ -142,7 +142,7 @@ const UrlApprovalComponent = observer(() => {
         </Box>
       </Box>
 
-      <CardContent sx={{ pt: 0, px: 4, pb: 4 }}>
+      <CardContent sx={{ px: 4, pb: 4 }}>
         {error && (
           <Alert
             severity="error"

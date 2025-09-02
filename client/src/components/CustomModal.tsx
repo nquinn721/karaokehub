@@ -53,7 +53,7 @@ const CustomModal: React.FC<CustomModalProps> = ({
           justifyContent: 'space-between',
           pb: 2,
           px: 3,
-          pt: 3,
+          pt: '15px', // Custom 15px instead of theme.spacing(3) which is 24px
           borderBottom: `1px solid ${theme.palette.divider}`,
           background: `linear-gradient(135deg, ${theme.palette.primary.main}10 0%, transparent 100%)`,
         }}
@@ -101,7 +101,7 @@ const CustomModal: React.FC<CustomModalProps> = ({
       <DialogContent
         sx={{
           px: 3,
-          pt: 3,
+          pt: '16px !important', // Use !important to override Material-UI's default padding-top: 0
           pb: 2,
           '&::-webkit-scrollbar': {
             width: 8,

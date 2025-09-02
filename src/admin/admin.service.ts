@@ -579,7 +579,6 @@ export class AdminService {
       items: items.map((item) => ({
         id: item.id,
         url: item.url,
-        rawData: item.rawData,
         aiAnalysis: item.aiAnalysis,
         status: item.status,
         createdAt: item.createdAt,

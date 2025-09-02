@@ -591,7 +591,6 @@ export class FacebookParserService {
       const savedSchedule = await this.parsedScheduleRepository.save({
         url: url,
         aiAnalysis: transformedData,
-        rawData: transformedData, // TODO: Deprecated - keeping for backward compatibility
         status: ParseStatus.PENDING_REVIEW,
         parsingLogs: this.currentParsingLogs.map((log) => ({
           timestamp: new Date(),

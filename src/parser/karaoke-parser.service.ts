@@ -71,12 +71,6 @@ export interface ParsedKaraokeData {
     source?: string;
     confidence: number;
   }>;
-  rawData?: {
-    url: string;
-    title: string;
-    content: string;
-    parsedAt: Date;
-  };
 }
 
 @Injectable()
@@ -901,12 +895,6 @@ export class KaraokeParserService {
       },
       djs: [],
       shows: [],
-      rawData: {
-        url,
-        title: extractedData.name || 'Facebook Content',
-        content: JSON.stringify(extractedData),
-        parsedAt: new Date(),
-      },
     };
 
     // Convert profile shows to karaoke shows
@@ -993,12 +981,6 @@ export class KaraokeParserService {
             vendor: result.data.vendor,
             shows: result.data.shows || [],
             djs: result.data.djs || [],
-            rawData: result.data.rawData || {
-              url: url,
-              title: 'Facebook Page',
-              content: 'Parsed via FacebookParserService',
-              parsedAt: new Date(),
-            },
           };
 
           this.logAndBroadcast(
@@ -1207,12 +1189,6 @@ export class KaraokeParserService {
       // Save to parsed_schedules table for admin review
       const parsedSchedule = this.parsedScheduleRepository.create({
         url: url,
-        rawData: {
-          url: url,
-          title: this.extractTitleFromHtml(htmlContent),
-          content: truncatedContent,
-          parsedAt: new Date(),
-        },
         aiAnalysis: parsedData,
         status: ParseStatus.PENDING_REVIEW,
         parsingLogs: [...this.currentParsingLogs], // Include captured logs
@@ -1288,6 +1264,9 @@ export class KaraokeParserService {
       // Set parsing status to active
       this.setParsingStatus(true, url);
 
+      console.log(`📸 parseWebsiteWithScreenshot called for URL: ${url}`);
+      console.log(`📸 Starting screenshot-based parsing process...`);
+
       this.logAndBroadcast(
         `Starting screenshot-based parse and save operation for URL: ${url}`,
         'info',
@@ -1328,12 +1307,6 @@ export class KaraokeParserService {
             vendor: this.generateVendorFromUrl(url),
             shows: [],
             djs: [],
-            rawData: {
-              url,
-              title: 'Failed parsing',
-              content: 'Both Gemini Vision and HTML parsing failed',
-              parsedAt: new Date(),
-            },
           };
           this.logAndBroadcast(
             '⚠️ Using minimal data structure to prevent complete failure',
@@ -1377,12 +1350,6 @@ export class KaraokeParserService {
 
       const parsedSchedule = this.parsedScheduleRepository.create({
         url: url,
-        rawData: {
-          url: url,
-          title: this.extractTitleFromHtml(htmlContent),
-          content: truncatedContent,
-          parsedAt: new Date(),
-        },
         aiAnalysis: parsedData,
         status: ParseStatus.PENDING_REVIEW,
         parsingLogs: [...this.currentParsingLogs], // Include captured logs
@@ -1673,7 +1640,6 @@ export class KaraokeParserService {
 
     return chunks;
   }
-
   /**
    * Process a single HTML content chunk
    */
@@ -1951,12 +1917,6 @@ ${htmlContent}`;
             source: show.source || url, // Only set page URL as fallback if show doesn't have its own source
           }))
         : [],
-      rawData: {
-        url,
-        title: this.extractTitleFromHtml(htmlContent),
-        content: htmlContent.substring(0, 1000), // Keep first 1000 chars for reference
-        parsedAt: new Date(),
-      },
     };
 
     // CRITICAL DEBUG: Log final data structure being returned
@@ -2004,12 +1964,6 @@ ${htmlContent}`;
         vendor: this.generateVendorFromUrl(url),
         djs: [],
         shows: [],
-        rawData: {
-          url,
-          title: this.extractTitleFromHtml(fullHtmlContent),
-          content: fullHtmlContent.substring(0, 1000),
-          parsedAt: new Date(),
-        },
       };
     }
 
@@ -2033,12 +1987,6 @@ ${htmlContent}`;
       vendor: combinedVendor,
       djs: uniqueDjs,
       shows: this.normalizeShowTimes(uniqueShows),
-      rawData: {
-        url,
-        title: this.extractTitleFromHtml(fullHtmlContent),
-        content: fullHtmlContent.substring(0, 1000),
-        parsedAt: new Date(),
-      },
     };
   }
 
@@ -2296,8 +2244,11 @@ ${htmlContent}`;
    * Clean Gemini response to extract valid JSON
    */
   private cleanGeminiResponse(text: string): string {
-    // Remove markdown code blocks
-    let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+    // Remove markdown code blocks - be more aggressive about it
+    let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+
+    // Also remove any remaining backticks
+    cleaned = cleaned.replace(/`/g, '');
 
     // Remove any text before the first {
     const firstBrace = cleaned.indexOf('{');
@@ -3267,12 +3218,6 @@ ${htmlContent}`;
   async saveManualSubmissionForReview(vendorId: string, manualData: any): Promise<ParsedSchedule> {
     const parsedSchedule = this.parsedScheduleRepository.create({
       url: 'manual-submission',
-      rawData: {
-        url: 'manual-submission',
-        title: 'Manual Data Entry',
-        content: JSON.stringify(manualData),
-        parsedAt: new Date(),
-      },
       aiAnalysis: manualData,
       status: ParseStatus.PENDING_REVIEW,
       vendorId,
@@ -3618,7 +3563,32 @@ ${htmlContent}`;
         },
       });
 
-      const prompt = `Analyze this screenshot and extract ALL karaoke shows from the ENTIRE weekly schedule.
+      const prompt = `FIRST: Analyze the page type - is this a VENUE DIRECTORY or a DJ SCHEDULE PAGE?
+
+PAGE TYPE DETECTION:
+1. VENUE DIRECTORY: Shows many different venues with their individual schedules
+2. DJ SCHEDULE PAGE: Shows where/when a specific DJ or DJ company performs at various venues
+
+IF DJ SCHEDULE PAGE (like "Steve's DJ", "DJ Schedule", single company performing at multiple venues):
+Extract each performance/event where this DJ/company performs:
+- Each day/venue combination is a separate show
+- Extract the DJ name from context (e.g., "with DJ Steve", "DJ Chas")
+- Extract venue names where they perform
+- Extract complete address information for each venue
+- Extract show times and days
+
+EXAMPLE DJ SCHEDULE EXTRACTION:
+If you see: "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve - ALIBI BEACH LOUNGE - 8010 Surf Drive Panama City Beach, FL 32408"
+Extract as:
+- venues: [{"name": "Alibi Beach Lounge", "address": "8010 Surf Drive", "city": "Panama City Beach", "state": "FL", "zip": "32408"}]
+- djs: [{"name": "DJ Steve", "confidence": 0.9}]
+- shows: [{"venueName": "Alibi Beach Lounge", "day": "Sunday", "time": "7:00PM - 11:00PM", "startTime": "19:00", "endTime": "23:00", "djName": "DJ Steve"}]
+
+IF VENUE DIRECTORY (traditional karaoke directory with many venues):
+Extract each venue's karaoke events:
+- Each venue may have multiple days/times
+- Look for DJ/host names associated with each event
+- Extract venue information and schedules
 
 CRITICAL RESPONSE REQUIREMENTS:
 - Return ONLY valid JSON, no other text
@@ -3634,8 +3604,6 @@ CRITICAL RESPONSE REQUIREMENTS:
 - Same venue, same day, same time = DUPLICATE, include only once
 - Verify each show is truly distinct before adding to the list
 
-CRITICAL: This page contains shows for ALL 7 DAYS (Monday through Sunday). You must extract shows from the COMPLETE page, not just the top section.
-
 Extract from the ENTIRE image:
 - ALL venue names from Monday through Sunday
 - ALL addresses, phone numbers, and showtimes  
@@ -3644,10 +3612,11 @@ Extract from the ENTIRE image:
 
 🎤 DJ/HOST EXTRACTION - CRITICAL:
 - Look for "hosted by" text patterns near each venue
-- Extract ALL DJ/host names like "Mattallica", "Dr Rockso", "Frankie the Intern", "Rini the Riot", etc.
+- Look for "with DJ [Name]" patterns
+- Extract ALL DJ/host names like "DJ Steve", "DJ Chas", "DJ Nikki", "Mattallica", "Dr Rockso", "Frankie the Intern", etc.
 - Each show typically has a host name mentioned - extract these as djName for each show
 - DJ names often appear as links or special formatting near venue information
-- Examples: "hosted by Mattallica", "hosted by Dr Rockso", "hosted by Frankie the Intern"
+- Examples: "hosted by Mattallica", "with DJ Steve", "DJ Chas performing"
 
 EXPECTED: There should be 35-40+ shows total across all days of the week.
 
@@ -3750,7 +3719,7 @@ Return ONLY valid JSON with no extra text:
   ],
   "djs": [
     {
-      "name": "DJ Name (like Mattallica, Dr Rockso, Frankie the Intern, etc.)",
+      "name": "DJ Name (like DJ Steve, DJ Chas, DJ Nikki, Mattallica, Dr Rockso, etc.)",
       "confidence": 0.8,
       "context": "Where they perform",
       "aliases": []
@@ -3760,11 +3729,11 @@ Return ONLY valid JSON with no extra text:
     {
       "venueName": "Venue Name (must match a venue from venues array)",
       "date": "day_of_week",
-      "time": "time like '7 pm'",
+      "time": "time like '7:00PM - 11:00PM'",
       "startTime": "24-hour format like '19:00'",
-      "endTime": "close",
+      "endTime": "24-hour format like '23:00'",
       "day": "day_of_week",
-      "djName": "DJ/host name from 'hosted by' text (REQUIRED if visible)",
+      "djName": "DJ/host name (REQUIRED - extract from 'with DJ Steve', 'hosted by DJ Chas', etc.)",
       "vendor": "Vendor/company providing service",
       "confidence": 0.9
     }
@@ -3816,9 +3785,14 @@ Return ONLY valid JSON with no extra text:
         throw new Error(`Gemini Vision refused to process the image: ${text.substring(0, 100)}...`);
       }
 
-      // Check if response looks like JSON at all
+      // Check if response looks like JSON at all (including markdown wrapped JSON)
       const trimmedText = text.trim();
-      if (!trimmedText.startsWith('{') && !trimmedText.startsWith('[')) {
+      if (
+        !trimmedText.startsWith('{') &&
+        !trimmedText.startsWith('[') &&
+        !trimmedText.includes('```json') &&
+        !trimmedText.includes('{')
+      ) {
         this.logAndBroadcast(
           `❌ Non-JSON response from Gemini: ${text.substring(0, 200)}...`,
           'error',
@@ -3849,6 +3823,22 @@ Return ONLY valid JSON with no extra text:
         this.logAndBroadcast(`Cleaned JSON length: ${cleanJsonString.length} characters`, 'info');
         parsedData = JSON.parse(cleanJsonString);
         this.logAndBroadcast('✅ JSON parsing successful', 'success');
+
+        // Log what was actually found
+        const showsCount = parsedData.shows?.length || 0;
+        const djsCount = parsedData.djs?.length || 0;
+        const venuesCount = parsedData.venues?.length || 0;
+        this.logAndBroadcast(
+          `📊 Parsed data summary: ${showsCount} shows, ${djsCount} DJs, ${venuesCount} venues`,
+          'info',
+        );
+
+        if (showsCount === 0) {
+          this.logAndBroadcast(
+            '⚠️ No shows found in parsed data - this may indicate parsing issues',
+            'warning',
+          );
+        }
       } catch (jsonError) {
         this.logAndBroadcast('❌ JSON parsing failed, attempting to fix common issues:', 'error');
         this.logAndBroadcast(`JSON Error: ${jsonError.message}`, 'error');
@@ -4096,12 +4086,6 @@ Return ONLY valid JSON with no extra text:
         vendor: parsedData.vendor || this.generateVendorFromUrl(url),
         djs: Array.isArray(parsedData.djs) ? parsedData.djs : [],
         shows: Array.isArray(parsedData.shows) ? this.normalizeShowTimes(parsedData.shows) : [],
-        rawData: {
-          url,
-          title: 'Screenshot-based parsing',
-          content: 'Parsed from full-page screenshot',
-          parsedAt: new Date(),
-        },
       };
 
       // Extract DJs from individual shows and add to main DJs array
@@ -4359,12 +4343,6 @@ Return ONLY valid JSON:
         },
         djs: Array.isArray(parsedData.djs) ? parsedData.djs : [],
         shows: Array.isArray(parsedData.shows) ? this.normalizeShowTimes(parsedData.shows) : [],
-        rawData: {
-          url,
-          title: 'Instagram Screenshots',
-          content: 'Parsed from Instagram profile screenshots',
-          parsedAt: new Date(),
-        },
       };
 
       return finalData;
@@ -4421,12 +4399,6 @@ Return ONLY valid JSON:
       // Save to parsed_schedules table for admin review
       const parsedSchedule = this.parsedScheduleRepository.create({
         url: url,
-        rawData: {
-          url: url,
-          title: 'Instagram Profile',
-          content: 'Parsed from Instagram visual content',
-          parsedAt: new Date(),
-        },
         aiAnalysis: parsedData,
         status: ParseStatus.PENDING_REVIEW,
         parsingLogs: [...this.currentParsingLogs], // Include captured logs
@@ -4926,12 +4898,6 @@ Return ONLY valid JSON:
         vendor: parsedData.vendor || this.generateVendorFromUrl(url),
         djs: Array.isArray(parsedData.djs) ? parsedData.djs : [],
         shows: Array.isArray(parsedData.shows) ? this.normalizeShowTimes(parsedData.shows) : [],
-        rawData: {
-          url,
-          title: 'Instagram Individual Posts Analysis',
-          content: textContent.substring(0, 1000),
-          parsedAt: new Date(),
-        },
       };
 
       this.logAndBroadcast(
@@ -5013,12 +4979,6 @@ Return ONLY valid JSON:
           vendor: this.generateVendorFromUrl(url),
           djs: Array.from(djs).map((name) => ({ name: String(name), confidence: 0.3 })),
           shows: shows,
-          rawData: {
-            url,
-            title: 'Emergency extraction',
-            content: 'Recovered from malformed JSON',
-            parsedAt: new Date(),
-          },
         };
       }
 

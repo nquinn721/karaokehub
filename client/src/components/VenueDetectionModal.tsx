@@ -93,7 +93,7 @@ export const VenueDetectionModal: React.FC<VenueDetectionModalProps> = ({
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 0 }}>
+      <DialogContent>
         <Box sx={{ mb: 3 }}>
           <Chip
             icon={<FontAwesomeIcon icon={faMapMarkerAlt} />}

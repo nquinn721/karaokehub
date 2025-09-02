@@ -1,4 +1,5 @@
 import AdminBreadcrumb from '@components/AdminBreadcrumb';
+import CustomModal from '@components/CustomModal';
 import FacebookLoginModal from '@components/FacebookLoginModal';
 import LocationEditModal from '@components/LocationEditModal';
 import {
@@ -1064,10 +1065,14 @@ const AdminParserPage: React.FC = observer(() => {
 
                 {/* Parser Live Log */}
                 <Divider sx={{ my: 2 }} />
-                
+
                 {/* Parser Summary */}
                 <Box sx={{ mb: 3 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mb: 2 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontWeight: 600, mb: 2 }}
+                  >
                     Parser Summary:
                   </Typography>
                   <Grid container spacing={2}>
@@ -1086,10 +1091,10 @@ const AdminParserPage: React.FC = observer(() => {
                                 parserStore.parserSummary.status === 'parsing'
                                   ? 'warning.main'
                                   : parserStore.parserSummary.status === 'completed'
-                                  ? 'success.main'
-                                  : parserStore.parserSummary.status === 'error'
-                                  ? 'error.main'
-                                  : 'grey.500',
+                                    ? 'success.main'
+                                    : parserStore.parserSummary.status === 'error'
+                                      ? 'error.main'
+                                      : 'grey.500',
                             }}
                           />
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -1109,7 +1114,7 @@ const AdminParserPage: React.FC = observer(() => {
                         )}
                       </Card>
                     </Grid>
-                    
+
                     <Grid item xs={12} md={6}>
                       <Card sx={{ p: 2, bgcolor: 'background.paper' }}>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -1124,19 +1129,24 @@ const AdminParserPage: React.FC = observer(() => {
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="body2">Parsed:</Typography>
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {parserStore.parserSummary.imagesParsed} / {parserStore.parserSummary.imagesFound}
+                            {parserStore.parserSummary.imagesParsed} /{' '}
+                            {parserStore.parserSummary.imagesFound}
                           </Typography>
                         </Box>
                         {parserStore.parserSummary.imagesFound > 0 && (
                           <LinearProgress
                             variant="determinate"
-                            value={(parserStore.parserSummary.imagesParsed / parserStore.parserSummary.imagesFound) * 100}
+                            value={
+                              (parserStore.parserSummary.imagesParsed /
+                                parserStore.parserSummary.imagesFound) *
+                              100
+                            }
                             sx={{ mt: 1, height: 4, borderRadius: 2 }}
                           />
                         )}
                       </Card>
                     </Grid>
-                    
+
                     <Grid item xs={12}>
                       <Card sx={{ p: 2, bgcolor: 'background.paper' }}>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -1538,9 +1548,9 @@ const AdminParserPage: React.FC = observer(() => {
                               />
                             </TableCell>
                             <TableCell>
-                              {item.stats?.vendorsFound ? (
+                              {item.stats?.venuesFound ? (
                                 <Chip
-                                  label={`${item.stats.vendorsFound} venues`}
+                                  label={`${item.stats.venuesFound} venues`}
                                   size="small"
                                   color="success"
                                 />
@@ -1588,485 +1598,458 @@ const AdminParserPage: React.FC = observer(() => {
         </Box>
 
         {/* Review Dialog */}
-        <Dialog
+        <CustomModal
           open={reviewDialog}
           onClose={() => setReviewDialog(false)}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{
-            sx: {
-              bgcolor: 'background.paper',
-              color: 'text.primary',
-            },
-          }}
+          title="Review Parsed Data"
+          maxWidth="lg"
         >
-          <DialogTitle
-            sx={{
-              bgcolor: 'background.paper',
-              color: 'text.primary',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-            }}
-          >
-            Review Parsed Data
-          </DialogTitle>
-          <DialogContent
-            sx={{
-              bgcolor: 'background.paper',
-              color: 'text.primary',
-            }}
-          >
-            {selectedReview && (
-              <Box>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  URL: {selectedReview.url}
-                </Typography>
+          {selectedReview && (
+            <Box>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                URL: {selectedReview.url}
+              </Typography>
 
-                {(selectedReview.aiAnalysis ||
-                  selectedReview.stats ||
-                  selectedReview.shows ||
-                  selectedReview.vendors) && (
-                  <Box>
-                    {/* Compact Vendor Information */}
-                    {(selectedReview.aiAnalysis?.vendor ||
-                      selectedReview.aiAnalysis?.vendors ||
-                      selectedReview.vendors ||
-                      (selectedReview.stats?.vendorsFound &&
-                        selectedReview.stats.vendorsFound > 0)) && (
-                      <Accordion>
-                        <AccordionSummary expandIcon={<FontAwesomeIcon icon={faChevronDown} />}>
-                          <Typography variant="h6">
-                            🏢 Vendors (
-                            {selectedReview.vendors?.length ||
-                              selectedReview.aiAnalysis?.vendors?.length ||
-                              selectedReview.stats?.vendorsFound ||
-                              1}
-                            )
-                          </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                            {selectedReview.vendors && selectedReview.vendors.length > 0 ? (
-                              // New format: vendors array - compact chip display
-                              selectedReview.vendors.map((vendor: any, index: number) => (
-                                <Chip
-                                  key={index}
-                                  label={`${vendor.name} (${Math.round((vendor.confidence || 0) * 100)}%)`}
-                                  variant="outlined"
-                                  color="primary"
-                                  size="small"
-                                />
-                              ))
-                            ) : selectedReview.aiAnalysis?.vendors &&
-                              selectedReview.aiAnalysis.vendors.length > 0 ? (
-                              // Old format: aiAnalysis.vendors array - compact chip display
-                              selectedReview.aiAnalysis.vendors.map(
-                                (vendor: any, index: number) => (
-                                  <Chip
-                                    key={index}
-                                    label={`${vendor.name} (${Math.round((vendor.confidence || 0) * 100)}%)`}
-                                    variant="outlined"
-                                    color="primary"
-                                    size="small"
-                                  />
-                                ),
-                              )
-                            ) : selectedReview.aiAnalysis?.vendor ? (
-                              // Single vendor display (backward compatibility)
+              {(selectedReview.aiAnalysis ||
+                selectedReview.stats ||
+                selectedReview.shows ||
+                selectedReview.vendors) && (
+                <Box>
+                  {/* Compact Venue Information */}
+                  {(selectedReview.aiAnalysis?.venues ||
+                    selectedReview.venues ||
+                    (selectedReview.stats?.venuesFound &&
+                      selectedReview.stats.venuesFound > 0)) && (
+                    <Accordion>
+                      <AccordionSummary expandIcon={<FontAwesomeIcon icon={faChevronDown} />}>
+                        <Typography variant="h6">
+                          🏢 Venues (
+                          {selectedReview.venues?.length ||
+                            selectedReview.aiAnalysis?.venues?.length ||
+                            selectedReview.stats?.venuesFound ||
+                            1}
+                          )
+                        </Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          {selectedReview.venues && selectedReview.venues.length > 0 ? (
+                            // New format: venues array - compact chip display
+                            selectedReview.venues.map((venue: any, index: number) => (
                               <Chip
-                                label={selectedReview.aiAnalysis.vendor.name}
-                                variant="filled"
+                                key={index}
+                                label={`${venue.name} (${Math.round((venue.confidence || 0) * 100)}%)`}
+                                variant="outlined"
                                 color="primary"
                                 size="small"
                               />
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">
-                                No vendor information available
-                              </Typography>
-                            )}
-                          </Box>
-                        </AccordionDetails>
-                      </Accordion>
-                    )}
-
-                    {/* DJs - Enhanced to show extracted DJs and from shows */}
-                    {((selectedReview.aiAnalysis?.djs &&
-                      selectedReview.aiAnalysis.djs.length > 0) ||
-                      (selectedReview.stats?.djsFound && selectedReview.stats.djsFound > 0)) && (
-                      <Accordion defaultExpanded>
-                        <AccordionSummary expandIcon={<FontAwesomeIcon icon={faChevronDown} />}>
-                          <Typography variant="h6">
-                            🎤 DJs Found (
-                            {selectedReview.stats?.djsFound ||
-                              selectedReview.aiAnalysis?.djs?.length ||
-                              0}
-                            )
-                          </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          {selectedReview.aiAnalysis?.djs &&
-                          selectedReview.aiAnalysis.djs.length > 0 ? (
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                              {selectedReview.aiAnalysis.djs.map((dj: any, index: number) => (
-                                <Chip
-                                  key={index}
-                                  label={`${dj.name} (${Math.round((dj.confidence || 0) * 100)}%)`}
-                                  color="secondary"
-                                  variant="filled"
-                                  size="small"
-                                />
-                              ))}
-                            </Box>
-                          ) : null}
-
-                          {!selectedReview.aiAnalysis?.djs?.length && (
+                            ))
+                          ) : selectedReview.aiAnalysis?.venues &&
+                            selectedReview.aiAnalysis.venues.length > 0 ? (
+                            // Old format: aiAnalysis.venues array - compact chip display
+                            selectedReview.aiAnalysis.venues.map((venue: any, index: number) => (
+                              <Chip
+                                key={index}
+                                label={`${venue.name} (${Math.round((venue.confidence || 0) * 100)}%)`}
+                                variant="outlined"
+                                color="primary"
+                                size="small"
+                              />
+                            ))
+                          ) : selectedReview.aiAnalysis?.vendor ? (
+                            // Single vendor display (backward compatibility)
+                            <Chip
+                              label={selectedReview.aiAnalysis.vendor.name}
+                              variant="filled"
+                              color="primary"
+                              size="small"
+                            />
+                          ) : (
                             <Typography variant="body2" color="text.secondary">
-                              {selectedReview.stats?.djsFound} DJs found in shows data (names not
-                              extracted separately)
+                              No venue information available
                             </Typography>
                           )}
-                        </AccordionDetails>
-                      </Accordion>
-                    )}
+                        </Box>
+                      </AccordionDetails>
+                    </Accordion>
+                  )}
 
-                    {/* Shows - Enhanced with missing data highlights and source info */}
-                    {((selectedReview.aiAnalysis?.shows &&
-                      selectedReview.aiAnalysis.shows.length > 0) ||
-                      (selectedReview.stats?.showsFound &&
-                        selectedReview.stats.showsFound > 0)) && (
-                      <Accordion defaultExpanded>
-                        <AccordionSummary expandIcon={<FontAwesomeIcon icon={faChevronDown} />}>
-                          <Typography variant="h6">
-                            📅 Shows Found (
-                            {selectedReview.stats?.showsFound ||
-                              selectedReview.aiAnalysis?.shows?.length ||
-                              0}
-                            )
+                  {/* DJs - Enhanced to show extracted DJs and from shows */}
+                  {((selectedReview.aiAnalysis?.djs && selectedReview.aiAnalysis.djs.length > 0) ||
+                    (selectedReview.stats?.djsFound && selectedReview.stats.djsFound > 0)) && (
+                    <Accordion defaultExpanded>
+                      <AccordionSummary expandIcon={<FontAwesomeIcon icon={faChevronDown} />}>
+                        <Typography variant="h6">
+                          🎤 DJs Found (
+                          {selectedReview.stats?.djsFound ||
+                            selectedReview.aiAnalysis?.djs?.length ||
+                            0}
+                          )
+                        </Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        {selectedReview.aiAnalysis?.djs &&
+                        selectedReview.aiAnalysis.djs.length > 0 ? (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                            {selectedReview.aiAnalysis.djs.map((dj: any, index: number) => (
+                              <Chip
+                                key={index}
+                                label={`${dj.name} (${Math.round((dj.confidence || 0) * 100)}%)`}
+                                color="secondary"
+                                variant="filled"
+                                size="small"
+                              />
+                            ))}
+                          </Box>
+                        ) : null}
+
+                        {!selectedReview.aiAnalysis?.djs?.length && (
+                          <Typography variant="body2" color="text.secondary">
+                            {selectedReview.stats?.djsFound} DJs found in shows data (names not
+                            extracted separately)
                           </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <List>
-                            {(selectedReview.shows || selectedReview.aiAnalysis?.shows || []).map(
-                              (show: any, index: number) => (
-                                <ListItem
-                                  key={index}
-                                  sx={{
-                                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                                    py: 2,
-                                    bgcolor: 'rgba(255, 255, 255, 0.02)',
-                                    mb: 1,
-                                    borderRadius: 1,
-                                  }}
-                                >
-                                  <ListItemText
-                                    primary={
+                        )}
+                      </AccordionDetails>
+                    </Accordion>
+                  )}
+
+                  {/* Shows - Enhanced with missing data highlights and source info */}
+                  {((selectedReview.aiAnalysis?.shows &&
+                    selectedReview.aiAnalysis.shows.length > 0) ||
+                    (selectedReview.stats?.showsFound && selectedReview.stats.showsFound > 0)) && (
+                    <Accordion defaultExpanded>
+                      <AccordionSummary expandIcon={<FontAwesomeIcon icon={faChevronDown} />}>
+                        <Typography variant="h6">
+                          📅 Shows Found (
+                          {selectedReview.stats?.showsFound ||
+                            selectedReview.aiAnalysis?.shows?.length ||
+                            0}
+                          )
+                        </Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <List>
+                          {(selectedReview.shows || selectedReview.aiAnalysis?.shows || []).map(
+                            (show: any, index: number) => (
+                              <ListItem
+                                key={index}
+                                sx={{
+                                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                                  py: 2,
+                                  bgcolor: 'rgba(255, 255, 255, 0.02)',
+                                  mb: 1,
+                                  borderRadius: 1,
+                                }}
+                              >
+                                <ListItemText
+                                  primary={
+                                    <Box
+                                      sx={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                      }}
+                                    >
+                                      <Typography
+                                        variant="subtitle1"
+                                        fontWeight="bold"
+                                        component="div"
+                                      >
+                                        {(show.venue && typeof show.venue === 'object'
+                                          ? show.venue.name
+                                          : show.venue) || 'Unknown Venue'}
+                                      </Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        {Math.round((show.confidence || 0) * 100)}% confidence
+                                      </Typography>
+                                    </Box>
+                                  }
+                                  secondary={
+                                    <Box component="div" sx={{ mt: 1 }}>
+                                      {/* Location & Address - with missing data highlights */}
                                       <Box
                                         sx={{
-                                          display: 'flex',
-                                          justifyContent: 'space-between',
-                                          alignItems: 'center',
+                                          mb: 1,
+                                          p: 1,
+                                          bgcolor: 'rgba(255, 255, 255, 0.05)',
+                                          borderRadius: 1,
+                                          border: '1px solid rgba(255, 255, 255, 0.1)',
                                         }}
                                       >
                                         <Typography
-                                          variant="subtitle1"
-                                          fontWeight="bold"
-                                          component="div"
+                                          variant="body2"
+                                          color="text.secondary"
+                                          sx={{ fontWeight: 'bold', mb: 0.5 }}
                                         >
-                                          {(show.venue && typeof show.venue === 'object'
-                                            ? show.venue.name
-                                            : show.venue) || 'Unknown Venue'}
+                                          📍 Location:
                                         </Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                          {Math.round((show.confidence || 0) * 100)}% confidence
-                                        </Typography>
-                                      </Box>
-                                    }
-                                    secondary={
-                                      <Box component="div" sx={{ mt: 1 }}>
-                                        {/* Location & Address - with missing data highlights */}
-                                        <Box
-                                          sx={{
-                                            mb: 1,
-                                            p: 1,
-                                            bgcolor: 'rgba(255, 255, 255, 0.05)',
-                                            borderRadius: 1,
-                                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                                          }}
-                                        >
-                                          <Typography
-                                            variant="body2"
-                                            color="text.secondary"
-                                            sx={{ fontWeight: 'bold', mb: 0.5 }}
-                                          >
-                                            📍 Location:
-                                          </Typography>
-                                          <Box sx={{ ml: 1 }}>
-                                            {show.venue?.address ? (
-                                              <Typography variant="body2">
-                                                <strong>Address:</strong>{' '}
-                                                {show.venue.address}
-                                              </Typography>
-                                            ) : (
-                                              <Typography
-                                                variant="body2"
-                                                color="warning.main"
-                                                sx={{ fontStyle: 'italic' }}
-                                              >
-                                                ⚠️ Address missing
-                                              </Typography>
-                                            )}
-                                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                              {show.venue &&
-                                                typeof show.venue === 'object' &&
-                                                show.venue.city && (
-                                                  <Typography variant="body2">
-                                                    <strong>City:</strong>{' '}
-                                                    {show.venue && typeof show.venue === 'object'
-                                                      ? show.venue.city
-                                                      : null}
-                                                  </Typography>
-                                                )}
-                                              {show.venue &&
-                                                typeof show.venue === 'object' &&
-                                                show.venue.state && (
-                                                  <Typography variant="body2">
-                                                    <strong>State:</strong>{' '}
-                                                    {show.venue && typeof show.venue === 'object'
-                                                      ? show.venue.state
-                                                      : null}
-                                                  </Typography>
-                                                )}
-                                              {show.zip && (
+                                        <Box sx={{ ml: 1 }}>
+                                          {show.venue?.address ? (
+                                            <Typography variant="body2">
+                                              <strong>Address:</strong> {show.venue.address}
+                                            </Typography>
+                                          ) : (
+                                            <Typography
+                                              variant="body2"
+                                              color="warning.main"
+                                              sx={{ fontStyle: 'italic' }}
+                                            >
+                                              ⚠️ Address missing
+                                            </Typography>
+                                          )}
+                                          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                                            {show.venue &&
+                                              typeof show.venue === 'object' &&
+                                              show.venue.city && (
                                                 <Typography variant="body2">
-                                                  <strong>ZIP:</strong> {show.zip}
+                                                  <strong>City:</strong>{' '}
+                                                  {show.venue && typeof show.venue === 'object'
+                                                    ? show.venue.city
+                                                    : null}
                                                 </Typography>
                                               )}
-                                            </Box>
-                                          </Box>
-                                        </Box>
-
-                                        {/* Schedule Information - with missing data highlights */}
-                                        <Box
-                                          sx={{
-                                            mb: 1,
-                                            p: 1,
-                                            bgcolor: 'rgba(255, 255, 255, 0.05)',
-                                            borderRadius: 1,
-                                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                                          }}
-                                        >
-                                          <Typography
-                                            variant="body2"
-                                            color="text.secondary"
-                                            sx={{ fontWeight: 'bold', mb: 0.5 }}
-                                          >
-                                            🗓️ Schedule:
-                                          </Typography>
-                                          <Box sx={{ ml: 1 }}>
-                                            <Typography variant="body2">
-                                              <strong>Day:</strong>{' '}
-                                              {show.dayOfWeek ||
-                                                show.day ||
-                                                show.date ||
-                                                'Not specified'}
-                                            </Typography>
-                                            {show.time ? (
+                                            {show.venue &&
+                                              typeof show.venue === 'object' &&
+                                              show.venue.state && (
+                                                <Typography variant="body2">
+                                                  <strong>State:</strong>{' '}
+                                                  {show.venue && typeof show.venue === 'object'
+                                                    ? show.venue.state
+                                                    : null}
+                                                </Typography>
+                                              )}
+                                            {show.zip && (
                                               <Typography variant="body2">
-                                                <strong>Time:</strong> {show.time}
-                                                {show.startTime && show.endTime && (
-                                                  <span>
-                                                    {' '}
-                                                    ({show.startTime} - {show.endTime})
-                                                  </span>
-                                                )}
-                                              </Typography>
-                                            ) : (
-                                              <Typography
-                                                variant="body2"
-                                                color="warning.main"
-                                                sx={{ fontStyle: 'italic' }}
-                                              >
-                                                ⚠️ <strong>Time:</strong> Missing
+                                                <strong>ZIP:</strong> {show.zip}
                                               </Typography>
                                             )}
                                           </Box>
                                         </Box>
+                                      </Box>
 
-                                        {/* DJ & Host Information */}
-                                        <Box sx={{ mb: 1 }}>
+                                      {/* Schedule Information - with missing data highlights */}
+                                      <Box
+                                        sx={{
+                                          mb: 1,
+                                          p: 1,
+                                          bgcolor: 'rgba(255, 255, 255, 0.05)',
+                                          borderRadius: 1,
+                                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        }}
+                                      >
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                          sx={{ fontWeight: 'bold', mb: 0.5 }}
+                                        >
+                                          🗓️ Schedule:
+                                        </Typography>
+                                        <Box sx={{ ml: 1 }}>
                                           <Typography variant="body2">
-                                            <strong>DJ/Host:</strong>{' '}
-                                            {show.djName || 'Not specified'}
+                                            <strong>Day:</strong>{' '}
+                                            {show.dayOfWeek ||
+                                              show.day ||
+                                              show.date ||
+                                              'Not specified'}
                                           </Typography>
-                                          {show.vendor && (
+                                          {show.time ? (
                                             <Typography variant="body2">
-                                              <strong>Hosted by:</strong> {show.vendor}
+                                              <strong>Time:</strong> {show.time}
+                                              {show.startTime && show.endTime && (
+                                                <span>
+                                                  {' '}
+                                                  ({show.startTime} - {show.endTime})
+                                                </span>
+                                              )}
+                                            </Typography>
+                                          ) : (
+                                            <Typography
+                                              variant="body2"
+                                              color="warning.main"
+                                              sx={{ fontStyle: 'italic' }}
+                                            >
+                                              ⚠️ <strong>Time:</strong> Missing
                                             </Typography>
                                           )}
                                         </Box>
+                                      </Box>
 
-                                        {/* Source Information - Enhanced to show image source */}
-                                        {show.source && (
-                                          <Box
-                                            sx={{
-                                              mb: 1,
-                                              p: 1,
-                                              bgcolor: 'rgba(25, 118, 210, 0.1)',
-                                              borderRadius: 1,
-                                              border: '1px solid rgba(25, 118, 210, 0.2)',
-                                            }}
-                                          >
-                                            <Typography
-                                              variant="body2"
-                                              color="text.secondary"
-                                              sx={{ fontWeight: 'bold', mb: 0.5 }}
-                                            >
-                                              🖼️ Source:
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ ml: 1 }}>
-                                              {show.source.startsWith('http') ? (
-                                                <a
-                                                  href={show.source}
-                                                  target="_blank"
-                                                  rel="noopener noreferrer"
-                                                  style={{
-                                                    color: '#90caf9',
-                                                    textDecoration: 'underline',
-                                                  }}
-                                                >
-                                                  {show.source.includes('facebook')
-                                                    ? '📘 Facebook Image'
-                                                    : show.source.includes('instagram')
-                                                      ? '📸 Instagram Image'
-                                                      : '🖼️ Image Source'}
-                                                </a>
-                                              ) : (
-                                                <span>{show.source}</span>
-                                              )}
-                                            </Typography>
-                                          </Box>
-                                        )}
-
-                                        {/* Description */}
-                                        {show.description && (
-                                          <Typography
-                                            variant="body2"
-                                            sx={{ mt: 1, fontStyle: 'italic' }}
-                                          >
-                                            <strong>Description:</strong> {show.description}
+                                      {/* DJ & Host Information */}
+                                      <Box sx={{ mb: 1 }}>
+                                        <Typography variant="body2">
+                                          <strong>DJ/Host:</strong> {show.djName || 'Not specified'}
+                                        </Typography>
+                                        {show.vendor && (
+                                          <Typography variant="body2">
+                                            <strong>Hosted by:</strong> {show.vendor}
                                           </Typography>
                                         )}
                                       </Box>
-                                    }
-                                    secondaryTypographyProps={{
-                                      component: 'div',
-                                    }}
-                                  />
-                                </ListItem>
-                              ),
-                            )}
-                          </List>
-                        </AccordionDetails>
-                      </Accordion>
-                    )}
 
-                    {/* Parsing Logs */}
-                    {selectedReview.parsingLogs && selectedReview.parsingLogs.length > 0 && (
-                      <Accordion>
-                        <AccordionSummary expandIcon={<FontAwesomeIcon icon={faChevronDown} />}>
-                          <Typography variant="h6">
-                            Parsing Logs ({selectedReview.parsingLogs.length})
-                          </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
-                            <List dense>
-                              {selectedReview.parsingLogs.map((log: any, index: number) => {
-                                // Safety check for log structure
-                                const safeLog = {
-                                  level: log?.level || 'info',
-                                  message: log?.message || 'No message',
-                                  timestamp: log?.timestamp || new Date(),
-                                };
-
-                                return (
-                                  <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
-                                    <Box sx={{ width: '100%' }}>
-                                      <Box
-                                        sx={{
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: 1,
-                                          mb: 0.5,
-                                        }}
-                                      >
-                                        <Chip
-                                          label={safeLog.level.toUpperCase()}
-                                          size="small"
-                                          color={
-                                            safeLog.level === 'error'
-                                              ? 'error'
-                                              : safeLog.level === 'warning'
-                                                ? 'warning'
-                                                : safeLog.level === 'success'
-                                                  ? 'success'
-                                                  : 'default'
-                                          }
+                                      {/* Source Information - Enhanced to show image source */}
+                                      {show.source && (
+                                        <Box
                                           sx={{
-                                            minWidth: 70,
-                                            fontSize: '0.7rem',
-                                            height: 20,
+                                            mb: 1,
+                                            p: 1,
+                                            bgcolor: 'rgba(25, 118, 210, 0.1)',
+                                            borderRadius: 1,
+                                            border: '1px solid rgba(25, 118, 210, 0.2)',
                                           }}
-                                        />
-                                        <Typography variant="caption" color="text.secondary">
-                                          {new Date(log.timestamp).toLocaleTimeString()}
+                                        >
+                                          <Typography
+                                            variant="body2"
+                                            color="text.secondary"
+                                            sx={{ fontWeight: 'bold', mb: 0.5 }}
+                                          >
+                                            🖼️ Source:
+                                          </Typography>
+                                          <Typography variant="body2" sx={{ ml: 1 }}>
+                                            {show.source.startsWith('http') ? (
+                                              <a
+                                                href={show.source}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{
+                                                  color: '#90caf9',
+                                                  textDecoration: 'underline',
+                                                }}
+                                              >
+                                                {show.source.includes('facebook')
+                                                  ? '📘 Facebook Image'
+                                                  : show.source.includes('instagram')
+                                                    ? '📸 Instagram Image'
+                                                    : '🖼️ Image Source'}
+                                              </a>
+                                            ) : (
+                                              <span>{show.source}</span>
+                                            )}
+                                          </Typography>
+                                        </Box>
+                                      )}
+
+                                      {/* Description */}
+                                      {show.description && (
+                                        <Typography
+                                          variant="body2"
+                                          sx={{ mt: 1, fontStyle: 'italic' }}
+                                        >
+                                          <strong>Description:</strong> {show.description}
                                         </Typography>
-                                      </Box>
-                                      <Typography
-                                        variant="body2"
+                                      )}
+                                    </Box>
+                                  }
+                                  secondaryTypographyProps={{
+                                    component: 'div',
+                                  }}
+                                />
+                              </ListItem>
+                            ),
+                          )}
+                        </List>
+                      </AccordionDetails>
+                    </Accordion>
+                  )}
+
+                  {/* Parsing Logs */}
+                  {selectedReview.parsingLogs && selectedReview.parsingLogs.length > 0 && (
+                    <Accordion>
+                      <AccordionSummary expandIcon={<FontAwesomeIcon icon={faChevronDown} />}>
+                        <Typography variant="h6">
+                          Parsing Logs ({selectedReview.parsingLogs.length})
+                        </Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
+                          <List dense>
+                            {selectedReview.parsingLogs.map((log: any, index: number) => {
+                              // Safety check for log structure
+                              const safeLog = {
+                                level: log?.level || 'info',
+                                message: log?.message || 'No message',
+                                timestamp: log?.timestamp || new Date(),
+                              };
+
+                              return (
+                                <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
+                                  <Box sx={{ width: '100%' }}>
+                                    <Box
+                                      sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 1,
+                                        mb: 0.5,
+                                      }}
+                                    >
+                                      <Chip
+                                        label={safeLog.level.toUpperCase()}
+                                        size="small"
+                                        color={
+                                          safeLog.level === 'error'
+                                            ? 'error'
+                                            : safeLog.level === 'warning'
+                                              ? 'warning'
+                                              : safeLog.level === 'success'
+                                                ? 'success'
+                                                : 'default'
+                                        }
                                         sx={{
-                                          fontFamily: 'monospace',
-                                          fontSize: '0.85rem',
-                                          backgroundColor:
-                                            safeLog.level === 'error'
-                                              ? 'rgba(244, 67, 54, 0.1)'
-                                              : safeLog.level === 'warning'
-                                                ? 'rgba(255, 152, 0, 0.1)'
-                                                : safeLog.level === 'success'
-                                                  ? 'rgba(76, 175, 80, 0.1)'
-                                                  : 'rgba(0, 0, 0, 0.05)',
-                                          padding: 1,
-                                          borderRadius: 1,
-                                          wordBreak: 'break-all',
+                                          minWidth: 70,
+                                          fontSize: '0.7rem',
+                                          height: 20,
                                         }}
-                                      >
-                                        {safeLog.message}
+                                      />
+                                      <Typography variant="caption" color="text.secondary">
+                                        {new Date(log.timestamp).toLocaleTimeString()}
                                       </Typography>
                                     </Box>
-                                  </ListItem>
-                                );
-                              })}
-                            </List>
-                          </Box>
-                        </AccordionDetails>
-                      </Accordion>
-                    )}
-                  </Box>
-                )}
+                                    <Typography
+                                      variant="body2"
+                                      sx={{
+                                        fontFamily: 'monospace',
+                                        fontSize: '0.85rem',
+                                        backgroundColor:
+                                          safeLog.level === 'error'
+                                            ? 'rgba(244, 67, 54, 0.1)'
+                                            : safeLog.level === 'warning'
+                                              ? 'rgba(255, 152, 0, 0.1)'
+                                              : safeLog.level === 'success'
+                                                ? 'rgba(76, 175, 80, 0.1)'
+                                                : 'rgba(0, 0, 0, 0.05)',
+                                        padding: 1,
+                                        borderRadius: 1,
+                                        wordBreak: 'break-all',
+                                      }}
+                                    >
+                                      {safeLog.message}
+                                    </Typography>
+                                  </Box>
+                                </ListItem>
+                              );
+                            })}
+                          </List>
+                        </Box>
+                      </AccordionDetails>
+                    </Accordion>
+                  )}
+                </Box>
+              )}
 
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={3}
-                  label="Review Comments"
-                  value={reviewComments}
-                  onChange={(e) => setReviewComments(e.target.value)}
-                  sx={{ mt: 2 }}
-                  placeholder="Add any comments about this parsed data..."
-                />
-              </Box>
-            )}
-          </DialogContent>
-          <DialogActions>
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                label="Review Comments"
+                value={reviewComments}
+                onChange={(e) => setReviewComments(e.target.value)}
+                sx={{ mt: 2 }}
+                placeholder="Add any comments about this parsed data..."
+              />
+            </Box>
+          )}
+
+          {/* Action Buttons */}
+          <Box sx={{ display: 'flex', gap: 2, mt: 3, justifyContent: 'flex-end' }}>
             <Button onClick={() => setReviewDialog(false)}>Cancel</Button>
             <Button
               variant="contained"
@@ -2084,8 +2067,8 @@ const AdminParserPage: React.FC = observer(() => {
             >
               Approve
             </Button>
-          </DialogActions>
-        </Dialog>
+          </Box>
+        </CustomModal>
 
         {/* Location Edit Modal */}
         <LocationEditModal

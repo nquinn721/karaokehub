@@ -168,7 +168,6 @@ export interface AdminFavorite {
 export interface AdminSong {
   id: string;
   url: string;
-  rawData: any;
   aiAnalysis?: any;
   status: string;
   createdAt: Date;

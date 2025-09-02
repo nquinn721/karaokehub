@@ -739,7 +739,7 @@ const SubmitShowPage: React.FC = observer(() => {
                   </Grid>
                 </CardContent>
 
-                <CardActions sx={{ p: 3, pt: 0, gap: 2 }}>
+                <CardActions sx={{ p: 3, gap: 2 }}>
                   <Button
                     variant="contained"
                     color="success"

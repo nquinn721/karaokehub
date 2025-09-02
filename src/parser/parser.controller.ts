@@ -83,9 +83,13 @@ export class ParserController {
         // Regular website - use specified method
         const parseMethod = body.parseMethod || 'html';
 
+        console.log(`🔍 Parsing URL: ${body.url} with method: ${parseMethod}`);
+
         if (parseMethod === 'screenshot') {
+          console.log(`📸 Using screenshot parsing for: ${body.url}`);
           result = await this.karaokeParserService.parseWebsiteWithScreenshot(body.url);
         } else {
+          console.log(`📄 Using HTML parsing for: ${body.url}`);
           result = await this.karaokeParserService.parseAndSaveWebsite(body.url);
         }
       }

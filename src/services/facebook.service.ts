@@ -430,12 +430,6 @@ export class FacebookService {
             },
           ]
         : [],
-      rawData: {
-        url: eventUrl,
-        title: eventData.name,
-        content: `Facebook Event: ${eventData.name}\n${description}`,
-        parsedAt: new Date(),
-      },
     };
   }
 
@@ -500,12 +494,6 @@ export class FacebookService {
       },
       shows: allShows,
       djs: allDjs,
-      rawData: {
-        url: profileUrl,
-        title: `Facebook Profile Events (${events.length} events)`,
-        content: `Facebook Profile Events:\n${events.map((e) => `${e.name}: ${e.description || 'No description'}`).join('\n')}`,
-        parsedAt: new Date(),
-      },
     };
   }
 
