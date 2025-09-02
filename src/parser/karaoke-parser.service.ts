@@ -2653,33 +2653,24 @@ ${htmlContent}`;
       // Handle empty DJs array gracefully
       const djsData = approvedData.djs || [];
 
-      // Collect all unique vendor+name combinations for bulk lookup
-      const djLookupKeys = djsData
+      // First, try to find existing DJs by name only (regardless of vendor)
+      // This handles cases like "djmax614" who already exists with a vendor
+      const djNames = djsData
         .filter((djData) => djData.name && djData.name.trim() !== '')
-        .map((djData) => ({
-          name: djData.name,
-          vendorId: primaryVendor?.id || null,
-          vendorName: primaryVendor?.name || 'default',
-        }));
+        .map((djData) => djData.name);
 
-      // Bulk fetch existing DJs with vendor relationship
-      const existingDJs =
-        djLookupKeys.length > 0
+      const existingDJsByName =
+        djNames.length > 0
           ? await this.djRepository.find({
-              where: djLookupKeys.map((key) => ({
-                name: key.name,
-                vendorId: key.vendorId,
-              })),
+              where: djNames.map((name) => ({ name })),
               relations: ['vendor'],
             })
           : [];
 
-      // Create lookup map for existing DJs using vendor+name composite key
-      const existingDJMap = new Map<string, DJ>();
-      existingDJs.forEach((dj) => {
-        const vendorName = dj.vendor?.name || 'default';
-        const compositeKey = `${vendorName}|${dj.name}`;
-        existingDJMap.set(compositeKey, dj);
+      // Create lookup map for existing DJs by name
+      const existingDJByNameMap = new Map<string, DJ>();
+      existingDJsByName.forEach((dj) => {
+        existingDJByNameMap.set(dj.name, dj);
       });
 
       // Process DJs with bulk operations
@@ -2692,32 +2683,38 @@ ${htmlContent}`;
           continue;
         }
 
-        // For DJs, use primary vendor or null if no vendors
-        const djVendorId = primaryVendor?.id || null;
-        const vendorName = primaryVendor?.name || 'default';
-        const compositeKey = `${vendorName}|${djData.name}`;
+        // First check if DJ exists by name (regardless of vendor)
+        let dj = existingDJByNameMap.get(djData.name);
 
-        let dj = existingDJMap.get(compositeKey);
-
-        if (!dj) {
-          // Create new DJ
-          const newDJ = this.djRepository.create({
-            name: djData.name,
-            vendorId: djVendorId,
-            isActive: true,
-          });
-          djsToCreate.push(newDJ);
-          djMap.set(compositeKey, newDJ);
-          djsCreated++;
-        } else {
-          this.logAndBroadcast(`Using existing DJ: ${dj.name} (ID: ${dj.id})`, 'info');
+        if (dj) {
+          // DJ exists - use existing DJ with their current vendor
+          this.logAndBroadcast(
+            `Using existing DJ: ${dj.name} (ID: ${dj.id}) with vendor: ${dj.vendor?.name || 'none'}`,
+            'info',
+          );
+          
           // Update DJ to active if it was inactive
           if (!dj.isActive) {
             dj.isActive = true;
             djsToUpdate.push(dj);
             djsUpdated++;
           }
-          djMap.set(compositeKey, dj);
+          djMap.set(djData.name, dj);
+        } else {
+          // DJ doesn't exist - create new DJ with primary vendor (if any)
+          const newDJ = this.djRepository.create({
+            name: djData.name,
+            vendorId: primaryVendor?.id || null,
+            isActive: true,
+          });
+          djsToCreate.push(newDJ);
+          djMap.set(djData.name, newDJ);
+          djsCreated++;
+          
+          this.logAndBroadcast(
+            `Creating new DJ: ${djData.name} ${primaryVendor ? `with vendor: ${primaryVendor.name}` : 'without vendor'}`,
+            'info',
+          );
         }
       }
 
@@ -2727,9 +2724,7 @@ ${htmlContent}`;
         const savedDJs = await this.djRepository.save(djsToCreate);
         // Update the map with saved DJs (they now have IDs)
         savedDJs.forEach((dj) => {
-          const vendorName = primaryVendor?.name || 'default';
-          const compositeKey = `${vendorName}|${dj.name}`;
-          djMap.set(compositeKey, dj);
+          djMap.set(dj.name, dj);
         });
       }
 
@@ -2752,26 +2747,21 @@ ${htmlContent}`;
       // Prepare all shows for bulk insert
       const showsToCreate = [];
       const showPromises = approvedData.shows.map(async (showData) => {
-        // Find DJ if specified (using vendor+name composite key)
+        // Find DJ if specified (using name-based lookup)
         let djId: string | undefined;
         if (showData.djName) {
-          // Determine which vendor this DJ belongs to
-          let djVendorName = 'default';
-          if (showData.vendor) {
-            const showVendorObj = vendorMap.get(showData.vendor);
-            djVendorName = showVendorObj?.name || 'default';
-          } else if (primaryVendor) {
-            djVendorName = primaryVendor.name;
-          }
-
-          const djCompositeKey = `${djVendorName}|${showData.djName}`;
-          const dj = djMap.get(djCompositeKey);
+          const dj = djMap.get(showData.djName);
           djId = dj?.id;
 
           if (!dj) {
             this.logAndBroadcast(
-              `Warning: DJ "${showData.djName}" not found for vendor "${djVendorName}" in show at ${showData.venue}`,
+              `Warning: DJ "${showData.djName}" not found in show at ${showData.venueName || showData.venue}`,
               'warning',
+            );
+          } else {
+            this.logAndBroadcast(
+              `Found DJ "${showData.djName}" (ID: ${dj.id}) for show at ${showData.venueName || showData.venue}`,
+              'info',
             );
           }
         }
@@ -4131,7 +4121,7 @@ Return ONLY valid JSON with no extra text:
   ): Promise<ParsedKaraokeData> {
     try {
       this.logAndBroadcast(
-        `Starting Instagram screenshot analysis with ${screenshots.length} screenshots`,
+        `Starting karaoke image analysis with ${screenshots.length} image(s)`,
         'info',
       );
 
@@ -4145,142 +4135,96 @@ Return ONLY valid JSON with no extra text:
         },
       });
 
-      const prompt = `Analyze these Instagram profile screenshots and extract ALL karaoke shows with complete venue addresses and show times.
+      const prompt = `Analyze this karaoke show image/flyer and extract ALL karaoke event information with complete details.
 
-🎯 CRITICAL FOCUS: This Instagram profile contains a weekly karaoke schedule - you MUST extract ALL venues, COMPLETE addresses, and EXACT show times.
+🎯 CRITICAL EXTRACTION FOCUS: Extract EXACTLY these elements for database storage:
+- VENUE: Complete name, full street address, city, state, ZIP + precise GPS coordinates
+- SHOW: Day of week, start time, end time, venue name, DJ name
+- DJ: Host name (remove @ symbols, like "djmax614" not "@djmax614")
+- VENDOR: Business/service provider (may not be visible in image - DJ will be linked to existing vendor in database)
 
-CRITICAL RESPONSE REQUIREMENTS:
-- Return ONLY valid JSON, no other text
-- Extract EVERY venue mentioned across all screenshots
-- Get COMPLETE addresses with street, city, state
-- Extract EXACT show times (not approximations)
-- Look at BOTH the profile description/bio area AND individual posts
+🏢 VENUE REQUIREMENTS - ABSOLUTELY CRITICAL:
+- Extract COMPLETE venue name exactly as shown
+- Get FULL street address (like "56 N. High Street") 
+- Extract city, state, ZIP separately (like Dublin, OH, 43017)
+- MANDATORY: Provide precise lat/lng coordinates for exact venue location
+- Use venue name + complete address to determine GPS coordinates with 6+ decimal precision
 
-🚫 DUPLICATE PREVENTION - CRITICAL RULES:
-- ONLY extract UNIQUE shows - no duplicates allowed
-- If the same venue appears multiple times with the same day/time, only include it ONCE
-- Different days at the same venue = separate shows (e.g., "Bar Monday" vs "Bar Saturday")  
-- Different times at the same venue = separate shows (e.g., "Bar 7:00 PM" vs "Bar 10:00 PM")
-- Same venue, same day, same time = DUPLICATE, include only once
-- Cross-check all screenshots to prevent duplicates between different images
+� GPS COORDINATE REQUIREMENTS - MUST HAVE:
+For EVERY venue, provide precise GPS coordinates:
+- Research the venue name + address to get exact location
+- Return lat/lng as decimal numbers with 6+ decimal places
+- Example: "56 N. High Street, Dublin OH 43017" → lat: 40.0992841, lng: -83.1140771
+- Coordinates must be accurate for the specific address shown
 
-Instagram Profile: ${url}
-${description ? `Description: ${description}` : ''}
+🎤 DJ EXTRACTION - CRITICAL:
+- Find DJ/host names, usually after "HOSTED BY" or with @ symbols
+- Remove @ symbols: "@djmax614" becomes "djmax614"
+- Extract exact DJ handle/name as shown
+- Don't worry about vendor - existing DJs in database have vendors attached
 
-📸 SCREENSHOT ANALYSIS INSTRUCTIONS:
-Screenshot 1 (Top): Contains profile bio/description with weekly schedule summary
-Screenshot 2 (Middle): May contain detailed posts with venue information  
-Screenshot 3 (Bottom): Additional posts with venue details and addresses
+🗓️ SHOW SCHEDULE EXTRACTION:
+- Extract day of week: "TUESDAYS" → "tuesday" (lowercase)
+- Extract time range: "6PM-9PM" → start: "6 pm", end: "9 pm"
+- Convert to 24-hour format: "6 pm" → "18:00", "9 pm" → "21:00"
+- Create ONE show entry per venue + day + time combination
 
-🏢 VENUE & ADDRESS EXTRACTION - CRITICAL:
-- Look for complete address patterns like "1234 Main St, Columbus, OH" 
-- Extract phone numbers that appear near venue names
-- Look for venue websites or social media handles
-- Each venue should have a complete address, not just a name
-- If you see "Oneilly's Sports Pub" - find its complete address in the posts
-- Look for patterns like "Tonight at [Venue] - [Address] - [Time]"
-
-🕒 TIME EXTRACTION - MANDATORY:
-- Look for specific times like "7pm", "8pm", "9pm", "10pm"
-- Convert to both human format ("7 pm") AND 24-hour format ("19:00")
-- If you see a venue but no time, default to common karaoke hours
-- Look for phrases like "starts at", "begins at", "showtime"
-- NEVER leave time fields empty
-
-🎤 DJ NAME EXTRACTION:
-- Extract the profile owner's name as the primary DJ
-- Look for @username in the profile
-- Check profile description for DJ name or business name
-
-🗓️ DAY EXTRACTION:
-- Look for weekly schedule patterns: "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"
-- Or full day names: "Monday", "Tuesday", etc.
-- Each venue + day combination = separate show entry
-- If schedule shows "Monday: Venue A, Tuesday: Venue B" - create 2 separate shows
-
-🚨 CRITICAL ADDRESS COMPONENT SEPARATION:
-NEVER MIX ADDRESS COMPONENTS - SEPARATE THEM CLEANLY:
-
-✅ CORRECT address parsing examples:
-"1930 Lewis Turner Blvd Fort Walton Beach, FL 32647"
-→ address: "1930 Lewis Turner Blvd"
-→ city: "Fort Walton Beach"  
-→ state: "FL"
-→ zip: "32647"
-
-"630 North High Street Columbus, Ohio 43215"
-→ address: "630 North High Street"
-→ city: "Columbus"
-→ state: "OH" 
-→ zip: "43215"
+🚨 ADDRESS SEPARATION - NEVER MIX COMPONENTS:
+✅ CORRECT parsing example:
+"56 N. High Street, Dublin OH 43017"
+→ address: "56 N. High Street" (street only)
+→ city: "Dublin" (city only)  
+→ state: "OH" (state code only)
+→ zip: "43017" (ZIP only)
 
 ❌ WRONG - DON'T DO THIS:
-address: "1930 Lewis Turner Blvd Fort Walton Beach, FL 32647" ← CONTAINS CITY/STATE/ZIP
+→ address: "56 N. High Street, Dublin OH 43017" (contains city/state/zip)
 
-🌍 COORDINATE REQUIREMENTS - MANDATORY:
-For EVERY venue, provide precise lat/lng coordinates:
-- Use venue name + complete address to determine exact location
-- Provide coordinates as decimal numbers with 6+ decimal places
-- Validate coordinates are in the correct city/state
-- Example: "Oneilly's Sports Pub" in Columbus, OH → lat: 39.961176, lng: -82.998794
-
-📝 EXAMPLE EXTRACTION:
-If you see: "Friday nights at Oneilly's Sports Pub - 123 Main St, Columbus, OH - 9pm karaoke with djmax614"
+📝 REAL EXAMPLE FOR YOUR IMAGE:
+From: "KARAOKE IN THE LOUNGE - TUESDAYS 6PM-9PM - NORTH HIGH DUBLIN - 56 N. High Street, Dublin OH 43017 - HOSTED BY @DJMAX614"
 
 Extract as:
-{
-  "venue": "Oneilly's Sports Pub",
-  "address": "123 Main St",
-  "city": "Columbus", 
-  "state": "OH",
-  "day": "friday",
-  "time": "9 pm",
-  "startTime": "21:00",
-  "djName": "djmax614",
-  "lat": 39.961176,
-  "lng": -82.998794
-}
+- Venue: "North High Dublin" (the business name)
+- Address: "56 N. High Street" (street address only)
+- City: "Dublin", State: "OH", ZIP: "43017"
+- Day: "tuesday" (from TUESDAYS)
+- Times: "6 pm - 9 pm" (from 6PM-9PM)
+- DJ: "djmax614" (from @DJMAX614, remove @)
+- GPS: lat: 40.0992841, lng: -83.1140771 (precise coordinates)
 
-Return ONLY valid JSON:
+RETURN ONLY THIS EXACT JSON FORMAT:
 {
-  "vendor": {
-    "name": "DJ or business name from profile",
-    "website": "${url}",
-    "description": "Profile bio/description text",
-    "confidence": 0.9
-  },
   "venues": [
     {
-      "name": "COMPLETE Venue Name",
-      "address": "COMPLETE street address ONLY (no city/state/zip)",
+      "name": "Complete venue name from image",
+      "address": "Street address ONLY (no city/state/zip)",
       "city": "City name ONLY",
-      "state": "2-letter state code ONLY", 
+      "state": "2-letter state code ONLY",
       "zip": "ZIP code ONLY",
-      "lat": "REQUIRED precise latitude",
-      "lng": "REQUIRED precise longitude",
-      "phone": "Phone number if found",
-      "website": "Website if found",
-      "confidence": 0.8
+      "lat": 40.0992841,
+      "lng": -83.1140771,
+      "phone": "Phone if shown in image",
+      "website": "Website if shown in image",
+      "confidence": 0.9
     }
   ],
   "djs": [
     {
-      "name": "DJ Name from profile",
+      "name": "DJ name (remove @ symbol)",
       "confidence": 0.9,
-      "context": "Instagram profile owner"
+      "context": "Karaoke host from image"
     }
   ],
   "shows": [
     {
-      "venueName": "Venue Name (must match a venue from venues array)",
-      "time": "EXACT time like '9 pm'",
-      "startTime": "REQUIRED 24-hour format like '21:00'",
-      "endTime": "End time or 'close'",
-      "day": "EXACT day_of_week",
-      "djName": "DJ/host name",
-      "vendor": "Vendor/company providing service",
-      "description": "Additional show details",
-      "confidence": 0.8
+      "venueName": "Venue name (must exactly match venues array name)",
+      "time": "Time range like '6 pm - 9 pm'",
+      "startTime": "24-hour format like '18:00'",
+      "endTime": "24-hour format like '21:00'",
+      "day": "day_of_week in lowercase (tuesday, friday, etc)",
+      "djName": "DJ name (must match djs array name)",
+      "description": "Any additional show details from image",
+      "confidence": 0.9
     }
   ]
 }`;
@@ -4308,7 +4252,7 @@ Return ONLY valid JSON:
       const response = await result.response;
       const text = response.text();
 
-      this.logAndBroadcast('Gemini Vision response received for Instagram analysis');
+      this.logAndBroadcast('Gemini Vision response received for karaoke image analysis');
       this.logAndBroadcast(`Response length: ${text.length} characters`);
 
       // Clean and parse JSON response
@@ -4316,9 +4260,9 @@ Return ONLY valid JSON:
       try {
         const cleanJsonString = this.cleanGeminiResponse(text);
         parsedData = JSON.parse(cleanJsonString);
-        this.logAndBroadcast('✅ Instagram JSON parsing successful', 'success');
+        this.logAndBroadcast('✅ Karaoke image JSON parsing successful', 'success');
       } catch (jsonError) {
-        this.logAndBroadcast('❌ Instagram JSON parsing failed:', 'error');
+        this.logAndBroadcast('❌ Karaoke image JSON parsing failed:', 'error');
         this.logAndBroadcast(`JSON Error: ${jsonError.message}`, 'error');
         throw new Error(`Invalid JSON response from Gemini: ${jsonError.message}`);
       }
@@ -4326,29 +4270,25 @@ Return ONLY valid JSON:
       // Log results
       const showCount = parsedData.shows?.length || 0;
       const djCount = parsedData.djs?.length || 0;
-      const vendorName = parsedData.vendor?.name || 'Instagram Profile';
+      const venueCount = parsedData.venues?.length || 0;
 
       this.logAndBroadcast(
-        `Instagram analysis results: ${showCount} shows, ${djCount} DJs, profile: ${vendorName}`,
+        `Karaoke image analysis results: ${showCount} shows, ${djCount} DJs, ${venueCount} venues`,
         'success',
       );
 
-      // Ensure required structure
+      // Ensure required structure for the deduplication system
       const finalData: ParsedKaraokeData = {
-        vendor: parsedData.vendor || {
-          name: 'Instagram Profile',
-          website: url,
-          description: 'Parsed from Instagram screenshots',
-          confidence: 0.7,
-        },
+        venues: Array.isArray(parsedData.venues) ? parsedData.venues : [],
         djs: Array.isArray(parsedData.djs) ? parsedData.djs : [],
         shows: Array.isArray(parsedData.shows) ? this.normalizeShowTimes(parsedData.shows) : [],
+        // Note: No vendor field - existing DJs in database will have their vendors attached
       };
 
       return finalData;
     } catch (error) {
-      this.logAndBroadcast('Error analyzing Instagram screenshots:', 'error');
-      throw new Error(`Instagram screenshot analysis failed: ${error.message}`);
+      this.logAndBroadcast('Error analyzing karaoke image:', 'error');
+      throw new Error(`Karaoke image analysis failed: ${error.message}`);
     }
   }
 

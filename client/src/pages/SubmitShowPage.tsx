@@ -22,10 +22,6 @@ import {
   Checkbox,
   Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   Grid,
   InputLabel,
@@ -43,6 +39,7 @@ import {
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
+import CustomModal from '../components/CustomModal';
 import { apiStore, authStore, parserStore, vendorStore } from '../stores';
 import { ParsedScheduleItem } from '../stores/ParserStore';
 import { Vendor } from '../stores/VendorStore';
@@ -112,6 +109,7 @@ const SubmitShowPage: React.FC = observer(() => {
     lng: null as number | null,
   });
   const [isCreatingVendor, setIsCreatingVendor] = useState(!authStore.isAuthenticated);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   useEffect(() => {
     // Load vendors when component mounts (now that endpoint is public)
@@ -311,7 +309,7 @@ const SubmitShowPage: React.FC = observer(() => {
   const handleImageUpload = async (file: File) => {
     parserStore.setLoading(true);
     setError('');
-    
+
     try {
       // Convert file to base64
       const base64 = await new Promise<string>((resolve, reject) => {
@@ -327,35 +325,41 @@ const SubmitShowPage: React.FC = observer(() => {
       });
 
       // Call the existing analyze-screenshots endpoint
-      const response = await fetch(`${apiStore.environmentInfo.baseURL}/parser/analyze-screenshots`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authStore.token}`,
+      const response = await fetch(
+        `${apiStore.environmentInfo.baseURL}/parser/analyze-screenshots`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authStore.token}`,
+          },
+          body: JSON.stringify({
+            screenshots: [base64],
+            url: `uploaded-image-${Date.now()}.${file.name.split('.').pop()}`,
+            description: 'User uploaded karaoke show image',
+          }),
         },
-        body: JSON.stringify({
-          screenshots: [base64],
-          url: `uploaded-image-${Date.now()}.${file.name.split('.').pop()}`,
-          description: 'User uploaded karaoke show image',
-        }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const result = await response.json();
-      
+
       if (result.success && result.data) {
-        // Store the parsed data and show it in the modal (similar to URL parsing)
+        // Store the parsed data and immediately show it in the confirmation modal
         setParsedData(result.data);
+        setShowConfirmDialog(true);
         setSuccess('Image analyzed successfully! Please review the extracted data.');
       } else {
         throw new Error('Failed to analyze image');
       }
     } catch (error) {
       console.error('Error uploading and analyzing image:', error);
-      setError(`Failed to analyze image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setError(
+        `Failed to analyze image: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     } finally {
       parserStore.setLoading(false);
     }
@@ -558,8 +562,32 @@ const SubmitShowPage: React.FC = observer(() => {
               sx={{
                 p: { xs: 2, sm: 3 },
                 mb: 3,
-                border: `1px solid ${theme.palette.divider}`,
-                borderRadius: 2,
+                border: '1px solid',
+                borderColor:
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(0, 229, 255, 0.2)'
+                    : 'rgba(255, 255, 255, 0.12)',
+                borderRadius: 3,
+                background:
+                  theme.palette.mode === 'dark'
+                    ? 'linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%)',
+                backdropFilter: 'blur(12px)',
+                boxShadow:
+                  theme.palette.mode === 'dark'
+                    ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 229, 255, 0.1)'
+                    : '0 8px 32px rgba(0, 0, 0, 0.1)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  borderColor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(0, 229, 255, 0.4)'
+                      : 'rgba(255, 255, 255, 0.2)',
+                  boxShadow:
+                    theme.palette.mode === 'dark'
+                      ? '0 12px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 229, 255, 0.2)'
+                      : '0 12px 48px rgba(0, 0, 0, 0.15)',
+                },
               }}
             >
               <Box
@@ -661,8 +689,22 @@ const SubmitShowPage: React.FC = observer(() => {
               <Card
                 elevation={0}
                 sx={{
-                  border: `2px solid ${theme.palette.success.main}20`,
+                  border: '1px solid',
+                  borderColor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(0, 229, 255, 0.2)'
+                      : 'rgba(255, 255, 255, 0.12)',
                   borderRadius: 3,
+                  background:
+                    theme.palette.mode === 'dark'
+                      ? 'linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%)'
+                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%)',
+                  backdropFilter: 'blur(12px)',
+                  boxShadow:
+                    theme.palette.mode === 'dark'
+                      ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 229, 255, 0.1)'
+                      : '0 8px 32px rgba(0, 0, 0, 0.1)',
+                  transition: 'all 0.3s ease',
                   overflow: 'hidden',
                 }}
               >
@@ -772,9 +814,27 @@ const SubmitShowPage: React.FC = observer(() => {
                             sx={{
                               mb: 2,
                               p: 2,
-                              border: `1px solid ${theme.palette.divider}`,
+                              border: '1px solid',
+                              borderColor:
+                                theme.palette.mode === 'dark'
+                                  ? 'rgba(0, 229, 255, 0.15)'
+                                  : 'rgba(255, 255, 255, 0.1)',
+                              borderRadius: 2,
+                              background:
+                                theme.palette.mode === 'dark'
+                                  ? 'rgba(18, 18, 18, 0.8)'
+                                  : 'rgba(255, 255, 255, 0.8)',
+                              backdropFilter: 'blur(8px)',
+                              transition: 'all 0.2s ease',
                               '&:hover': {
-                                boxShadow: theme.shadows[2],
+                                borderColor:
+                                  theme.palette.mode === 'dark'
+                                    ? 'rgba(0, 229, 255, 0.3)'
+                                    : 'rgba(255, 255, 255, 0.2)',
+                                boxShadow:
+                                  theme.palette.mode === 'dark'
+                                    ? '0 4px 16px rgba(0, 0, 0, 0.2)'
+                                    : theme.shadows[2],
                               },
                             }}
                           >
@@ -846,9 +906,31 @@ const SubmitShowPage: React.FC = observer(() => {
                 p: { xs: 2, sm: 3 },
                 mb: 3,
                 border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: 2,
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.9) 100%)',
+                borderColor:
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(0, 229, 255, 0.2)'
+                    : 'rgba(255, 255, 255, 0.12)',
+                borderRadius: 3,
+                background:
+                  theme.palette.mode === 'dark'
+                    ? 'linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%)'
+                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%)',
+                backdropFilter: 'blur(12px)',
+                boxShadow:
+                  theme.palette.mode === 'dark'
+                    ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 229, 255, 0.1)'
+                    : '0 8px 32px rgba(0, 0, 0, 0.1)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  borderColor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(0, 229, 255, 0.4)'
+                      : 'rgba(255, 255, 255, 0.2)',
+                  boxShadow:
+                    theme.palette.mode === 'dark'
+                      ? '0 12px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 229, 255, 0.2)'
+                      : '0 12px 48px rgba(0, 0, 0, 0.15)',
+                },
               }}
             >
               <CardContent sx={{ p: { xs: 2, sm: 3 }, '&:last-child': { pb: 3 } }}>
@@ -856,15 +938,30 @@ const SubmitShowPage: React.FC = observer(() => {
                   <CloudUpload
                     sx={{
                       fontSize: 32,
-                      color: theme.palette.primary.main,
+                      color: theme.palette.mode === 'dark' ? '#00E5FF' : theme.palette.primary.main,
                       mr: 2,
                     }}
                   />
                   <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 0.5 }}>
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        fontWeight: 600,
+                        mb: 0.5,
+                        color: theme.palette.mode === 'dark' ? '#FFFFFF' : 'text.primary',
+                      }}
+                    >
                       Upload Show Image
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color:
+                          theme.palette.mode === 'dark'
+                            ? 'rgba(255, 255, 255, 0.7)'
+                            : 'text.secondary',
+                      }}
+                    >
                       Upload an image from a karaoke show schedule or flyer for AI analysis
                     </Typography>
                   </Box>
@@ -873,33 +970,96 @@ const SubmitShowPage: React.FC = observer(() => {
                 <Box
                   sx={{
                     border: '2px dashed',
-                    borderColor: 'primary.main',
-                    borderRadius: 2,
+                    borderColor: isDragOver
+                      ? theme.palette.mode === 'dark'
+                        ? '#00E5FF'
+                        : 'primary.main'
+                      : theme.palette.mode === 'dark'
+                        ? 'rgba(0, 229, 255, 0.4)'
+                        : 'primary.main',
+                    borderRadius: 3,
                     p: 4,
                     textAlign: 'center',
                     cursor: 'pointer',
-                    transition: 'all 0.3s ease',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    background: isDragOver
+                      ? theme.palette.mode === 'dark'
+                        ? 'linear-gradient(135deg, rgba(0, 229, 255, 0.15) 0%, rgba(0, 229, 255, 0.25) 100%)'
+                        : 'rgba(0, 229, 255, 0.1)'
+                      : theme.palette.mode === 'dark'
+                        ? 'linear-gradient(135deg, rgba(0, 229, 255, 0.02) 0%, rgba(0, 229, 255, 0.04) 100%)'
+                        : 'rgba(0, 229, 255, 0.02)',
+                    backdropFilter: 'blur(8px)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    transform: isDragOver ? 'translateY(-4px) scale(1.02)' : 'none',
+                    boxShadow: isDragOver
+                      ? theme.palette.mode === 'dark'
+                        ? '0 16px 48px rgba(0, 229, 255, 0.4), 0 0 0 1px rgba(0, 229, 255, 0.3)'
+                        : '0 16px 48px rgba(0, 0, 0, 0.2)'
+                      : 'none',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background:
+                        theme.palette.mode === 'dark'
+                          ? 'linear-gradient(45deg, transparent 30%, rgba(0, 229, 255, 0.05) 50%, transparent 70%)'
+                          : 'linear-gradient(45deg, transparent 30%, rgba(0, 229, 255, 0.1) 50%, transparent 70%)',
+                      transform: 'translateX(-100%)',
+                      transition: 'transform 0.6s ease',
+                      zIndex: 0,
+                    },
                     '&:hover': {
-                      borderColor: 'primary.dark',
-                      backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                      borderColor:
+                        theme.palette.mode === 'dark' ? 'rgba(0, 229, 255, 0.9)' : 'primary.dark',
+                      backgroundColor:
+                        theme.palette.mode === 'dark'
+                          ? 'rgba(0, 229, 255, 0.12)'
+                          : alpha(theme.palette.primary.main, 0.08),
+                      transform: 'translateY(-4px) scale(1.02)',
+                      boxShadow:
+                        theme.palette.mode === 'dark'
+                          ? '0 16px 48px rgba(0, 229, 255, 0.25), 0 0 0 1px rgba(0, 229, 255, 0.1)'
+                          : '0 16px 48px rgba(0, 0, 0, 0.15)',
+                      '&::before': {
+                        transform: 'translateX(100%)',
+                      },
+                    },
+                    '&:active': {
+                      transform: 'translateY(-2px) scale(1.01)',
                     },
                   }}
                   onClick={() => document.getElementById('image-upload-input')?.click()}
                   onDragOver={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    setIsDragOver(true);
                   }}
                   onDragEnter={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    setIsDragOver(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Only set to false if we're leaving the dropzone itself
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                      setIsDragOver(false);
+                    }
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    
+                    setIsDragOver(false);
+
                     const files = Array.from(e.dataTransfer.files);
-                    const imageFile = files.find(file => file.type.startsWith('image/'));
-                    
+                    const imageFile = files.find((file) => file.type.startsWith('image/'));
+
                     if (imageFile) {
                       handleImageUpload(imageFile);
                     } else {
@@ -919,20 +1079,126 @@ const SubmitShowPage: React.FC = observer(() => {
                       }
                     }}
                   />
-                  <CloudUpload sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-                  <Typography variant="h6" gutterBottom>
-                    Drop an image here or click to browse
+                  <CloudUpload
+                    sx={{
+                      fontSize: 48,
+                      color: isDragOver
+                        ? theme.palette.mode === 'dark'
+                          ? '#FFFFFF'
+                          : 'primary.dark'
+                        : theme.palette.mode === 'dark'
+                          ? '#00E5FF'
+                          : 'primary.main',
+                      mb: 2,
+                      position: 'relative',
+                      zIndex: 1,
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      filter:
+                        theme.palette.mode === 'dark'
+                          ? isDragOver
+                            ? 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.8))'
+                            : 'drop-shadow(0 0 8px rgba(0, 229, 255, 0.3))'
+                          : 'none',
+                      transform: isDragOver ? 'scale(1.2) translateY(-8px)' : 'none',
+                      '.MuiBox-root:hover &': {
+                        transform: isDragOver
+                          ? 'scale(1.2) translateY(-8px)'
+                          : 'scale(1.1) translateY(-4px)',
+                        filter:
+                          theme.palette.mode === 'dark'
+                            ? 'drop-shadow(0 0 16px rgba(0, 229, 255, 0.6))'
+                            : 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2))',
+                      },
+                    }}
+                  />
+                  <Typography
+                    variant="h6"
+                    gutterBottom
+                    sx={{
+                      color: isDragOver
+                        ? theme.palette.mode === 'dark'
+                          ? '#FFFFFF'
+                          : 'primary.dark'
+                        : theme.palette.mode === 'dark'
+                          ? '#FFFFFF'
+                          : 'text.primary',
+                      position: 'relative',
+                      zIndex: 1,
+                      transition: 'all 0.3s ease',
+                      fontWeight: 600,
+                      transform: isDragOver ? 'translateY(-2px)' : 'none',
+                      '.MuiBox-root:hover &': {
+                        color: theme.palette.mode === 'dark' ? '#00E5FF' : 'primary.main',
+                        transform: 'translateY(-2px)',
+                      },
+                    }}
+                  >
+                    {isDragOver ? 'Drop your image now!' : 'Drop an image here or click to browse'}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: isDragOver
+                        ? theme.palette.mode === 'dark'
+                          ? 'rgba(255, 255, 255, 0.9)'
+                          : 'text.primary'
+                        : theme.palette.mode === 'dark'
+                          ? 'rgba(255, 255, 255, 0.7)'
+                          : 'text.secondary',
+                      position: 'relative',
+                      zIndex: 1,
+                      transition: 'all 0.3s ease',
+                      '.MuiBox-root:hover &': {
+                        color:
+                          theme.palette.mode === 'dark'
+                            ? 'rgba(255, 255, 255, 0.9)'
+                            : 'text.primary',
+                      },
+                    }}
+                  >
                     Supports JPG, PNG, GIF, and other common image formats
                   </Typography>
                 </Box>
 
                 {parserStore.isLoading && (
-                  <Box sx={{ mt: 3, textAlign: 'center' }}>
-                    <CircularProgress size={40} />
-                    <Typography variant="body2" sx={{ mt: 2 }}>
+                  <Box
+                    sx={{
+                      mt: 3,
+                      textAlign: 'center',
+                      p: 3,
+                      background: 'rgba(0, 229, 255, 0.05)',
+                      borderRadius: 2,
+                      border: '1px solid rgba(0, 229, 255, 0.2)',
+                    }}
+                  >
+                    <CircularProgress
+                      size={40}
+                      sx={{
+                        color: theme.palette.mode === 'dark' ? '#00E5FF' : 'primary.main',
+                        mb: 2,
+                      }}
+                    />
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: theme.palette.mode === 'dark' ? '#FFFFFF' : 'text.primary',
+                        fontWeight: 500,
+                      }}
+                    >
                       Analyzing image with AI...
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color:
+                          theme.palette.mode === 'dark'
+                            ? 'rgba(255, 255, 255, 0.6)'
+                            : 'text.secondary',
+                        display: 'block',
+                        mt: 1,
+                      }}
+                    >
+                      This may take a few moments
                     </Typography>
                   </Box>
                 )}
@@ -984,8 +1250,32 @@ const SubmitShowPage: React.FC = observer(() => {
                   elevation={0}
                   sx={{
                     p: { xs: 2, sm: 3 },
-                    border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor:
+                      theme.palette.mode === 'dark'
+                        ? 'rgba(0, 229, 255, 0.2)'
+                        : 'rgba(255, 255, 255, 0.12)',
+                    borderRadius: 3,
+                    background:
+                      theme.palette.mode === 'dark'
+                        ? 'linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%)'
+                        : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%)',
+                    backdropFilter: 'blur(12px)',
+                    boxShadow:
+                      theme.palette.mode === 'dark'
+                        ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 229, 255, 0.1)'
+                        : '0 8px 32px rgba(0, 0, 0, 0.1)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? 'rgba(0, 229, 255, 0.4)'
+                          : 'rgba(255, 255, 255, 0.2)',
+                      boxShadow:
+                        theme.palette.mode === 'dark'
+                          ? '0 12px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 229, 255, 0.2)'
+                          : '0 12px 48px rgba(0, 0, 0, 0.15)',
+                    },
                   }}
                 >
                   <Typography
@@ -1058,7 +1348,32 @@ const SubmitShowPage: React.FC = observer(() => {
                       variant="outlined"
                       sx={{
                         p: { xs: 2, sm: 3 },
-                        background: `linear-gradient(135deg, ${theme.palette.primary.main}05, ${theme.palette.secondary.main}05)`,
+                        border: '1px solid',
+                        borderColor:
+                          theme.palette.mode === 'dark'
+                            ? 'rgba(0, 229, 255, 0.2)'
+                            : 'rgba(255, 255, 255, 0.12)',
+                        borderRadius: 3,
+                        background:
+                          theme.palette.mode === 'dark'
+                            ? 'linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%)'
+                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%)',
+                        backdropFilter: 'blur(12px)',
+                        boxShadow:
+                          theme.palette.mode === 'dark'
+                            ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 229, 255, 0.1)'
+                            : '0 8px 32px rgba(0, 0, 0, 0.1)',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          borderColor:
+                            theme.palette.mode === 'dark'
+                              ? 'rgba(0, 229, 255, 0.4)'
+                              : 'rgba(255, 255, 255, 0.2)',
+                          boxShadow:
+                            theme.palette.mode === 'dark'
+                              ? '0 12px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 229, 255, 0.2)'
+                              : '0 12px 48px rgba(0, 0, 0, 0.15)',
+                        },
                       }}
                     >
                       <Typography
@@ -1195,9 +1510,32 @@ const SubmitShowPage: React.FC = observer(() => {
                     elevation={0}
                     sx={{
                       p: { xs: 2, sm: 3 },
-                      border: `1px solid ${theme.palette.success.main}40`,
-                      borderRadius: 2,
-                      background: `linear-gradient(135deg, ${theme.palette.success.main}05, transparent)`,
+                      border: '1px solid',
+                      borderColor:
+                        theme.palette.mode === 'dark'
+                          ? 'rgba(0, 229, 255, 0.2)'
+                          : 'rgba(255, 255, 255, 0.12)',
+                      borderRadius: 3,
+                      background:
+                        theme.palette.mode === 'dark'
+                          ? 'linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%)'
+                          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%)',
+                      backdropFilter: 'blur(12px)',
+                      boxShadow:
+                        theme.palette.mode === 'dark'
+                          ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 229, 255, 0.1)'
+                          : '0 8px 32px rgba(0, 0, 0, 0.1)',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        borderColor:
+                          theme.palette.mode === 'dark'
+                            ? 'rgba(0, 229, 255, 0.4)'
+                            : 'rgba(255, 255, 255, 0.2)',
+                        boxShadow:
+                          theme.palette.mode === 'dark'
+                            ? '0 12px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 229, 255, 0.2)'
+                            : '0 12px 48px rgba(0, 0, 0, 0.15)',
+                      },
                     }}
                   >
                     <Typography
@@ -1456,55 +1794,36 @@ const SubmitShowPage: React.FC = observer(() => {
           </TabPanel>
         </Paper>
 
-        {/* Enhanced Confirmation Dialog */}
-        <Dialog
+        {/* Enhanced Confirmation Modal */}
+        <CustomModal
           open={showConfirmDialog}
           onClose={() => setShowConfirmDialog(false)}
+          title="Confirm Parsed Data"
+          icon={<CheckCircle />}
           maxWidth="sm"
-          fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 3,
-              p: 1,
-            },
-          }}
         >
-          <DialogTitle sx={{ pb: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <CheckCircle sx={{ color: 'success.main', mr: 2, fontSize: 32 }} />
-              <Box>
-                <Typography variant="h6" fontWeight={600}>
-                  Confirm Parsed Data
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Save this information to the database
-                </Typography>
-              </Box>
-            </Box>
-          </DialogTitle>
-          <DialogContent>
-            <Typography variant="body1" paragraph>
-              Are you sure you want to save this parsed data to our karaoke database? This will
-              create:
+          <Typography variant="body1" paragraph>
+            Are you sure you want to save this parsed data to our karaoke database? This will
+            create:
+          </Typography>
+          <Box component="ul" sx={{ pl: 2, mb: 2 }}>
+            <Typography component="li" variant="body2" gutterBottom>
+              <strong>1 Vendor:</strong> {parsedData?.aiAnalysis?.vendor?.name || 'Unknown'}
             </Typography>
-            <Box component="ul" sx={{ pl: 2, mb: 2 }}>
-              <Typography component="li" variant="body2" gutterBottom>
-                <strong>1 Vendor:</strong> {parsedData?.aiAnalysis?.vendor?.name || 'Unknown'}
-              </Typography>
-              <Typography component="li" variant="body2" gutterBottom>
-                <strong>{parsedData?.aiAnalysis?.djs?.length || 0} DJs/KJs:</strong>{' '}
-                {parsedData?.aiAnalysis?.djs?.map((dj) => dj.name).join(', ') || 'None'}
-              </Typography>
-              <Typography component="li" variant="body2">
-                <strong>{parsedData?.aiAnalysis?.shows?.length || 0} Shows:</strong> All scheduled
-                karaoke events
-              </Typography>
-            </Box>
-            <Alert severity="info" sx={{ mt: 2 }}>
-              This action will make the data available to all users on KaraokeHub.
-            </Alert>
-          </DialogContent>
-          <DialogActions sx={{ p: 3, pt: 1 }}>
+            <Typography component="li" variant="body2" gutterBottom>
+              <strong>{parsedData?.aiAnalysis?.djs?.length || 0} DJs/KJs:</strong>{' '}
+              {parsedData?.aiAnalysis?.djs?.map((dj) => dj.name).join(', ') || 'None'}
+            </Typography>
+            <Typography component="li" variant="body2">
+              <strong>{parsedData?.aiAnalysis?.shows?.length || 0} Shows:</strong> All scheduled
+              karaoke events
+            </Typography>
+          </Box>
+          <Alert severity="info" sx={{ mt: 2, mb: 3 }}>
+            This action will make the data available to all users on KaraokeHub.
+          </Alert>
+
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
             <Button
               onClick={() => setShowConfirmDialog(false)}
               variant="outlined"
@@ -1529,8 +1848,8 @@ const SubmitShowPage: React.FC = observer(() => {
             >
               {loading ? 'Saving...' : 'Confirm & Save'}
             </Button>
-          </DialogActions>
-        </Dialog>
+          </Box>
+        </CustomModal>
       </Box>
     </Box>
   );
