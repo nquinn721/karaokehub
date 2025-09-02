@@ -2,6 +2,7 @@ import {
   Add,
   Cancel,
   CheckCircle,
+  CloudUpload,
   Event,
   Facebook,
   Instagram,
@@ -307,6 +308,59 @@ const SubmitShowPage: React.FC = observer(() => {
     }
   };
 
+  const handleImageUpload = async (file: File) => {
+    parserStore.setLoading(true);
+    setError('');
+    
+    try {
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove data:image/...;base64, prefix
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Call the existing analyze-screenshots endpoint
+      const response = await fetch(`${apiStore.environmentInfo.baseURL}/parser/analyze-screenshots`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authStore.token}`,
+        },
+        body: JSON.stringify({
+          screenshots: [base64],
+          url: `uploaded-image-${Date.now()}.${file.name.split('.').pop()}`,
+          description: 'User uploaded karaoke show image',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        // Store the parsed data and show it in the modal (similar to URL parsing)
+        setParsedData(result.data);
+        setSuccess('Image analyzed successfully! Please review the extracted data.');
+      } else {
+        throw new Error('Failed to analyze image');
+      }
+    } catch (error) {
+      console.error('Error uploading and analyzing image:', error);
+      setError(`Failed to analyze image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      parserStore.setLoading(false);
+    }
+  };
+
   const handleManualShowSubmit = async () => {
     if (!selectedVendor) {
       setError('Please select or create a vendor first');
@@ -480,6 +534,12 @@ const SubmitShowPage: React.FC = observer(() => {
               <Tab
                 icon={<Link />}
                 label="Submit URL for Review"
+                iconPosition="start"
+                sx={{ gap: 1 }}
+              />
+              <Tab
+                icon={<CloudUpload />}
+                label="Submit Show Image"
                 iconPosition="start"
                 sx={{ gap: 1 }}
               />
@@ -780,6 +840,107 @@ const SubmitShowPage: React.FC = observer(() => {
           </TabPanel>
 
           <TabPanel value={tabValue} index={1}>
+            <Card
+              elevation={0}
+              sx={{
+                p: { xs: 2, sm: 3 },
+                mb: 3,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 2,
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.9) 100%)',
+              }}
+            >
+              <CardContent sx={{ p: { xs: 2, sm: 3 }, '&:last-child': { pb: 3 } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <CloudUpload
+                    sx={{
+                      fontSize: 32,
+                      color: theme.palette.primary.main,
+                      mr: 2,
+                    }}
+                  />
+                  <Box>
+                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 0.5 }}>
+                      Upload Show Image
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Upload an image from a karaoke show schedule or flyer for AI analysis
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box
+                  sx={{
+                    border: '2px dashed',
+                    borderColor: 'primary.main',
+                    borderRadius: 2,
+                    p: 4,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      borderColor: 'primary.dark',
+                      backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                    },
+                  }}
+                  onClick={() => document.getElementById('image-upload-input')?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const files = Array.from(e.dataTransfer.files);
+                    const imageFile = files.find(file => file.type.startsWith('image/'));
+                    
+                    if (imageFile) {
+                      handleImageUpload(imageFile);
+                    } else {
+                      setError('Please drop an image file');
+                    }
+                  }}
+                >
+                  <input
+                    id="image-upload-input"
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleImageUpload(file);
+                      }
+                    }}
+                  />
+                  <CloudUpload sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+                  <Typography variant="h6" gutterBottom>
+                    Drop an image here or click to browse
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Supports JPG, PNG, GIF, and other common image formats
+                  </Typography>
+                </Box>
+
+                {parserStore.isLoading && (
+                  <Box sx={{ mt: 3, textAlign: 'center' }}>
+                    <CircularProgress size={40} />
+                    <Typography variant="body2" sx={{ mt: 2 }}>
+                      Analyzing image with AI...
+                    </Typography>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          </TabPanel>
+
+          <TabPanel value={tabValue} index={2}>
             <Box sx={{ mb: { xs: 3, sm: 4 } }}>
               <Box
                 sx={{
