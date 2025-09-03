@@ -71,6 +71,12 @@ export interface ParsedKaraokeData {
     source?: string;
     confidence: number;
   }>;
+  rawData?: {
+    url: string;
+    title: string;
+    content: string;
+    parsedAt: Date;
+  };
 }
 
 @Injectable()
@@ -895,6 +901,12 @@ export class KaraokeParserService {
       },
       djs: [],
       shows: [],
+      rawData: {
+        url,
+        title: extractedData.name || 'Facebook Content',
+        content: JSON.stringify(extractedData),
+        parsedAt: new Date(),
+      },
     };
 
     // Convert profile shows to karaoke shows
@@ -981,6 +993,12 @@ export class KaraokeParserService {
             vendor: result.data.vendor,
             shows: result.data.shows || [],
             djs: result.data.djs || [],
+            rawData: result.data.rawData || {
+              url: url,
+              title: 'Facebook Page',
+              content: 'Parsed via FacebookParserService',
+              parsedAt: new Date(),
+            },
           };
 
           this.logAndBroadcast(
@@ -1187,14 +1205,23 @@ export class KaraokeParserService {
       );
 
       // Save to parsed_schedules table for admin review
-      const parsedSchedule = this.parsedScheduleRepository.create({
+      const parsedScheduleData: any = {
         url: url,
+        rawData: {
+          url: url,
+          title: this.extractTitleFromHtml(htmlContent),
+          content: truncatedContent,
+          parsedAt: new Date(),
+        },
         aiAnalysis: parsedData,
         status: ParseStatus.PENDING_REVIEW,
         parsingLogs: [...this.currentParsingLogs], // Include captured logs
-      });
+      };
 
-      const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
+      const parsedSchedule = this.parsedScheduleRepository.create(parsedScheduleData);
+      const savedSchedule = (await this.parsedScheduleRepository.save(
+        parsedSchedule,
+      )) as unknown as ParsedSchedule;
 
       // Mark the URL as parsed in the urls_to_parse table
       const urlToParse = await this.urlToParseRepository.findOne({ where: { url: url } });
@@ -1264,9 +1291,6 @@ export class KaraokeParserService {
       // Set parsing status to active
       this.setParsingStatus(true, url);
 
-      console.log(`📸 parseWebsiteWithScreenshot called for URL: ${url}`);
-      console.log(`📸 Starting screenshot-based parsing process...`);
-
       this.logAndBroadcast(
         `Starting screenshot-based parse and save operation for URL: ${url}`,
         'info',
@@ -1307,6 +1331,12 @@ export class KaraokeParserService {
             vendor: this.generateVendorFromUrl(url),
             shows: [],
             djs: [],
+            rawData: {
+              url,
+              title: 'Failed parsing',
+              content: 'Both Gemini Vision and HTML parsing failed',
+              parsedAt: new Date(),
+            },
           };
           this.logAndBroadcast(
             '⚠️ Using minimal data structure to prevent complete failure',
@@ -1348,14 +1378,23 @@ export class KaraokeParserService {
       const truncatedContent =
         htmlContent.length > 10000 ? htmlContent.substring(0, 10000) + '...' : htmlContent;
 
-      const parsedSchedule = this.parsedScheduleRepository.create({
+      const parsedScheduleData: any = {
         url: url,
+        rawData: {
+          url: url,
+          title: this.extractTitleFromHtml(htmlContent),
+          content: truncatedContent,
+          parsedAt: new Date(),
+        },
         aiAnalysis: parsedData,
         status: ParseStatus.PENDING_REVIEW,
         parsingLogs: [...this.currentParsingLogs], // Include captured logs
-      });
+      };
 
-      const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
+      const parsedSchedule = this.parsedScheduleRepository.create(parsedScheduleData);
+      const savedSchedule = (await this.parsedScheduleRepository.save(
+        parsedSchedule,
+      )) as unknown as ParsedSchedule;
 
       // Mark the URL as parsed in the urls_to_parse table
       const urlToParse = await this.urlToParseRepository.findOne({ where: { url: url } });
@@ -1640,6 +1679,7 @@ export class KaraokeParserService {
 
     return chunks;
   }
+
   /**
    * Process a single HTML content chunk
    */
@@ -1917,6 +1957,12 @@ ${htmlContent}`;
             source: show.source || url, // Only set page URL as fallback if show doesn't have its own source
           }))
         : [],
+      rawData: {
+        url,
+        title: this.extractTitleFromHtml(htmlContent),
+        content: htmlContent.substring(0, 1000), // Keep first 1000 chars for reference
+        parsedAt: new Date(),
+      },
     };
 
     // CRITICAL DEBUG: Log final data structure being returned
@@ -1964,6 +2010,12 @@ ${htmlContent}`;
         vendor: this.generateVendorFromUrl(url),
         djs: [],
         shows: [],
+        rawData: {
+          url,
+          title: this.extractTitleFromHtml(fullHtmlContent),
+          content: fullHtmlContent.substring(0, 1000),
+          parsedAt: new Date(),
+        },
       };
     }
 
@@ -1987,6 +2039,12 @@ ${htmlContent}`;
       vendor: combinedVendor,
       djs: uniqueDjs,
       shows: this.normalizeShowTimes(uniqueShows),
+      rawData: {
+        url,
+        title: this.extractTitleFromHtml(fullHtmlContent),
+        content: fullHtmlContent.substring(0, 1000),
+        parsedAt: new Date(),
+      },
     };
   }
 
@@ -2244,11 +2302,8 @@ ${htmlContent}`;
    * Clean Gemini response to extract valid JSON
    */
   private cleanGeminiResponse(text: string): string {
-    // Remove markdown code blocks - be more aggressive about it
-    let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
-
-    // Also remove any remaining backticks
-    cleaned = cleaned.replace(/`/g, '');
+    // Remove markdown code blocks
+    let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
 
     // Remove any text before the first {
     const firstBrace = cleaned.indexOf('{');
@@ -2653,24 +2708,33 @@ ${htmlContent}`;
       // Handle empty DJs array gracefully
       const djsData = approvedData.djs || [];
 
-      // First, try to find existing DJs by name only (regardless of vendor)
-      // This handles cases like "djmax614" who already exists with a vendor
-      const djNames = djsData
+      // Collect all unique vendor+name combinations for bulk lookup
+      const djLookupKeys = djsData
         .filter((djData) => djData.name && djData.name.trim() !== '')
-        .map((djData) => djData.name);
+        .map((djData) => ({
+          name: djData.name,
+          vendorId: primaryVendor?.id || null,
+          vendorName: primaryVendor?.name || 'default',
+        }));
 
-      const existingDJsByName =
-        djNames.length > 0
+      // Bulk fetch existing DJs with vendor relationship
+      const existingDJs =
+        djLookupKeys.length > 0
           ? await this.djRepository.find({
-              where: djNames.map((name) => ({ name })),
+              where: djLookupKeys.map((key) => ({
+                name: key.name,
+                vendorId: key.vendorId,
+              })),
               relations: ['vendor'],
             })
           : [];
 
-      // Create lookup map for existing DJs by name
-      const existingDJByNameMap = new Map<string, DJ>();
-      existingDJsByName.forEach((dj) => {
-        existingDJByNameMap.set(dj.name, dj);
+      // Create lookup map for existing DJs using vendor+name composite key
+      const existingDJMap = new Map<string, DJ>();
+      existingDJs.forEach((dj) => {
+        const vendorName = dj.vendor?.name || 'default';
+        const compositeKey = `${vendorName}|${dj.name}`;
+        existingDJMap.set(compositeKey, dj);
       });
 
       // Process DJs with bulk operations
@@ -2683,38 +2747,32 @@ ${htmlContent}`;
           continue;
         }
 
-        // First check if DJ exists by name (regardless of vendor)
-        let dj = existingDJByNameMap.get(djData.name);
+        // For DJs, use primary vendor or null if no vendors
+        const djVendorId = primaryVendor?.id || null;
+        const vendorName = primaryVendor?.name || 'default';
+        const compositeKey = `${vendorName}|${djData.name}`;
 
-        if (dj) {
-          // DJ exists - use existing DJ with their current vendor
-          this.logAndBroadcast(
-            `Using existing DJ: ${dj.name} (ID: ${dj.id}) with vendor: ${dj.vendor?.name || 'none'}`,
-            'info',
-          );
+        let dj = existingDJMap.get(compositeKey);
 
+        if (!dj) {
+          // Create new DJ
+          const newDJ = this.djRepository.create({
+            name: djData.name,
+            vendorId: djVendorId,
+            isActive: true,
+          });
+          djsToCreate.push(newDJ);
+          djMap.set(compositeKey, newDJ);
+          djsCreated++;
+        } else {
+          this.logAndBroadcast(`Using existing DJ: ${dj.name} (ID: ${dj.id})`, 'info');
           // Update DJ to active if it was inactive
           if (!dj.isActive) {
             dj.isActive = true;
             djsToUpdate.push(dj);
             djsUpdated++;
           }
-          djMap.set(djData.name, dj);
-        } else {
-          // DJ doesn't exist - create new DJ with primary vendor (if any)
-          const newDJ = this.djRepository.create({
-            name: djData.name,
-            vendorId: primaryVendor?.id || null,
-            isActive: true,
-          });
-          djsToCreate.push(newDJ);
-          djMap.set(djData.name, newDJ);
-          djsCreated++;
-
-          this.logAndBroadcast(
-            `Creating new DJ: ${djData.name} ${primaryVendor ? `with vendor: ${primaryVendor.name}` : 'without vendor'}`,
-            'info',
-          );
+          djMap.set(compositeKey, dj);
         }
       }
 
@@ -2724,7 +2782,9 @@ ${htmlContent}`;
         const savedDJs = await this.djRepository.save(djsToCreate);
         // Update the map with saved DJs (they now have IDs)
         savedDJs.forEach((dj) => {
-          djMap.set(dj.name, dj);
+          const vendorName = primaryVendor?.name || 'default';
+          const compositeKey = `${vendorName}|${dj.name}`;
+          djMap.set(compositeKey, dj);
         });
       }
 
@@ -2747,21 +2807,26 @@ ${htmlContent}`;
       // Prepare all shows for bulk insert
       const showsToCreate = [];
       const showPromises = approvedData.shows.map(async (showData) => {
-        // Find DJ if specified (using name-based lookup)
+        // Find DJ if specified (using vendor+name composite key)
         let djId: string | undefined;
         if (showData.djName) {
-          const dj = djMap.get(showData.djName);
+          // Determine which vendor this DJ belongs to
+          let djVendorName = 'default';
+          if (showData.vendor) {
+            const showVendorObj = vendorMap.get(showData.vendor);
+            djVendorName = showVendorObj?.name || 'default';
+          } else if (primaryVendor) {
+            djVendorName = primaryVendor.name;
+          }
+
+          const djCompositeKey = `${djVendorName}|${showData.djName}`;
+          const dj = djMap.get(djCompositeKey);
           djId = dj?.id;
 
           if (!dj) {
             this.logAndBroadcast(
-              `Warning: DJ "${showData.djName}" not found in show at ${showData.venueName || showData.venue}`,
+              `Warning: DJ "${showData.djName}" not found for vendor "${djVendorName}" in show at ${showData.venue}`,
               'warning',
-            );
-          } else {
-            this.logAndBroadcast(
-              `Found DJ "${showData.djName}" (ID: ${dj.id}) for show at ${showData.venueName || showData.venue}`,
-              'info',
             );
           }
         }
@@ -3206,58 +3271,21 @@ ${htmlContent}`;
   }
 
   async saveManualSubmissionForReview(vendorId: string, manualData: any): Promise<ParsedSchedule> {
-    const parsedSchedule = this.parsedScheduleRepository.create({
+    const parsedScheduleData: any = {
       url: 'manual-submission',
+      rawData: {
+        url: 'manual-submission',
+        title: 'Manual Data Entry',
+        content: JSON.stringify(manualData),
+        parsedAt: new Date(),
+      },
       aiAnalysis: manualData,
       status: ParseStatus.PENDING_REVIEW,
       vendorId,
-    });
+    };
 
-    return this.parsedScheduleRepository.save(parsedSchedule);
-  }
-
-  /**
-   * Save user-submitted parsed image data for admin review
-   */
-  async saveUserSubmittedImageData(
-    parsedData: ParsedKaraokeData,
-    sourceUrl: string,
-    description: string,
-  ): Promise<{
-    parsedScheduleId: string;
-    data: ParsedKaraokeData;
-  }> {
-    try {
-      // Save to parsed_schedules table for admin review
-      const parsedSchedule = this.parsedScheduleRepository.create({
-        url: sourceUrl,
-        aiAnalysis: parsedData,
-        status: ParseStatus.PENDING_REVIEW,
-        reviewComments: `User-submitted image: ${description}`, // Use reviewComments to flag as user-submitted
-        parsingLogs: [
-          {
-            timestamp: new Date(),
-            level: 'info',
-            message: 'User uploaded karaoke image for AI analysis',
-          },
-        ],
-      });
-
-      const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
-
-      this.logAndBroadcast(
-        `Successfully saved user-submitted image data for admin review. ID: ${savedSchedule.id}`,
-        'success',
-      );
-
-      return {
-        parsedScheduleId: savedSchedule.id,
-        data: parsedData,
-      };
-    } catch (error) {
-      this.logAndBroadcast('Error saving user-submitted image data:', 'error');
-      throw new Error(`Failed to save user-submitted image data: ${error.message}`);
-    }
+    const parsedSchedule = this.parsedScheduleRepository.create(parsedScheduleData);
+    return this.parsedScheduleRepository.save(parsedSchedule) as unknown as Promise<ParsedSchedule>;
   }
 
   /**
@@ -3597,32 +3625,7 @@ ${htmlContent}`;
         },
       });
 
-      const prompt = `FIRST: Analyze the page type - is this a VENUE DIRECTORY or a DJ SCHEDULE PAGE?
-
-PAGE TYPE DETECTION:
-1. VENUE DIRECTORY: Shows many different venues with their individual schedules
-2. DJ SCHEDULE PAGE: Shows where/when a specific DJ or DJ company performs at various venues
-
-IF DJ SCHEDULE PAGE (like "Steve's DJ", "DJ Schedule", single company performing at multiple venues):
-Extract each performance/event where this DJ/company performs:
-- Each day/venue combination is a separate show
-- Extract the DJ name from context (e.g., "with DJ Steve", "DJ Chas")
-- Extract venue names where they perform
-- Extract complete address information for each venue
-- Extract show times and days
-
-EXAMPLE DJ SCHEDULE EXTRACTION:
-If you see: "SUNDAYS KARAOKE 7:00PM - 11:00PM with DJ Steve - ALIBI BEACH LOUNGE - 8010 Surf Drive Panama City Beach, FL 32408"
-Extract as:
-- venues: [{"name": "Alibi Beach Lounge", "address": "8010 Surf Drive", "city": "Panama City Beach", "state": "FL", "zip": "32408"}]
-- djs: [{"name": "DJ Steve", "confidence": 0.9}]
-- shows: [{"venueName": "Alibi Beach Lounge", "day": "Sunday", "time": "7:00PM - 11:00PM", "startTime": "19:00", "endTime": "23:00", "djName": "DJ Steve"}]
-
-IF VENUE DIRECTORY (traditional karaoke directory with many venues):
-Extract each venue's karaoke events:
-- Each venue may have multiple days/times
-- Look for DJ/host names associated with each event
-- Extract venue information and schedules
+      const prompt = `Analyze this screenshot and extract ALL karaoke shows from the ENTIRE weekly schedule.
 
 CRITICAL RESPONSE REQUIREMENTS:
 - Return ONLY valid JSON, no other text
@@ -3638,6 +3641,8 @@ CRITICAL RESPONSE REQUIREMENTS:
 - Same venue, same day, same time = DUPLICATE, include only once
 - Verify each show is truly distinct before adding to the list
 
+CRITICAL: This page contains shows for ALL 7 DAYS (Monday through Sunday). You must extract shows from the COMPLETE page, not just the top section.
+
 Extract from the ENTIRE image:
 - ALL venue names from Monday through Sunday
 - ALL addresses, phone numbers, and showtimes  
@@ -3646,11 +3651,10 @@ Extract from the ENTIRE image:
 
 🎤 DJ/HOST EXTRACTION - CRITICAL:
 - Look for "hosted by" text patterns near each venue
-- Look for "with DJ [Name]" patterns
-- Extract ALL DJ/host names like "DJ Steve", "DJ Chas", "DJ Nikki", "Mattallica", "Dr Rockso", "Frankie the Intern", etc.
+- Extract ALL DJ/host names like "Mattallica", "Dr Rockso", "Frankie the Intern", "Rini the Riot", etc.
 - Each show typically has a host name mentioned - extract these as djName for each show
 - DJ names often appear as links or special formatting near venue information
-- Examples: "hosted by Mattallica", "with DJ Steve", "DJ Chas performing"
+- Examples: "hosted by Mattallica", "hosted by Dr Rockso", "hosted by Frankie the Intern"
 
 EXPECTED: There should be 35-40+ shows total across all days of the week.
 
@@ -3753,7 +3757,7 @@ Return ONLY valid JSON with no extra text:
   ],
   "djs": [
     {
-      "name": "DJ Name (like DJ Steve, DJ Chas, DJ Nikki, Mattallica, Dr Rockso, etc.)",
+      "name": "DJ Name (like Mattallica, Dr Rockso, Frankie the Intern, etc.)",
       "confidence": 0.8,
       "context": "Where they perform",
       "aliases": []
@@ -3763,11 +3767,11 @@ Return ONLY valid JSON with no extra text:
     {
       "venueName": "Venue Name (must match a venue from venues array)",
       "date": "day_of_week",
-      "time": "time like '7:00PM - 11:00PM'",
+      "time": "time like '7 pm'",
       "startTime": "24-hour format like '19:00'",
-      "endTime": "24-hour format like '23:00'",
+      "endTime": "close",
       "day": "day_of_week",
-      "djName": "DJ/host name (REQUIRED - extract from 'with DJ Steve', 'hosted by DJ Chas', etc.)",
+      "djName": "DJ/host name from 'hosted by' text (REQUIRED if visible)",
       "vendor": "Vendor/company providing service",
       "confidence": 0.9
     }
@@ -3819,14 +3823,9 @@ Return ONLY valid JSON with no extra text:
         throw new Error(`Gemini Vision refused to process the image: ${text.substring(0, 100)}...`);
       }
 
-      // Check if response looks like JSON at all (including markdown wrapped JSON)
+      // Check if response looks like JSON at all
       const trimmedText = text.trim();
-      if (
-        !trimmedText.startsWith('{') &&
-        !trimmedText.startsWith('[') &&
-        !trimmedText.includes('```json') &&
-        !trimmedText.includes('{')
-      ) {
+      if (!trimmedText.startsWith('{') && !trimmedText.startsWith('[')) {
         this.logAndBroadcast(
           `❌ Non-JSON response from Gemini: ${text.substring(0, 200)}...`,
           'error',
@@ -3857,22 +3856,6 @@ Return ONLY valid JSON with no extra text:
         this.logAndBroadcast(`Cleaned JSON length: ${cleanJsonString.length} characters`, 'info');
         parsedData = JSON.parse(cleanJsonString);
         this.logAndBroadcast('✅ JSON parsing successful', 'success');
-
-        // Log what was actually found
-        const showsCount = parsedData.shows?.length || 0;
-        const djsCount = parsedData.djs?.length || 0;
-        const venuesCount = parsedData.venues?.length || 0;
-        this.logAndBroadcast(
-          `📊 Parsed data summary: ${showsCount} shows, ${djsCount} DJs, ${venuesCount} venues`,
-          'info',
-        );
-
-        if (showsCount === 0) {
-          this.logAndBroadcast(
-            '⚠️ No shows found in parsed data - this may indicate parsing issues',
-            'warning',
-          );
-        }
       } catch (jsonError) {
         this.logAndBroadcast('❌ JSON parsing failed, attempting to fix common issues:', 'error');
         this.logAndBroadcast(`JSON Error: ${jsonError.message}`, 'error');
@@ -4120,6 +4103,12 @@ Return ONLY valid JSON with no extra text:
         vendor: parsedData.vendor || this.generateVendorFromUrl(url),
         djs: Array.isArray(parsedData.djs) ? parsedData.djs : [],
         shows: Array.isArray(parsedData.shows) ? this.normalizeShowTimes(parsedData.shows) : [],
+        rawData: {
+          url,
+          title: 'Screenshot-based parsing',
+          content: 'Parsed from full-page screenshot',
+          parsedAt: new Date(),
+        },
       };
 
       // Extract DJs from individual shows and add to main DJs array
@@ -4156,6 +4145,63 @@ Return ONLY valid JSON with no extra text:
   }
 
   /**
+   * Safely truncate string for logging
+   */
+  private truncateForLogging(str: string, maxLength: number = 200): string {
+    if (str.length <= maxLength) {
+      return str;
+    }
+    return str.substring(0, maxLength) + `... (truncated, total length: ${str.length})`;
+  }
+
+  /**
+   * Clean and validate base64 image data
+   */
+  private cleanAndValidateBase64(base64Data: string, index: number): string {
+    try {
+      // Remove data URL prefix if present
+      let cleanBase64 = base64Data;
+      if (base64Data.startsWith('data:image/')) {
+        const base64Index = base64Data.indexOf(',');
+        if (base64Index !== -1) {
+          cleanBase64 = base64Data.substring(base64Index + 1);
+        }
+      }
+
+      // Remove any whitespace or newlines
+      cleanBase64 = cleanBase64.replace(/\s/g, '');
+
+      // Validate base64 format
+      if (!cleanBase64.match(/^[A-Za-z0-9+/]*={0,2}$/)) {
+        throw new Error(`Invalid base64 format`);
+      }
+
+      // Test if it's valid base64 by trying to create a buffer
+      const buffer = Buffer.from(cleanBase64, 'base64');
+
+      // Basic image format validation - check for common image headers
+      const imageHeaders = {
+        jpeg: [0xff, 0xd8, 0xff],
+        png: [0x89, 0x50, 0x4e, 0x47],
+        gif: [0x47, 0x49, 0x46],
+        webp: [0x52, 0x49, 0x46, 0x46],
+      };
+
+      const isValidImage = Object.values(imageHeaders).some((header) =>
+        header.every((byte, i) => buffer[i] === byte),
+      );
+
+      if (!isValidImage) {
+        throw new Error(`Data does not appear to be a valid image`);
+      }
+
+      return cleanBase64;
+    } catch (error) {
+      throw new Error(`Screenshot ${index + 1} validation failed: ${error.message}`);
+    }
+  }
+
+  /**
    * Analyze multiple screenshots with Gemini Vision for Instagram parsing
    */
   async analyzeScreenshotsWithGemini(
@@ -4165,7 +4211,7 @@ Return ONLY valid JSON with no extra text:
   ): Promise<ParsedKaraokeData> {
     try {
       this.logAndBroadcast(
-        `Starting karaoke image analysis with ${screenshots.length} image(s)`,
+        `Starting Instagram screenshot analysis with ${screenshots.length} screenshots`,
         'info',
       );
 
@@ -4179,124 +4225,212 @@ Return ONLY valid JSON with no extra text:
         },
       });
 
-      const prompt = `Analyze this karaoke show image/flyer and extract ALL karaoke event information with complete details.
+      const prompt = `Analyze these Instagram profile screenshots and extract ALL karaoke shows with complete venue addresses and show times.
 
-🎯 CRITICAL EXTRACTION FOCUS: Extract EXACTLY these elements for database storage:
-- VENUE: Complete name, full street address, city, state, ZIP + precise GPS coordinates
-- SHOW: Day of week, start time, end time, venue name, DJ name
-- DJ: Host name (remove @ symbols, like "djmax614" not "@djmax614")
-- VENDOR: Business/service provider (may not be visible in image - DJ will be linked to existing vendor in database)
+🎯 CRITICAL FOCUS: This Instagram profile contains a weekly karaoke schedule - you MUST extract ALL venues, COMPLETE addresses, and EXACT show times.
 
-🏢 VENUE REQUIREMENTS - ABSOLUTELY CRITICAL:
-- Extract COMPLETE venue name exactly as shown
-- Get FULL street address (like "56 N. High Street") 
-- Extract city, state, ZIP separately (like Dublin, OH, 43017)
-- MANDATORY: Provide precise lat/lng coordinates for exact venue location
-- Use venue name + complete address to determine GPS coordinates with 6+ decimal precision
+CRITICAL RESPONSE REQUIREMENTS:
+- Return ONLY valid JSON, no other text
+- Extract EVERY venue mentioned across all screenshots
+- Get COMPLETE addresses with street, city, state
+- Extract EXACT show times (not approximations)
+- Look at BOTH the profile description/bio area AND individual posts
 
-� GPS COORDINATE REQUIREMENTS - MUST HAVE:
-For EVERY venue, provide precise GPS coordinates:
-- Research the venue name + address to get exact location
-- Return lat/lng as decimal numbers with 6+ decimal places
-- Example: "56 N. High Street, Dublin OH 43017" → lat: 40.0992841, lng: -83.1140771
-- Coordinates must be accurate for the specific address shown
+🚫 DUPLICATE PREVENTION - CRITICAL RULES:
+- ONLY extract UNIQUE shows - no duplicates allowed
+- If the same venue appears multiple times with the same day/time, only include it ONCE
+- Different days at the same venue = separate shows (e.g., "Bar Monday" vs "Bar Saturday")  
+- Different times at the same venue = separate shows (e.g., "Bar 7:00 PM" vs "Bar 10:00 PM")
+- Same venue, same day, same time = DUPLICATE, include only once
+- Cross-check all screenshots to prevent duplicates between different images
 
-🎤 DJ EXTRACTION - CRITICAL:
-- Find DJ/host names, usually after "HOSTED BY" or with @ symbols
-- Remove @ symbols: "@djmax614" becomes "djmax614"
-- Extract exact DJ handle/name as shown
-- Don't worry about vendor - existing DJs in database have vendors attached
+Instagram Profile: ${url}
+${description ? `Description: ${description}` : ''}
 
-🗓️ SHOW SCHEDULE EXTRACTION:
-- Extract day of week: "TUESDAYS" → "tuesday" (lowercase)
-- Extract time range: "6PM-9PM" → start: "6 pm", end: "9 pm"
-- Convert to 24-hour format: "6 pm" → "18:00", "9 pm" → "21:00"
-- Create ONE show entry per venue + day + time combination
+📸 SCREENSHOT ANALYSIS INSTRUCTIONS:
+Screenshot 1 (Top): Contains profile bio/description with weekly schedule summary
+Screenshot 2 (Middle): May contain detailed posts with venue information  
+Screenshot 3 (Bottom): Additional posts with venue details and addresses
 
-🚨 ADDRESS SEPARATION - NEVER MIX COMPONENTS:
-✅ CORRECT parsing example:
-"56 N. High Street, Dublin OH 43017"
-→ address: "56 N. High Street" (street only)
-→ city: "Dublin" (city only)  
-→ state: "OH" (state code only)
-→ zip: "43017" (ZIP only)
+🏢 VENUE & ADDRESS EXTRACTION - CRITICAL:
+- Look for complete address patterns like "1234 Main St, Columbus, OH" 
+- Extract phone numbers that appear near venue names
+- Look for venue websites or social media handles
+- Each venue should have a complete address, not just a name
+- If you see "Oneilly's Sports Pub" - find its complete address in the posts
+- Look for patterns like "Tonight at [Venue] - [Address] - [Time]"
+
+🕒 TIME EXTRACTION - MANDATORY:
+- Look for specific times like "7pm", "8pm", "9pm", "10pm"
+- Convert to both human format ("7 pm") AND 24-hour format ("19:00")
+- If you see a venue but no time, default to common karaoke hours
+- Look for phrases like "starts at", "begins at", "showtime"
+- NEVER leave time fields empty
+
+🎤 DJ NAME EXTRACTION:
+- Extract the profile owner's name as the primary DJ
+- Look for @username in the profile
+- Check profile description for DJ name or business name
+
+🗓️ DAY EXTRACTION:
+- Look for weekly schedule patterns: "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"
+- Or full day names: "Monday", "Tuesday", etc.
+- Each venue + day combination = separate show entry
+- If schedule shows "Monday: Venue A, Tuesday: Venue B" - create 2 separate shows
+
+🚨 CRITICAL ADDRESS COMPONENT SEPARATION:
+NEVER MIX ADDRESS COMPONENTS - SEPARATE THEM CLEANLY:
+
+✅ CORRECT address parsing examples:
+"1930 Lewis Turner Blvd Fort Walton Beach, FL 32647"
+→ address: "1930 Lewis Turner Blvd"
+→ city: "Fort Walton Beach"  
+→ state: "FL"
+→ zip: "32647"
+
+"630 North High Street Columbus, Ohio 43215"
+→ address: "630 North High Street"
+→ city: "Columbus"
+→ state: "OH" 
+→ zip: "43215"
 
 ❌ WRONG - DON'T DO THIS:
-→ address: "56 N. High Street, Dublin OH 43017" (contains city/state/zip)
+address: "1930 Lewis Turner Blvd Fort Walton Beach, FL 32647" ← CONTAINS CITY/STATE/ZIP
 
-📝 REAL EXAMPLE FOR YOUR IMAGE:
-From: "KARAOKE IN THE LOUNGE - TUESDAYS 6PM-9PM - NORTH HIGH DUBLIN - 56 N. High Street, Dublin OH 43017 - HOSTED BY @DJMAX614"
+🌍 COORDINATE REQUIREMENTS - MANDATORY:
+For EVERY venue, provide precise lat/lng coordinates:
+- Use venue name + complete address to determine exact location
+- Provide coordinates as decimal numbers with 6+ decimal places
+- Validate coordinates are in the correct city/state
+- Example: "Oneilly's Sports Pub" in Columbus, OH → lat: 39.961176, lng: -82.998794
+
+📝 EXAMPLE EXTRACTION:
+If you see: "Friday nights at Oneilly's Sports Pub - 123 Main St, Columbus, OH - 9pm karaoke with djmax614"
 
 Extract as:
-- Venue: "North High Dublin" (the business name)
-- Address: "56 N. High Street" (street address only)
-- City: "Dublin", State: "OH", ZIP: "43017"
-- Day: "tuesday" (from TUESDAYS)
-- Times: "6 pm - 9 pm" (from 6PM-9PM)
-- DJ: "djmax614" (from @DJMAX614, remove @)
-- GPS: lat: 40.0992841, lng: -83.1140771 (precise coordinates)
-
-RETURN ONLY THIS EXACT JSON FORMAT:
 {
+  "venue": "Oneilly's Sports Pub",
+  "address": "123 Main St",
+  "city": "Columbus", 
+  "state": "OH",
+  "day": "friday",
+  "time": "9 pm",
+  "startTime": "21:00",
+  "djName": "djmax614",
+  "lat": 39.961176,
+  "lng": -82.998794
+}
+
+Return ONLY valid JSON:
+{
+  "vendor": {
+    "name": "DJ or business name from profile",
+    "website": "${url}",
+    "description": "Profile bio/description text",
+    "confidence": 0.9
+  },
   "venues": [
     {
-      "name": "Complete venue name from image",
-      "address": "Street address ONLY (no city/state/zip)",
+      "name": "COMPLETE Venue Name",
+      "address": "COMPLETE street address ONLY (no city/state/zip)",
       "city": "City name ONLY",
-      "state": "2-letter state code ONLY",
+      "state": "2-letter state code ONLY", 
       "zip": "ZIP code ONLY",
-      "lat": 40.0992841,
-      "lng": -83.1140771,
-      "phone": "Phone if shown in image",
-      "website": "Website if shown in image",
-      "confidence": 0.9
+      "lat": "REQUIRED precise latitude",
+      "lng": "REQUIRED precise longitude",
+      "phone": "Phone number if found",
+      "website": "Website if found",
+      "confidence": 0.8
     }
   ],
   "djs": [
     {
-      "name": "DJ name (remove @ symbol)",
+      "name": "DJ Name from profile",
       "confidence": 0.9,
-      "context": "Karaoke host from image"
+      "context": "Instagram profile owner"
     }
   ],
   "shows": [
     {
-      "venueName": "Venue name (must exactly match venues array name)",
-      "time": "Time range like '6 pm - 9 pm'",
-      "startTime": "24-hour format like '18:00'",
-      "endTime": "24-hour format like '21:00'",
-      "day": "day_of_week in lowercase (tuesday, friday, etc)",
-      "djName": "DJ name (must match djs array name)",
-      "description": "Any additional show details from image",
-      "confidence": 0.9
+      "venueName": "Venue Name (must match a venue from venues array)",
+      "time": "EXACT time like '9 pm'",
+      "startTime": "REQUIRED 24-hour format like '21:00'",
+      "endTime": "End time or 'close'",
+      "day": "EXACT day_of_week",
+      "djName": "DJ/host name",
+      "vendor": "Vendor/company providing service",
+      "description": "Additional show details",
+      "confidence": 0.8
     }
   ]
 }`;
 
+      // Validate and clean base64 strings before converting to image parts
+      this.logAndBroadcast(`Processing ${screenshots.length} screenshots for validation`, 'info');
+
+      const validScreenshots = screenshots.map((screenshot, index) => {
+        try {
+          const truncatedPreview = this.truncateForLogging(screenshot, 100);
+          this.logAndBroadcast(
+            `Validating screenshot ${index + 1}/${screenshots.length} (length: ${screenshot.length}, preview: ${truncatedPreview})`,
+            'info',
+          );
+          return this.cleanAndValidateBase64(screenshot, index);
+        } catch (error) {
+          this.logAndBroadcast(`❌ ${error.message}`, 'error');
+          throw error;
+        }
+      });
+
+      this.logAndBroadcast(
+        `✅ All ${validScreenshots.length} screenshots validated successfully`,
+        'success',
+      );
+
       // Convert base64 strings to image parts
-      const imageParts = screenshots.map((screenshot) => ({
+      const imageParts = validScreenshots.map((screenshot) => ({
         inlineData: {
           data: screenshot,
           mimeType: 'image/jpeg',
         },
       }));
 
-      this.logAndBroadcast(`Making Gemini Vision API request with ${screenshots.length} images`);
+      this.logAndBroadcast(
+        `Making Gemini Vision API request with ${validScreenshots.length} images`,
+      );
 
-      const result = (await Promise.race([
-        model.generateContent([prompt, ...imageParts]),
-        new Promise((_, reject) =>
-          setTimeout(
-            () => reject(new Error('Gemini Vision API timeout after 120 seconds')),
-            120000,
+      let result;
+      try {
+        result = (await Promise.race([
+          model.generateContent([prompt, ...imageParts]),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error('Gemini Vision API timeout after 120 seconds')),
+              120000,
+            ),
           ),
-        ),
-      ])) as any;
+        ])) as any;
+      } catch (apiError) {
+        this.logAndBroadcast(`❌ Gemini Vision API error: ${apiError.message}`, 'error');
+
+        // Handle specific API errors
+        if (apiError.message.includes('API_KEY')) {
+          throw new Error('Invalid or missing Gemini API key');
+        } else if (apiError.message.includes('QUOTA_EXCEEDED')) {
+          throw new Error('Gemini API quota exceeded');
+        } else if (apiError.message.includes('INVALID_ARGUMENT')) {
+          throw new Error('Invalid image data provided to Gemini API');
+        } else if (apiError.message.includes('timeout')) {
+          throw new Error('Gemini API request timed out - images may be too large');
+        }
+
+        throw new Error(`Gemini Vision API failed: ${apiError.message}`);
+      }
 
       const response = await result.response;
       const text = response.text();
 
-      this.logAndBroadcast('Gemini Vision response received for karaoke image analysis');
+      this.logAndBroadcast('Gemini Vision response received for Instagram analysis');
       this.logAndBroadcast(`Response length: ${text.length} characters`);
 
       // Clean and parse JSON response
@@ -4304,9 +4438,9 @@ RETURN ONLY THIS EXACT JSON FORMAT:
       try {
         const cleanJsonString = this.cleanGeminiResponse(text);
         parsedData = JSON.parse(cleanJsonString);
-        this.logAndBroadcast('✅ Karaoke image JSON parsing successful', 'success');
+        this.logAndBroadcast('✅ Instagram JSON parsing successful', 'success');
       } catch (jsonError) {
-        this.logAndBroadcast('❌ Karaoke image JSON parsing failed:', 'error');
+        this.logAndBroadcast('❌ Instagram JSON parsing failed:', 'error');
         this.logAndBroadcast(`JSON Error: ${jsonError.message}`, 'error');
         throw new Error(`Invalid JSON response from Gemini: ${jsonError.message}`);
       }
@@ -4315,24 +4449,97 @@ RETURN ONLY THIS EXACT JSON FORMAT:
       const showCount = parsedData.shows?.length || 0;
       const djCount = parsedData.djs?.length || 0;
       const venueCount = parsedData.venues?.length || 0;
+      const vendorName = parsedData.vendor?.name || 'Instagram Profile';
 
       this.logAndBroadcast(
-        `Karaoke image analysis results: ${showCount} shows, ${djCount} DJs, ${venueCount} venues`,
+        `Instagram analysis results: ${showCount} shows, ${venueCount} venues, ${djCount} DJs, profile: ${vendorName}`,
         'success',
       );
 
-      // Ensure required structure for the deduplication system
+      // Ensure required structure
       const finalData: ParsedKaraokeData = {
+        vendor: parsedData.vendor || {
+          name: 'Instagram Profile',
+          website: url,
+          description: 'Parsed from Instagram screenshots',
+          confidence: 0.7,
+        },
         venues: Array.isArray(parsedData.venues) ? parsedData.venues : [],
         djs: Array.isArray(parsedData.djs) ? parsedData.djs : [],
         shows: Array.isArray(parsedData.shows) ? this.normalizeShowTimes(parsedData.shows) : [],
-        // Note: No vendor field - existing DJs in database will have their vendors attached
+        rawData: {
+          url,
+          title: 'Instagram Screenshots',
+          content: 'Parsed from Instagram profile screenshots',
+          parsedAt: new Date(),
+        },
       };
 
       return finalData;
     } catch (error) {
-      this.logAndBroadcast('Error analyzing karaoke image:', 'error');
-      throw new Error(`Karaoke image analysis failed: ${error.message}`);
+      this.logAndBroadcast('Error analyzing Instagram screenshots:', 'error');
+      throw new Error(`Instagram screenshot analysis failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Approve and save admin-uploaded analysis data with deduplication
+   */
+  async approveAndSaveAdminData(approvedData: ParsedKaraokeData): Promise<any> {
+    this.logAndBroadcast('Starting admin data approval and save process', 'info');
+
+    try {
+      // Ensure venues array exists - extract from shows if missing
+      if (!approvedData.venues || approvedData.venues.length === 0) {
+        approvedData.venues = this.extractVenuesFromShows(approvedData.shows || []);
+        this.logAndBroadcast(
+          `Extracted ${approvedData.venues.length} unique venues from show data`,
+          'info',
+        );
+      }
+
+      // Remove duplicates from approved data before processing
+      const originalShowCount = approvedData.shows.length;
+      approvedData.shows = this.removeDuplicateShows(approvedData.shows);
+      approvedData.djs = this.removeDuplicateDjs(approvedData.djs);
+      const finalShowCount = approvedData.shows.length;
+      const duplicatesRemoved = originalShowCount - finalShowCount;
+
+      this.logAndBroadcast(
+        `Removed ${duplicatesRemoved} duplicate shows (${originalShowCount} → ${finalShowCount})`,
+        'info',
+      );
+
+      // Create a temporary parsed schedule for admin data
+      const tempParsedSchedule = await this.parsedScheduleRepository.save({
+        url: 'Admin Upload',
+        status: ParseStatus.APPROVED,
+        rawData: approvedData.rawData || { content: 'Admin uploaded screenshot analysis' },
+        aiAnalysis: approvedData,
+        notes: 'Admin approved screenshot analysis',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Use the existing method to save the data
+      const result = await this.approveAndSaveParsedData(tempParsedSchedule.id, approvedData);
+
+      this.logAndBroadcast(
+        `Admin data successfully saved via schedule ID: ${tempParsedSchedule.id}`,
+        'success',
+      );
+
+      return {
+        success: true,
+        duplicatesRemoved,
+        originalCount: originalShowCount,
+        finalCount: finalShowCount,
+        scheduleId: tempParsedSchedule.id,
+        saveResult: result,
+      };
+    } catch (error) {
+      this.logAndBroadcast(`Error saving admin data: ${error.message}`, 'error');
+      throw new Error(`Failed to save admin data: ${error.message}`);
     }
   }
 
@@ -4381,14 +4588,23 @@ RETURN ONLY THIS EXACT JSON FORMAT:
       await this.ensureUrlNameIsSet(url, parsedData);
 
       // Save to parsed_schedules table for admin review
-      const parsedSchedule = this.parsedScheduleRepository.create({
+      const parsedScheduleData: any = {
         url: url,
+        rawData: {
+          url: url,
+          title: 'Instagram Profile',
+          content: 'Parsed from Instagram visual content',
+          parsedAt: new Date(),
+        },
         aiAnalysis: parsedData,
         status: ParseStatus.PENDING_REVIEW,
         parsingLogs: [...this.currentParsingLogs], // Include captured logs
-      });
+      };
 
-      const savedSchedule = await this.parsedScheduleRepository.save(parsedSchedule);
+      const parsedSchedule = this.parsedScheduleRepository.create(parsedScheduleData);
+      const savedSchedule = (await this.parsedScheduleRepository.save(
+        parsedSchedule,
+      )) as unknown as ParsedSchedule;
 
       // Mark the URL as parsed in the urls_to_parse table
       const urlToParse = await this.urlToParseRepository.findOne({ where: { url: url } });
@@ -4882,6 +5098,12 @@ Return ONLY valid JSON:
         vendor: parsedData.vendor || this.generateVendorFromUrl(url),
         djs: Array.isArray(parsedData.djs) ? parsedData.djs : [],
         shows: Array.isArray(parsedData.shows) ? this.normalizeShowTimes(parsedData.shows) : [],
+        rawData: {
+          url,
+          title: 'Instagram Individual Posts Analysis',
+          content: textContent.substring(0, 1000),
+          parsedAt: new Date(),
+        },
       };
 
       this.logAndBroadcast(
@@ -4963,6 +5185,12 @@ Return ONLY valid JSON:
           vendor: this.generateVendorFromUrl(url),
           djs: Array.from(djs).map((name) => ({ name: String(name), confidence: 0.3 })),
           shows: shows,
+          rawData: {
+            url,
+            title: 'Emergency extraction',
+            content: 'Recovered from malformed JSON',
+            parsedAt: new Date(),
+          },
         };
       }
 

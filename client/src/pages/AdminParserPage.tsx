@@ -20,12 +20,14 @@ import {
   faUserShield,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CloudUpload } from '@mui/icons-material';
 import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
   Alert,
   alpha,
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -51,17 +53,26 @@ import {
   Radio,
   RadioGroup,
   Select,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Tabs,
   TextField,
   Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { authStore, parserStore, uiStore, webSocketStore } from '@stores/index';
+import {
+  apiStore,
+  authStore,
+  parserStore,
+  uiStore,
+  vendorStore,
+  webSocketStore,
+} from '@stores/index';
 import { autorun } from 'mobx';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useRef, useState } from 'react';
@@ -96,6 +107,21 @@ const AdminParserPage: React.FC = observer(() => {
   const [facebookRequestId, setFacebookRequestId] = useState<string | null>(null);
   const [facebookLoginLoading, setFacebookLoginLoading] = useState(false);
   const [facebookLoginError, setFacebookLoginError] = useState<string | null>(null);
+
+  // Tab state for Parse Website and Facebook Discovery
+  const [parserTabValue, setParserTabValue] = useState(0);
+
+  // Image Upload state
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [selectedVendor, setSelectedVendor] = useState<any>(null);
+  const [vendorSearchValue, setVendorSearchValue] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadFailed, setUploadFailed] = useState(false);
+
+  // Approval Modal state
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
+  const [pendingApprovalData, setPendingApprovalData] = useState<any>(null);
 
   const logContainerRef = useRef<HTMLDivElement>(null);
 
@@ -133,6 +159,145 @@ const AdminParserPage: React.FC = observer(() => {
 
   // Get current URL to check if it's Facebook or Instagram
   const currentUrl = selectedUrl || customUrl;
+
+  // Image analysis function with retry logic
+  const analyzeImageWithRetry = async (base64: string, retryCount = 0) => {
+    const maxRetries = 3;
+    const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+
+    setIsUploadingImage(true);
+    setUploadFailed(false);
+
+    try {
+      const response = await fetch(
+        `${apiStore.environmentInfo.baseURL}/parser/analyze-admin-screenshots`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authStore.token}`,
+          },
+          body: JSON.stringify({
+            screenshots: [base64],
+            vendor: selectedVendor?.name || vendorSearchValue || null,
+          }),
+        },
+      );
+
+      const result = await response.json();
+      if (result.success) {
+        uiStore.addNotification('Image analyzed successfully!', 'success');
+        setUploadFailed(false);
+
+        // Open modal with analysis results for approval
+        if (result.data && result.requiresApproval) {
+          console.log('Analysis result data structure:', result.data);
+          console.log('Vendor:', result.data.vendor);
+          console.log('Venues:', result.data.venues);
+          console.log('DJs:', result.data.djs);
+          console.log('Shows:', result.data.shows);
+          console.log('Raw Data:', result.data.rawData);
+          openApprovalModal(result.data);
+        }
+      } else {
+        throw new Error(result.error || 'Analysis failed');
+      }
+    } catch (error) {
+      console.error(`Image upload error (attempt ${retryCount + 1}):`, error);
+
+      if (retryCount < maxRetries) {
+        uiStore.addNotification(
+          `Upload failed, retrying in ${retryDelay / 1000}s... (${retryCount + 1}/${maxRetries + 1})`,
+          'warning',
+        );
+
+        // Wait before retrying
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+        return analyzeImageWithRetry(base64, retryCount + 1);
+      } else {
+        setUploadFailed(true);
+        uiStore.addNotification(
+          `Failed to upload image after ${maxRetries + 1} attempts. You can try again with the retry button.`,
+          'error',
+        );
+      }
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Manual retry function
+  const retryImageAnalysis = () => {
+    if (uploadedImage) {
+      analyzeImageWithRetry(uploadedImage);
+    }
+  };
+
+  // Open approval modal with analysis results
+  const openApprovalModal = (analysisData: any) => {
+    setPendingApprovalData(analysisData);
+    setApprovalModalOpen(true);
+  };
+
+  // Handle approval of analysis results
+  const handleApproval = async (approved: boolean) => {
+    if (!pendingApprovalData) return;
+
+    try {
+      if (approved) {
+        // Call the admin approval endpoint with deduplication
+        const response = await fetch(
+          `${apiStore.environmentInfo.baseURL}/parser/approve-admin-analysis`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${authStore.token}`,
+            },
+            body: JSON.stringify({
+              data: pendingApprovalData,
+            }),
+          },
+        );
+
+        const result = await response.json();
+        if (result.success) {
+          const { originalCount, finalCount, duplicatesRemoved, saveResult } = result;
+
+          if (duplicatesRemoved > 0) {
+            uiStore.addNotification(
+              `Analysis approved! Saved ${finalCount} shows (removed ${duplicatesRemoved} duplicates)`,
+              'success',
+            );
+          } else {
+            uiStore.addNotification(
+              `Analysis approved! Saved ${finalCount} unique shows`,
+              'success',
+            );
+          }
+
+          // Clear the uploaded image and reset vendor selection after successful save
+          setUploadedImage(null);
+          setSelectedVendor(null);
+          setVendorSearchValue('');
+          setUploadFailed(false);
+
+          // Log the save results for debugging
+          console.log('Save results:', saveResult);
+        } else {
+          uiStore.addNotification('Failed to save analysis data', 'error');
+        }
+      } else {
+        uiStore.addNotification('Analysis rejected', 'info');
+      }
+    } catch (error) {
+      console.error('Approval error:', error);
+      uiStore.addNotification('Error processing approval', 'error');
+    } finally {
+      setApprovalModalOpen(false);
+      setPendingApprovalData(null);
+    }
+  };
   const isCurrentUrlFacebook = currentUrl ? isFacebookUrl(currentUrl) : false;
   const isCurrentUrlInstagram = currentUrl ? isInstagramUrl(currentUrl) : false;
 
@@ -145,6 +310,9 @@ const AdminParserPage: React.FC = observer(() => {
     // Initialize parser store data
     parserStore.initialize();
     parserStore.fetchUrlsBasedOnFilter();
+
+    // Initialize vendor store data
+    vendorStore.fetchVendors();
 
     // Set up Facebook login modal functionality
     const setupFacebookModal = () => {
@@ -515,106 +683,165 @@ const AdminParserPage: React.FC = observer(() => {
                   },
                 }}
               >
-                <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-                  <FontAwesomeIcon icon={faPlay} style={{ marginRight: '8px' }} />
-                  Parse Website
-                </Typography>
+                <Tabs
+                  value={parserTabValue}
+                  onChange={(_, newValue) => setParserTabValue(newValue)}
+                  sx={{ mb: 3 }}
+                >
+                  <Tab
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <FontAwesomeIcon icon={faPlay} />
+                        Parse Website
+                      </Box>
+                    }
+                  />
+                  <Tab
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <FontAwesomeIcon icon={faGlobe} />
+                        Facebook Discovery
+                      </Box>
+                    }
+                  />
+                  <Tab
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <CloudUpload />
+                        Image Upload
+                      </Box>
+                    }
+                  />
+                </Tabs>
 
-                {/* URL Filter */}
-                <Box sx={{ mb: 3 }}>
-                  <FormControl sx={{ minWidth: 200 }}>
-                    <InputLabel>Filter URLs</InputLabel>
-                    <Select
-                      value={parserStore.urlFilter}
-                      onChange={(e) =>
-                        parserStore.setUrlFilter(
-                          e.target.value as 'all' | 'unparsed' | 'approved-and-unparsed',
-                        )
-                      }
-                      label="Filter URLs"
-                      size="small"
-                    >
-                      <MenuItem value="all">All URLs</MenuItem>
-                      <MenuItem value="unparsed">Unparsed Only</MenuItem>
-                      <MenuItem value="approved-and-unparsed">Approved & Unparsed</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-
-                {parserStore.isLoading && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <CircularProgress size={20} sx={{ mr: 1 }} />
-                    <Typography variant="body2" color="text.secondary">
-                      Loading URLs to parse...
-                    </Typography>
+                {/* Parse Website Tab Content */}
+                <Box sx={{ display: parserTabValue === 0 ? 'block' : 'none' }}>
+                  {/* URL Filter */}
+                  <Box sx={{ mb: 3 }}>
+                    <FormControl sx={{ minWidth: 200 }}>
+                      <InputLabel>Filter URLs</InputLabel>
+                      <Select
+                        value={parserStore.urlFilter}
+                        onChange={(e) =>
+                          parserStore.setUrlFilter(
+                            e.target.value as 'all' | 'unparsed' | 'approved-and-unparsed',
+                          )
+                        }
+                        label="Filter URLs"
+                        size="small"
+                      >
+                        <MenuItem value="all">All URLs</MenuItem>
+                        <MenuItem value="unparsed">Unparsed Only</MenuItem>
+                        <MenuItem value="approved-and-unparsed">Approved & Unparsed</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Box>
-                )}
 
-                <Box sx={{ mb: 3 }}>
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>Select URL to Parse</InputLabel>
-                    <Select
-                      value={selectedUrl}
-                      onChange={(e) => setSelectedUrl(e.target.value)}
-                      label="Select URL to Parse"
-                      disabled={showCustomUrl}
-                      renderValue={(value) => {
-                        const urlObj = parserStore.urlsToParse.find((u) => u.url === value);
-                        const displayText = urlObj?.name || value;
-                        return (
-                          <Box
+                  {parserStore.isLoading && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <CircularProgress size={20} sx={{ mr: 1 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        Loading URLs to parse...
+                      </Typography>
+                    </Box>
+                  )}
+
+                  <Box sx={{ mb: 3 }}>
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                      <InputLabel>Select URL to Parse</InputLabel>
+                      <Select
+                        value={selectedUrl}
+                        onChange={(e) => setSelectedUrl(e.target.value)}
+                        label="Select URL to Parse"
+                        disabled={showCustomUrl}
+                        renderValue={(value) => {
+                          const urlObj = parserStore.urlsToParse.find((u) => u.url === value);
+                          const displayText = urlObj?.name || value;
+                          return (
+                            <Box
+                              sx={{
+                                wordBreak: 'break-all',
+                                whiteSpace: 'normal',
+                                py: 0.5,
+                              }}
+                              title={urlObj?.name ? `${urlObj.name} - ${value}` : value}
+                            >
+                              {displayText}
+                            </Box>
+                          );
+                        }}
+                      >
+                        {parserStore.urlsToParse.map((url) => (
+                          <MenuItem
+                            key={url.id}
+                            value={url.url}
                             sx={{
-                              wordBreak: 'break-all',
-                              whiteSpace: 'normal',
-                              py: 0.5,
-                            }}
-                            title={urlObj?.name ? `${urlObj.name} - ${value}` : value}
-                          >
-                            {displayText}
-                          </Box>
-                        );
-                      }}
-                    >
-                      {parserStore.urlsToParse.map((url) => (
-                        <MenuItem
-                          key={url.id}
-                          value={url.url}
-                          sx={{
-                            display: 'flex !important',
-                            flexDirection: 'row !important',
-                            justifyContent: 'space-between !important',
-                            alignItems: 'center !important',
-                            py: 1,
-                            minHeight: '48px',
-                            '&.Mui-selected': {
                               display: 'flex !important',
                               flexDirection: 'row !important',
                               justifyContent: 'space-between !important',
                               alignItems: 'center !important',
-                            },
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              flex: 1,
-                              mr: 1,
-                              wordBreak: 'break-all',
-                              whiteSpace: 'normal',
-                              maxWidth: 'calc(100% - 40px)',
-                              alignSelf: 'center',
+                              py: 1,
+                              minHeight: '48px',
+                              '&.Mui-selected': {
+                                display: 'flex !important',
+                                flexDirection: 'row !important',
+                                justifyContent: 'space-between !important',
+                                alignItems: 'center !important',
+                              },
                             }}
                           >
-                            <Box>
-                              {url.name ? (
-                                <>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box
+                              sx={{
+                                flex: 1,
+                                mr: 1,
+                                wordBreak: 'break-all',
+                                whiteSpace: 'normal',
+                                maxWidth: 'calc(100% - 40px)',
+                                alignSelf: 'center',
+                              }}
+                            >
+                              <Box>
+                                {url.name ? (
+                                  <>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Typography
+                                        variant="body2"
+                                        component="div"
+                                        sx={{ fontWeight: 'bold' }}
+                                      >
+                                        {url.name}
+                                      </Typography>
+                                      <Chip
+                                        label={url.hasBeenParsed ? 'Parsed' : 'Unparsed'}
+                                        size="small"
+                                        color={url.hasBeenParsed ? 'success' : 'warning'}
+                                        variant="outlined"
+                                      />
+                                    </Box>
                                     <Typography
-                                      variant="body2"
+                                      variant="caption"
+                                      color="text.secondary"
                                       component="div"
-                                      sx={{ fontWeight: 'bold' }}
                                     >
-                                      {url.name}
+                                      {url.url}
                                     </Typography>
+                                    {(url.city || url.state) && (
+                                      <Typography
+                                        variant="caption"
+                                        color="primary.main"
+                                        component="div"
+                                        sx={{ fontStyle: 'italic' }}
+                                      >
+                                        📍{' '}
+                                        {url.city && url.state
+                                          ? `${url.city}, ${url.state}`
+                                          : url.city || url.state}
+                                      </Typography>
+                                    )}
+                                  </>
+                                ) : (
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="body2">{url.url}</Typography>
                                     <Chip
                                       label={url.hasBeenParsed ? 'Parsed' : 'Unparsed'}
                                       size="small"
@@ -622,311 +849,615 @@ const AdminParserPage: React.FC = observer(() => {
                                       variant="outlined"
                                     />
                                   </Box>
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    component="div"
-                                  >
-                                    {url.url}
-                                  </Typography>
-                                  {(url.city || url.state) && (
-                                    <Typography
-                                      variant="caption"
-                                      color="primary.main"
-                                      component="div"
-                                      sx={{ fontStyle: 'italic' }}
-                                    >
-                                      📍{' '}
-                                      {url.city && url.state
-                                        ? `${url.city}, ${url.state}`
-                                        : url.city || url.state}
-                                    </Typography>
-                                  )}
-                                </>
-                              ) : (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <Typography variant="body2">{url.url}</Typography>
-                                  <Chip
-                                    label={url.hasBeenParsed ? 'Parsed' : 'Unparsed'}
-                                    size="small"
-                                    color={url.hasBeenParsed ? 'success' : 'warning'}
-                                    variant="outlined"
-                                  />
-                                </Box>
-                              )}
+                                )}
+                              </Box>
                             </Box>
-                          </Box>
-                          <Box sx={{ display: 'flex', gap: 0.5, alignSelf: 'center' }}>
-                            <IconButton
-                              size="small"
-                              color={url.hasBeenParsed ? 'warning' : 'success'}
-                              onClick={async (e) => {
-                                e.stopPropagation(); // Prevent MenuItem selection
-                                if (url.hasBeenParsed) {
-                                  await parserStore.markUrlAsUnparsed(url.id);
-                                } else {
-                                  await parserStore.markUrlAsParsed(url.id);
-                                }
-                              }}
-                              title={url.hasBeenParsed ? 'Mark as Unparsed' : 'Mark as Parsed'}
-                              sx={{
-                                minWidth: '32px',
-                                width: '32px',
-                                height: '32px',
-                                flexShrink: 0,
-                              }}
-                            >
-                              <FontAwesomeIcon
-                                icon={url.hasBeenParsed ? faTimes : faCheck}
-                                size="sm"
-                              />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              color="info"
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent MenuItem selection
-                                setUrlToEdit({
-                                  id: url.id,
-                                  url: url.url,
-                                  name: url.name,
-                                  city: url.city,
-                                  state: url.state,
-                                });
-                                setLocationEditModalOpen(true);
-                              }}
-                              title="Edit URL Info"
-                              sx={{
-                                minWidth: '32px',
-                                width: '32px',
-                                height: '32px',
-                                flexShrink: 0,
-                              }}
-                            >
-                              <FontAwesomeIcon icon={faEdit} size="sm" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={async (e) => {
-                                e.stopPropagation(); // Prevent MenuItem selection
-                                setUrlToDelete({ id: url.id, url: url.url });
-                                setDeleteConfirmDialog(true);
-                              }}
-                              title="Delete URL"
-                              sx={{
-                                minWidth: '32px',
-                                width: '32px',
-                                height: '32px',
-                                flexShrink: 0,
-                              }}
-                            >
-                              <FontAwesomeIcon icon={faTrash} size="sm" />
-                            </IconButton>
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                            <Box sx={{ display: 'flex', gap: 0.5, alignSelf: 'center' }}>
+                              <IconButton
+                                size="small"
+                                color={url.hasBeenParsed ? 'warning' : 'success'}
+                                onClick={async (e) => {
+                                  e.stopPropagation(); // Prevent MenuItem selection
+                                  if (url.hasBeenParsed) {
+                                    await parserStore.markUrlAsUnparsed(url.id);
+                                  } else {
+                                    await parserStore.markUrlAsParsed(url.id);
+                                  }
+                                }}
+                                title={url.hasBeenParsed ? 'Mark as Unparsed' : 'Mark as Parsed'}
+                                sx={{
+                                  minWidth: '32px',
+                                  width: '32px',
+                                  height: '32px',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <FontAwesomeIcon
+                                  icon={url.hasBeenParsed ? faTimes : faCheck}
+                                  size="sm"
+                                />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="info"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent MenuItem selection
+                                  setUrlToEdit({
+                                    id: url.id,
+                                    url: url.url,
+                                    name: url.name,
+                                    city: url.city,
+                                    state: url.state,
+                                  });
+                                  setLocationEditModalOpen(true);
+                                }}
+                                title="Edit URL Info"
+                                sx={{
+                                  minWidth: '32px',
+                                  width: '32px',
+                                  height: '32px',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <FontAwesomeIcon icon={faEdit} size="sm" />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={async (e) => {
+                                  e.stopPropagation(); // Prevent MenuItem selection
+                                  setUrlToDelete({ id: url.id, url: url.url });
+                                  setDeleteConfirmDialog(true);
+                                }}
+                                title="Delete URL"
+                                sx={{
+                                  minWidth: '32px',
+                                  width: '32px',
+                                  height: '32px',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <FontAwesomeIcon icon={faTrash} size="sm" />
+                              </IconButton>
+                            </Box>
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
 
-                  <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => {
+                          const newShowCustomUrl = !showCustomUrl;
+                          setShowCustomUrl(newShowCustomUrl);
+                          if (newShowCustomUrl) {
+                            // Switching to custom URL - clear selected URL
+                            setSelectedUrl('');
+                          } else {
+                            // Switching back to dropdown - clear custom URL
+                            setCustomUrl('');
+                          }
+                        }}
+                        startIcon={<FontAwesomeIcon icon={faPlus} />}
+                      >
+                        {showCustomUrl ? 'Use Dropdown' : 'Custom URL'}
+                      </Button>
+                    </Box>
+
+                    {showCustomUrl && (
+                      <TextField
+                        fullWidth
+                        label="Custom URL"
+                        value={customUrl}
+                        onChange={(e) => setCustomUrl(e.target.value)}
+                        placeholder="https://example.com/karaoke-schedule"
+                        sx={{ mb: 2 }}
+                      />
+                    )}
+
+                    {/* Parsing Method Selection */}
+                    <FormControl component="fieldset" sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" gutterBottom>
+                        Parsing Method
+                      </Typography>
+                      {isCurrentUrlFacebook ? (
+                        // Facebook URL - show only Facebook parsing option
+                        <Box
+                          sx={{
+                            p: 2,
+                            bgcolor: 'primary.main',
+                            color: 'primary.contrastText',
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                            🔵 Facebook Parsing
+                          </Typography>
+                          <Typography variant="caption">
+                            Specialized Facebook parsing using Puppeteer and AI analysis
+                          </Typography>
+                        </Box>
+                      ) : isCurrentUrlInstagram ? (
+                        // Instagram URL - show only Instagram parsing option
+                        <Box
+                          sx={{
+                            p: 2,
+                            bgcolor: 'secondary.main',
+                            color: 'secondary.contrastText',
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                            📷 Instagram Parsing
+                          </Typography>
+                          <Typography variant="caption">
+                            Visual Instagram parsing using screenshots and AI analysis
+                          </Typography>
+                        </Box>
+                      ) : (
+                        // Non-Facebook/Instagram URL - show normal parsing options
+                        <>
+                          <RadioGroup
+                            row
+                            value={parseMethod}
+                            onChange={(e) =>
+                              setParseMethod(e.target.value as 'html' | 'screenshot' | 'deepseek')
+                            }
+                          >
+                            <FormControlLabel
+                              value="screenshot"
+                              control={<Radio />}
+                              label="Screenshot Parsing (Recommended)"
+                            />
+                            <FormControlLabel
+                              value="html"
+                              control={<Radio />}
+                              label="HTML Parsing"
+                            />
+                            <FormControlLabel
+                              value="deepseek"
+                              control={<Radio />}
+                              label="🧪 DeepSeek-V3.1 (Experimental)"
+                            />
+                          </RadioGroup>
+                          <Typography variant="caption" color="text.secondary">
+                            {parseMethod === 'screenshot'
+                              ? 'Take a full-page screenshot and parse visually (recommended - finds all shows)'
+                              : parseMethod === 'deepseek'
+                                ? '🧪 Experimental AI parsing using DeepSeek-V3.1 - advanced reasoning and understanding'
+                                : 'Parse the HTML content with data attributes (may miss complex layouts)'}
+                          </Typography>
+                        </>
+                      )}
+                    </FormControl>
+
                     <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => {
-                        const newShowCustomUrl = !showCustomUrl;
-                        setShowCustomUrl(newShowCustomUrl);
-                        if (newShowCustomUrl) {
-                          // Switching to custom URL - clear selected URL
-                          setSelectedUrl('');
-                        } else {
-                          // Switching back to dropdown - clear custom URL
-                          setCustomUrl('');
-                        }
-                      }}
-                      startIcon={<FontAwesomeIcon icon={faPlus} />}
+                      fullWidth
+                      variant="contained"
+                      size="large"
+                      onClick={handleParseUrl}
+                      disabled={isParsingUrl || (!selectedUrl && !customUrl)}
+                      startIcon={
+                        isParsingUrl ? (
+                          <CircularProgress size={16} />
+                        ) : (
+                          <FontAwesomeIcon icon={faPlay} />
+                        )
+                      }
+                      sx={{ mb: isParsingUrl ? 1 : 0 }}
                     >
-                      {showCustomUrl ? 'Use Dropdown' : 'Custom URL'}
+                      {isParsingUrl
+                        ? `Parsing... (${parserStore.getFormattedElapsedTime()})`
+                        : parseMethod === 'deepseek'
+                          ? '🧪 Parse with DeepSeek-V3.1'
+                          : isCurrentUrlFacebook
+                            ? 'Parse Facebook'
+                            : isCurrentUrlInstagram
+                              ? 'Parse Instagram'
+                              : 'Parse Website'}
                     </Button>
+
+                    {/* Cancel Button - only show when parsing is active */}
+                    {isParsingUrl && (
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        size="large"
+                        onClick={handleCancelParsing}
+                        startIcon={<FontAwesomeIcon icon={faStop} />}
+                        sx={{
+                          borderColor: 'error.main',
+                          color: 'error.main',
+                          '&:hover': {
+                            backgroundColor: 'error.main',
+                            color: 'white',
+                            borderColor: 'error.main',
+                          },
+                        }}
+                      >
+                        Cancel Parsing
+                      </Button>
+                    )}
                   </Box>
 
-                  {showCustomUrl && (
-                    <TextField
-                      fullWidth
-                      label="Custom URL"
-                      value={customUrl}
-                      onChange={(e) => setCustomUrl(e.target.value)}
-                      placeholder="https://example.com/karaoke-schedule"
-                      sx={{ mb: 2 }}
-                    />
-                  )}
-
-                  {/* Parsing Method Selection */}
-                  <FormControl component="fieldset" sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Parsing Method
-                    </Typography>
-                    {isCurrentUrlFacebook ? (
-                      // Facebook URL - show only Facebook parsing option
-                      <Box
-                        sx={{
-                          p: 2,
-                          bgcolor: 'primary.main',
-                          color: 'primary.contrastText',
-                          borderRadius: 1,
-                        }}
-                      >
-                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                          🔵 Facebook Parsing
-                        </Typography>
-                        <Typography variant="caption">
-                          Specialized Facebook parsing using Puppeteer and AI analysis
-                        </Typography>
-                      </Box>
-                    ) : isCurrentUrlInstagram ? (
-                      // Instagram URL - show only Instagram parsing option
-                      <Box
-                        sx={{
-                          p: 2,
-                          bgcolor: 'secondary.main',
-                          color: 'secondary.contrastText',
-                          borderRadius: 1,
-                        }}
-                      >
-                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                          📷 Instagram Parsing
-                        </Typography>
-                        <Typography variant="caption">
-                          Visual Instagram parsing using screenshots and AI analysis
-                        </Typography>
-                      </Box>
-                    ) : (
-                      // Non-Facebook/Instagram URL - show normal parsing options
-                      <>
-                        <RadioGroup
-                          row
-                          value={parseMethod}
-                          onChange={(e) =>
-                            setParseMethod(e.target.value as 'html' | 'screenshot' | 'deepseek')
-                          }
-                        >
-                          <FormControlLabel
-                            value="screenshot"
-                            control={<Radio />}
-                            label="Screenshot Parsing (Recommended)"
-                          />
-                          <FormControlLabel value="html" control={<Radio />} label="HTML Parsing" />
-                          <FormControlLabel
-                            value="deepseek"
-                            control={<Radio />}
-                            label="🧪 DeepSeek-V3.1 (Experimental)"
-                          />
-                        </RadioGroup>
-                        <Typography variant="caption" color="text.secondary">
-                          {parseMethod === 'screenshot'
-                            ? 'Take a full-page screenshot and parse visually (recommended - finds all shows)'
-                            : parseMethod === 'deepseek'
-                              ? '🧪 Experimental AI parsing using DeepSeek-V3.1 - advanced reasoning and understanding'
-                              : 'Parse the HTML content with data attributes (may miss complex layouts)'}
-                        </Typography>
-                      </>
-                    )}
-                  </FormControl>
-
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    size="large"
-                    onClick={handleParseUrl}
-                    disabled={isParsingUrl || (!selectedUrl && !customUrl)}
-                    startIcon={
-                      isParsingUrl ? (
-                        <CircularProgress size={16} />
-                      ) : (
-                        <FontAwesomeIcon icon={faPlay} />
-                      )
-                    }
-                    sx={{ mb: isParsingUrl ? 1 : 0 }}
-                  >
-                    {isParsingUrl
-                      ? `Parsing... (${parserStore.getFormattedElapsedTime()})`
-                      : parseMethod === 'deepseek'
-                        ? '🧪 Parse with DeepSeek-V3.1'
-                        : isCurrentUrlFacebook
-                          ? 'Parse Facebook'
-                          : isCurrentUrlInstagram
-                            ? 'Parse Instagram'
-                            : 'Parse Website'}
-                  </Button>
-
-                  {/* Cancel Button - only show when parsing is active */}
+                  {/* Parsing Status */}
                   {isParsingUrl && (
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      size="large"
-                      onClick={handleCancelParsing}
-                      startIcon={<FontAwesomeIcon icon={faStop} />}
+                    <Box
                       sx={{
-                        borderColor: 'error.main',
-                        color: 'error.main',
-                        '&:hover': {
-                          backgroundColor: 'error.main',
-                          color: 'white',
-                          borderColor: 'error.main',
-                        },
+                        mt: 2,
+                        p: 2,
+                        bgcolor: 'primary.50',
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'primary.200',
                       }}
                     >
-                      Cancel Parsing
-                    </Button>
+                      <Typography
+                        variant="body2"
+                        sx={{ display: 'flex', alignItems: 'center', mb: 1 }}
+                      >
+                        <CircularProgress size={16} sx={{ mr: 1 }} />
+                        <strong>
+                          Parsing in progress... ({parserStore.getFormattedElapsedTime()})
+                        </strong>
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        This may take several minutes depending on website size. The parser is
+                        processing the content and extracting show information.
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {parserStore.error && (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                      {parserStore.error}
+                    </Alert>
+                  )}
+
+                  {parseResult && parseResult.success && (
+                    <Alert severity="success" sx={{ mb: 2 }}>
+                      Website parsed successfully! Check the review queue below.
+                    </Alert>
+                  )}
+
+                  {parseResult && !parseResult.success && parseResult.error && (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                      Parsing failed: {parseResult.error}
+                    </Alert>
                   )}
                 </Box>
 
-                {/* Parsing Status */}
-                {isParsingUrl && (
-                  <Box
+                {/* Facebook Discovery Tab Content */}
+                <Box sx={{ display: parserTabValue === 1 ? 'block' : 'none' }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Automatically discover karaoke groups from all US cities using AI-powered
+                    analysis. This process will search Facebook groups in {'{'}865{'}'} cities and
+                    use Gemini AI to select the most relevant karaoke communities.
+                  </Typography>
+
+                  <Alert severity="info" sx={{ mb: 3 }}>
+                    <strong>Important:</strong> This process requires Facebook authentication and
+                    may take several hours to complete. Make sure you have proper Facebook
+                    credentials configured before starting.
+                  </Alert>
+
+                  <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                    <Button
+                      variant="contained"
+                      onClick={async () => {
+                        try {
+                          uiStore.addNotification('Starting Facebook group discovery...', 'info');
+
+                          const response = await fetch('/api/parser/discover-facebook-groups', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                            },
+                          });
+
+                          const result = await response.json();
+
+                          if (result.success) {
+                            uiStore.addNotification(
+                              `Facebook group discovery completed! Found ${result.data.totalGroups} groups across ${result.data.successfulCities} cities.`,
+                              'success',
+                            );
+                          } else {
+                            throw new Error(result.message || 'Discovery failed');
+                          }
+                        } catch (error) {
+                          console.error('Facebook group discovery error:', error);
+                          uiStore.addNotification(
+                            `Facebook group discovery failed: ${error instanceof Error ? error.message : String(error)}`,
+                            'error',
+                          );
+                        }
+                      }}
+                      startIcon={<FontAwesomeIcon icon={faGlobe} />}
+                      sx={{
+                        background: `linear-gradient(45deg, ${theme.palette.secondary.main}, ${theme.palette.success.main})`,
+                        color: 'white',
+                        '&:hover': {
+                          background: `linear-gradient(45deg, ${theme.palette.secondary.dark}, ${theme.palette.success.dark})`,
+                        },
+                      }}
+                    >
+                      Start Group Discovery
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch('/api/parser/facebook-groups/status');
+                          const result = await response.json();
+
+                          if (result.success) {
+                            const { totalCities, discoveredGroups, isRunning } = result.data;
+                            uiStore.addNotification(
+                              `Discovery Status: ${discoveredGroups} groups found from ${totalCities} total cities. ${isRunning ? 'Currently running...' : 'Not running.'}`,
+                              'info',
+                            );
+                          }
+                        } catch (error) {
+                          console.error('Failed to get discovery status:', error);
+                          uiStore.addNotification('Failed to get discovery status', 'error');
+                        }
+                      }}
+                      startIcon={<FontAwesomeIcon icon={faRefresh} />}
+                    >
+                      Check Status
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      onClick={async () => {
+                        try {
+                          // First check cookie validation
+                          const response = await fetch('/api/parser/facebook-cookies/validate');
+                          const result = await response.json();
+
+                          if (result.success) {
+                            const { validation, nextExpiry } = result.data;
+
+                            // If cookies appear valid locally, test authentication
+                            let authStatus = '';
+                            let finalNotificationType: 'success' | 'warning' | 'error' | 'info' =
+                              'info';
+
+                            if (validation.isValid) {
+                              try {
+                                const testResponse = await fetch(
+                                  '/api/parser/facebook-cookies/test',
+                                  {
+                                    method: 'POST',
+                                    signal: AbortSignal.timeout(8000), // 8 second timeout
+                                  },
+                                );
+                                const testResult = await testResponse.json();
+
+                                if (testResult.success && testResult.data.success) {
+                                  authStatus = '🎉 Authentication: WORKING';
+                                  finalNotificationType = 'success';
+                                } else {
+                                  authStatus = '⚠️ Authentication: FAILED (need refresh)';
+                                  finalNotificationType = 'warning';
+                                }
+                              } catch {
+                                authStatus = '⚠️ Authentication: TIMEOUT (need refresh)';
+                                finalNotificationType = 'warning';
+                              }
+                            } else {
+                              authStatus = '❌ Authentication: CANNOT TEST (invalid cookies)';
+                              finalNotificationType = 'error';
+                            }
+
+                            const status = validation.isValid
+                              ? '✅ Format Valid'
+                              : '❌ Format Invalid';
+                            const expiredInfo =
+                              validation.expired > 0 ? ` (${validation.expired} expired)` : '';
+                            const nextExpiryInfo = nextExpiry
+                              ? ` - Expires: ${new Date(nextExpiry).toLocaleDateString()}`
+                              : '';
+
+                            uiStore.addNotification(
+                              `Facebook Cookies: ${status} (${validation.total} total${expiredInfo}) | ${authStatus}${nextExpiryInfo}`,
+                              finalNotificationType,
+                            );
+                          }
+                        } catch (error) {
+                          console.error('Failed to check Facebook cookies:', error);
+                          uiStore.addNotification('❌ Failed to check Facebook cookies', 'error');
+                        }
+                      }}
+                      startIcon={<FontAwesomeIcon icon={faCookie} />}
+                    >
+                      Check FB Cookies
+                    </Button>
+                  </Box>
+
+                  <Divider sx={{ my: 2 }} />
+
+                  <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                    💡 Tip: The discovery process will automatically save found group URLs to the
+                    URLs to Parse table above. You can then review and parse them individually.
+                  </Typography>
+
+                  <Alert severity="info" sx={{ mt: 2, fontSize: '0.875rem' }}>
+                    <strong>Facebook Cookie Status:</strong> Format validation checks if cookies
+                    exist and aren't expired. Authentication testing verifies if Facebook accepts
+                    the cookies. If authentication fails, cookies need to be refreshed using{' '}
+                    <code>bash fix-facebook-cookies.sh</code>
+                  </Alert>
+                </Box>
+
+                {/* Image Upload Tab Content */}
+                <Box sx={{ display: parserTabValue === 2 ? 'block' : 'none' }}>
+                  <Paper
+                    elevation={0}
                     sx={{
-                      mt: 2,
-                      p: 2,
-                      bgcolor: 'primary.50',
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: 'primary.200',
+                      p: 3,
+                      borderRadius: 3,
+                      background: `linear-gradient(135deg, 
+                      ${alpha(theme.palette.background.paper, 0.95)} 0%, 
+                      ${alpha(theme.palette.background.paper, 0.8)} 100%)`,
+                      backdropFilter: 'blur(10px)',
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: '3px',
+                        background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                      },
                     }}
                   >
-                    <Typography
-                      variant="body2"
-                      sx={{ display: 'flex', alignItems: 'center', mb: 1 }}
+                    <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
+                      <CloudUpload style={{ marginRight: '8px' }} />
+                      Image Upload & Analysis
+                    </Typography>
+
+                    {/* Vendor Selection */}
+                    <Box sx={{ mb: 3 }}>
+                      <Autocomplete
+                        options={vendorStore.vendors}
+                        getOptionLabel={(option) => option.name}
+                        value={selectedVendor}
+                        onChange={(_, newValue) => {
+                          setSelectedVendor(newValue);
+                        }}
+                        onInputChange={(_, newInputValue) => {
+                          setVendorSearchValue(newInputValue);
+                        }}
+                        freeSolo
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Select or Create Vendor (Optional)"
+                            placeholder="Type vendor name..."
+                            helperText="Optional: Select existing vendor or type new name to create one"
+                          />
+                        )}
+                        sx={{ minWidth: 300 }}
+                      />
+                    </Box>
+
+                    {/* Image Upload Area */}
+                    <Box
+                      onDrop={async (e) => {
+                        e.preventDefault();
+                        setIsDragOver(false);
+
+                        const files = Array.from(e.dataTransfer.files);
+                        const imageFile = files.find((file) => file.type.startsWith('image/'));
+
+                        if (imageFile) {
+                          const reader = new FileReader();
+                          reader.onload = async (event) => {
+                            const base64 = event.target?.result as string;
+                            setUploadedImage(base64);
+                            await analyzeImageWithRetry(base64);
+                          };
+                          reader.readAsDataURL(imageFile);
+                        }
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDragOver(true);
+                      }}
+                      onDragLeave={() => setIsDragOver(false)}
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.onchange = async (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = async (event) => {
+                              const base64 = event.target?.result as string;
+                              setUploadedImage(base64);
+                              await analyzeImageWithRetry(base64);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        };
+                        input.click();
+                      }}
+                      sx={{
+                        border: `2px dashed ${isDragOver ? theme.palette.primary.main : theme.palette.divider}`,
+                        borderRadius: 2,
+                        p: 4,
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        backgroundColor: isDragOver
+                          ? alpha(theme.palette.primary.main, 0.1)
+                          : 'transparent',
+                        '&:hover': {
+                          borderColor: theme.palette.primary.main,
+                          backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                        },
+                      }}
                     >
-                      <CircularProgress size={16} sx={{ mr: 1 }} />
-                      <strong>
-                        Parsing in progress... ({parserStore.getFormattedElapsedTime()})
-                      </strong>
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      This may take several minutes depending on website size. The parser is
-                      processing the content and extracting show information.
-                    </Typography>
-                  </Box>
-                )}
+                      {isUploadingImage ? (
+                        <CircularProgress size={48} />
+                      ) : uploadedImage ? (
+                        <Box>
+                          <img
+                            src={uploadedImage}
+                            alt="Uploaded"
+                            style={{
+                              maxWidth: '100%',
+                              maxHeight: '200px',
+                              borderRadius: '8px',
+                              marginBottom: '16px',
+                            }}
+                          />
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            Click to upload a different image
+                          </Typography>
+                          {uploadFailed && (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<FontAwesomeIcon icon={faRefresh} />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                retryImageAnalysis();
+                              }}
+                              sx={{ mb: 1 }}
+                            >
+                              Retry Analysis
+                            </Button>
+                          )}
+                        </Box>
+                      ) : (
+                        <Box>
+                          <CloudUpload sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                          <Typography variant="h6" gutterBottom>
+                            Drop image here or click to select
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Upload an image for analysis and venue information extraction
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
 
-                {parserStore.error && (
-                  <Alert severity="error" sx={{ mb: 2 }}>
-                    {parserStore.error}
-                  </Alert>
-                )}
-
-                {parseResult && parseResult.success && (
-                  <Alert severity="success" sx={{ mb: 2 }}>
-                    Website parsed successfully! Check the review queue below.
-                  </Alert>
-                )}
-
-                {parseResult && !parseResult.success && parseResult.error && (
-                  <Alert severity="error" sx={{ mb: 2 }}>
-                    Parsing failed: {parseResult.error}
-                  </Alert>
-                )}
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                      Upload images of venue websites, social media pages, or event listings for
+                      automatic extraction of karaoke show information.
+                    </Alert>
+                  </Paper>
+                </Box>
               </Paper>
             </Grid>
 
@@ -1284,200 +1815,6 @@ const AdminParserPage: React.FC = observer(() => {
                 </Box>
 
                 <Divider sx={{ my: 2 }} />
-              </Paper>
-            </Grid>
-
-            {/* Facebook Group Discovery */}
-            <Grid item xs={12}>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  background: `linear-gradient(135deg, 
-                ${alpha(theme.palette.background.paper, 0.95)} 0%, 
-                ${alpha(theme.palette.background.paper, 0.8)} 100%)`,
-                  backdropFilter: 'blur(10px)',
-                  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '3px',
-                    background: `linear-gradient(90deg, ${theme.palette.secondary.main}, ${theme.palette.success.main})`,
-                  },
-                }}
-              >
-                <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-                  <FontAwesomeIcon icon={faGlobe} style={{ marginRight: '8px' }} />
-                  Facebook Group Discovery
-                </Typography>
-
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Automatically discover karaoke groups from all US cities using AI-powered
-                  analysis. This process will search Facebook groups in {'{'}865{'}'} cities and use
-                  Gemini AI to select the most relevant karaoke communities.
-                </Typography>
-
-                <Alert severity="info" sx={{ mb: 3 }}>
-                  <strong>Important:</strong> This process requires Facebook authentication and may
-                  take several hours to complete. Make sure you have proper Facebook credentials
-                  configured before starting.
-                </Alert>
-
-                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                  <Button
-                    variant="contained"
-                    onClick={async () => {
-                      try {
-                        uiStore.addNotification('Starting Facebook group discovery...', 'info');
-
-                        const response = await fetch('/api/parser/discover-facebook-groups', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                          },
-                        });
-
-                        const result = await response.json();
-
-                        if (result.success) {
-                          uiStore.addNotification(
-                            `Facebook group discovery completed! Found ${result.data.totalGroups} groups across ${result.data.successfulCities} cities.`,
-                            'success',
-                          );
-                        } else {
-                          throw new Error(result.message || 'Discovery failed');
-                        }
-                      } catch (error) {
-                        console.error('Facebook group discovery error:', error);
-                        uiStore.addNotification(
-                          `Facebook group discovery failed: ${error instanceof Error ? error.message : String(error)}`,
-                          'error',
-                        );
-                      }
-                    }}
-                    startIcon={<FontAwesomeIcon icon={faGlobe} />}
-                    sx={{
-                      background: `linear-gradient(45deg, ${theme.palette.secondary.main}, ${theme.palette.success.main})`,
-                      color: 'white',
-                      '&:hover': {
-                        background: `linear-gradient(45deg, ${theme.palette.secondary.dark}, ${theme.palette.success.dark})`,
-                      },
-                    }}
-                  >
-                    Start Group Discovery
-                  </Button>
-
-                  <Button
-                    variant="outlined"
-                    onClick={async () => {
-                      try {
-                        const response = await fetch('/api/parser/facebook-groups/status');
-                        const result = await response.json();
-
-                        if (result.success) {
-                          const { totalCities, discoveredGroups, isRunning } = result.data;
-                          uiStore.addNotification(
-                            `Discovery Status: ${discoveredGroups} groups found from ${totalCities} total cities. ${isRunning ? 'Currently running...' : 'Not running.'}`,
-                            'info',
-                          );
-                        }
-                      } catch (error) {
-                        console.error('Failed to get discovery status:', error);
-                        uiStore.addNotification('Failed to get discovery status', 'error');
-                      }
-                    }}
-                    startIcon={<FontAwesomeIcon icon={faRefresh} />}
-                  >
-                    Check Status
-                  </Button>
-
-                  <Button
-                    variant="outlined"
-                    onClick={async () => {
-                      try {
-                        // First check cookie validation
-                        const response = await fetch('/api/parser/facebook-cookies/validate');
-                        const result = await response.json();
-
-                        if (result.success) {
-                          const { validation, nextExpiry } = result.data;
-
-                          // If cookies appear valid locally, test authentication
-                          let authStatus = '';
-                          let finalNotificationType: 'success' | 'warning' | 'error' | 'info' =
-                            'info';
-
-                          if (validation.isValid) {
-                            try {
-                              const testResponse = await fetch(
-                                '/api/parser/facebook-cookies/test',
-                                {
-                                  method: 'POST',
-                                  signal: AbortSignal.timeout(8000), // 8 second timeout
-                                },
-                              );
-                              const testResult = await testResponse.json();
-
-                              if (testResult.success && testResult.data.success) {
-                                authStatus = '🎉 Authentication: WORKING';
-                                finalNotificationType = 'success';
-                              } else {
-                                authStatus = '⚠️ Authentication: FAILED (need refresh)';
-                                finalNotificationType = 'warning';
-                              }
-                            } catch {
-                              authStatus = '⚠️ Authentication: TIMEOUT (need refresh)';
-                              finalNotificationType = 'warning';
-                            }
-                          } else {
-                            authStatus = '❌ Authentication: CANNOT TEST (invalid cookies)';
-                            finalNotificationType = 'error';
-                          }
-
-                          const status = validation.isValid
-                            ? '✅ Format Valid'
-                            : '❌ Format Invalid';
-                          const expiredInfo =
-                            validation.expired > 0 ? ` (${validation.expired} expired)` : '';
-                          const nextExpiryInfo = nextExpiry
-                            ? ` - Expires: ${new Date(nextExpiry).toLocaleDateString()}`
-                            : '';
-
-                          uiStore.addNotification(
-                            `Facebook Cookies: ${status} (${validation.total} total${expiredInfo}) | ${authStatus}${nextExpiryInfo}`,
-                            finalNotificationType,
-                          );
-                        }
-                      } catch (error) {
-                        console.error('Failed to check Facebook cookies:', error);
-                        uiStore.addNotification('❌ Failed to check Facebook cookies', 'error');
-                      }
-                    }}
-                    startIcon={<FontAwesomeIcon icon={faCookie} />}
-                  >
-                    Check FB Cookies
-                  </Button>
-                </Box>
-
-                <Divider sx={{ my: 2 }} />
-
-                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                  💡 Tip: The discovery process will automatically save found group URLs to the URLs
-                  to Parse table above. You can then review and parse them individually.
-                </Typography>
-
-                <Alert severity="info" sx={{ mt: 2, fontSize: '0.875rem' }}>
-                  <strong>Facebook Cookie Status:</strong> Format validation checks if cookies exist
-                  and aren't expired. Authentication testing verifies if Facebook accepts the
-                  cookies. If authentication fails, cookies need to be refreshed using{' '}
-                  <code>bash fix-facebook-cookies.sh</code>
-                </Alert>
               </Paper>
             </Grid>
 
@@ -2153,6 +2490,188 @@ const AdminParserPage: React.FC = observer(() => {
           loading={facebookLoginLoading}
           error={facebookLoginError}
         />
+
+        {/* Approval Modal for Admin Screenshot Analysis */}
+        <CustomModal
+          open={approvalModalOpen}
+          onClose={() => setApprovalModalOpen(false)}
+          title="Review Screenshot Analysis Results"
+          maxWidth="lg"
+        >
+          <Box sx={{ p: 2 }}>
+            {pendingApprovalData && (
+              <>
+                <Typography variant="h6" gutterBottom>
+                  Analysis Results
+                </Typography>
+
+                {pendingApprovalData.vendor && (
+                  <Card sx={{ mb: 2, p: 2 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      <strong>Vendor/DJ Information:</strong>
+                    </Typography>
+                    <Typography>
+                      <strong>Name:</strong> {pendingApprovalData.vendor.name || 'Unknown'}
+                    </Typography>
+                    {pendingApprovalData.vendor.website && (
+                      <Typography>
+                        <strong>Website:</strong> {pendingApprovalData.vendor.website}
+                      </Typography>
+                    )}
+                    {pendingApprovalData.vendor.description && (
+                      <Typography>
+                        <strong>Description:</strong> {pendingApprovalData.vendor.description}
+                      </Typography>
+                    )}
+                    {pendingApprovalData.vendor.confidence && (
+                      <Typography>
+                        <strong>Confidence:</strong>{' '}
+                        {(pendingApprovalData.vendor.confidence * 100).toFixed(1)}%
+                      </Typography>
+                    )}
+                  </Card>
+                )}
+
+                {pendingApprovalData.venues && pendingApprovalData.venues.length > 0 && (
+                  <Card sx={{ mb: 2, p: 2 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      <strong>Venues ({pendingApprovalData.venues.length}):</strong>
+                    </Typography>
+                    {pendingApprovalData.venues.map((venue: any, index: number) => (
+                      <Box
+                        key={index}
+                        sx={{ mb: 1, p: 1, border: '1px solid #ddd', borderRadius: 1 }}
+                      >
+                        <Typography>
+                          <strong>Name:</strong> {venue.name || 'Unknown'}
+                        </Typography>
+                        {venue.address && (
+                          <Typography>
+                            <strong>Address:</strong> {venue.address}
+                            {venue.city && `, ${venue.city}`}
+                            {venue.state && `, ${venue.state}`}
+                            {venue.zip && ` ${venue.zip}`}
+                          </Typography>
+                        )}
+                        {venue.lat && venue.lng && (
+                          <Typography>
+                            <strong>Coordinates:</strong> {venue.lat}, {venue.lng}
+                          </Typography>
+                        )}
+                        {venue.phone && (
+                          <Typography>
+                            <strong>Phone:</strong> {venue.phone}
+                          </Typography>
+                        )}
+                        {venue.website && (
+                          <Typography>
+                            <strong>Website:</strong> {venue.website}
+                          </Typography>
+                        )}
+                        {venue.confidence && (
+                          <Typography>
+                            <strong>Confidence:</strong> {(venue.confidence * 100).toFixed(1)}%
+                          </Typography>
+                        )}
+                      </Box>
+                    ))}
+                  </Card>
+                )}
+
+                {pendingApprovalData.djs && pendingApprovalData.djs.length > 0 && (
+                  <Card sx={{ mb: 2, p: 2 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      <strong>DJs ({pendingApprovalData.djs.length}):</strong>
+                    </Typography>
+                    {pendingApprovalData.djs.map((dj: any, index: number) => (
+                      <Box
+                        key={index}
+                        sx={{ mb: 1, p: 1, border: '1px solid #ddd', borderRadius: 1 }}
+                      >
+                        <Typography>
+                          <strong>Name:</strong> {dj.name || 'Unknown'}
+                        </Typography>
+                        {dj.context && (
+                          <Typography>
+                            <strong>Context:</strong> {dj.context}
+                          </Typography>
+                        )}
+                        {dj.confidence && (
+                          <Typography>
+                            <strong>Confidence:</strong> {(dj.confidence * 100).toFixed(1)}%
+                          </Typography>
+                        )}
+                      </Box>
+                    ))}
+                  </Card>
+                )}
+
+                {pendingApprovalData.shows && pendingApprovalData.shows.length > 0 && (
+                  <Card sx={{ mb: 2, p: 2 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      <strong>Karaoke Shows ({pendingApprovalData.shows.length}):</strong>
+                    </Typography>
+                    {pendingApprovalData.shows.map((show: any, index: number) => (
+                      <Box
+                        key={index}
+                        sx={{ mb: 1, p: 1, border: '1px solid #ddd', borderRadius: 1 }}
+                      >
+                        <Typography>
+                          <strong>Venue:</strong> {show.venueName || show.venue || 'Unknown'}
+                        </Typography>
+                        {show.date && (
+                          <Typography>
+                            <strong>Date:</strong> {show.date}
+                          </Typography>
+                        )}
+                        {(show.startTime || show.endTime) && (
+                          <Typography>
+                            <strong>Time:</strong> {show.startTime || ''}{' '}
+                            {show.endTime ? `- ${show.endTime}` : ''}
+                          </Typography>
+                        )}
+                        {show.dayOfWeek && (
+                          <Typography>
+                            <strong>Day:</strong> {show.dayOfWeek}
+                          </Typography>
+                        )}
+                        {show.eventType && (
+                          <Typography>
+                            <strong>Type:</strong> {show.eventType}
+                          </Typography>
+                        )}
+                        {show.djName && (
+                          <Typography>
+                            <strong>DJ:</strong> {show.djName}
+                          </Typography>
+                        )}
+                        {show.description && (
+                          <Typography>
+                            <strong>Description:</strong> {show.description}
+                          </Typography>
+                        )}
+                        {show.confidence && (
+                          <Typography>
+                            <strong>Confidence:</strong> {(show.confidence * 100).toFixed(1)}%
+                          </Typography>
+                        )}
+                      </Box>
+                    ))}
+                  </Card>
+                )}
+
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 3 }}>
+                  <Button variant="outlined" color="error" onClick={() => handleApproval(false)}>
+                    Reject
+                  </Button>
+                  <Button variant="contained" color="primary" onClick={() => handleApproval(true)}>
+                    Approve & Save
+                  </Button>
+                </Box>
+              </>
+            )}
+          </Box>
+        </CustomModal>
       </Box>
     </Box>
   );

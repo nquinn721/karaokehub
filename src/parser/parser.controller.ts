@@ -83,13 +83,9 @@ export class ParserController {
         // Regular website - use specified method
         const parseMethod = body.parseMethod || 'html';
 
-        console.log(`🔍 Parsing URL: ${body.url} with method: ${parseMethod}`);
-
         if (parseMethod === 'screenshot') {
-          console.log(`📸 Using screenshot parsing for: ${body.url}`);
           result = await this.karaokeParserService.parseWebsiteWithScreenshot(body.url);
         } else {
-          console.log(`📄 Using HTML parsing for: ${body.url}`);
           result = await this.karaokeParserService.parseAndSaveWebsite(body.url);
         }
       }
@@ -595,19 +591,239 @@ export class ParserController {
     }
   }
 
+  @Post('debug-request')
+  async debugRequest(@Body() body: any) {
+    return {
+      success: true,
+      received: {
+        bodyKeys: Object.keys(body),
+        url: body.url,
+        urlType: typeof body.url,
+        urlLength: body.url?.length,
+        screenshots: body.screenshots?.length || 'undefined',
+        screenshotsType: typeof body.screenshots,
+        description: body.description,
+        fullBody: body,
+      },
+    };
+  }
+
+  @Post('validate-screenshots')
+  async validateScreenshots(
+    @Body()
+    body: {
+      screenshots: string[];
+    },
+  ) {
+    try {
+      if (!body.screenshots || !Array.isArray(body.screenshots)) {
+        throw new HttpException('Screenshots array is required', HttpStatus.BAD_REQUEST);
+      }
+
+      const validationResults = body.screenshots.map((screenshot, index) => {
+        try {
+          // Basic validations
+          const result = {
+            index,
+            isString: typeof screenshot === 'string',
+            length: screenshot?.length || 0,
+            hasDataPrefix: screenshot?.startsWith('data:image/') || false,
+            isValidBase64: false,
+            isValidImage: false,
+            format: 'unknown',
+            error: null,
+          };
+
+          if (!result.isString) {
+            result.error = 'Not a string';
+            return result;
+          }
+
+          if (result.length === 0) {
+            result.error = 'Empty string';
+            return result;
+          }
+
+          if (result.length > 10_000_000) {
+            result.error = 'Too large (>10MB)';
+            return result;
+          }
+
+          // Try to validate base64
+          try {
+            let cleanBase64 = screenshot;
+            if (result.hasDataPrefix) {
+              const base64Index = screenshot.indexOf(',');
+              if (base64Index !== -1) {
+                cleanBase64 = screenshot.substring(base64Index + 1);
+              }
+            }
+
+            // Remove whitespace
+            cleanBase64 = cleanBase64.replace(/\s/g, '');
+
+            // Check base64 format
+            if (cleanBase64.match(/^[A-Za-z0-9+/]*={0,2}$/)) {
+              result.isValidBase64 = true;
+
+              // Try to decode and check image format
+              const buffer = Buffer.from(cleanBase64, 'base64');
+
+              if (buffer.length > 0) {
+                // Check image headers
+                if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+                  result.format = 'JPEG';
+                  result.isValidImage = true;
+                } else if (
+                  buffer[0] === 0x89 &&
+                  buffer[1] === 0x50 &&
+                  buffer[2] === 0x4e &&
+                  buffer[3] === 0x47
+                ) {
+                  result.format = 'PNG';
+                  result.isValidImage = true;
+                } else if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46) {
+                  result.format = 'GIF';
+                  result.isValidImage = true;
+                } else if (
+                  buffer[0] === 0x52 &&
+                  buffer[1] === 0x49 &&
+                  buffer[2] === 0x46 &&
+                  buffer[3] === 0x46
+                ) {
+                  result.format = 'WEBP';
+                  result.isValidImage = true;
+                } else {
+                  result.error = 'Not a recognized image format';
+                }
+              } else {
+                result.error = 'Empty buffer after base64 decode';
+              }
+            } else {
+              result.error = 'Invalid base64 format';
+            }
+          } catch (decodeError) {
+            result.error = `Decode error: ${decodeError.message}`;
+          }
+
+          return result;
+        } catch (error) {
+          return {
+            index,
+            isString: false,
+            length: 0,
+            hasDataPrefix: false,
+            isValidBase64: false,
+            isValidImage: false,
+            format: 'unknown',
+            error: error.message,
+          };
+        }
+      });
+
+      const summary = {
+        total: body.screenshots.length,
+        valid: validationResults.filter((r) => r.isValidImage).length,
+        invalid: validationResults.filter((r) => !r.isValidImage).length,
+        formats: validationResults.reduce(
+          (acc, r) => {
+            if (r.isValidImage) {
+              acc[r.format] = (acc[r.format] || 0) + 1;
+            }
+            return acc;
+          },
+          {} as Record<string, number>,
+        ),
+      };
+
+      return {
+        success: true,
+        summary,
+        details: validationResults,
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Failed to validate screenshots: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Post('analyze-screenshots')
   async analyzeScreenshots(
     @Body()
     body: {
       screenshots: string[]; // base64 encoded screenshot data
-      url: string;
+      url?: string; // Optional for admin uploads
       description?: string;
+      vendor?: string; // For admin uploads
+      isAdminUpload?: boolean; // Flag to distinguish admin uploads
     },
   ) {
     try {
+      // Debug logging
+      console.log('Received request body keys:', Object.keys(body));
+      console.log('URL value:', body.url);
+      console.log('URL type:', typeof body.url);
+      console.log('Screenshots count:', body.screenshots?.length || 'undefined');
+      console.log('Is admin upload:', body.isAdminUpload);
+      console.log('Vendor:', body.vendor);
+
+      // Validate screenshots array
+      if (!body.screenshots || !Array.isArray(body.screenshots)) {
+        throw new HttpException('Screenshots array is required', HttpStatus.BAD_REQUEST);
+      }
+
+      if (body.screenshots.length === 0) {
+        throw new HttpException('At least one screenshot is required', HttpStatus.BAD_REQUEST);
+      }
+
+      // URL validation - required for user submissions, optional for admin uploads
+      let url = '';
+      if (body.isAdminUpload) {
+        // For admin uploads, use a placeholder URL or vendor name
+        url = body.vendor ? `admin-upload-${body.vendor}` : 'admin-upload';
+      } else {
+        // For user submissions, URL is required
+        const providedUrl = typeof body.url === 'string' ? body.url.trim() : body.url;
+        if (!providedUrl || typeof providedUrl !== 'string' || providedUrl.length === 0) {
+          throw new HttpException(
+            'URL is required and must be a non-empty string for user submissions',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        url = providedUrl;
+      }
+
+      // Basic validation of screenshot data
+      body.screenshots.forEach((screenshot, index) => {
+        if (typeof screenshot !== 'string') {
+          throw new HttpException(
+            `Screenshot at index ${index} must be a string`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        if (screenshot.length === 0) {
+          throw new HttpException(
+            `Screenshot at index ${index} cannot be empty`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        // Check for suspicious data length (extremely long strings might be corrupted)
+        if (screenshot.length > 10_000_000) {
+          // 10MB limit
+          throw new HttpException(
+            `Screenshot at index ${index} is too large (max 10MB)`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      });
+
       const result = await this.karaokeParserService.analyzeScreenshotsWithGemini(
         body.screenshots,
-        body.url,
+        url,
         body.description,
       );
       return {
@@ -616,202 +832,14 @@ export class ParserController {
       };
     } catch (error) {
       console.error('Error analyzing screenshots:', error);
+
+      // If it's already an HttpException, re-throw it
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       throw new HttpException(
         `Failed to analyze screenshots: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  /**
-   * Save user-submitted parsed image data directly to database with proper deduplication
-   */
-  @Post('submit-parsed-image-data')
-  async submitParsedImageData(
-    @Body()
-    body: {
-      venues: Array<{
-        name: string;
-        address?: string;
-        city?: string;
-        state?: string;
-        zip?: string;
-        lat?: number;
-        lng?: number;
-        phone?: string;
-        website?: string;
-        confidence?: number;
-      }>;
-      djs: Array<{
-        name: string;
-        confidence?: number;
-        context?: string;
-      }>;
-      shows: Array<{
-        venueName: string;
-        time?: string;
-        startTime?: string;
-        endTime?: string;
-        day: string;
-        djName: string;
-        description?: string;
-        confidence?: number;
-      }>;
-      sourceUrl?: string;
-      description?: string;
-    },
-  ) {
-    try {
-      const createdShows = [];
-      const createdDJs = [];
-      const createdVenues = [];
-
-      // Process each venue
-      for (const venueData of body.venues) {
-        const venue = await this.venueService.findOrCreate({
-          name: venueData.name,
-          address: venueData.address,
-          city: venueData.city,
-          state: venueData.state,
-          zip: venueData.zip,
-          phone: venueData.phone,
-          website: venueData.website,
-          lat: venueData.lat,
-          lng: venueData.lng,
-        });
-        createdVenues.push(venue);
-      }
-
-      // Process each DJ - first check if they exist by name across all vendors
-      for (const djData of body.djs) {
-        // Look for existing DJ by name (without vendor restriction for image uploads)
-        let existingDJ = await this.djRepository.findOne({
-          where: {
-            name: djData.name.trim(),
-          },
-          relations: ['vendor'],
-        });
-
-        if (existingDJ) {
-          createdDJs.push(existingDJ);
-          console.log(
-            `Found existing DJ: ${existingDJ.name} with vendor: ${existingDJ.vendor?.name || 'No vendor'}`,
-          );
-        } else {
-          // Create DJ without vendor (will be managed by admin later)
-          const newDJ = this.djRepository.create({
-            name: djData.name.trim(),
-            isActive: true,
-            // No vendorId for image-uploaded DJs - they'll be assigned by admin
-          });
-          const savedDJ = await this.djRepository.save(newDJ);
-          createdDJs.push(savedDJ);
-          console.log(`Created new DJ: ${savedDJ.name}`);
-        }
-      }
-
-      // Process each show
-      for (const showData of body.shows) {
-        // Find the corresponding venue
-        const venue = createdVenues.find((v) => v.name === showData.venueName);
-        if (!venue) {
-          console.error(`Venue not found for show: ${showData.venueName}`);
-          continue;
-        }
-
-        // Find the corresponding DJ
-        const dj = createdDJs.find((d) => d.name === showData.djName);
-        if (!dj) {
-          console.error(`DJ not found for show: ${showData.djName}`);
-          continue;
-        }
-
-        // Convert start/end times to proper format
-        let startTime = showData.startTime;
-        let endTime = showData.endTime;
-
-        // If we have a time range like "6 pm - 9 pm", parse it
-        if (showData.time && !startTime) {
-          const timeMatch = showData.time.match(/(\d{1,2})\s*([ap]m)\s*-\s*(\d{1,2})\s*([ap]m)/i);
-          if (timeMatch) {
-            const [, startHour, startMeridiem, endHour, endMeridiem] = timeMatch;
-
-            // Convert to 24-hour format
-            let start24 = parseInt(startHour);
-            let end24 = parseInt(endHour);
-
-            if (startMeridiem.toLowerCase() === 'pm' && start24 !== 12) start24 += 12;
-            if (startMeridiem.toLowerCase() === 'am' && start24 === 12) start24 = 0;
-            if (endMeridiem.toLowerCase() === 'pm' && end24 !== 12) end24 += 12;
-            if (endMeridiem.toLowerCase() === 'am' && end24 === 12) end24 = 0;
-
-            startTime = `${start24.toString().padStart(2, '0')}:00`;
-            endTime = `${end24.toString().padStart(2, '0')}:00`;
-          }
-        }
-
-        const finalStartTime = startTime || '18:00'; // Default to 6 PM
-        const finalEndTime = endTime || '21:00'; // Default to 9 PM
-
-        // Check for existing show with same venue/day/startTime (deduplication)
-        const existingShow = await this.showRepository.findOne({
-          where: {
-            venueId: venue.id,
-            day: showData.day.toLowerCase() as any,
-            startTime: finalStartTime,
-          },
-        });
-
-        if (existingShow) {
-          console.log(
-            `Show already exists for ${venue.name} on ${showData.day} at ${finalStartTime} - skipping`,
-          );
-          createdShows.push(existingShow); // Include in response but don't create duplicate
-          continue;
-        }
-
-        const show = this.showRepository.create({
-          djId: dj.id,
-          venueId: venue.id,
-          day: showData.day.toLowerCase() as any, // DayOfWeek enum
-          startTime: finalStartTime,
-          endTime: finalEndTime,
-          description: showData.description || `Karaoke with ${dj.name}`,
-          source: 'image_upload',
-          userSubmitted: true, // Mark as user-submitted from image upload
-        });
-
-        const savedShow = await this.showRepository.save(show);
-        createdShows.push(savedShow);
-        console.log(`Created new show for ${venue.name} on ${showData.day} at ${finalStartTime}`);
-      }
-
-      // Count what was actually created vs found
-      const newShows = createdShows.filter((show) => show.source === 'image_upload');
-      const newDJs = createdDJs.filter((dj) => !dj.vendor);
-      const newVenues = createdVenues.filter(
-        (venue) => venue.createdAt && new Date(venue.createdAt).getTime() > Date.now() - 10000,
-      ); // Created in last 10 seconds
-
-      return {
-        success: true,
-        message: `Successfully processed: ${newShows.length} new show(s), ${createdShows.length - newShows.length} existing show(s), ${newDJs.length} new DJ(s), ${createdVenues.length} venue(s)`,
-        data: {
-          shows: createdShows,
-          djs: createdDJs,
-          venues: createdVenues,
-          stats: {
-            newShows: newShows.length,
-            existingShows: createdShows.length - newShows.length,
-            newDJs: newDJs.length,
-            totalVenues: createdVenues.length,
-          },
-        },
-      };
-    } catch (error) {
-      console.error('Error submitting parsed image data:', error);
-      throw new HttpException(
-        `Failed to submit parsed data: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -1004,6 +1032,105 @@ export class ParserController {
       logger.error(`❌ Facebook authentication test failed: ${error.message}`);
       throw new HttpException(
         `Failed to test authentication: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('analyze-admin-screenshots')
+  async analyzeAdminScreenshots(
+    @Body()
+    body: {
+      screenshots: string[]; // base64 encoded screenshot data
+      vendor?: string;
+      description?: string;
+    },
+  ) {
+    try {
+      // Debug logging
+      console.log('Admin screenshot analysis - received request body keys:', Object.keys(body));
+      console.log('Screenshots count:', body.screenshots?.length || 'undefined');
+      console.log('Vendor:', body.vendor);
+
+      // Validate screenshots array
+      if (!body.screenshots || !Array.isArray(body.screenshots)) {
+        throw new HttpException('Screenshots array is required', HttpStatus.BAD_REQUEST);
+      }
+
+      if (body.screenshots.length === 0) {
+        throw new HttpException('At least one screenshot is required', HttpStatus.BAD_REQUEST);
+      }
+
+      // Basic validation of screenshot data
+      body.screenshots.forEach((screenshot, index) => {
+        if (typeof screenshot !== 'string') {
+          throw new HttpException(
+            `Screenshot at index ${index} must be a string`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        if (screenshot.length === 0) {
+          throw new HttpException(
+            `Screenshot at index ${index} cannot be empty`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      });
+
+      // Call the service to analyze screenshots
+      const result = await this.karaokeParserService.analyzeScreenshotsWithGemini(
+        body.screenshots,
+        body.vendor || 'Unknown Venue', // Use vendor as URL placeholder for admin uploads
+        body.description,
+      );
+
+      console.log('✅ Admin screenshot analysis completed successfully');
+
+      // Return the analysis result for admin review
+      return {
+        success: true,
+        data: result,
+        timestamp: new Date().toISOString(),
+        requiresApproval: true,
+      };
+    } catch (error) {
+      console.error('❌ Admin screenshot analysis failed:', error.message);
+      throw new HttpException(
+        `Failed to analyze admin screenshots: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('approve-admin-analysis')
+  async approveAdminAnalysis(
+    @Body()
+    body: {
+      data: any; // ParsedKaraokeData structure
+    },
+  ) {
+    try {
+      console.log('Admin analysis approval - received data keys:', Object.keys(body.data || {}));
+
+      if (!body.data) {
+        throw new HttpException('Analysis data is required', HttpStatus.BAD_REQUEST);
+      }
+
+      // Call the service to save the approved admin data
+      const result = await this.karaokeParserService.approveAndSaveAdminData(body.data);
+
+      console.log('✅ Admin analysis approved and saved successfully');
+
+      return {
+        success: true,
+        data: result,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('❌ Admin analysis approval failed:', error.message);
+      throw new HttpException(
+        `Failed to approve admin analysis: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
