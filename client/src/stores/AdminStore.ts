@@ -168,6 +168,7 @@ export interface AdminFavorite {
 export interface AdminSong {
   id: string;
   url: string;
+  rawData: any;
   aiAnalysis?: any;
   status: string;
   createdAt: Date;
@@ -1077,6 +1078,27 @@ export class AdminStore {
       return response;
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to analyze vendor duplicates';
+      throw new Error(errorMessage);
+    } finally {
+      this.isLoadingTable = false;
+    }
+  }
+
+  async cleanupShowsSimple(): Promise<{
+    deleted: number;
+    message: string;
+    details: string[];
+  }> {
+    try {
+      this.isLoadingTable = true;
+      const response = await apiStore.post('/admin/deduplicate/shows/cleanup');
+
+      // Refresh shows data after cleanup
+      await this.fetchShows(1, 10);
+
+      return response;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to cleanup shows';
       throw new Error(errorMessage);
     } finally {
       this.isLoadingTable = false;

@@ -45,10 +45,13 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
   const [location, setLocation] = useState<UserLocation | null>(null);
   const [address, setAddress] = useState<string>('');
   const [nearbyShows, setNearbyShows] = useState<ShowWithDistance[]>([]);
+  const [showsWithin20m, setShowsWithin20m] = useState<ShowWithDistance[]>([]);
   const [showsWithin100m, setShowsWithin100m] = useState<ShowWithDistance[]>([]);
   const [allShows, setAllShows] = useState<ShowWithDistance[]>([]);
+  const [allShowsWithDistances, setAllShowsWithDistances] = useState<ShowWithDistance[]>([]);
   const [maxMiles, setMaxMiles] = useState<number>(100); // Default 100 miles
   const [loading, setLoading] = useState(false);
+  const [loadingAllShows, setLoadingAllShows] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mapImageUrl, setMapImageUrl] = useState<string>('');
   const [isTracking, setIsTracking] = useState(false);
@@ -113,8 +116,18 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
       if (response) {
         setAddress(response.location.address);
         setNearbyShows(response.withinRadius || []);
+
+        // Filter shows within 20 meters
+        const within20m = (response.allShowsByDistance || []).filter(
+          (show: ShowWithDistance) => show.distance && show.distance <= 0.02, // 20 meters in km
+        );
+        setShowsWithin20m(within20m);
+
         setShowsWithin100m(response.within100m || []);
-        setAllShows(response.allShowsByDistance || []);
+
+        // Limit all shows to closest 10
+        const closest10Shows = (response.allShowsByDistance || []).slice(0, 10);
+        setAllShows(closest10Shows);
       }
 
       // Generate Google Maps static image URL
@@ -135,6 +148,96 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
       setLoading(false);
     }
   }, [maxMiles]); // Add maxMiles as dependency to refresh when changed
+
+  // Get all shows with distance calculations
+  const getAllShowsWithDistances = useCallback(async () => {
+    if (!location) {
+      setError('Please get your location first');
+      return;
+    }
+
+    setLoadingAllShows(true);
+    setError(null);
+
+    try {
+      // First, get all shows
+      const allShowsResponse = await apiStore.get('/shows');
+
+      if (!allShowsResponse || !Array.isArray(allShowsResponse)) {
+        setError('Failed to fetch shows');
+        return;
+      }
+
+      // Calculate distances for all shows that have venue coordinates
+      const showsWithCalculatedDistances: ShowWithDistance[] = [];
+
+      for (const show of allShowsResponse) {
+        if (show.venue && typeof show.venue === 'object' && show.venue.lat && show.venue.lng) {
+          try {
+            // Calculate distance using geocoding service
+            const distanceMiles = await geocodingService.calculateDistance(
+              location.latitude,
+              location.longitude,
+              show.venue.lat,
+              show.venue.lng,
+            );
+
+            // Convert miles to meters for consistency (only if distance is not null)
+            if (distanceMiles !== null) {
+              const distanceMeters = distanceMiles * 1609.34;
+
+              showsWithCalculatedDistances.push({
+                ...show,
+                distance: distanceMeters, // distance in meters
+              });
+            } else {
+              // Distance calculation failed, include without distance
+              showsWithCalculatedDistances.push({
+                ...show,
+                distance: undefined,
+              });
+            }
+          } catch (error) {
+            console.warn(`Failed to calculate distance for show ${show.id}:`, error);
+            // Still include the show but without distance
+            showsWithCalculatedDistances.push({
+              ...show,
+              distance: undefined,
+            });
+          }
+        } else {
+          // Include shows without coordinates but mark them
+          showsWithCalculatedDistances.push({
+            ...show,
+            distance: undefined,
+          });
+        }
+      }
+
+      // Sort by distance (shows with distance first, then alphabetically)
+      showsWithCalculatedDistances.sort((a, b) => {
+        if (a.distance !== undefined && b.distance !== undefined) {
+          return a.distance - b.distance;
+        }
+        if (a.distance !== undefined && b.distance === undefined) {
+          return -1;
+        }
+        if (a.distance === undefined && b.distance !== undefined) {
+          return 1;
+        }
+        // Both have no distance, sort alphabetically by venue name
+        const venueA = (a.venue && typeof a.venue === 'object' ? a.venue.name : a.venue) || '';
+        const venueB = (b.venue && typeof b.venue === 'object' ? b.venue.name : b.venue) || '';
+        return venueA.localeCompare(venueB);
+      });
+
+      setAllShowsWithDistances(showsWithCalculatedDistances);
+    } catch (err: any) {
+      setError(err.message || 'Failed to calculate distances for all shows');
+    } finally {
+      setLoadingAllShows(false);
+    }
+  }, [location]);
 
   // Start tracking location every 30 seconds
   const startTracking = useCallback(() => {
@@ -376,7 +479,9 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                                 }}
                               >
                                 <Typography variant="subtitle1" fontWeight={600}>
-                                  {(show.venue && typeof show.venue === "object" ? show.venue.name : show.venue) || "Unknown Venue"}
+                                  {(show.venue && typeof show.venue === 'object'
+                                    ? show.venue.name
+                                    : show.venue) || 'Unknown Venue'}
                                 </Typography>
                                 <Typography variant="body2" color="primary">
                                   {formatDistance(show.distance || 0)}
@@ -386,7 +491,9 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                             secondary={
                               <Box>
                                 <Typography variant="body2" color="text.secondary">
-                                  {show.venue && typeof show.venue === "object" ? show.venue.address : null}
+                                  {show.venue && typeof show.venue === 'object'
+                                    ? show.venue.address
+                                    : null}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
                                   DJ: {show.dj?.name || 'Unknown'} • {formatTime(show.startTime)} -{' '}
@@ -397,6 +504,63 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                           />
                         </ListItem>
                         {index < nearbyShows.length - 1 && <Divider />}
+                      </React.Fragment>
+                    ))}
+                  </List>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Shows within 20 meters */}
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Shows Within 20 Meters
+                </Typography>
+                {showsWithin20m.length === 0 ? (
+                  <Typography color="text.secondary">
+                    No shows found within 20 meters of your location.
+                  </Typography>
+                ) : (
+                  <List>
+                    {showsWithin20m.map((show, index) => (
+                      <React.Fragment key={show.id}>
+                        <ListItem sx={{ px: 0 }}>
+                          <ListItemText
+                            primary={
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <Typography variant="subtitle1" fontWeight={600}>
+                                  {(show.venue && typeof show.venue === 'object'
+                                    ? show.venue.name
+                                    : show.venue) || 'Unknown Venue'}
+                                </Typography>
+                                <Typography variant="body2" color="primary">
+                                  {formatDistance(show.distance || 0)}
+                                </Typography>
+                              </Box>
+                            }
+                            secondary={
+                              <Box>
+                                <Typography variant="body2" color="text.secondary">
+                                  {show.venue && typeof show.venue === 'object'
+                                    ? show.venue.address
+                                    : null}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  DJ: {show.dj?.name || 'Unknown'} • {formatTime(show.startTime)} -{' '}
+                                  {formatTime(show.endTime || '23:59')}
+                                </Typography>
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                        {index < showsWithin20m.length - 1 && <Divider />}
                       </React.Fragment>
                     ))}
                   </List>
@@ -429,7 +593,9 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                                 }}
                               >
                                 <Typography variant="subtitle1" fontWeight={600}>
-                                  {(show.venue && typeof show.venue === "object" ? show.venue.name : show.venue) || "Unknown Venue"}
+                                  {(show.venue && typeof show.venue === 'object'
+                                    ? show.venue.name
+                                    : show.venue) || 'Unknown Venue'}
                                 </Typography>
                                 <Typography variant="body2" color="primary">
                                   {formatDistance(show.distance || 0)}
@@ -439,7 +605,9 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                             secondary={
                               <Box>
                                 <Typography variant="body2" color="text.secondary">
-                                  {show.venue && typeof show.venue === "object" ? show.venue.address : null}
+                                  {show.venue && typeof show.venue === 'object'
+                                    ? show.venue.address
+                                    : null}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
                                   DJ: {show.dj?.name || 'Unknown'} • {formatTime(show.startTime)} -{' '}
@@ -457,7 +625,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
               </CardContent>
             </Card>
 
-            {/* All Shows By Distance */}
+            {/* Closest 10 Shows By Distance */}
             <Card variant="outlined" sx={{ bgcolor: theme.palette.primary.main + '08' }}>
               <CardContent>
                 <Box
@@ -468,7 +636,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                     mb: 2,
                   }}
                 >
-                  <Typography variant="h6">All Shows By Distance</Typography>
+                  <Typography variant="h6">Closest 10 Shows By Distance</Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Typography variant="body2" color="text.secondary">
                       Within
@@ -494,50 +662,139 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                     No shows found within {maxMiles} miles for today.
                   </Typography>
                 ) : (
-                  <List>
-                    {allShows.map((show, index) => (
-                      <React.Fragment key={show.id}>
-                        <ListItem sx={{ px: 0 }}>
-                          <ListItemText
-                            primary={
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                }}
-                              >
-                                <Typography variant="subtitle1" fontWeight={600}>
-                                  {(show.venue && typeof show.venue === "object" ? show.venue.name : show.venue) || "Unknown Venue"}
-                                </Typography>
-                                <Typography variant="body2" color="primary" fontWeight={600}>
-                                  {formatDistance(show.distance || 0)}
-                                </Typography>
-                              </Box>
-                            }
-                            secondary={
-                              <Box>
-                                <Typography variant="body2" color="text.secondary">
-                                  {show.venue && typeof show.venue === "object" ? show.venue.address : null}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                  DJ: {show.dj?.name || 'Unknown'} • {formatTime(show.startTime)} -{' '}
-                                  {formatTime(show.endTime || '23:59')}
-                                </Typography>
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                        {index < allShows.length - 1 && <Divider />}
-                      </React.Fragment>
-                    ))}
-                  </List>
+                  <>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      Showing closest {allShows.length} of all shows within {maxMiles} miles
+                    </Typography>
+                    <List>
+                      {allShows.map((show, index) => (
+                        <React.Fragment key={show.id}>
+                          <ListItem sx={{ px: 0 }}>
+                            <ListItemText
+                              primary={
+                                <Box
+                                  sx={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                  }}
+                                >
+                                  <Typography variant="subtitle1" fontWeight={600}>
+                                    {(show.venue && typeof show.venue === 'object'
+                                      ? show.venue.name
+                                      : show.venue) || 'Unknown Venue'}
+                                  </Typography>
+                                  <Typography variant="body2" color="primary" fontWeight={600}>
+                                    {formatDistance(show.distance || 0)}
+                                  </Typography>
+                                </Box>
+                              }
+                              secondary={
+                                <Box>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {show.venue && typeof show.venue === 'object'
+                                      ? show.venue.address
+                                      : null}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    DJ: {show.dj?.name || 'Unknown'} • {formatTime(show.startTime)}{' '}
+                                    - {formatTime(show.endTime || '23:59')}
+                                  </Typography>
+                                </Box>
+                              }
+                            />
+                          </ListItem>
+                          {index < allShows.length - 1 && <Divider />}
+                        </React.Fragment>
+                      ))}
+                    </List>
+                  </>
                 )}
               </CardContent>
             </Card>
 
-            {/* Manual Refresh Button */}
-            <Box sx={{ textAlign: 'center', pt: 2 }}>
+            {/* All Shows with Distances */}
+            {allShowsWithDistances.length > 0 && (
+              <Card variant="outlined" sx={{ bgcolor: theme.palette.secondary.main + '08' }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    All Shows with Distances ({allShowsWithDistances.length} shows)
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Every karaoke show in our database with calculated distances from your location
+                  </Typography>
+
+                  {loadingAllShows ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                      <CircularProgress size={24} />
+                    </Box>
+                  ) : (
+                    <List sx={{ maxHeight: 400, overflow: 'auto' }}>
+                      {allShowsWithDistances.map((show, index) => (
+                        <React.Fragment key={show.id}>
+                          <ListItem sx={{ px: 0 }}>
+                            <ListItemText
+                              primary={
+                                <Box
+                                  sx={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                  }}
+                                >
+                                  <Typography variant="subtitle1" fontWeight={600}>
+                                    {(show.venue && typeof show.venue === 'object'
+                                      ? show.venue.name
+                                      : show.venue) || 'Unknown Venue'}
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    color={
+                                      show.distance !== undefined ? 'primary' : 'text.secondary'
+                                    }
+                                    fontWeight={600}
+                                  >
+                                    {show.distance !== undefined
+                                      ? formatDistance(show.distance)
+                                      : 'No coordinates'}
+                                  </Typography>
+                                </Box>
+                              }
+                              secondary={
+                                <Box>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {show.venue && typeof show.venue === 'object'
+                                      ? show.venue.address
+                                      : null}
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary">
+                                    DJ: {show.dj?.name || 'Unknown'} • {formatTime(show.startTime)}{' '}
+                                    - {formatTime(show.endTime || '23:59')} •{' '}
+                                    {show.day || 'Unknown day'}
+                                  </Typography>
+                                  {show.venue &&
+                                    typeof show.venue === 'object' &&
+                                    show.venue.city &&
+                                    show.venue.state && (
+                                      <Typography variant="body2" color="text.secondary">
+                                        📍 {show.venue.city}, {show.venue.state}
+                                      </Typography>
+                                    )}
+                                </Box>
+                              }
+                            />
+                          </ListItem>
+                          {index < allShowsWithDistances.length - 1 && <Divider />}
+                        </React.Fragment>
+                      ))}
+                    </List>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Manual Refresh Buttons */}
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', pt: 2 }}>
               <Button
                 variant="outlined"
                 onClick={getCurrentLocation}
@@ -546,6 +803,21 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
                 sx={{ borderRadius: 2 }}
               >
                 Refresh Location
+              </Button>
+              <Button
+                variant="contained"
+                onClick={getAllShowsWithDistances}
+                disabled={loadingAllShows || !location}
+                startIcon={
+                  loadingAllShows ? (
+                    <CircularProgress size={16} />
+                  ) : (
+                    <FontAwesomeIcon icon={faMapMarkerAlt} />
+                  )
+                }
+                sx={{ borderRadius: 2 }}
+              >
+                {loadingAllShows ? 'Calculating...' : 'Get All Shows with Distances'}
               </Button>
             </Box>
           </Box>

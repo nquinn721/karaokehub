@@ -273,6 +273,161 @@ export class DeduplicationService {
     }
   }
 
+  async cleanupInvalidShowsSimple(): Promise<{
+    deleted: number;
+    message: string;
+    details: string[];
+  }> {
+    this.logger.log('Starting simple show cleanup process...');
+
+    try {
+      // Find all shows with missing relationships
+      const allShows = await this.showRepository.find({
+        where: { isActive: true },
+        relations: ['venue', 'dj', 'dj.vendor'],
+      });
+
+      const invalidShows = allShows.filter((show) => {
+        // Delete if no venue
+        if (!show.venue || !show.venueId) {
+          return true;
+        }
+
+        // Delete if no DJ
+        if (!show.dj || !show.djId) {
+          return true;
+        }
+
+        // Delete if DJ exists but has no vendor
+        if (show.dj && !show.dj.vendor && !show.dj.vendorId) {
+          return true;
+        }
+
+        return false;
+      });
+
+      const details: string[] = [];
+
+      // Log what we're deleting
+      invalidShows.forEach((show) => {
+        let reason = '';
+        if (!show.venue || !show.venueId) {
+          reason = 'No venue';
+        } else if (!show.dj || !show.djId) {
+          reason = 'No DJ';
+        } else if (show.dj && !show.dj.vendor && !show.dj.vendorId) {
+          reason = 'DJ has no vendor';
+        }
+
+        const venueName = show.venue?.name || 'Unknown Venue';
+        const djName = show.dj?.name || 'Unknown DJ';
+        details.push(`${venueName} - ${djName} (${reason})`);
+      });
+
+      // Delete invalid shows
+      if (invalidShows.length > 0) {
+        await this.showRepository.remove(invalidShows);
+        this.logger.log(`Deleted ${invalidShows.length} invalid shows`);
+      }
+
+      // Now find and delete obvious duplicates (same venue, day, time)
+      const remainingShows = await this.showRepository.find({
+        where: { isActive: true },
+        relations: ['venue', 'dj'],
+        order: { createdAt: 'ASC' }, // Keep older shows when duplicates found
+      });
+
+      const duplicatesToDelete = [];
+      const processed = new Set<string>();
+
+      for (const show of remainingShows) {
+        if (processed.has(show.id)) continue;
+
+        // Find other shows at same venue, same day, similar time
+        const similarShows = remainingShows.filter((otherShow) => {
+          if (otherShow.id === show.id || processed.has(otherShow.id)) return false;
+
+          // Same venue and day
+          if (otherShow.venueId === show.venueId && otherShow.day === show.day) {
+            // Check if times are within 30 minutes
+            const time1 = this.parseTime(show.startTime);
+            const time2 = this.parseTime(otherShow.startTime);
+            const timeDiff = Math.abs(time1 - time2);
+
+            return timeDiff <= 30; // 30 minutes tolerance
+          }
+
+          return false;
+        });
+
+        if (similarShows.length > 0) {
+          // Keep the first (oldest) show, delete the others
+          similarShows.forEach((duplicate) => {
+            duplicatesToDelete.push(duplicate);
+            processed.add(duplicate.id);
+            const venueName = duplicate.venue?.name || 'Unknown';
+            details.push(
+              `Duplicate: ${venueName} - ${duplicate.day} ${duplicate.startTime} (duplicate of older show)`,
+            );
+          });
+        }
+
+        processed.add(show.id);
+      }
+
+      // Delete duplicates
+      if (duplicatesToDelete.length > 0) {
+        await this.showRepository.remove(duplicatesToDelete);
+        this.logger.log(`Deleted ${duplicatesToDelete.length} duplicate shows`);
+      }
+
+      const totalDeleted = invalidShows.length + duplicatesToDelete.length;
+
+      return {
+        deleted: totalDeleted,
+        message: `Successfully cleaned up ${totalDeleted} shows (${invalidShows.length} invalid, ${duplicatesToDelete.length} duplicates)`,
+        details,
+      };
+    } catch (error) {
+      this.logger.error('Error in simple show cleanup:', error);
+      throw new Error('Failed to cleanup shows: ' + error.message);
+    }
+  }
+
+  // Helper method to parse time strings to minutes for comparison
+  private parseTime(timeString: string): number {
+    if (!timeString) return 0;
+
+    // Handle various time formats: "7:00 PM", "19:00", "7pm", etc.
+    const time = timeString.toLowerCase().trim();
+    let hours = 0;
+    let minutes = 0;
+
+    // Extract AM/PM
+    const isPM = time.includes('pm') || time.includes('p.m.');
+    const isAM = time.includes('am') || time.includes('a.m.');
+
+    // Remove AM/PM and extra characters
+    const cleanTime = time.replace(/[^\d:]/g, '');
+
+    if (cleanTime.includes(':')) {
+      const parts = cleanTime.split(':');
+      hours = parseInt(parts[0]) || 0;
+      minutes = parseInt(parts[1]) || 0;
+    } else {
+      hours = parseInt(cleanTime) || 0;
+    }
+
+    // Convert to 24-hour format
+    if (isPM && hours !== 12) {
+      hours += 12;
+    } else if (isAM && hours === 12) {
+      hours = 0;
+    }
+
+    return hours * 60 + minutes;
+  }
+
   async deduplicateDJs(): Promise<DeduplicationResult> {
     this.logger.log('Starting DJ deduplication process...');
 

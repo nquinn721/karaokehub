@@ -17,10 +17,15 @@ import {
   Box,
   Button,
   Card,
+  CardActions,
   CardContent,
   Checkbox,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   Grid,
   InputLabel,
@@ -108,7 +113,15 @@ const SubmitShowPage: React.FC = observer(() => {
     lng: null as number | null,
   });
   const [isCreatingVendor, setIsCreatingVendor] = useState(!authStore.isAuthenticated);
+
+  // Image Upload state
   const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [selectedImageVendor, setSelectedImageVendor] = useState<Vendor | null>(null);
+  const [imageVendorInputValue, setImageVendorInputValue] = useState('');
+  const [imageAnalyzing, setImageAnalyzing] = useState(false);
+  const [imageAnalysisResult, setImageAnalysisResult] = useState<any>(null);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
 
   useEffect(() => {
     // Load vendors when component mounts (now that endpoint is public)
@@ -241,54 +254,40 @@ const SubmitShowPage: React.FC = observer(() => {
 
     setLoading(true);
     try {
-      // Check if this is image-parsed data (no ID) or URL-parsed data (has ID)
-      if (parsedData.id) {
-        // URL-parsed data - use existing approval flow
-        const result = await parserStore.approveAllItems(parsedData.id);
-        if (result.success) {
-          setSuccess('Data confirmed and saved successfully!');
-          setParsedData(null);
-          setUrl('');
-          setShowConfirmDialog(false);
-        } else {
-          setError(result.error || 'Failed to save confirmed data.');
-        }
+      const result = await parserStore.approveAllItems(parsedData.id);
+      if (result.success) {
+        setSuccess('Data confirmed and saved successfully!');
+        setParsedData(null);
+        setUrl('');
+        setShowConfirmDialog(false);
       } else {
-        // Image-parsed data - save as user-submitted
-        const response = await fetch(
-          `${apiStore.environmentInfo.baseURL}/parser/submit-parsed-image-data`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${authStore.token}`,
-            },
-            body: JSON.stringify({
-              venues: parsedData.venues || [],
-              djs: parsedData.djs || [],
-              shows: parsedData.shows || [],
-              sourceUrl: `user-uploaded-image-${Date.now()}`,
-              description: 'User uploaded karaoke show image',
-            }),
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        if (result.success) {
-          setSuccess(result.message || 'Shows saved successfully to the database!');
-          setParsedData(null);
-          setShowConfirmDialog(false);
-        } else {
-          setError('Failed to save show data to database.');
-        }
+        setError(result.error || 'Failed to save confirmed data.');
       }
     } catch (err) {
       setError('Failed to save confirmed data.');
       console.error('Confirm error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRejectParsedData = async () => {
+    if (!parsedData) return;
+
+    setLoading(true);
+    try {
+      const result = await parserStore.rejectParsedData(parsedData.id, 'Rejected by user');
+      if (result.success) {
+        setSuccess('Data rejected successfully.');
+        setParsedData(null);
+        setUrl('');
+        setShowConfirmDialog(false);
+      } else {
+        setError(result.error || 'Failed to reject data.');
+      }
+    } catch (err) {
+      setError('Failed to reject data.');
+      console.error('Reject error:', err);
     } finally {
       setLoading(false);
     }
@@ -316,65 +315,6 @@ const SubmitShowPage: React.FC = observer(() => {
       console.error('Create vendor error:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleImageUpload = async (file: File) => {
-    parserStore.setLoading(true);
-    setError('');
-
-    try {
-      // Convert file to base64
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          // Remove data:image/...;base64, prefix
-          const base64Data = result.split(',')[1];
-          resolve(base64Data);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      // Call the existing analyze-screenshots endpoint
-      const response = await fetch(
-        `${apiStore.environmentInfo.baseURL}/parser/analyze-screenshots`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${authStore.token}`,
-          },
-          body: JSON.stringify({
-            screenshots: [base64],
-            url: `uploaded-image-${Date.now()}.${file.name.split('.').pop()}`,
-            description: 'User uploaded karaoke show image',
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        // Store the parsed data and show it in the confirmation modal for user approval
-        setParsedData(result.data);
-        setShowConfirmDialog(true);
-        setSuccess('Image analyzed successfully! Please review the extracted data.');
-      } else {
-        throw new Error('Failed to analyze image');
-      }
-    } catch (error) {
-      console.error('Error uploading and analyzing image:', error);
-      setError(
-        `Failed to analyze image: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-    } finally {
-      parserStore.setLoading(false);
     }
   };
 
@@ -437,6 +377,115 @@ const SubmitShowPage: React.FC = observer(() => {
     } catch (err) {
       setError('Failed to submit show.');
       console.error('Submit show error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Image upload handlers
+  const handleImageDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragOver(false);
+
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+      handleImageFile(files[0]);
+    }
+  };
+
+  const handleImageDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleImageDragLeave = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleImageFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      handleImageFile(files[0]);
+    }
+  };
+
+  const handleImageFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      // 10MB limit
+      setError('Image file size must be less than 10MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setUploadedImage(e.target?.result as string);
+      setError('');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAnalyzeImage = async () => {
+    if (!uploadedImage) {
+      setError('Please upload an image first');
+      return;
+    }
+
+    setImageAnalyzing(true);
+    setError('');
+
+    try {
+      const result = await parserStore.analyzeUserImage({
+        image: uploadedImage,
+        vendorId: selectedImageVendor?.id || null,
+      });
+
+      if (result.success) {
+        setImageAnalysisResult(result.data);
+        setShowAnalysisModal(true);
+        setSuccess('Image analyzed successfully!');
+      } else {
+        setError(result.error || 'Failed to analyze image');
+      }
+    } catch (err) {
+      setError('Failed to analyze image');
+      console.error('Image analysis error:', err);
+    } finally {
+      setImageAnalyzing(false);
+    }
+  };
+
+  const handleSubmitImageAnalysis = async () => {
+    if (!imageAnalysisResult) {
+      setError('No analysis result to submit');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await parserStore.submitImageAnalysis({
+        ...imageAnalysisResult,
+        vendorId: selectedImageVendor?.id || null,
+      });
+
+      if (result.success) {
+        setSuccess('Show information submitted successfully!');
+        // Reset form
+        setUploadedImage('');
+        setSelectedImageVendor(null);
+        setImageAnalysisResult(null);
+        setShowAnalysisModal(false);
+      } else {
+        setError(result.error || 'Failed to submit analysis');
+      }
+    } catch (err) {
+      setError('Failed to submit analysis');
+      console.error('Submit analysis error:', err);
     } finally {
       setLoading(false);
     }
@@ -575,32 +624,9 @@ const SubmitShowPage: React.FC = observer(() => {
               sx={{
                 p: { xs: 2, sm: 3 },
                 mb: 3,
-                border: '1px solid',
-                borderColor:
-                  theme.palette.mode === 'dark'
-                    ? 'rgba(0, 229, 255, 0.2)'
-                    : 'rgba(255, 255, 255, 0.12)',
-                borderRadius: 3,
-                background:
-                  theme.palette.mode === 'dark'
-                    ? 'linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%)'
-                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%)',
-                backdropFilter: 'blur(12px)',
-                boxShadow:
-                  theme.palette.mode === 'dark'
-                    ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 229, 255, 0.1)'
-                    : '0 8px 32px rgba(0, 0, 0, 0.1)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  borderColor:
-                    theme.palette.mode === 'dark'
-                      ? 'rgba(0, 229, 255, 0.4)'
-                      : 'rgba(255, 255, 255, 0.2)',
-                  boxShadow:
-                    theme.palette.mode === 'dark'
-                      ? '0 12px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 229, 255, 0.2)'
-                      : '0 12px 48px rgba(0, 0, 0, 0.15)',
-                },
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: 2,
+                background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
               }}
             >
               <Box
@@ -697,6 +723,187 @@ const SubmitShowPage: React.FC = observer(() => {
                 {loading ? 'Submitting URL...' : 'Submit URL for Review'}
               </Button>
             </Card>
+
+            {parsedData && (
+              <Card
+                elevation={0}
+                sx={{
+                  border: `2px solid ${theme.palette.success.main}20`,
+                  borderRadius: 3,
+                  overflow: 'hidden',
+                }}
+              >
+                <Box
+                  sx={{
+                    background: `linear-gradient(135deg, ${theme.palette.success.main}10, ${theme.palette.success.main}05)`,
+                    p: { xs: 2, sm: 3 },
+                    borderBottom: `1px solid ${theme.palette.divider}`,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: { xs: 'flex-start', sm: 'center' },
+                      flexDirection: { xs: 'column', sm: 'row' },
+                      gap: { xs: 2, sm: 0 },
+                      mb: 2,
+                    }}
+                  >
+                    <CheckCircle
+                      sx={{
+                        color: 'success.main',
+                        mr: { xs: 0, sm: 2 },
+                        fontSize: { xs: 28, sm: 32 },
+                      }}
+                    />
+                    <Box>
+                      <Typography
+                        variant="h6"
+                        gutterBottom
+                        sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+                      >
+                        ✨ Parsing Successful!
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}
+                      >
+                        Please review the extracted information below before saving to our database.
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+
+                <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                  <Grid container spacing={{ xs: 2, sm: 3 }}>
+                    <Grid item xs={12} md={6}>
+                      <Box sx={{ mb: 3 }}>
+                        <Typography
+                          variant="subtitle1"
+                          gutterBottom
+                          fontWeight={600}
+                          color="primary"
+                        >
+                          🏢 Vendor Information
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                          <Chip
+                            label={parsedData.aiAnalysis?.vendor?.name || 'Unknown Vendor'}
+                            color="primary"
+                            variant="filled"
+                            sx={{ fontWeight: 600 }}
+                          />
+                          {parsedData.aiAnalysis?.vendor?.website && (
+                            <Chip
+                              label={parsedData.aiAnalysis?.vendor?.website}
+                              variant="outlined"
+                              color="primary"
+                            />
+                          )}
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ mb: 3 }}>
+                        <Typography
+                          variant="subtitle1"
+                          gutterBottom
+                          fontWeight={600}
+                          color="secondary"
+                        >
+                          🎤 DJs & KJs ({parsedData.aiAnalysis?.djs?.length || 0})
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                          {parsedData.aiAnalysis?.djs?.map((dj, index) => (
+                            <Chip
+                              key={index}
+                              label={dj.name}
+                              color="secondary"
+                              variant="filled"
+                              sx={{ mb: 1 }}
+                            />
+                          ))}
+                        </Box>
+                      </Box>
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <Typography variant="subtitle1" gutterBottom fontWeight={600}>
+                        📅 Shows Found ({parsedData.aiAnalysis?.shows?.length || 0})
+                      </Typography>
+                      <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
+                        {parsedData.aiAnalysis?.shows?.map((show, index) => (
+                          <Card
+                            key={index}
+                            variant="outlined"
+                            sx={{
+                              mb: 2,
+                              p: 2,
+                              border: `1px solid ${theme.palette.divider}`,
+                              '&:hover': {
+                                boxShadow: theme.shadows[2],
+                              },
+                            }}
+                          >
+                            <Typography variant="body1" fontWeight={600} gutterBottom>
+                              📍{' '}
+                              {typeof show.venue === 'string'
+                                ? show.venue
+                                : (show.venue as any)?.name || 'Unknown Venue'}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                              ⏰ {show.time}
+                            </Typography>
+                            {show.djName && (
+                              <Typography variant="body2" color="primary">
+                                🎵 DJ: {show.djName}
+                              </Typography>
+                            )}
+                          </Card>
+                        ))}
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+
+                <CardActions sx={{ p: 3, gap: 2 }}>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    size="large"
+                    onClick={() => setShowConfirmDialog(true)}
+                    disabled={loading}
+                    startIcon={<CheckCircle />}
+                    sx={{
+                      px: 3,
+                      py: 1.5,
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Confirm & Save All Data
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="large"
+                    onClick={handleRejectParsedData}
+                    disabled={loading}
+                    startIcon={<Cancel />}
+                    sx={{
+                      px: 3,
+                      py: 1.5,
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Reject Data
+                  </Button>
+                </CardActions>
+              </Card>
+            )}
           </TabPanel>
 
           <TabPanel value={tabValue} index={1}>
@@ -705,304 +912,148 @@ const SubmitShowPage: React.FC = observer(() => {
               sx={{
                 p: { xs: 2, sm: 3 },
                 mb: 3,
-                border: '1px solid',
-                borderColor:
-                  theme.palette.mode === 'dark'
-                    ? 'rgba(0, 229, 255, 0.2)'
-                    : 'rgba(255, 255, 255, 0.12)',
-                borderRadius: 3,
-                background:
-                  theme.palette.mode === 'dark'
-                    ? 'linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%)'
-                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%)',
-                backdropFilter: 'blur(12px)',
-                boxShadow:
-                  theme.palette.mode === 'dark'
-                    ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 229, 255, 0.1)'
-                    : '0 8px 32px rgba(0, 0, 0, 0.1)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  borderColor:
-                    theme.palette.mode === 'dark'
-                      ? 'rgba(0, 229, 255, 0.4)'
-                      : 'rgba(255, 255, 255, 0.2)',
-                  boxShadow:
-                    theme.palette.mode === 'dark'
-                      ? '0 12px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 229, 255, 0.2)'
-                      : '0 12px 48px rgba(0, 0, 0, 0.15)',
-                },
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: 2,
+                background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
               }}
             >
-              <CardContent sx={{ p: { xs: 2, sm: 3 }, '&:last-child': { pb: 3 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+              <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    mb: 3,
+                    gap: { xs: 2, sm: 0 },
+                  }}
+                >
                   <CloudUpload
                     sx={{
-                      fontSize: 32,
-                      color: theme.palette.mode === 'dark' ? '#00E5FF' : theme.palette.primary.main,
-                      mr: 2,
+                      fontSize: { xs: 24, sm: 32 },
+                      color: 'primary.main',
+                      mr: { xs: 0, sm: 2 },
                     }}
                   />
                   <Box>
-                    <Typography
-                      variant="h5"
-                      sx={{
-                        fontWeight: 600,
-                        mb: 0.5,
-                        color: theme.palette.mode === 'dark' ? '#FFFFFF' : 'text.primary',
-                      }}
-                    >
+                    <Typography variant="h5" component="h2" gutterBottom fontWeight={600}>
                       Upload Show Image
                     </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color:
-                          theme.palette.mode === 'dark'
-                            ? 'rgba(255, 255, 255, 0.7)'
-                            : 'text.secondary',
-                      }}
-                    >
+                    <Typography variant="body1" color="text.secondary">
                       Upload an image from a karaoke show schedule or flyer for AI analysis
                     </Typography>
                   </Box>
                 </Box>
 
-                <Box
-                  sx={{
-                    border: '2px dashed',
-                    borderColor: isDragOver
-                      ? theme.palette.mode === 'dark'
-                        ? '#00E5FF'
-                        : 'primary.main'
-                      : theme.palette.mode === 'dark'
-                        ? 'rgba(0, 229, 255, 0.4)'
-                        : 'primary.main',
-                    borderRadius: 3,
-                    p: 4,
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    background: isDragOver
-                      ? theme.palette.mode === 'dark'
-                        ? 'linear-gradient(135deg, rgba(0, 229, 255, 0.15) 0%, rgba(0, 229, 255, 0.25) 100%)'
-                        : 'rgba(0, 229, 255, 0.1)'
-                      : theme.palette.mode === 'dark'
-                        ? 'linear-gradient(135deg, rgba(0, 229, 255, 0.02) 0%, rgba(0, 229, 255, 0.04) 100%)'
-                        : 'rgba(0, 229, 255, 0.02)',
-                    backdropFilter: 'blur(8px)',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    transform: isDragOver ? 'translateY(-4px) scale(1.02)' : 'none',
-                    boxShadow: isDragOver
-                      ? theme.palette.mode === 'dark'
-                        ? '0 16px 48px rgba(0, 229, 255, 0.4), 0 0 0 1px rgba(0, 229, 255, 0.3)'
-                        : '0 16px 48px rgba(0, 0, 0, 0.2)'
-                      : 'none',
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      background:
-                        theme.palette.mode === 'dark'
-                          ? 'linear-gradient(45deg, transparent 30%, rgba(0, 229, 255, 0.05) 50%, transparent 70%)'
-                          : 'linear-gradient(45deg, transparent 30%, rgba(0, 229, 255, 0.1) 50%, transparent 70%)',
-                      transform: 'translateX(-100%)',
-                      transition: 'transform 0.6s ease',
-                      zIndex: 0,
-                    },
-                    '&:hover': {
-                      borderColor:
-                        theme.palette.mode === 'dark' ? 'rgba(0, 229, 255, 0.9)' : 'primary.dark',
-                      backgroundColor:
-                        theme.palette.mode === 'dark'
-                          ? 'rgba(0, 229, 255, 0.12)'
-                          : alpha(theme.palette.primary.main, 0.08),
-                      transform: 'translateY(-4px) scale(1.02)',
-                      boxShadow:
-                        theme.palette.mode === 'dark'
-                          ? '0 16px 48px rgba(0, 229, 255, 0.25), 0 0 0 1px rgba(0, 229, 255, 0.1)'
-                          : '0 16px 48px rgba(0, 0, 0, 0.15)',
-                      '&::before': {
-                        transform: 'translateX(100%)',
-                      },
-                    },
-                    '&:active': {
-                      transform: 'translateY(-2px) scale(1.01)',
-                    },
-                  }}
-                  onClick={() => document.getElementById('image-upload-input')?.click()}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragOver(true);
-                  }}
-                  onDragEnter={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragOver(true);
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Only set to false if we're leaving the dropzone itself
-                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                      setIsDragOver(false);
-                    }
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsDragOver(false);
-
-                    const files = Array.from(e.dataTransfer.files);
-                    const imageFile = files.find((file) => file.type.startsWith('image/'));
-
-                    if (imageFile) {
-                      handleImageUpload(imageFile);
-                    } else {
-                      setError('Please drop an image file');
-                    }
-                  }}
-                >
-                  <input
-                    id="image-upload-input"
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        handleImageUpload(file);
+                {/* Vendor Selection */}
+                <Box sx={{ mb: 3 }}>
+                  <Autocomplete
+                    value={selectedImageVendor}
+                    onChange={(_, newValue) => {
+                      if (typeof newValue === 'string') {
+                        // Create new vendor placeholder
+                        setSelectedImageVendor({ id: '', name: newValue } as Vendor);
+                      } else {
+                        setSelectedImageVendor(newValue);
                       }
                     }}
+                    inputValue={imageVendorInputValue}
+                    onInputChange={(_, newInputValue) => {
+                      setImageVendorInputValue(newInputValue);
+                    }}
+                    options={vendorStore.vendors}
+                    getOptionLabel={(option) => (typeof option === 'string' ? option : option.name)}
+                    freeSolo
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Vendor (Optional)"
+                        placeholder="Start typing to search or create new vendor"
+                        helperText="Select existing vendor or type new name to create vendor and DJ relationship"
+                        fullWidth
+                      />
+                    )}
+                    sx={{ mb: 2 }}
                   />
-                  <CloudUpload
-                    sx={{
-                      fontSize: 48,
-                      color: isDragOver
-                        ? theme.palette.mode === 'dark'
-                          ? '#FFFFFF'
-                          : 'primary.dark'
-                        : theme.palette.mode === 'dark'
-                          ? '#00E5FF'
-                          : 'primary.main',
-                      mb: 2,
-                      position: 'relative',
-                      zIndex: 1,
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                      filter:
-                        theme.palette.mode === 'dark'
-                          ? isDragOver
-                            ? 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.8))'
-                            : 'drop-shadow(0 0 8px rgba(0, 229, 255, 0.3))'
-                          : 'none',
-                      transform: isDragOver ? 'scale(1.2) translateY(-8px)' : 'none',
-                      '.MuiBox-root:hover &': {
-                        transform: isDragOver
-                          ? 'scale(1.2) translateY(-8px)'
-                          : 'scale(1.1) translateY(-4px)',
-                        filter:
-                          theme.palette.mode === 'dark'
-                            ? 'drop-shadow(0 0 16px rgba(0, 229, 255, 0.6))'
-                            : 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2))',
-                      },
-                    }}
-                  />
-                  <Typography
-                    variant="h6"
-                    gutterBottom
-                    sx={{
-                      color: isDragOver
-                        ? theme.palette.mode === 'dark'
-                          ? '#FFFFFF'
-                          : 'primary.dark'
-                        : theme.palette.mode === 'dark'
-                          ? '#FFFFFF'
-                          : 'text.primary',
-                      position: 'relative',
-                      zIndex: 1,
-                      transition: 'all 0.3s ease',
-                      fontWeight: 600,
-                      transform: isDragOver ? 'translateY(-2px)' : 'none',
-                      '.MuiBox-root:hover &': {
-                        color: theme.palette.mode === 'dark' ? '#00E5FF' : 'primary.main',
-                        transform: 'translateY(-2px)',
-                      },
-                    }}
-                  >
-                    {isDragOver ? 'Drop your image now!' : 'Drop an image here or click to browse'}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: isDragOver
-                        ? theme.palette.mode === 'dark'
-                          ? 'rgba(255, 255, 255, 0.9)'
-                          : 'text.primary'
-                        : theme.palette.mode === 'dark'
-                          ? 'rgba(255, 255, 255, 0.7)'
-                          : 'text.secondary',
-                      position: 'relative',
-                      zIndex: 1,
-                      transition: 'all 0.3s ease',
-                      '.MuiBox-root:hover &': {
-                        color:
-                          theme.palette.mode === 'dark'
-                            ? 'rgba(255, 255, 255, 0.9)'
-                            : 'text.primary',
-                      },
-                    }}
-                  >
-                    Supports JPG, PNG, GIF, and other common image formats
-                  </Typography>
                 </Box>
 
-                {parserStore.isLoading && (
-                  <Box
+                {/* Image Upload Area */}
+                <Box
+                  onDrop={handleImageDrop}
+                  onDragOver={handleImageDragOver}
+                  onDragLeave={handleImageDragLeave}
+                  sx={{
+                    border: `2px dashed ${isDragOver ? theme.palette.primary.main : 'rgba(255, 255, 255, 0.1)'}`,
+                    borderRadius: 2,
+                    p: 4,
+                    textAlign: 'center',
+                    backgroundColor: isDragOver
+                      ? alpha(theme.palette.primary.main, 0.1)
+                      : 'transparent',
+                    transition: 'all 0.3s ease',
+                    cursor: 'pointer',
+                    mb: 3,
+                  }}
+                  onClick={() => document.getElementById('image-upload')?.click()}
+                >
+                  <input
+                    type="file"
+                    id="image-upload"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleImageFileSelect}
+                  />
+                  {uploadedImage ? (
+                    <Box>
+                      <img
+                        src={uploadedImage}
+                        alt="Uploaded"
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '300px',
+                          borderRadius: '8px',
+                          marginBottom: '16px',
+                        }}
+                      />
+                      <Typography variant="body2" color="text.secondary">
+                        Click to change image or drag a new one here
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box>
+                      <CloudUpload sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                      <Typography variant="h6" gutterBottom>
+                        Drop an image here or click to browse
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Supports JPG, PNG, GIF, and other common image formats
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+
+                {/* Analyze Button */}
+                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={handleAnalyzeImage}
+                    disabled={!uploadedImage || imageAnalyzing}
+                    startIcon={imageAnalyzing ? <CircularProgress size={20} /> : <CloudUpload />}
                     sx={{
-                      mt: 3,
-                      textAlign: 'center',
-                      p: 3,
-                      background: 'rgba(0, 229, 255, 0.05)',
+                      px: 3,
+                      py: 1.5,
                       borderRadius: 2,
-                      border: '1px solid rgba(0, 229, 255, 0.2)',
+                      textTransform: 'none',
+                      fontWeight: 600,
                     }}
                   >
-                    <CircularProgress
-                      size={40}
-                      sx={{
-                        color: theme.palette.mode === 'dark' ? '#00E5FF' : 'primary.main',
-                        mb: 2,
-                      }}
-                    />
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: theme.palette.mode === 'dark' ? '#FFFFFF' : 'text.primary',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Analyzing image with AI...
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color:
-                          theme.palette.mode === 'dark'
-                            ? 'rgba(255, 255, 255, 0.6)'
-                            : 'text.secondary',
-                        display: 'block',
-                        mt: 1,
-                      }}
-                    >
-                      This may take a few moments
-                    </Typography>
-                  </Box>
-                )}
-              </CardContent>
+                    {imageAnalyzing ? 'Analyzing...' : 'Analyze Image'}
+                  </Button>
+                </Box>
+
+                {/* Analysis Results */}
+                {/* Results will be shown in a modal */}
+              </Box>
             </Card>
           </TabPanel>
 
@@ -1050,32 +1101,9 @@ const SubmitShowPage: React.FC = observer(() => {
                   elevation={0}
                   sx={{
                     p: { xs: 2, sm: 3 },
-                    border: '1px solid',
-                    borderColor:
-                      theme.palette.mode === 'dark'
-                        ? 'rgba(0, 229, 255, 0.2)'
-                        : 'rgba(255, 255, 255, 0.12)',
-                    borderRadius: 3,
-                    background:
-                      theme.palette.mode === 'dark'
-                        ? 'linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%)'
-                        : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%)',
-                    backdropFilter: 'blur(12px)',
-                    boxShadow:
-                      theme.palette.mode === 'dark'
-                        ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 229, 255, 0.1)'
-                        : '0 8px 32px rgba(0, 0, 0, 0.1)',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? 'rgba(0, 229, 255, 0.4)'
-                          : 'rgba(255, 255, 255, 0.2)',
-                      boxShadow:
-                        theme.palette.mode === 'dark'
-                          ? '0 12px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 229, 255, 0.2)'
-                          : '0 12px 48px rgba(0, 0, 0, 0.15)',
-                    },
+                    border: `1px solid ${theme.palette.divider}`,
+                    borderRadius: 2,
+                    background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
                   }}
                 >
                   <Typography
@@ -1148,32 +1176,7 @@ const SubmitShowPage: React.FC = observer(() => {
                       variant="outlined"
                       sx={{
                         p: { xs: 2, sm: 3 },
-                        border: '1px solid',
-                        borderColor:
-                          theme.palette.mode === 'dark'
-                            ? 'rgba(0, 229, 255, 0.2)'
-                            : 'rgba(255, 255, 255, 0.12)',
-                        borderRadius: 3,
-                        background:
-                          theme.palette.mode === 'dark'
-                            ? 'linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%)'
-                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%)',
-                        backdropFilter: 'blur(12px)',
-                        boxShadow:
-                          theme.palette.mode === 'dark'
-                            ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 229, 255, 0.1)'
-                            : '0 8px 32px rgba(0, 0, 0, 0.1)',
-                        transition: 'all 0.3s ease',
-                        '&:hover': {
-                          borderColor:
-                            theme.palette.mode === 'dark'
-                              ? 'rgba(0, 229, 255, 0.4)'
-                              : 'rgba(255, 255, 255, 0.2)',
-                          boxShadow:
-                            theme.palette.mode === 'dark'
-                              ? '0 12px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 229, 255, 0.2)'
-                              : '0 12px 48px rgba(0, 0, 0, 0.15)',
-                        },
+                        background: `linear-gradient(135deg, ${theme.palette.primary.main}05, ${theme.palette.secondary.main}05)`,
                       }}
                     >
                       <Typography
@@ -1310,32 +1313,9 @@ const SubmitShowPage: React.FC = observer(() => {
                     elevation={0}
                     sx={{
                       p: { xs: 2, sm: 3 },
-                      border: '1px solid',
-                      borderColor:
-                        theme.palette.mode === 'dark'
-                          ? 'rgba(0, 229, 255, 0.2)'
-                          : 'rgba(255, 255, 255, 0.12)',
-                      borderRadius: 3,
-                      background:
-                        theme.palette.mode === 'dark'
-                          ? 'linear-gradient(135deg, rgba(18, 18, 18, 0.95) 0%, rgba(30, 30, 30, 0.98) 100%)'
-                          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%)',
-                      backdropFilter: 'blur(12px)',
-                      boxShadow:
-                        theme.palette.mode === 'dark'
-                          ? '0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 229, 255, 0.1)'
-                          : '0 8px 32px rgba(0, 0, 0, 0.1)',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        borderColor:
-                          theme.palette.mode === 'dark'
-                            ? 'rgba(0, 229, 255, 0.4)'
-                            : 'rgba(255, 255, 255, 0.2)',
-                        boxShadow:
-                          theme.palette.mode === 'dark'
-                            ? '0 12px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 229, 255, 0.2)'
-                            : '0 12px 48px rgba(0, 0, 0, 0.15)',
-                      },
+                      border: `1px solid ${theme.palette.success.main}40`,
+                      borderRadius: 2,
+                      background: `linear-gradient(135deg, ${theme.palette.success.main}05, transparent)`,
                     }}
                   >
                     <Typography
@@ -1594,188 +1574,55 @@ const SubmitShowPage: React.FC = observer(() => {
           </TabPanel>
         </Paper>
 
-        {/* Enhanced Confirmation Modal */}
-        <CustomModal
+        {/* Enhanced Confirmation Dialog */}
+        <Dialog
           open={showConfirmDialog}
           onClose={() => setShowConfirmDialog(false)}
-          title="Confirm Parsed Data"
-          icon={<CheckCircle />}
           maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              p: 1,
+            },
+          }}
         >
-          <Typography variant="body1" paragraph>
-            Are you sure you want to save this parsed data to our karaoke database? This will
-            create:
-          </Typography>
-
-          {/* Venues Section */}
-          {((parsedData?.venues?.length ?? 0) > 0 ||
-            (parsedData?.aiAnalysis?.venues?.length ?? 0) > 0) && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
-                📍 Venues (
-                {parsedData?.venues?.length || parsedData?.aiAnalysis?.venues?.length || 0})
-              </Typography>
-              {(parsedData?.venues || parsedData?.aiAnalysis?.venues || []).map((venue, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    mb: 2,
-                    p: 2,
-                    bgcolor: 'background.paper',
-                    borderRadius: 1,
-                    border: 1,
-                    borderColor: 'divider',
-                  }}
-                >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                    {venue.name}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    📍 {venue.address}, {venue.city}, {venue.state} {venue.zip}
-                  </Typography>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    🌍 GPS: {venue.lat?.toFixed(6)}, {venue.lng?.toFixed(6)}
-                  </Typography>
-                  {venue.phone && (
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      📞 {venue.phone}
-                    </Typography>
-                  )}
-                  {venue.website && (
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      🌐 {venue.website}
-                    </Typography>
-                  )}
-                  <Typography variant="caption" color="text.secondary">
-                    Confidence: {(venue.confidence * 100).toFixed(0)}%
-                  </Typography>
-                </Box>
-              ))}
+          <DialogTitle sx={{ pb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <CheckCircle sx={{ color: 'success.main', mr: 2, fontSize: 32 }} />
+              <Box>
+                <Typography variant="h6" fontWeight={600}>
+                  Confirm Parsed Data
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Save this information to the database
+                </Typography>
+              </Box>
             </Box>
-          )}
-
-          {/* DJs Section */}
-          {((parsedData?.djs?.length ?? 0) > 0 ||
-            (parsedData?.aiAnalysis?.djs?.length ?? 0) > 0) && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
-                🎤 DJs/KJs ({parsedData?.djs?.length || parsedData?.aiAnalysis?.djs?.length || 0})
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body1" paragraph>
+              Are you sure you want to save this parsed data to our karaoke database? This will
+              create:
+            </Typography>
+            <Box component="ul" sx={{ pl: 2, mb: 2 }}>
+              <Typography component="li" variant="body2" gutterBottom>
+                <strong>1 Vendor:</strong> {parsedData?.aiAnalysis?.vendor?.name || 'Unknown'}
               </Typography>
-              {(parsedData?.djs || parsedData?.aiAnalysis?.djs || []).map((dj, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    mb: 1,
-                    p: 1.5,
-                    bgcolor: 'background.paper',
-                    borderRadius: 1,
-                    border: 1,
-                    borderColor: 'divider',
-                  }}
-                >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                    {dj.name}
-                  </Typography>
-                  {dj.context && (
-                    <Typography variant="body2" color="text.secondary">
-                      {dj.context}
-                    </Typography>
-                  )}
-                  <Typography variant="caption" color="text.secondary">
-                    Confidence: {((dj.confidence ?? 0.9) * 100).toFixed(0)}%
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-          )}
-
-          {/* Shows Section */}
-          {((parsedData?.shows?.length ?? 0) > 0 ||
-            (parsedData?.aiAnalysis?.shows?.length ?? 0) > 0) && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" sx={{ mb: 1, color: 'primary.main' }}>
-                🎵 Shows ({parsedData?.shows?.length || parsedData?.aiAnalysis?.shows?.length || 0})
+              <Typography component="li" variant="body2" gutterBottom>
+                <strong>{parsedData?.aiAnalysis?.djs?.length || 0} DJs/KJs:</strong>{' '}
+                {parsedData?.aiAnalysis?.djs?.map((dj) => dj.name).join(', ') || 'None'}
               </Typography>
-              {(parsedData?.shows || parsedData?.aiAnalysis?.shows || []).map((show, index) => {
-                // Helper function to get show properties from either data structure
-                const getShowProp = (prop: string) => {
-                  if ('venueName' in show) {
-                    // Image-parsed show data
-                    return (show as any)[prop];
-                  } else {
-                    // URL-parsed show data (ParsedShowData)
-                    switch (prop) {
-                      case 'venueName':
-                        return show.venue || show.address || 'Unknown venue';
-                      case 'day':
-                        return 'Unknown day'; // ParsedShowData doesn't have day
-                      case 'time':
-                        return show.time;
-                      case 'startTime':
-                        return 'Unknown start'; // ParsedShowData doesn't have startTime
-                      case 'endTime':
-                        return 'Unknown end'; // ParsedShowData doesn't have endTime
-                      case 'djName':
-                        return show.djName || 'Unknown DJ';
-                      case 'description':
-                        return show.description;
-                      case 'confidence':
-                        return show.confidence || 0.9;
-                      default:
-                        return (show as any)[prop];
-                    }
-                  }
-                };
-
-                return (
-                  <Box
-                    key={index}
-                    sx={{
-                      mb: 2,
-                      p: 2,
-                      bgcolor: 'background.paper',
-                      borderRadius: 1,
-                      border: 1,
-                      borderColor: 'divider',
-                    }}
-                  >
-                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                      {getShowProp('venueName')} - {getShowProp('day')}s
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      ⏰ {getShowProp('time')} ({getShowProp('startTime')} -{' '}
-                      {getShowProp('endTime')})
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 0.5 }}>
-                      🎤 Hosted by: {getShowProp('djName')}
-                    </Typography>
-                    {getShowProp('description') && (
-                      <Typography variant="body2" sx={{ mb: 0.5 }}>
-                        📝 {getShowProp('description')}
-                      </Typography>
-                    )}
-                    <Typography variant="caption" color="text.secondary">
-                      Confidence: {((getShowProp('confidence') ?? 0.9) * 100).toFixed(0)}%
-                    </Typography>
-                  </Box>
-                );
-              })}
-            </Box>
-          )}
-
-          {/* Legacy vendor support */}
-          {parsedData?.aiAnalysis?.vendor && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body2">
-                <strong>Vendor:</strong> {parsedData.aiAnalysis.vendor.name}
+              <Typography component="li" variant="body2">
+                <strong>{parsedData?.aiAnalysis?.shows?.length || 0} Shows:</strong> All scheduled
+                karaoke events
               </Typography>
             </Box>
-          )}
-          <Alert severity="info" sx={{ mt: 2, mb: 3 }}>
-            This action will make the data available to all users on KaraokeHub.
-          </Alert>
-
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+            <Alert severity="info" sx={{ mt: 2 }}>
+              This action will make the data available to all users on KaraokeHub.
+            </Alert>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, pt: 1 }}>
             <Button
               onClick={() => setShowConfirmDialog(false)}
               variant="outlined"
@@ -1800,7 +1647,91 @@ const SubmitShowPage: React.FC = observer(() => {
             >
               {loading ? 'Saving...' : 'Confirm & Save'}
             </Button>
-          </Box>
+          </DialogActions>
+        </Dialog>
+
+        {/* Image Analysis Results Modal */}
+        <CustomModal
+          open={showAnalysisModal}
+          onClose={() => setShowAnalysisModal(false)}
+          title="Image Analysis Results"
+          icon={<CloudUpload />}
+        >
+          {imageAnalysisResult && (
+            <Box>
+              {imageAnalysisResult.venues?.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    Venues Found:
+                  </Typography>
+                  {imageAnalysisResult.venues.map((venue: any, index: number) => (
+                    <Typography key={index} variant="body2" sx={{ ml: 2, mb: 1 }}>
+                      • {venue.name} {venue.address && `- ${venue.address}`}
+                    </Typography>
+                  ))}
+                </Box>
+              )}
+
+              {imageAnalysisResult.djs?.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    DJs Found:
+                  </Typography>
+                  {imageAnalysisResult.djs.map((dj: any, index: number) => (
+                    <Typography key={index} variant="body2" sx={{ ml: 2, mb: 1 }}>
+                      • {dj.name}
+                    </Typography>
+                  ))}
+                </Box>
+              )}
+
+              {imageAnalysisResult.shows?.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    Shows Found:
+                  </Typography>
+                  {imageAnalysisResult.shows.map((show: any, index: number) => (
+                    <Typography key={index} variant="body2" sx={{ ml: 2, mb: 1 }}>
+                      • {show.venue} - {show.days?.join(', ')} at {show.startTime}
+                    </Typography>
+                  ))}
+                </Box>
+              )}
+
+              <Box sx={{ display: 'flex', gap: 2, mt: 3, justifyContent: 'flex-end' }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setShowAnalysisModal(false)}
+                  sx={{
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  color="success"
+                  size="large"
+                  onClick={handleSubmitImageAnalysis}
+                  disabled={loading}
+                  startIcon={loading ? <CircularProgress size={20} /> : <CheckCircle />}
+                  sx={{
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                  }}
+                >
+                  {loading ? 'Submitting...' : 'Submit Analysis'}
+                </Button>
+              </Box>
+            </Box>
+          )}
         </CustomModal>
       </Box>
     </Box>

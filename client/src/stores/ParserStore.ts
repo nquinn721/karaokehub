@@ -35,49 +35,21 @@ export interface ParsedShowData {
 }
 
 export interface ParsedScheduleItem {
-  id?: string; // Optional for image-parsed data that hasn't been saved yet
+  id: string;
   url: string;
+  rawData: any;
   aiAnalysis?: {
-    vendor?: ParsedVendorData;
-    vendors?: any[];
-    venues?: any[];
+    vendor: ParsedVendorData;
     djs: ParsedDJData[];
     shows: ParsedShowData[];
   };
-  // Direct properties for image-parsed data
-  venues?: Array<{
-    name: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    zip?: string;
-    lat?: number;
-    lng?: number;
-    phone?: string;
-    website?: string;
-    confidence?: number;
-  }>;
-  djs?: Array<{
-    name: string;
-    confidence?: number;
-    context?: string;
-  }>;
-  shows?: Array<{
-    venueName: string;
-    time?: string;
-    startTime?: string;
-    endTime?: string;
-    day: string;
-    djName: string;
-    description?: string;
-    confidence?: number;
-  }>;
   stats?: {
     showsFound: number;
     djsFound: number;
     venuesFound: number;
     vendorsFound: number;
   };
+  shows?: any[];
   vendors?: any[];
   status: 'pending' | 'pending_review' | 'approved' | 'rejected' | 'needs_review';
   createdAt: string;
@@ -1309,6 +1281,55 @@ export class ParserStore {
       return { success: true };
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to update URL';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  // Image analysis methods for user submissions
+  async analyzeUserImage(data: {
+    image: string;
+    vendorId?: string | null;
+  }): Promise<{ success: boolean; error?: string; data?: any }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      // Convert single image to screenshots array and add vendor context
+      const requestBody = {
+        screenshots: [data.image],
+        isAdminUpload: true, // Use admin upload flow for user images with vendor
+        vendor: data.vendorId || 'user-submission',
+        description: 'User uploaded image for karaoke show analysis',
+      };
+
+      const response = await apiStore.post('/parser/analyze-screenshots', requestBody);
+
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to analyze image';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async submitImageAnalysis(data: any): Promise<{ success: boolean; error?: string }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await apiStore.post('/parser/submit-image-analysis', data);
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to submit analysis';
       this.setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {

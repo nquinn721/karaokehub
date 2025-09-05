@@ -64,6 +64,7 @@ import { adminStore, authStore, uiStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useCallback, useEffect, useState } from 'react';
 import CustomModal from './CustomModal';
+import { ShowCleanupResultsModal } from './modals/ShowCleanupResultsModal';
 import { UserFeatureOverrideModal } from './UserFeatureOverrideModal';
 
 // Helper function to get venue name from AdminShow
@@ -290,6 +291,9 @@ const AdminDataTables: React.FC = observer(() => {
   // Deduplication error dialog state
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Show cleanup state
+  const [showCleanupResults, setShowCleanupResults] = useState<any>(null);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -584,6 +588,17 @@ const AdminDataTables: React.FC = observer(() => {
       setSelectedDuplicates((prev) => [...prev, id]);
     } else {
       setSelectedDuplicates((prev) => prev.filter((dupId) => dupId !== id));
+    }
+  };
+
+  const handleShowCleanup = async () => {
+    try {
+      uiStore.addNotification('Starting show cleanup...', 'info');
+      const results = await adminStore.cleanupShowsSimple();
+      setShowCleanupResults(results);
+      uiStore.addNotification('Show cleanup completed successfully!', 'success');
+    } catch (error: any) {
+      uiStore.addNotification('Error during show cleanup: ' + (error?.message || error), 'error');
     }
   };
 
@@ -1156,9 +1171,12 @@ const AdminDataTables: React.FC = observer(() => {
       <TabPanel value={tabValue} index={2}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Shows Management</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <SearchField table="shows" placeholder="Search shows..." />
-            <DedupeButton type="shows" label="Shows" />
+            <Button variant="outlined" size="small" color="error" onClick={handleShowCleanup}>
+              <FontAwesomeIcon icon={faTrash} style={{ marginRight: '4px' }} />
+              Cleanup
+            </Button>
           </Box>
         </Box>
         <TableContainer>
@@ -2623,6 +2641,13 @@ const AdminDataTables: React.FC = observer(() => {
           )}
         </Box>
       </CustomModal>
+
+      {/* Show Cleanup Results Modal */}
+      <ShowCleanupResultsModal
+        open={!!showCleanupResults}
+        onClose={() => setShowCleanupResults(null)}
+        result={showCleanupResults}
+      />
 
       {/* Error Dialog */}
       <CustomModal

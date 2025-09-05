@@ -214,6 +214,11 @@ export class AdminController {
     return await this.deduplicationService.deduplicateShows();
   }
 
+  @Post('deduplicate/shows/cleanup')
+  async cleanupShowsSimple() {
+    return await this.deduplicationService.cleanupInvalidShowsSimple();
+  }
+
   @Post('deduplicate/djs/analyze')
   async analyzeDjDuplicates() {
     return await this.deduplicationService.deduplicateDJs();
