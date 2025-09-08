@@ -262,7 +262,7 @@ const AdminParserPage: React.FC = observer(() => {
 
         const result = await response.json();
         if (result.success) {
-          const { originalCount, finalCount, duplicatesRemoved, saveResult } = result;
+          const { finalCount, duplicatesRemoved, saveResult } = result;
 
           if (duplicatesRemoved > 0) {
             uiStore.addNotification(
