@@ -1,4 +1,5 @@
 import { BannerAdWithUpgrade, WideAdWithUpgrade } from '@components/AdWithUpgrade';
+import { OptimizedAlbumArt, ThumbnailAlbumArt } from '@components/OptimizedAlbumArt';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
@@ -23,7 +24,6 @@ import {
   Button,
   Card,
   CardContent,
-  CardMedia,
   Chip,
   CircularProgress,
   Dialog,
@@ -588,16 +588,17 @@ export const MusicPage: React.FC = observer(() => {
                         }}
                         onClick={() => handleCategoryClick(category.id)}
                       >
-                        <CardMedia
-                          component="img"
+                        <OptimizedAlbumArt
+                          albumArt={{ medium: category.image }}
+                          size="card"
+                          width={200}
+                          height={200}
+                          alt={category.title}
                           sx={{
+                            width: '100%',
                             height: 200,
-                            objectFit: 'contain',
-                            objectPosition: 'center',
                             backgroundColor: 'rgba(0,0,0,0.05)',
                           }}
-                          image={category.image}
-                          alt={category.title}
                         />
                         <CardContent>
                           <Typography variant="h6" component="h3" gutterBottom fontWeight={600}>
@@ -822,38 +823,10 @@ export const MusicPage: React.FC = observer(() => {
                           }}
                         >
                           <ListItemIcon sx={{ mr: 2, minWidth: 'auto' }}>
-                            {song.albumArt?.small ? (
-                              <img
-                                src={song.albumArt.small}
-                                alt={`${song.album} cover`}
-                                style={{
-                                  width: '48px',
-                                  height: '48px',
-                                  borderRadius: '4px',
-                                  objectFit: 'cover',
-                                }}
-                              />
-                            ) : (
-                              <Box
-                                sx={{
-                                  width: '48px',
-                                  height: '48px',
-                                  borderRadius: '4px',
-                                  bgcolor: theme.palette.grey[300],
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <FontAwesomeIcon
-                                  icon={faMusic}
-                                  style={{
-                                    fontSize: '20px',
-                                    color: theme.palette.grey[500],
-                                  }}
-                                />
-                              </Box>
-                            )}
+                            <ThumbnailAlbumArt
+                              albumArt={song.albumArt}
+                              alt={`${song.album} cover`}
+                            />
                           </ListItemIcon>
 
                           {/* Song Info - Music player layout */}

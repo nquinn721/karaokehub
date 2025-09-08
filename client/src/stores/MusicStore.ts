@@ -86,18 +86,18 @@ export class MusicStore {
     return [...favorites, ...nonFavorites];
   }
 
-  // Featured categories
+  // Featured categories with optimized images
   featuredCategories = [
     {
       id: 'top-100',
       title: 'Top 100',
-      image: '/images/music/top-100.939Z.png',
+      image: '/images/music/top-100.939Z.png?w=200&h=200&q=50',
       description: 'Top 100 greatest songs of all time',
     },
     {
       id: 'karaoke-classics',
       title: 'Karaoke Classics',
-      image: '/images/music/karaoke-classics.png',
+      image: '/images/music/karaoke-classics.png?w=200&h=200&q=50',
       description: 'Karaoke classics that everyone loves to sing',
     },
     {
@@ -121,43 +121,43 @@ export class MusicStore {
     {
       id: 'rock-hits',
       title: 'Rock Hits',
-      image: '/images/music/rock-hits.png',
+      image: '/images/music/rock-hits.png?w=200&h=200&q=50',
       description: 'Greatest rock hits of all time',
     },
     {
       id: 'pop-hits',
       title: 'Pop Hits',
-      image: '/images/music/pop-hits.png',
+      image: '/images/music/pop-hits.png?w=200&h=200&q=50',
       description: 'Pop hits and chart toppers',
     },
     {
       id: 'country-favorites',
       title: 'Country Favorites',
-      image: '/images/music/country-favorites.png',
+      image: '/images/music/country-favorites.png?w=200&h=200&q=50',
       description: 'Country favorites and classics',
     },
     {
       id: 'rb-hiphop-hits',
       title: 'R&B & Hip-Hop Hits',
-      image: '/images/music/rnb-hip-hop-hits.png',
+      image: '/images/music/rnb-hip-hop-hits.png?w=200&h=200&q=50',
       description: 'R&B and Hip-Hop hits perfect for showcasing vocal skills',
     },
     {
       id: 'one-hit-wonders',
       title: 'One-Hit Wonders',
-      image: '/images/music/one-hit-wonders.714Z.png',
+      image: '/images/music/one-hit-wonders.714Z.png?w=200&h=200&q=50',
       description: 'Nostalgic crowd-pleasers and unforgettable one-hit wonders',
     },
     {
       id: 'duets-love-songs',
       title: 'Duets & Love Songs',
-      image: '/images/music/duets-and-love-songs.409Z.png',
+      image: '/images/music/duets-and-love-songs.409Z.png?w=200&h=200&q=50',
       description: 'Perfect duets and romantic songs for couples and friends',
     },
     {
       id: 'feel-good-classics',
       title: 'Feel Good Classics',
-      image: '/images/music/feel-good-classics.429Z.png',
+      image: '/images/music/feel-good-classics.429Z.png?w=200&h=200&q=50',
       description: 'Upbeat classics guaranteed to lift your spirits and get you singing',
     },
   ];
