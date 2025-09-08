@@ -1,4 +1,5 @@
 import { BannerAdWithUpgrade, WideAdWithUpgrade } from '@components/AdWithUpgrade';
+import { BannerAd } from '@components/MonetAGAd';
 import { CustomCard } from '@components/CustomCard';
 import GoogleOneTap from '@components/GoogleOneTap';
 import { SEO, seoConfigs } from '@components/SEO';
@@ -249,6 +250,18 @@ const HomePage: React.FC = observer(() => {
             },
           }}
         />
+      </Box>
+
+      {/* Banner Ad Placement */}
+      <Box
+        sx={{
+          py: 4,
+          display: 'flex',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.02)',
+        }}
+      >
+        <BannerAd />
       </Box>
 
       {/* Music Library Hero Section */}
