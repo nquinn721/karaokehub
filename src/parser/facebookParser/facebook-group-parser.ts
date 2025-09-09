@@ -5,7 +5,7 @@
  * - Checks login status and handles interactive login
  * - Navigates to group/media page
  * - Extracts header HTML for Gemini group name parsing
- * - Zooms to 50% and scrolls 5 times
+ * - Zooms to 50% and scrolls 5 times (optimized performance)
  * - Extracts all CDN image URLs
  */
 
@@ -853,10 +853,52 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
         '--disable-web-security',
         '--disable-features=VizDisplayCompositor',
         '--window-size=1920,1080',
+        // Enhanced notification and permission blocking
+        '--disable-notifications',
+        '--disable-extensions',
+        '--disable-plugins',
+        '--disable-popup-blocking',
+        '--disable-default-apps',
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-ipc-flooding-protection',
+        // Permissions blocking
+        '--deny-permission-prompts',
+        '--disable-permissions-api',
+        // Additional stability improvements
+        '--disable-accelerated-2d-canvas',
+        '--disable-accelerated-jpeg-decoding',
+        '--disable-accelerated-mjpeg-decode',
+        '--disable-accelerated-video-decode',
+        '--disable-gpu',
+        '--disable-gpu-sandbox',
       ],
     });
 
     const page = await browser.newPage();
+
+    // Block all permission requests and notifications
+    await page.evaluateOnNewDocument(() => {
+      // Override notification permission
+      Object.defineProperty(Notification, 'permission', {
+        get: () => 'denied',
+      });
+      
+      // Block geolocation
+      Object.defineProperty(navigator, 'geolocation', {
+        get: () => undefined,
+      });
+      
+      // Disable push notifications
+      delete (window as any).PushManager;
+      delete (window as any).ServiceWorkerRegistration;
+    });
+
+    // Block specific permissions
+    const context = browser.defaultBrowserContext();
+    await context.overridePermissions(url, []);
 
     // Set viewport and user agent
     await page.setViewport({ width: 1920, height: 1080 });
@@ -1023,7 +1065,7 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
 
     let previousImageCount = 0;
     let scrollAttempts = 0;
-    const maxScrollAttempts = 20; // Increased from 5 to 20
+    const maxScrollAttempts = 5; // Reduced from 20 to 5 for better performance
     let stableCount = 0;
 
     while (scrollAttempts < maxScrollAttempts && stableCount < 3) {

@@ -1,5 +1,5 @@
-import { SquareAd, BannerAd } from '@components/MonetAGAd';
 import FriendsList from '@components/FriendsList';
+import { BannerAd, SquareAd } from '@components/MonetAGAd';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
 import {

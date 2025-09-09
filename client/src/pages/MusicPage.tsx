@@ -1,5 +1,5 @@
 import { BannerAdWithUpgrade, WideAdWithUpgrade } from '@components/AdWithUpgrade';
-import { SidebarAd, BannerAd } from '@components/MonetAGAd';
+import { BannerAd, SidebarAd } from '@components/MonetAGAd';
 import { OptimizedAlbumArt, ThumbnailAlbumArt } from '@components/OptimizedAlbumArt';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
@@ -644,442 +644,451 @@ export const MusicPage: React.FC = observer(() => {
                       background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
                     }}
                   >
-                <Typography
-                  variant="h6"
-                  sx={{
-                    mb: 2,
-                    fontWeight: 600,
-                    color: 'primary.main',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.5,
-                  }}
-                >
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        mb: 2,
+                        fontWeight: 600,
+                        color: 'primary.main',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          bgcolor: 'primary.main',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'white',
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faMusic} style={{ fontSize: '14px' }} />
+                      </Box>
+                      Quick Start Guide
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {/* Play Button Instruction */}
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                        <Box
+                          sx={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
+                            bgcolor: alpha(theme.palette.success.main, 0.1),
+                            border: `2px solid ${theme.palette.success.main}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            mt: 0.2,
+                          }}
+                        >
+                          <FontAwesomeIcon
+                            icon={faPlay}
+                            style={{
+                              fontSize: '10px',
+                              color: theme.palette.success.main,
+                              marginLeft: '1px', // Slight offset for visual balance
+                            }}
+                          />
+                        </Box>
+                        <Typography variant="body2" color="text.secondary">
+                          <strong>Listen to Previews:</strong> Click the play button to hear a
+                          30-second preview of any song. Free users get 10 previews, then premium
+                          subscription required for unlimited music previews.
+                          {authStore.isAuthenticated && !subscriptionStore.isSubscribed && (
+                            <span
+                              style={{
+                                marginLeft: '8px',
+                                fontWeight: 'bold',
+                                color: theme.palette.primary.main,
+                              }}
+                            >
+                              ({subscriptionStore.getRemainingPreviews()} remaining)
+                            </span>
+                          )}
+                        </Typography>
+                      </Box>
+
+                      {/* Save Songs Instruction */}
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                        <Box
+                          sx={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
+                            bgcolor: alpha(theme.palette.error.main, 0.1),
+                            border: `2px solid ${theme.palette.error.main}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            mt: 0.2,
+                          }}
+                        >
+                          <FontAwesomeIcon
+                            icon={faBookmark}
+                            style={{
+                              fontSize: '10px',
+                              color: theme.palette.error.main,
+                            }}
+                          />
+                        </Box>
+                        <Typography variant="body2" color="text.secondary">
+                          <strong>Save Favorites:</strong> Save songs to your favorites for quick
+                          access. Free users can save up to 5 songs, premium subscribers get
+                          unlimited favorites.
+                          {authStore.isAuthenticated && !subscriptionStore.isSubscribed && (
+                            <span
+                              style={{
+                                marginLeft: '8px',
+                                fontWeight: 'bold',
+                                color: theme.palette.primary.main,
+                              }}
+                            >
+                              ({songFavoriteStore.getSongFavoriteCount()}/5 saved)
+                            </span>
+                          )}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+
                   <Box
                     sx={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: '50%',
-                      bgcolor: 'primary.main',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
+                      justifyContent: 'space-between',
+                      mb: 3,
                     }}
                   >
-                    <FontAwesomeIcon icon={faMusic} style={{ fontSize: '14px' }} />
-                  </Box>
-                  Quick Start Guide
-                </Typography>
-
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {/* Play Button Instruction */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                    <Box
-                      sx={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: '50%',
-                        bgcolor: alpha(theme.palette.success.main, 0.1),
-                        border: `2px solid ${theme.palette.success.main}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        mt: 0.2,
-                      }}
-                    >
-                      <FontAwesomeIcon
-                        icon={faPlay}
-                        style={{
-                          fontSize: '10px',
-                          color: theme.palette.success.main,
-                          marginLeft: '1px', // Slight offset for visual balance
-                        }}
-                      />
-                    </Box>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>Listen to Previews:</strong> Click the play button to hear a 30-second
-                      preview of any song. Free users get 10 previews, then premium subscription
-                      required for unlimited music previews.
-                      {authStore.isAuthenticated && !subscriptionStore.isSubscribed && (
-                        <span
-                          style={{
-                            marginLeft: '8px',
-                            fontWeight: 'bold',
-                            color: theme.palette.primary.main,
-                          }}
-                        >
-                          ({subscriptionStore.getRemainingPreviews()} remaining)
-                        </span>
-                      )}
+                    <Typography variant="h4" gutterBottom fontWeight={600}>
+                      {musicStore.selectedCategory !== 'all'
+                        ? musicStore.featuredCategories.find(
+                            (cat) => cat.id === musicStore.selectedCategory,
+                          )?.title
+                        : `Search Results for "${musicStore.searchQuery}"`}
                     </Typography>
-                  </Box>
-
-                  {/* Save Songs Instruction */}
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                    <Box
-                      sx={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: '50%',
-                        bgcolor: alpha(theme.palette.error.main, 0.1),
-                        border: `2px solid ${theme.palette.error.main}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        mt: 0.2,
-                      }}
-                    >
-                      <FontAwesomeIcon
-                        icon={faBookmark}
-                        style={{
-                          fontSize: '10px',
-                          color: theme.palette.error.main,
-                        }}
+                    {musicStore.selectedCategory !== 'all' && (
+                      <Chip
+                        label="Featured Category"
+                        color="primary"
+                        icon={<FontAwesomeIcon icon={faMusic} />}
                       />
-                    </Box>
-                    <Typography variant="body2" color="text.secondary">
-                      <strong>Save Favorites:</strong> Save songs to your favorites for quick
-                      access. Free users can save up to 5 songs, premium subscribers get unlimited
-                      favorites.
-                      {authStore.isAuthenticated && !subscriptionStore.isSubscribed && (
-                        <span
-                          style={{
-                            marginLeft: '8px',
-                            fontWeight: 'bold',
-                            color: theme.palette.primary.main,
-                          }}
-                        >
-                          ({songFavoriteStore.getSongFavoriteCount()}/5 saved)
-                        </span>
-                      )}
-                    </Typography>
+                    )}
                   </Box>
-                </Box>
-              </Box>
 
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  mb: 3,
-                }}
-              >
-                <Typography variant="h4" gutterBottom fontWeight={600}>
-                  {musicStore.selectedCategory !== 'all'
-                    ? musicStore.featuredCategories.find(
-                        (cat) => cat.id === musicStore.selectedCategory,
-                      )?.title
-                    : `Search Results for "${musicStore.searchQuery}"`}
-                </Typography>
-                {musicStore.selectedCategory !== 'all' && (
-                  <Chip
-                    label="Featured Category"
-                    color="primary"
-                    icon={<FontAwesomeIcon icon={faMusic} />}
-                  />
-                )}
-              </Box>
+                  <List
+                    sx={{
+                      bgcolor: theme.palette.mode === 'dark' ? '#2a2a2a' : '#f5f5f5',
+                      borderRadius: 2,
+                      p: 1,
+                      '& .MuiListItem-root': {
+                        mb: 1,
+                        '&:last-child': {
+                          mb: 0,
+                        },
+                      },
+                    }}
+                  >
+                    {musicStore.sortedSongs.map((song, index) => {
+                      // Create a more explicit check for the currently playing song
+                      const isThisSongPlaying =
+                        audioStore.currentlyPlaying === song.id && audioStore.isPlaying;
 
-              <List
-                sx={{
-                  bgcolor: theme.palette.mode === 'dark' ? '#2a2a2a' : '#f5f5f5',
-                  borderRadius: 2,
-                  p: 1,
-                  '& .MuiListItem-root': {
-                    mb: 1,
-                    '&:last-child': {
-                      mb: 0,
-                    },
-                  },
-                }}
-              >
-                {musicStore.sortedSongs.map((song, index) => {
-                  // Create a more explicit check for the currently playing song
-                  const isThisSongPlaying =
-                    audioStore.currentlyPlaying === song.id && audioStore.isPlaying;
-
-                  return (
-                    <React.Fragment key={`${song.id}-${index}`}>
-                      <ListItem disablePadding>
-                        <ListItemButton
-                          onClick={() => musicStore.setSelectedSong(song)}
-                          selected={musicStore.selectedSong?.id === song.id}
-                          sx={{
-                            py: 1.5,
-                            px: 2,
-                            borderRadius: '8px',
-                            backgroundColor: '#222',
-                            border: `1px solid ${theme.palette.divider}`,
-                            '&.Mui-selected': {
-                              backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                              borderColor: theme.palette.primary.main,
-                            },
-                            '&:hover': {
-                              backgroundColor: '#333',
-                              borderColor: theme.palette.primary.main,
-                            },
-                            transition: 'all 0.2s ease-in-out',
-                            mb: 0.5,
-                          }}
-                        >
-                          <ListItemIcon sx={{ mr: 2, minWidth: 'auto' }}>
-                            <ThumbnailAlbumArt
-                              albumArt={song.albumArt}
-                              alt={`${song.album} cover`}
-                            />
-                          </ListItemIcon>
-
-                          {/* Song Info - Music player layout */}
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
-                              <Typography
-                                variant="body1"
-                                component="span"
-                                fontWeight={500}
-                                sx={{
-                                  fontSize: '1rem',
-                                  lineHeight: 1.4,
-                                  color: theme.palette.text.primary,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  maxWidth: '300px',
-                                }}
-                              >
-                                {song.title}
-                              </Typography>
-                              {song.previewUrl && (
-                                <Chip
-                                  icon={
-                                    <FontAwesomeIcon icon={faPlay} style={{ fontSize: '10px' }} />
-                                  }
-                                  label="Preview"
-                                  size="small"
-                                  variant="outlined"
-                                  sx={{
-                                    height: '20px',
-                                    fontSize: '0.65rem',
-                                    color: theme.palette.info.main,
-                                    borderColor: theme.palette.info.main,
-                                    '& .MuiChip-icon': {
-                                      fontSize: '10px',
-                                    },
-                                  }}
-                                />
-                              )}
-                              {isSongFavorited(song.id) && (
-                                <FontAwesomeIcon
-                                  icon={faHeartSolid}
-                                  style={{
-                                    color: theme.palette.success.main,
-                                    fontSize: '14px',
-                                  }}
-                                />
-                              )}
-                            </Box>
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
+                      return (
+                        <React.Fragment key={`${song.id}-${index}`}>
+                          <ListItem disablePadding>
+                            <ListItemButton
+                              onClick={() => musicStore.setSelectedSong(song)}
+                              selected={musicStore.selectedSong?.id === song.id}
                               sx={{
-                                fontSize: '0.875rem',
-                                lineHeight: 1.3,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                maxWidth: '250px',
+                                py: 1.5,
+                                px: 2,
+                                borderRadius: '8px',
+                                backgroundColor: '#222',
+                                border: `1px solid ${theme.palette.divider}`,
+                                '&.Mui-selected': {
+                                  backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                                  borderColor: theme.palette.primary.main,
+                                },
+                                '&:hover': {
+                                  backgroundColor: '#333',
+                                  borderColor: theme.palette.primary.main,
+                                },
+                                transition: 'all 0.2s ease-in-out',
+                                mb: 0.5,
                               }}
                             >
-                              {song.artist}
-                            </Typography>
-                          </Box>
-
-                          {/* Album Info */}
-                          <Box sx={{ flex: 1, minWidth: 0, display: { xs: 'none', md: 'block' } }}>
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{
-                                fontSize: '0.875rem',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {song.album || '—'}
-                            </Typography>
-                          </Box>
-
-                          {/* Duration and Actions */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {song.year && (
-                              <Chip
-                                label={song.year}
-                                size="small"
-                                variant="filled"
-                                sx={{
-                                  fontSize: '0.75rem',
-                                  height: '24px',
-                                  fontWeight: 600,
-                                  backgroundColor:
-                                    theme.palette.mode === 'dark'
-                                      ? 'rgba(255, 255, 255, 0.1)'
-                                      : 'rgba(0, 0, 0, 0.08)',
-                                  color: theme.palette.text.secondary,
-                                  display: { xs: 'none', sm: 'flex' },
-                                  '&:hover': {
-                                    backgroundColor:
-                                      theme.palette.mode === 'dark'
-                                        ? 'rgba(255, 255, 255, 0.15)'
-                                        : 'rgba(0, 0, 0, 0.12)',
-                                  },
-                                }}
-                              />
-                            )}
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{
-                                fontSize: '0.875rem',
-                                minWidth: '40px',
-                                textAlign: 'right',
-                                display: { xs: 'none', sm: 'block' },
-                              }}
-                            >
-                              {song.duration
-                                ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}`
-                                : ''}
-                            </Typography>
-
-                            {/* Action Buttons */}
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              {/* Favorite Button */}
-                              <IconButton
-                                size="small"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleFavorite(song);
-                                }}
-                                sx={{
-                                  color: isSongFavorited(song.id)
-                                    ? theme.palette.success.main
-                                    : theme.palette.grey[500],
-                                  '&:hover': {
-                                    color: theme.palette.success.main,
-                                  },
-                                }}
-                              >
-                                <FontAwesomeIcon
-                                  icon={isSongFavorited(song.id) ? faHeartSolid : faHeartRegular}
-                                  style={{ fontSize: '16px' }}
+                              <ListItemIcon sx={{ mr: 2, minWidth: 'auto' }}>
+                                <ThumbnailAlbumArt
+                                  albumArt={song.albumArt}
+                                  alt={`${song.album} cover`}
                                 />
-                              </IconButton>
+                              </ListItemIcon>
 
-                              {/* Play Preview Button */}
-                              <IconButton
-                                size="small"
-                                // disabled={!song.previewUrl} // Temporarily removed to test clicking
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (song.previewUrl) {
-                                    handlePreviewPlay(song);
-                                  } else {
-                                    console.warn(
-                                      '❌ Play button clicked but no preview URL available',
-                                    );
-                                    // Still try to call handlePreviewPlay to see what happens
-                                    handlePreviewPlay(song);
-                                  }
-                                }}
-                                sx={{
-                                  color: !song.previewUrl
-                                    ? theme.palette.grey[400]
-                                    : isThisSongPlaying
-                                      ? theme.palette.success.main
-                                      : theme.palette.grey[600],
-                                  '&:hover': song.previewUrl
-                                    ? {
-                                        color: theme.palette.primary.main,
+                              {/* Song Info - Music player layout */}
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Box
+                                  sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}
+                                >
+                                  <Typography
+                                    variant="body1"
+                                    component="span"
+                                    fontWeight={500}
+                                    sx={{
+                                      fontSize: '1rem',
+                                      lineHeight: 1.4,
+                                      color: theme.palette.text.primary,
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      maxWidth: '300px',
+                                    }}
+                                  >
+                                    {song.title}
+                                  </Typography>
+                                  {song.previewUrl && (
+                                    <Chip
+                                      icon={
+                                        <FontAwesomeIcon
+                                          icon={faPlay}
+                                          style={{ fontSize: '10px' }}
+                                        />
                                       }
-                                    : {},
-                                  '&.Mui-disabled': {
-                                    color: theme.palette.grey[400],
-                                  },
-                                }}
-                                title={
-                                  !song.previewUrl
-                                    ? 'Preview not available for this song'
-                                    : isThisSongPlaying
-                                      ? 'Pause preview'
-                                      : 'Play 30-second preview'
-                                }
+                                      label="Preview"
+                                      size="small"
+                                      variant="outlined"
+                                      sx={{
+                                        height: '20px',
+                                        fontSize: '0.65rem',
+                                        color: theme.palette.info.main,
+                                        borderColor: theme.palette.info.main,
+                                        '& .MuiChip-icon': {
+                                          fontSize: '10px',
+                                        },
+                                      }}
+                                    />
+                                  )}
+                                  {isSongFavorited(song.id) && (
+                                    <FontAwesomeIcon
+                                      icon={faHeartSolid}
+                                      style={{
+                                        color: theme.palette.success.main,
+                                        fontSize: '14px',
+                                      }}
+                                    />
+                                  )}
+                                </Box>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{
+                                    fontSize: '0.875rem',
+                                    lineHeight: 1.3,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    maxWidth: '250px',
+                                  }}
+                                >
+                                  {song.artist}
+                                </Typography>
+                              </Box>
+
+                              {/* Album Info */}
+                              <Box
+                                sx={{ flex: 1, minWidth: 0, display: { xs: 'none', md: 'block' } }}
                               >
-                                <FontAwesomeIcon
-                                  icon={isThisSongPlaying ? faPause : faPlay}
-                                  style={{ fontSize: '14px' }}
-                                />
-                              </IconButton>
-                            </Box>
-                          </Box>
-                        </ListItemButton>
-                      </ListItem>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{
+                                    fontSize: '0.875rem',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {song.album || '—'}
+                                </Typography>
+                              </Box>
 
-                      {/* Ad between songs - show after every 10th song if not ad-free */}
-                      {!subscriptionStore.hasAdFreeAccess &&
-                        (index + 1) % 10 === 0 &&
-                        index !== musicStore.sortedSongs.length - 1 && (
-                          <ListItem sx={{ px: 0, py: 1 }}>
-                            <Box sx={{ width: '100%' }}>
-                              <WideAdWithUpgrade showUpgradePrompt={index === 9} />
-                            </Box>
+                              {/* Duration and Actions */}
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {song.year && (
+                                  <Chip
+                                    label={song.year}
+                                    size="small"
+                                    variant="filled"
+                                    sx={{
+                                      fontSize: '0.75rem',
+                                      height: '24px',
+                                      fontWeight: 600,
+                                      backgroundColor:
+                                        theme.palette.mode === 'dark'
+                                          ? 'rgba(255, 255, 255, 0.1)'
+                                          : 'rgba(0, 0, 0, 0.08)',
+                                      color: theme.palette.text.secondary,
+                                      display: { xs: 'none', sm: 'flex' },
+                                      '&:hover': {
+                                        backgroundColor:
+                                          theme.palette.mode === 'dark'
+                                            ? 'rgba(255, 255, 255, 0.15)'
+                                            : 'rgba(0, 0, 0, 0.12)',
+                                      },
+                                    }}
+                                  />
+                                )}
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{
+                                    fontSize: '0.875rem',
+                                    minWidth: '40px',
+                                    textAlign: 'right',
+                                    display: { xs: 'none', sm: 'block' },
+                                  }}
+                                >
+                                  {song.duration
+                                    ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}`
+                                    : ''}
+                                </Typography>
+
+                                {/* Action Buttons */}
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  {/* Favorite Button */}
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleFavorite(song);
+                                    }}
+                                    sx={{
+                                      color: isSongFavorited(song.id)
+                                        ? theme.palette.success.main
+                                        : theme.palette.grey[500],
+                                      '&:hover': {
+                                        color: theme.palette.success.main,
+                                      },
+                                    }}
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={
+                                        isSongFavorited(song.id) ? faHeartSolid : faHeartRegular
+                                      }
+                                      style={{ fontSize: '16px' }}
+                                    />
+                                  </IconButton>
+
+                                  {/* Play Preview Button */}
+                                  <IconButton
+                                    size="small"
+                                    // disabled={!song.previewUrl} // Temporarily removed to test clicking
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (song.previewUrl) {
+                                        handlePreviewPlay(song);
+                                      } else {
+                                        console.warn(
+                                          '❌ Play button clicked but no preview URL available',
+                                        );
+                                        // Still try to call handlePreviewPlay to see what happens
+                                        handlePreviewPlay(song);
+                                      }
+                                    }}
+                                    sx={{
+                                      color: !song.previewUrl
+                                        ? theme.palette.grey[400]
+                                        : isThisSongPlaying
+                                          ? theme.palette.success.main
+                                          : theme.palette.grey[600],
+                                      '&:hover': song.previewUrl
+                                        ? {
+                                            color: theme.palette.primary.main,
+                                          }
+                                        : {},
+                                      '&.Mui-disabled': {
+                                        color: theme.palette.grey[400],
+                                      },
+                                    }}
+                                    title={
+                                      !song.previewUrl
+                                        ? 'Preview not available for this song'
+                                        : isThisSongPlaying
+                                          ? 'Pause preview'
+                                          : 'Play 30-second preview'
+                                    }
+                                  >
+                                    <FontAwesomeIcon
+                                      icon={isThisSongPlaying ? faPause : faPlay}
+                                      style={{ fontSize: '14px' }}
+                                    />
+                                  </IconButton>
+                                </Box>
+                              </Box>
+                            </ListItemButton>
                           </ListItem>
-                        )}
-                    </React.Fragment>
-                  );
-                })}
-              </List>
 
-              {/* Load More Indicator */}
-              {musicStore.isLoadingMore && (
-                <Box sx={{ textAlign: 'center', py: 3 }}>
-                  <CircularProgress size={32} />
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    Loading more songs...
-                  </Typography>
-                </Box>
-              )}
+                          {/* Ad between songs - show after every 10th song if not ad-free */}
+                          {!subscriptionStore.hasAdFreeAccess &&
+                            (index + 1) % 10 === 0 &&
+                            index !== musicStore.sortedSongs.length - 1 && (
+                              <ListItem sx={{ px: 0, py: 1 }}>
+                                <Box sx={{ width: '100%' }}>
+                                  <WideAdWithUpgrade showUpgradePrompt={index === 9} />
+                                </Box>
+                              </ListItem>
+                            )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </List>
 
-              {/* End of Results Indicator */}
-              {!musicStore.hasMoreSongs && musicStore.sortedSongs.length > 0 && (
-                <Box sx={{ textAlign: 'center', py: 3 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    That's all the songs we found! 🎵
-                  </Typography>
-                </Box>
-              )}
+                  {/* Load More Indicator */}
+                  {musicStore.isLoadingMore && (
+                    <Box sx={{ textAlign: 'center', py: 3 }}>
+                      <CircularProgress size={32} />
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Loading more songs...
+                      </Typography>
+                    </Box>
+                  )}
 
-              {musicStore.sortedSongs.length === 0 &&
-                (musicStore.searchQuery || currentView === 'category') &&
-                !musicStore.isLoading && (
-                  <Box sx={{ textAlign: 'center', py: 8 }}>
-                    <FontAwesomeIcon
-                      icon={faMusic}
-                      size="4x"
-                      style={{ color: theme.palette.text.disabled, marginBottom: '16px' }}
-                    />
-                    <Typography variant="h5" gutterBottom color="text.secondary">
-                      No songs found
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary">
-                      {currentView === 'category'
-                        ? 'No songs found for this category. Please try another category or search for specific songs.'
-                        : 'Try adjusting your search terms or browse our featured categories above.'}
-                    </Typography>
-                  </Box>
-                )}
+                  {/* End of Results Indicator */}
+                  {!musicStore.hasMoreSongs && musicStore.sortedSongs.length > 0 && (
+                    <Box sx={{ textAlign: 'center', py: 3 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        That's all the songs we found! 🎵
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {musicStore.sortedSongs.length === 0 &&
+                    (musicStore.searchQuery || currentView === 'category') &&
+                    !musicStore.isLoading && (
+                      <Box sx={{ textAlign: 'center', py: 8 }}>
+                        <FontAwesomeIcon
+                          icon={faMusic}
+                          size="4x"
+                          style={{ color: theme.palette.text.disabled, marginBottom: '16px' }}
+                        />
+                        <Typography variant="h5" gutterBottom color="text.secondary">
+                          No songs found
+                        </Typography>
+                        <Typography variant="body1" color="text.secondary">
+                          {currentView === 'category'
+                            ? 'No songs found for this category. Please try another category or search for specific songs.'
+                            : 'Try adjusting your search terms or browse our featured categories above.'}
+                        </Typography>
+                      </Box>
+                    )}
                 </Grid>
 
                 {/* Sidebar with Ads */}

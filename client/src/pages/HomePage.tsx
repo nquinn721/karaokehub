@@ -1,7 +1,7 @@
+import { BannerAd } from '@components/AdsterraAd';
 import { BannerAdWithUpgrade, WideAdWithUpgrade } from '@components/AdWithUpgrade';
 import { CustomCard } from '@components/CustomCard';
 import GoogleOneTap from '@components/GoogleOneTap';
-import { BannerAd } from '@components/AdsterraAd';
 import { SEO, seoConfigs } from '@components/SEO';
 import {
   faArrowUp,
