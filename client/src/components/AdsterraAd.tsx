@@ -18,9 +18,17 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
 }) => {
   const adRef = useRef<HTMLDivElement>(null);
   const scriptLoadedRef = useRef<boolean>(false);
+  const mountedRef = useRef<boolean>(true);
 
   useEffect(() => {
-    if (!adRef.current || scriptLoadedRef.current) return;
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!adRef.current || !mountedRef.current) return;
 
     if (debug) {
       console.log('Loading Adsterra ad with key:', adKey);
@@ -28,39 +36,51 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
 
     // Clear any existing content
     adRef.current.innerHTML = '';
+    scriptLoadedRef.current = false;
 
-    // Set up the global atOptions for this ad
-    (window as any).atOptions = {
-      key: adKey,
-      format: 'iframe',
-      height: height,
-      width: width,
-      params: {}
+    // Add a small delay to ensure DOM is ready
+    const loadAd = () => {
+      if (!adRef.current || !mountedRef.current) return;
+
+      // Set up the global atOptions for this ad
+      (window as any).atOptions = {
+        key: adKey,
+        format: 'iframe',
+        height: height,
+        width: width,
+        params: {}
+      };
+
+      // Create and load the Adsterra script
+      const script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.src = `//www.highperformanceformat.com/${adKey}/invoke.js`;
+      script.async = true;
+
+      script.onload = () => {
+        if (mountedRef.current) {
+          scriptLoadedRef.current = true;
+          if (debug) {
+            console.log('Adsterra script loaded successfully');
+          }
+        }
+      };
+
+      script.onerror = () => {
+        if (debug) {
+          console.error('Failed to load Adsterra script');
+        }
+      };
+
+      // Append script to the ad container
+      adRef.current.appendChild(script);
     };
 
-    // Create and load the Adsterra script
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = `//www.highperformanceformat.com/${adKey}/invoke.js`;
-    script.async = true;
-
-    script.onload = () => {
-      scriptLoadedRef.current = true;
-      if (debug) {
-        console.log('Adsterra script loaded successfully');
-      }
-    };
-
-    script.onerror = () => {
-      if (debug) {
-        console.error('Failed to load Adsterra script');
-      }
-    };
-
-    // Append script to the ad container
-    adRef.current.appendChild(script);
+    // Small delay to ensure proper loading after navigation
+    const timeoutId = setTimeout(loadAd, 100);
 
     return () => {
+      clearTimeout(timeoutId);
       // Cleanup on unmount
       scriptLoadedRef.current = false;
       if (adRef.current) {
