@@ -32,6 +32,7 @@ import RegisterPage from './pages/RegisterPage';
 import SettingsPage from './pages/SettingsPage';
 import ShowsPage from './pages/ShowsPage';
 import SubmitShowPage from './pages/SubmitShowPage';
+import AdTestPage from './pages/AdTestPage';
 
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -264,6 +265,9 @@ const AppContent: React.FC = observer(() => {
             {/* Public pages */}
             <Route path="/about" element={<AboutPage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+            
+            {/* Ad Testing (temporary) */}
+            <Route path="/ad-test" element={<AdTestPage />} />
 
             {/* Protected Routes */}
             <Route
