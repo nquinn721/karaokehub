@@ -47,63 +47,89 @@ async function loadFacebookCookies(page: any, cookiesFilePath: string): Promise<
     let cookies = [];
     let cookieSource = '';
 
+    // Enhanced logging for production debugging
+    sendProgress(`🔍 [COOKIE-LOAD] Environment: ${process.env.NODE_ENV || 'unknown'}`);
+    sendProgress(`🔍 [COOKIE-LOAD] Checking FB_SESSION_COOKIES env var...`);
+
     // First try to get cookies from environment variable (for production/Cloud Run)
     const cookiesFromEnv = process.env.FB_SESSION_COOKIES;
     if (cookiesFromEnv) {
+      sendProgress(`🔍 [COOKIE-LOAD] FB_SESSION_COOKIES found, length: ${cookiesFromEnv.length} chars`);
+      sendProgress(`🔍 [COOKIE-LOAD] First 100 chars: ${cookiesFromEnv.substring(0, 100)}...`);
       try {
         cookies = JSON.parse(cookiesFromEnv);
         cookieSource = 'environment variable';
-        sendProgress('📦 Loading Facebook cookies from environment variable...');
+        sendProgress(`📦 [COOKIE-LOAD] Successfully parsed ${cookies.length} cookies from environment variable`);
       } catch (parseError) {
         sendProgress(
-          `❌ Failed to parse FB_SESSION_COOKIES environment variable: ${parseError.message}`,
+          `❌ [COOKIE-LOAD] Failed to parse FB_SESSION_COOKIES: ${parseError.message}`,
         );
+        sendProgress(`🔍 [COOKIE-LOAD] Raw env var sample: ${cookiesFromEnv.substring(0, 200)}`);
         // Fall back to file loading
       }
+    } else {
+      sendProgress(`⚠️ [COOKIE-LOAD] FB_SESSION_COOKIES environment variable not found`);
     }
 
     // If no cookies from environment, try loading from file (development)
     if (cookies.length === 0 && fs.existsSync(cookiesFilePath)) {
+      sendProgress(`📂 [COOKIE-LOAD] Fallback: Loading from file ${cookiesFilePath}`);
       const cookiesData = fs.readFileSync(cookiesFilePath, 'utf8');
       cookies = JSON.parse(cookiesData);
       cookieSource = `file: ${cookiesFilePath}`;
-      sendProgress(`📂 Loading Facebook cookies from file: ${cookiesFilePath}`);
+      sendProgress(`📂 [COOKIE-LOAD] Loaded ${cookies.length} cookies from file`);
     }
 
     if (cookies.length === 0) {
-      sendProgress('❌ No Facebook cookies found (neither environment variable nor file)');
+      sendProgress('❌ [COOKIE-LOAD] No Facebook cookies found (neither environment variable nor file)');
       if (process.env.NODE_ENV === 'production') {
         sendProgress(
-          '💡 For production, set FB_SESSION_COOKIES environment variable with valid Facebook session cookies',
+          '💡 [COOKIE-LOAD] For production, set FB_SESSION_COOKIES environment variable with valid Facebook session cookies',
         );
       } else {
-        sendProgress('💡 For development, ensure facebook-cookies.json exists in data/ directory');
+        sendProgress('💡 [COOKIE-LOAD] For development, ensure facebook-cookies.json exists in data/ directory');
       }
       return false;
     }
 
-    // Validate cookie structure and freshness
+    // Enhanced cookie validation with detailed logging
     const now = Date.now();
     let validCookies = 0;
     let expiredCookies = 0;
+    let criticalCookies = 0;
+    const criticalCookieNames = ['c_user', 'xs', 'fr', 'sb', 'datr'];
+
+    sendProgress(`🔍 [COOKIE-VALIDATION] Starting validation of ${cookies.length} cookies at ${new Date(now).toISOString()}`);
 
     for (const cookie of cookies) {
+      // Enhanced cookie logging
+      const cookieInfo = `${cookie.name}=${cookie.value?.substring(0, 20)}... (domain: ${cookie.domain}, expires: ${cookie.expires ? new Date(cookie.expires * 1000).toISOString() : 'session'})`;
+      
       // Check if cookie has required fields
       if (!cookie.name || !cookie.value || !cookie.domain) {
-        sendProgress(`⚠️ Skipping malformed cookie: ${JSON.stringify(cookie)}`);
+        sendProgress(`⚠️ [COOKIE-VALIDATION] Malformed cookie: ${cookieInfo}`);
         continue;
+      }
+
+      // Check if this is a critical Facebook authentication cookie
+      const isCritical = criticalCookieNames.includes(cookie.name);
+      if (isCritical) {
+        criticalCookies++;
+        sendProgress(`🔑 [COOKIE-VALIDATION] Critical auth cookie: ${cookie.name}`);
       }
 
       // Check if cookie is expired
       if (cookie.expires && cookie.expires * 1000 < now) {
         expiredCookies++;
-        sendProgress(
-          `⏰ Cookie ${cookie.name} is expired (expired: ${new Date(cookie.expires * 1000)})`,
-        );
+        const expiredDate = new Date(cookie.expires * 1000);
+        sendProgress(`⏰ [COOKIE-VALIDATION] Expired cookie ${cookie.name}: expired ${expiredDate.toISOString()}`);
+        if (isCritical) {
+          sendProgress(`🚨 [COOKIE-VALIDATION] CRITICAL: Authentication cookie ${cookie.name} is expired!`);
+        }
         continue;
       }
 
-      // Set valid cookies
+      // Set valid cookies with error handling
       try {
         await page.setCookie({
           name: cookie.name,
@@ -116,25 +142,113 @@ async function loadFacebookCookies(page: any, cookiesFilePath: string): Promise<
           sameSite: cookie.sameSite,
         });
         validCookies++;
+        if (isCritical) {
+          sendProgress(`✅ [COOKIE-VALIDATION] Successfully set critical cookie: ${cookie.name}`);
+        }
       } catch (setCookieError) {
-        sendProgress(`⚠️ Failed to set cookie ${cookie.name}: ${setCookieError.message}`);
+        sendProgress(`⚠️ [COOKIE-VALIDATION] Failed to set cookie ${cookie.name}: ${setCookieError.message}`);
       }
     }
 
+    // Enhanced validation summary
+    sendProgress(`📊 [COOKIE-VALIDATION] Summary:`);
+    sendProgress(`    - Total cookies: ${cookies.length}`);
+    sendProgress(`    - Valid cookies set: ${validCookies}`);
+    sendProgress(`    - Expired cookies: ${expiredCookies}`);
+    sendProgress(`    - Critical auth cookies: ${criticalCookies}`);
+    sendProgress(`    - Cookie source: ${cookieSource}`);
+
     if (validCookies === 0) {
       sendProgress(
-        `❌ No valid cookies could be set (${expiredCookies} expired, ${cookies.length - validCookies - expiredCookies} invalid)`,
+        `❌ [COOKIE-VALIDATION] FATAL: No valid cookies could be set (${expiredCookies} expired, ${cookies.length - validCookies - expiredCookies} invalid)`,
       );
       return false;
     }
 
+    if (criticalCookies === 0) {
+      sendProgress(`⚠️ [COOKIE-VALIDATION] WARNING: No critical authentication cookies found. This may cause login issues.`);
+    }
+
     sendProgress(
-      `✅ Successfully loaded ${validCookies}/${cookies.length} Facebook session cookies from ${cookieSource}`,
+      `✅ [COOKIE-VALIDATION] Successfully loaded ${validCookies}/${cookies.length} Facebook session cookies from ${cookieSource}`,
     );
 
     if (expiredCookies > 0) {
       sendProgress(
-        `⚠️ Note: ${expiredCookies} cookies were expired and skipped. Consider refreshing your session cookies.`,
+        `⚠️ [COOKIE-VALIDATION] Note: ${expiredCookies} cookies were expired and skipped. Consider refreshing your session cookies.`,
+      );
+    }
+
+    sendProgress(`🔍 [COOKIE-VALIDATION] Validating ${cookies.length} cookies...`);
+
+    for (const cookie of cookies) {
+      // Check if cookie has required fields
+      if (!cookie.name || !cookie.value || !cookie.domain) {
+        sendProgress(`⚠️ [COOKIE-VALIDATION] Skipping malformed cookie: ${JSON.stringify(cookie)}`);
+        continue;
+      }
+
+      // Log critical cookies
+      if (['c_user', 'xs', 'datr', 'fr'].includes(cookie.name)) {
+        criticalCookies++;
+        const expiryDate = cookie.expires ? new Date(cookie.expires * 1000).toISOString() : 'no expiry';
+        sendProgress(`🔑 [CRITICAL-COOKIE] ${cookie.name}: expires=${expiryDate}, domain=${cookie.domain}`);
+      }
+
+      // Check if cookie is expired
+      if (cookie.expires && cookie.expires * 1000 < now) {
+        expiredCookies++;
+        sendProgress(
+          `⏰ [COOKIE-VALIDATION] Cookie ${cookie.name} is expired (expired: ${new Date(cookie.expires * 1000).toISOString()})`,
+        );
+        continue;
+      }
+
+      // Set valid cookies with enhanced error logging
+      try {
+        await page.setCookie({
+          name: cookie.name,
+          value: cookie.value,
+          domain: cookie.domain,
+          path: cookie.path || '/',
+          expires: cookie.expires,
+          httpOnly: cookie.httpOnly,
+          secure: cookie.secure,
+          sameSite: cookie.sameSite,
+        });
+        validCookies++;
+        
+        // Log successful setting of critical cookies
+        if (['c_user', 'xs', 'datr', 'fr'].includes(cookie.name)) {
+          sendProgress(`✅ [CRITICAL-COOKIE] Successfully set ${cookie.name}`);
+        }
+      } catch (setCookieError) {
+        sendProgress(`⚠️ [COOKIE-VALIDATION] Failed to set cookie ${cookie.name}: ${setCookieError.message}`);
+      }
+    }
+
+    sendProgress(`📊 [COOKIE-SUMMARY] Total: ${cookies.length}, Valid: ${validCookies}, Expired: ${expiredCookies}, Critical: ${criticalCookies}`);
+
+    if (validCookies === 0) {
+      sendProgress(
+        `❌ [COOKIE-LOAD] No valid cookies could be set (${expiredCookies} expired, ${cookies.length - validCookies - expiredCookies} invalid)`,
+      );
+      return false;
+    }
+
+    if (criticalCookies === 0) {
+      sendProgress(
+        `⚠️ [COOKIE-LOAD] Warning: No critical authentication cookies (c_user, xs, datr, fr) found!`,
+      );
+    }
+
+    sendProgress(
+      `✅ [COOKIE-LOAD] Successfully loaded ${validCookies}/${cookies.length} Facebook session cookies from ${cookieSource}`,
+    );
+
+    if (expiredCookies > 0) {
+      sendProgress(
+        `⚠️ [COOKIE-LOAD] Note: ${expiredCookies} cookies were expired and skipped. Consider refreshing your session cookies.`,
       );
     }
 
@@ -159,11 +273,246 @@ async function saveFacebookCookies(page: any, cookiesFilePath: string): Promise<
 }
 
 /**
- * Check if user is logged into Facebook with detailed analysis
+ * Check if user is logged into Facebook with comprehensive analysis and debugging
  */
 async function checkIfLoggedIn(page: any): Promise<boolean> {
   try {
-    sendProgress('🔍 Checking Facebook login status...');
+    sendProgress('🔍 [LOGIN-CHECK] Starting comprehensive Facebook login status analysis...');
+
+    // Wait for page to stabilize
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    
+    // First, check for blocking overlays
+    const overlayAnalysis = await detectPageOverlays(page);
+    if (overlayAnalysis.hasBlockingOverlay) {
+      sendProgress(`⚠️ [LOGIN-CHECK] Blocking overlay detected - this may interfere with login detection`);
+      if (overlayAnalysis.interactionBlocked) {
+        sendProgress(`🚨 [LOGIN-CHECK] CRITICAL: Page interaction is completely blocked by overlay!`);
+      }
+    }
+
+    // Enhanced page analysis with comprehensive logging
+    const loginStatus = await page.evaluate(() => {
+      // Page basic info
+      const pageInfo = {
+        url: window.location.href,
+        title: document.title,
+        pathname: window.location.pathname,
+        search: window.location.search,
+        hash: window.location.hash
+      };
+
+      // Login page indicators - comprehensive search
+      const loginFormSelectors = [
+        '#login_form', '[data-testid="login_form"]', 'form[action*="login"]',
+        'form[action*="checkpoint"]', '.login-form', '#loginForm'
+      ];
+      const emailSelectors = [
+        '#email', '[name="email"]', 'input[type="email"]', 
+        '[data-testid="email"]', '[placeholder*="email"]', '[placeholder*="Email"]'
+      ];
+      const passwordSelectors = [
+        '#pass', '[name="pass"]', '[name="password"]', 'input[type="password"]',
+        '[data-testid="password"]', '[placeholder*="password"]', '[placeholder*="Password"]'
+      ];
+      const loginButtonSelectors = [
+        '[data-testid="login_button"]', '[name="login"]', 'button[type="submit"]',
+        'input[type="submit"]', 'button[value="Log In"]', '[aria-label*="Log in"]'
+      ];
+
+      // Logged-in user indicators - comprehensive search
+      const userNavSelectors = [
+        '[role="navigation"]', 'nav', '.navigation', '#userNavigationLabel',
+        '[data-click="profile_icon"]', '[aria-label*="profile"]', '[aria-label*="account"]'
+      ];
+      const notificationSelectors = [
+        '[aria-label*="notification"]', '[aria-label*="Notification"]',
+        '[data-testid*="notification"]', '.notifications', '#notifications'
+      ];
+      const messagesSelectors = [
+        '[aria-label*="message"]', '[aria-label*="Message"]', '[aria-label*="Messenger"]',
+        '[data-testid*="message"]', '.messages', '#messages'
+      ];
+
+      // Comprehensive element detection
+      const loginElements = {
+        forms: loginFormSelectors.map(sel => ({ selector: sel, found: !!document.querySelector(sel), count: document.querySelectorAll(sel).length })),
+        emailInputs: emailSelectors.map(sel => ({ selector: sel, found: !!document.querySelector(sel), count: document.querySelectorAll(sel).length })),
+        passwordInputs: passwordSelectors.map(sel => ({ selector: sel, found: !!document.querySelector(sel), count: document.querySelectorAll(sel).length })),
+        loginButtons: loginButtonSelectors.map(sel => ({ selector: sel, found: !!document.querySelector(sel), count: document.querySelectorAll(sel).length }))
+      };
+
+      const userElements = {
+        navigation: userNavSelectors.map(sel => ({ selector: sel, found: !!document.querySelector(sel), count: document.querySelectorAll(sel).length })),
+        notifications: notificationSelectors.map(sel => ({ selector: sel, found: !!document.querySelector(sel), count: document.querySelectorAll(sel).length })),
+        messages: messagesSelectors.map(sel => ({ selector: sel, found: !!document.querySelector(sel), count: document.querySelectorAll(sel).length }))
+      };
+
+      // Count totals
+      const loginElementsFound = Object.values(loginElements).flat().filter(el => el.found).length;
+      const userElementsFound = Object.values(userElements).flat().filter(el => el.found).length;
+
+      // Facebook-specific checks
+      const fbSpecificElements = {
+        fbLogo: !!document.querySelector('[aria-label="Facebook"]'),
+        homeLink: !!document.querySelector('a[href="/"]'),
+        searchBox: !!document.querySelector('[role="combobox"], [placeholder*="Search"], input[name="q"]'),
+        feedContainer: !!document.querySelector('[role="feed"], #stream_pagelet, .feed')
+      };
+
+      // Error message detection
+      const errorSelectors = [
+        '[data-testid="form_error"]', '.error-message', '[role="alert"]', 
+        '.alert', '.error', '[class*="error"]', '[id*="error"]'
+      ];
+      const errorElements = errorSelectors.map(sel => {
+        const elements = Array.from(document.querySelectorAll(sel));
+        return elements.map(el => ({
+          selector: sel,
+          text: el.textContent?.trim()?.substring(0, 100),
+          visible: el.offsetWidth > 0 && el.offsetHeight > 0
+        })).filter(err => err.text && err.text.length > 0);
+      }).flat();
+
+      // Content analysis
+      const bodyText = document.body?.textContent?.toLowerCase() || '';
+      const hasLoginKeywords = ['log in', 'sign in', 'login', 'signin', 'enter password'].some(keyword => 
+        bodyText.includes(keyword)
+      );
+      const hasLoggedInKeywords = ['news feed', 'home', 'timeline', 'what\'s on your mind'].some(keyword => 
+        bodyText.includes(keyword)
+      );
+
+      return {
+        pageInfo,
+        loginElements,
+        userElements,
+        fbSpecificElements,
+        errorElements,
+        loginElementsFound,
+        userElementsFound,
+        hasLoginKeywords,
+        hasLoggedInKeywords,
+        bodyTextSample: bodyText.substring(0, 500)
+      };
+    });
+
+    // Comprehensive logging of analysis results
+    sendProgress(`📊 [LOGIN-CHECK] Page Analysis Results:`);
+    sendProgress(`    📍 URL: ${loginStatus.pageInfo.url}`);
+    sendProgress(`    📄 Title: "${loginStatus.pageInfo.title}"`);
+    sendProgress(`    🛤️  Path: ${loginStatus.pageInfo.pathname}`);
+    if (loginStatus.pageInfo.search) {
+      sendProgress(`    🔍 Query: ${loginStatus.pageInfo.search}`);
+    }
+
+    sendProgress(`📊 [LOGIN-CHECK] Element Detection Summary:`);
+    sendProgress(`    🔐 Login elements found: ${loginStatus.loginElementsFound}`);
+    sendProgress(`    👤 User elements found: ${loginStatus.userElementsFound}`);
+    sendProgress(`    📝 Has login keywords: ${loginStatus.hasLoginKeywords}`);
+    sendProgress(`    🏠 Has logged-in keywords: ${loginStatus.hasLoggedInKeywords}`);
+
+    // Detailed element logging
+    Object.entries(loginStatus.loginElements).forEach(([category, elements]) => {
+      const foundElements = elements.filter(el => el.found);
+      if (foundElements.length > 0) {
+        sendProgress(`🔐 [LOGIN-CHECK] ${category}: ${foundElements.map(el => `${el.selector}(${el.count})`).join(', ')}`);
+      }
+    });
+
+    Object.entries(loginStatus.userElements).forEach(([category, elements]) => {
+      const foundElements = elements.filter(el => el.found);
+      if (foundElements.length > 0) {
+        sendProgress(`👤 [LOGIN-CHECK] ${category}: ${foundElements.map(el => `${el.selector}(${el.count})`).join(', ')}`);
+      }
+    });
+
+    // Facebook-specific elements
+    const fbElements = Object.entries(loginStatus.fbSpecificElements).filter(([key, found]) => found);
+    if (fbElements.length > 0) {
+      sendProgress(`🔵 [LOGIN-CHECK] Facebook elements: ${fbElements.map(([key]) => key).join(', ')}`);
+    }
+
+    // Error messages
+    if (loginStatus.errorElements.length > 0) {
+      sendProgress(`🚨 [LOGIN-CHECK] Errors detected:`);
+      loginStatus.errorElements.forEach((error, index) => {
+        sendProgress(`    ${index + 1}. "${error.text}" (${error.visible ? 'visible' : 'hidden'})`);
+      });
+    }
+
+    // Body text sample for debugging
+    if (loginStatus.bodyTextSample) {
+      sendProgress(`📝 [LOGIN-CHECK] Page content sample: "${loginStatus.bodyTextSample.substring(0, 200)}..."`);
+    }
+
+    // Enhanced decision logic with detailed reasoning
+    const analysis = {
+      hasLoginElements: loginStatus.loginElementsFound > 0,
+      hasUserElements: loginStatus.userElementsFound > 0,
+      isLoginUrl: loginStatus.pageInfo.url.includes('/login') || 
+                  loginStatus.pageInfo.url.includes('/checkpoint') ||
+                  loginStatus.pageInfo.pathname === '/login' ||
+                  loginStatus.pageInfo.pathname === '/checkpoint',
+      isGroupUrl: loginStatus.pageInfo.url.includes('/groups/'),
+      isHomepage: loginStatus.pageInfo.pathname === '/' || loginStatus.pageInfo.pathname === '',
+      hasErrors: loginStatus.errorElements.length > 0,
+      hasBlockingOverlay: overlayAnalysis.hasBlockingOverlay
+    };
+
+    sendProgress(`🤔 [LOGIN-CHECK] Decision Analysis:`);
+    sendProgress(`    🔐 Has login elements: ${analysis.hasLoginElements}`);
+    sendProgress(`    👤 Has user elements: ${analysis.hasUserElements}`);
+    sendProgress(`    🔗 Is login URL: ${analysis.isLoginUrl}`);
+    sendProgress(`    👥 Is group URL: ${analysis.isGroupUrl}`);
+    sendProgress(`    🏠 Is homepage: ${analysis.isHomepage}`);
+    sendProgress(`    ❌ Has errors: ${analysis.hasErrors}`);
+    sendProgress(`    🚫 Has blocking overlay: ${analysis.hasBlockingOverlay}`);
+
+    // Decision logic with detailed reasoning
+    if (analysis.isLoginUrl) {
+      sendProgress('❌ [LOGIN-CHECK] RESULT: NOT logged in - URL indicates login/checkpoint page');
+      return false;
+    }
+
+    if (analysis.hasLoginElements && !analysis.hasUserElements) {
+      sendProgress('❌ [LOGIN-CHECK] RESULT: NOT logged in - login elements present, no user navigation detected');
+      return false;
+    }
+
+    if (analysis.hasBlockingOverlay && overlayAnalysis.interactionBlocked) {
+      sendProgress('⚠️ [LOGIN-CHECK] WARNING: Blocking overlay detected, login status may be unreliable');
+    }
+
+    if (analysis.hasUserElements && !analysis.hasLoginElements) {
+      sendProgress('✅ [LOGIN-CHECK] RESULT: LOGGED IN - user navigation elements present, no login forms');
+      return true;
+    }
+
+    if (analysis.isGroupUrl && !analysis.hasLoginElements) {
+      sendProgress('✅ [LOGIN-CHECK] RESULT: LOGGED IN - successfully accessing group page without login prompts');
+      return true;
+    }
+
+    if (analysis.isHomepage && analysis.hasUserElements) {
+      sendProgress('✅ [LOGIN-CHECK] RESULT: LOGGED IN - on homepage with user elements visible');
+      return true;
+    }
+
+    // Default case with detailed reasoning
+    sendProgress('⚠️ [LOGIN-CHECK] RESULT: UNCLEAR - defaulting to NOT logged in for safety');
+    sendProgress(`    Reasoning: Mixed signals detected`);
+    sendProgress(`    - Login elements: ${analysis.hasLoginElements}`);
+    sendProgress(`    - User elements: ${analysis.hasUserElements}`);
+    sendProgress(`    - Page type: ${analysis.isLoginUrl ? 'login' : analysis.isGroupUrl ? 'group' : 'other'}`);
+    
+    return false;
+  } catch (error) {
+    sendProgress(`❌ [LOGIN-CHECK] Error during login status check: ${error.message}`);
+    sendProgress(`❌ [LOGIN-CHECK] Stack trace: ${error.stack}`);
+    return false;
+  }
+}
 
     // Wait for page to stabilize
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -379,7 +728,171 @@ Focus on elements that would block or interfere with scrolling and content viewi
 }
 
 /**
- * Helper function to try clicking buttons with specific text content
+ * Comprehensive overlay and blocking element detection
+ */
+async function detectPageOverlays(page: any): Promise<{
+  hasBlockingOverlay: boolean;
+  overlayDetails: string[];
+  interactionBlocked: boolean;
+  recommendedActions: string[];
+}> {
+  try {
+    sendProgress('🔍 [OVERLAY-DETECTION] Scanning page for blocking overlays and popups...');
+
+    const overlayAnalysis = await page.evaluate(() => {
+      const results = {
+        hasBlockingOverlay: false,
+        overlayDetails: [],
+        interactionBlocked: false,
+        recommendedActions: []
+      };
+
+      // Check for notification overlays
+      const notificationElements = [
+        ...document.querySelectorAll('[role="dialog"]'),
+        ...document.querySelectorAll('.notification-popup'),
+        ...document.querySelectorAll('[aria-label*="notification"]'),
+        ...document.querySelectorAll('[aria-label*="Notification"]'),
+        ...document.querySelectorAll('[data-testid*="notification"]')
+      ];
+
+      if (notificationElements.length > 0) {
+        results.hasBlockingOverlay = true;
+        results.overlayDetails.push(`Found ${notificationElements.length} notification dialog(s)`);
+        
+        notificationElements.forEach((el, index) => {
+          const rect = el.getBoundingClientRect();
+          const style = window.getComputedStyle(el);
+          const text = el.textContent?.substring(0, 100) || 'No text';
+          
+          results.overlayDetails.push(
+            `Dialog ${index + 1}: "${text}" (${rect.width}x${rect.height}, z-index: ${style.zIndex}, display: ${style.display})`
+          );
+        });
+      }
+
+      // Check for dark/black overlays that block interaction
+      const overlayElements = document.querySelectorAll('div, span');
+      let blackOverlayCount = 0;
+      
+      Array.from(overlayElements).forEach(el => {
+        const style = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        
+        // Check for full-screen or large overlays
+        if (
+          style.position === 'fixed' &&
+          parseInt(style.zIndex) > 100 &&
+          rect.width > window.innerWidth * 0.8 &&
+          rect.height > window.innerHeight * 0.8
+        ) {
+          const backgroundColor = style.backgroundColor;
+          const opacity = parseFloat(style.opacity);
+          
+          if (
+            backgroundColor.includes('rgba(0, 0, 0') ||
+            backgroundColor === 'rgb(0, 0, 0)' ||
+            (opacity > 0.3 && backgroundColor.includes('black'))
+          ) {
+            blackOverlayCount++;
+            results.hasBlockingOverlay = true;
+            results.interactionBlocked = true;
+            results.overlayDetails.push(
+              `Black overlay detected: ${rect.width}x${rect.height}, z-index: ${style.zIndex}, bg: ${backgroundColor}, opacity: ${opacity}`
+            );
+          }
+        }
+      });
+
+      // Check for modal/popup blocking elements
+      const modalElements = [
+        ...document.querySelectorAll('.modal'),
+        ...document.querySelectorAll('.popup'),
+        ...document.querySelectorAll('[style*="position: fixed"]'),
+        ...document.querySelectorAll('[style*="position:fixed"]')
+      ];
+
+      modalElements.forEach(el => {
+        const style = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        
+        if (
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          parseInt(style.zIndex) > 50 &&
+          rect.width > 200 &&
+          rect.height > 100
+        ) {
+          const text = el.textContent?.substring(0, 50) || 'No text';
+          results.overlayDetails.push(
+            `Modal/Popup: "${text}" (${rect.width}x${rect.height}, z-index: ${style.zIndex})`
+          );
+          
+          if (rect.width > window.innerWidth * 0.5 || rect.height > window.innerHeight * 0.5) {
+            results.hasBlockingOverlay = true;
+          }
+        }
+      });
+
+      // Test if page is actually interactive
+      try {
+        const testElement = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+        if (!testElement || testElement.tagName === 'HTML') {
+          results.interactionBlocked = true;
+          results.overlayDetails.push('Center of page is not interactive - likely blocked by overlay');
+        }
+      } catch (e) {
+        results.interactionBlocked = true;
+        results.overlayDetails.push('Failed to test page interactivity');
+      }
+
+      // Generate recommendations
+      if (results.hasBlockingOverlay) {
+        results.recommendedActions.push('Close notification dialogs');
+        results.recommendedActions.push('Dismiss modal popups');
+        if (results.interactionBlocked) {
+          results.recommendedActions.push('Remove black overlay blocking interaction');
+          results.recommendedActions.push('Press Escape key multiple times');
+        }
+      }
+
+      return results;
+    });
+
+    // Log overlay analysis results
+    sendProgress(`📊 [OVERLAY-DETECTION] Analysis complete:`);
+    sendProgress(`    - Blocking overlay detected: ${overlayAnalysis.hasBlockingOverlay}`);
+    sendProgress(`    - Interaction blocked: ${overlayAnalysis.interactionBlocked}`);
+    sendProgress(`    - Total overlay elements: ${overlayAnalysis.overlayDetails.length}`);
+
+    if (overlayAnalysis.overlayDetails.length > 0) {
+      sendProgress(`🔍 [OVERLAY-DETECTION] Overlay details:`);
+      overlayAnalysis.overlayDetails.forEach((detail, index) => {
+        sendProgress(`    ${index + 1}. ${detail}`);
+      });
+    }
+
+    if (overlayAnalysis.recommendedActions.length > 0) {
+      sendProgress(`💡 [OVERLAY-DETECTION] Recommended actions:`);
+      overlayAnalysis.recommendedActions.forEach((action, index) => {
+        sendProgress(`    ${index + 1}. ${action}`);
+      });
+    }
+
+    return overlayAnalysis;
+  } catch (error) {
+    sendProgress(`❌ [OVERLAY-DETECTION] Error detecting overlays: ${error.message}`);
+    return {
+      hasBlockingOverlay: false,
+      overlayDetails: [],
+      interactionBlocked: false,
+      recommendedActions: []
+    };
+  }
+}
+
+/**
+ * Enhanced function to try clicking buttons with specific text content
  */
 async function tryClickButtons(page: any, buttonTexts: string[]): Promise<boolean> {
   for (const text of buttonTexts) {
@@ -833,7 +1346,65 @@ function parseGroupNameFallback(headerText: string): string {
 }
 
 /**
- * Main worker function - extract Facebook group data
+ * Attempt to dismiss blocking overlays with comprehensive approach
+ */
+async function dismissOverlays(page: any): Promise<void> {
+  try {
+    sendProgress('🚫 [OVERLAY-DISMISS] Attempting to dismiss blocking overlays...');
+    
+    const dismissCount = await page.evaluate(() => {
+      // Common overlay close button selectors
+      const closeSelectors = [
+        '[aria-label="Close"]',
+        '[aria-label="close"]', 
+        '[data-testid="close"]',
+        '.close-button',
+        '.close',
+        '[role="button"][aria-label*="close" i]',
+        '[role="button"][aria-label*="dismiss" i]',
+        '[role="button"][aria-label*="Cancel" i]',
+        'button[aria-label*="Close" i]',
+        'div[aria-label*="Close" i]',
+        // Facebook specific
+        '[data-testid="modal-close-button"]',
+        'div[role="dialog"] button[aria-label="Close"]',
+        'div[role="dialog"] [data-testid*="close"]'
+      ];
+      
+      let dismissCount = 0;
+      closeSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(element => {
+          if (element instanceof HTMLElement && element.offsetWidth > 0 && element.offsetHeight > 0) {
+            try {
+              (element as HTMLElement).click();
+              dismissCount++;
+            } catch (e) {
+              // Ignore click errors
+            }
+          }
+        });
+      });
+      
+      return dismissCount;
+    });
+    
+    // Press Escape key multiple times
+    await page.keyboard.press('Escape');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await page.keyboard.press('Escape');
+    
+    // Wait for any animations to complete
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    sendProgress(`✅ [OVERLAY-DISMISS] Dismissal completed - ${dismissCount} elements clicked, Escape pressed`);
+  } catch (error) {
+    sendProgress(`⚠️ [OVERLAY-DISMISS] Error dismissing overlays: ${error.message}`);
+  }
+}
+
+/**
+ * Main worker function - extract Facebook group data with comprehensive debugging
  */
 async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroupResult> {
   const { url, tempDir, cookiesFilePath, geminiApiKey } = data;
