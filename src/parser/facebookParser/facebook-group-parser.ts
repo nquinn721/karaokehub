@@ -885,12 +885,12 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
       Object.defineProperty(Notification, 'permission', {
         get: () => 'denied',
       });
-      
+
       // Block geolocation
       Object.defineProperty(navigator, 'geolocation', {
         get: () => undefined,
       });
-      
+
       // Disable push notifications
       delete (window as any).PushManager;
       delete (window as any).ServiceWorkerRegistration;
