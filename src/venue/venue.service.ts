@@ -1,32 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Venue } from './venue.entity';
-
-export interface CreateVenueDto {
-  name: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  lat?: number;
-  lng?: number;
-  phone?: string;
-  website?: string;
-  instagram?: string;
-  facebook?: string;
-  description?: string;
-  userSubmitted?: boolean;
-}
-
-export interface UpdateVenueDto extends Partial<CreateVenueDto> {}
-
-export interface VenueSearchFilters {
-  city?: string;
-  state?: string;
-  isActive?: boolean;
-  search?: string; // For name search
-}
+import { CreateVenueDto, UpdateVenueDto, VenueSearchFilters } from './dto/venue.dto';
 
 @Injectable()
 export class VenueService {
@@ -39,6 +15,11 @@ export class VenueService {
    * Create a new venue
    */
   async create(createVenueDto: CreateVenueDto): Promise<Venue> {
+    // Additional validation to ensure address is provided
+    if (!createVenueDto.address) {
+      throw new BadRequestException('Address is required to create a venue');
+    }
+
     const venue = this.venueRepository.create({
       ...createVenueDto,
       userSubmitted: createVenueDto.userSubmitted || false,
@@ -122,6 +103,12 @@ export class VenueService {
    */
   async update(id: string, updateVenueDto: UpdateVenueDto): Promise<Venue> {
     const venue = await this.findById(id);
+    
+    // If trying to clear the address, prevent it
+    if (updateVenueDto.address === '' || updateVenueDto.address === null) {
+      throw new BadRequestException('Address cannot be removed from a venue');
+    }
+    
     Object.assign(venue, updateVenueDto);
     return await this.venueRepository.save(venue);
   }

@@ -1,41 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GeocodingService } from '../geocoding/geocoding.service';
 import { VenueService } from '../venue/venue.service';
 import { DayOfWeek, Show } from './show.entity';
-
-export interface CreateShowDto {
-  djId: string;
-  venueId?: string; // Use existing venue
-  // For creating a new venue
-  venueName?: string;
-  venueAddress?: string;
-  venueCity?: string;
-  venueState?: string;
-  venueZip?: string;
-  venuePhone?: string;
-  venueWebsite?: string;
-  // Show-specific details
-  day: DayOfWeek;
-  startTime: string;
-  endTime: string;
-  description?: string;
-  source?: string;
-  userSubmitted?: boolean;
-}
-
-export interface UpdateShowDto {
-  djId?: string;
-  venueId?: string;
-  day?: DayOfWeek;
-  startTime?: string;
-  endTime?: string;
-  description?: string;
-  isActive?: boolean;
-  source?: string;
-  userSubmitted?: boolean;
-}
+import { CreateShowDto, UpdateShowDto } from './dto/show.dto';
+import { CreateVenueDto } from '../venue/dto/venue.dto';
 
 export interface GeocodedShow extends Show {
   distance: number;
@@ -107,11 +77,21 @@ export class ShowService {
    * Create a new show with venue handling
    */
   async create(createShowDto: CreateShowDto): Promise<Show> {
+    // Validate that either venueId or venue creation data is provided
+    if (!createShowDto.venueId && !createShowDto.venueName) {
+      throw new BadRequestException('Either venue ID or venue name is required to create a show');
+    }
+
     let venueId = createShowDto.venueId;
 
     // If no venueId provided, create or find venue
     if (!venueId && createShowDto.venueName) {
-      const venue = await this.venueService.findOrCreate({
+      // Validate that if creating a venue, address is provided
+      if (!createShowDto.venueAddress) {
+        throw new BadRequestException('Address is required when creating a new venue');
+      }
+
+      const venueDto: CreateVenueDto = {
         name: createShowDto.venueName,
         address: createShowDto.venueAddress,
         city: createShowDto.venueCity,
@@ -120,8 +100,18 @@ export class ShowService {
         phone: createShowDto.venuePhone,
         website: createShowDto.venueWebsite,
         userSubmitted: createShowDto.userSubmitted || false,
-      });
+      };
+
+      const venue = await this.venueService.findOrCreate(venueDto);
       venueId = venue.id;
+    }
+
+    // Final validation - ensure we have both DJ and venue
+    if (!createShowDto.djId) {
+      throw new BadRequestException('DJ is required to create a show');
+    }
+    if (!venueId) {
+      throw new BadRequestException('Venue is required to create a show');
     }
 
     const show = this.showRepository.create({
@@ -245,6 +235,18 @@ export class ShowService {
   }
 
   async update(id: string, updateShowDto: UpdateShowDto): Promise<Show> {
+    // Get the current show to check if we're trying to remove required fields
+    const currentShow = await this.findOne(id);
+    
+    // Prevent removing DJ or venue from a show
+    if (updateShowDto.djId === null || updateShowDto.djId === '') {
+      throw new BadRequestException('DJ cannot be removed from a show');
+    }
+    
+    if (updateShowDto.venueId === null || updateShowDto.venueId === '') {
+      throw new BadRequestException('Venue cannot be removed from a show');
+    }
+    
     await this.showRepository.update(id, updateShowDto);
     return await this.findOne(id);
   }

@@ -2876,18 +2876,28 @@ ${htmlContent}`;
             venueInfo = approvedData.venues.find((v) => v.name === venueName);
           }
 
-          // Create venue with information from venues array or legacy show fields
-          venue = await this.venueService.findOrCreate({
-            name: venueName,
-            address: venueInfo?.address || showData.address || null,
-            city: venueInfo?.city || showData.city || null,
-            state: venueInfo?.state || showData.state || null,
-            zip: venueInfo?.zip || showData.zip || null,
-            lat: venueInfo?.lat || showData.lat || null,
-            lng: venueInfo?.lng || showData.lng || null,
-            phone: venueInfo?.phone || showData.venuePhone || null,
-            website: venueInfo?.website || showData.venueWebsite || null,
-          });
+          // Validate that we have an address for the venue
+          const venueAddress = venueInfo?.address || showData.address;
+          if (!venueAddress) {
+            this.logAndBroadcast(
+              `Skipping venue creation for ${venueName} - no address provided`,
+              'warning'
+            );
+            venue = null;
+          } else {
+            // Create venue with information from venues array or legacy show fields
+            venue = await this.venueService.findOrCreate({
+              name: venueName,
+              address: venueAddress,
+              city: venueInfo?.city || showData.city || null,
+              state: venueInfo?.state || showData.state || null,
+              zip: venueInfo?.zip || showData.zip || null,
+              lat: venueInfo?.lat || showData.lat || null,
+              lng: venueInfo?.lng || showData.lng || null,
+              phone: venueInfo?.phone || showData.venuePhone || null,
+              website: venueInfo?.website || showData.venueWebsite || null,
+            });
+          }
         }
 
         // Check for existing show with same vendor, day, time, venue, and DJ
@@ -3127,6 +3137,23 @@ ${htmlContent}`;
           }
         }
 
+        // Validate required fields before creating show
+        if (!djId) {
+          this.logAndBroadcast(
+            `Skipping show at ${showData.venue} - no DJ assigned`,
+            'warning'
+          );
+          return null; // Skip this show
+        }
+
+        if (!venue?.id) {
+          this.logAndBroadcast(
+            `Skipping show at ${showData.venue} - no venue found or created`,
+            'warning'
+          );
+          return null; // Skip this show
+        }
+
         const show = this.showRepository.create({
           djId: djId,
           venueId: venue?.id || null,
@@ -3143,7 +3170,7 @@ ${htmlContent}`;
       });
 
       // Wait for all show objects to be prepared
-      const preparedShows = await Promise.all(showPromises);
+      const preparedShows = (await Promise.all(showPromises)).filter(show => show !== null);
 
       // Bulk insert all shows for maximum performance
       this.logAndBroadcast(`Bulk inserting ${preparedShows.length} shows...`, 'info');

@@ -11,7 +11,8 @@ import {
   Query,
 } from '@nestjs/common';
 import { Venue } from './venue.entity';
-import { CreateVenueDto, UpdateVenueDto, VenueSearchFilters, VenueService } from './venue.service';
+import { VenueService } from './venue.service';
+import { CreateVenueDto, UpdateVenueDto, VenueSearchFilters } from './dto/venue.dto';
 
 @Controller('venues')
 export class VenueController {
