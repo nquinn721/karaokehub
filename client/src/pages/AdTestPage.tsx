@@ -8,7 +8,7 @@ const AdTestPage: React.FC = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" gutterBottom>
-        MonetAG Ad Testing
+        Adsterra Ad Testing
       </Typography>
 
       <Button variant="outlined" onClick={() => setShowDebug(!showDebug)} sx={{ mb: 4 }}>
@@ -49,10 +49,10 @@ const AdTestPage: React.FC = () => {
             Debug Information
           </Typography>
           <Typography variant="body2">
-            Check the browser console for MonetAG debug messages.
+            Check the browser console for Adsterra debug messages.
           </Typography>
           <Typography variant="body2">Red borders indicate debug mode is active.</Typography>
-          <Typography variant="body2">Zone ID: 169589</Typography>
+          <Typography variant="body2">Ad Key: 038a9ad9f4d055803f60e71662aaf093</Typography>
         </Box>
       </Box>
     </Container>
