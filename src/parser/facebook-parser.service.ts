@@ -319,6 +319,23 @@ export class FacebookParserService {
       worker.on('message', async (message) => {
         if (message.type === 'progress') {
           this.logAndBroadcast(`🔄 [WORKER] ${message.message}`);
+        } else if (message.type === 'screenshot') {
+          // Handle screenshot streaming from worker
+          if (this.webSocketGateway) {
+            this.webSocketGateway.streamPuppeteerScreenshot(
+              message.data.screenshot,
+              message.data.action,
+              message.data.metadata
+            );
+          }
+        } else if (message.type === 'status') {
+          // Handle status updates from worker
+          if (this.webSocketGateway) {
+            this.webSocketGateway.streamPuppeteerStatus(
+              message.data.status,
+              message.data.progress
+            );
+          }
         } else if (message.type === 'loginRequired') {
           // Worker is requesting Facebook login credentials
           try {
@@ -378,7 +395,8 @@ export class FacebookParserService {
         tempDir: path.join(process.cwd(), 'temp'),
         cookiesFilePath: path.join(process.cwd(), 'data', 'facebook-cookies.json'),
         geminiApiKey: process.env.GEMINI_API_KEY || '',
-        websocketGateway: this.webSocketGateway, // Pass WebSocket gateway for screenshot streaming
+        // Note: Cannot pass websocketGateway directly due to DataCloneError
+        // Will handle streaming from the main thread instead
       });
     });
   }

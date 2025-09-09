@@ -2,19 +2,35 @@
 
 /**
  * Update Facebook Cookies for Cloud Run
- * Reads local cookies and updates Google Secret Manager
+ * 
+ * Strategy: Complete human verification locally, then sync to production
+ * 
+ * This script reads local cookies and updates Google Secret Manager.
+ * Use this after running Facebook parser locally to complete human verification.
+ * 
  * Usage: node update-facebook-cookies.js
  */
 
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-console.log('🍪 Updating Facebook session cookies for Cloud Run deployment...');
+console.log('🍪 Facebook Cookies Production Sync Tool');
+console.log('========================================');
+console.log('');
+console.log('💡 Strategy: Complete human verification locally, then sync to production');
+console.log('');
 
 // Check if facebook-cookies.json exists
 if (!fs.existsSync('data/facebook-cookies.json')) {
   console.error('❌ Error: data/facebook-cookies.json not found');
-  console.error('Please ensure you have Facebook session cookies saved locally first');
+  console.log('');
+  console.log('📋 To generate fresh cookies with human verification:');
+  console.log('1. Run Facebook parser locally (npm run start:dev)');
+  console.log('2. Use admin parser to parse any Facebook group URL');
+  console.log('3. Browser window will appear - complete any CAPTCHA/verification');
+  console.log('4. Let the parser complete successfully');
+  console.log('5. Run this script again to sync cookies to production');
+  console.log('');
   process.exit(1);
 }
 

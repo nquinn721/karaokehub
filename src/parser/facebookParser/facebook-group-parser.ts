@@ -20,7 +20,6 @@ interface WorkerData {
   tempDir: string;
   cookiesFilePath: string;
   geminiApiKey: string;
-  websocketGateway?: any;
 }
 
 interface FacebookGroupResult {
@@ -40,11 +39,11 @@ function sendProgress(message: string) {
 }
 
 /**
- * Take a screenshot and stream it via WebSocket
+ * Take a screenshot and send it to main thread for streaming
  */
-async function takeAndStreamScreenshot(page: any, action: string, websocketGateway?: any, metadata?: any) {
+async function takeAndStreamScreenshot(page: any, action: string, metadata?: any) {
   try {
-    if (!websocketGateway) return;
+    if (!parentPort) return;
     
     const screenshot = await page.screenshot({ 
       encoding: 'base64',
@@ -53,8 +52,16 @@ async function takeAndStreamScreenshot(page: any, action: string, websocketGatew
       fullPage: false // Only visible area for better performance
     });
     
-    // Stream the screenshot to admin clients
-    websocketGateway.streamPuppeteerScreenshot(screenshot, action, metadata);
+    // Send screenshot to main thread for WebSocket streaming
+    parentPort.postMessage({
+      type: 'screenshot',
+      data: {
+        screenshot,
+        action,
+        metadata,
+        timestamp: new Date().toISOString(),
+      }
+    });
     
     // Also log the action
     sendProgress(`📸 Screenshot: ${action}`);
@@ -861,7 +868,7 @@ function parseGroupNameFallback(headerText: string): string {
  * Main worker function - extract Facebook group data
  */
 async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroupResult> {
-  const { url, tempDir, cookiesFilePath, geminiApiKey, websocketGateway } = data;
+  const { url, tempDir, cookiesFilePath, geminiApiKey } = data;
   let browser: any = null;
   const startTime = Date.now();
 
@@ -869,17 +876,22 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
     sendProgress('🚀 Launching Puppeteer browser...');
 
     // Notify admin that puppeteer is starting
-    if (websocketGateway) {
-      websocketGateway.streamPuppeteerStatus('Launching browser...', 5);
+    if (parentPort) {
+      parentPort.postMessage({
+        type: 'status',
+        data: { status: 'Launching browser...', progress: 5 }
+      });
     }
 
     // Launch browser with optimal settings
-    // Set headless: false to show browser window for debugging
-    const isDebugMode = process.env.FACEBOOK_DEBUG_MODE === 'true';
+    // Always show browser window locally for human verification, headless in production
+    const isProduction = process.env.NODE_ENV === 'production';
+    const showBrowser = !isProduction || process.env.FACEBOOK_DEBUG_MODE === 'true';
+    
     browser = await puppeteer.launch({
-      headless: !isDebugMode, // Show browser window when debugging
-      devtools: isDebugMode, // Open DevTools when debugging
-      slowMo: isDebugMode ? 500 : 0, // Slow down actions when debugging (500ms delay)
+      headless: !showBrowser, // Show browser locally, headless in production
+      devtools: !isProduction, // DevTools only in development
+      slowMo: !isProduction ? 500 : 0, // Slow down for human interaction locally
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -950,30 +962,36 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
     const mediaUrl = url.includes('/media') ? url : `${url}/media`;
     sendProgress(`📱 Navigating to: ${mediaUrl}`);
 
-    if (websocketGateway) {
-      websocketGateway.streamPuppeteerStatus('Navigating to Facebook group...', 20);
+    if (parentPort) {
+      parentPort.postMessage({
+        type: 'status',
+        data: { status: 'Navigating to Facebook group...', progress: 20 }
+      });
     }
 
     await page.goto(mediaUrl, { waitUntil: 'networkidle0', timeout: 30000 });
 
     // Take screenshot after initial navigation
-    await takeAndStreamScreenshot(page, 'Initial page load', websocketGateway, { url: mediaUrl });
+    await takeAndStreamScreenshot(page, 'Initial page load', { url: mediaUrl });
 
     // Close any Facebook popups (notifications, overlays, etc.) - do this once after navigation
     await closeFacebookPopups(page, geminiApiKey);
 
     // Take screenshot after popup closing
-    await takeAndStreamScreenshot(page, 'After closing popups', websocketGateway);
+    await takeAndStreamScreenshot(page, 'After closing popups');
 
     // Check if logged in and handle production vs development differently
     const isLoggedIn = await checkIfLoggedIn(page);
 
-    if (websocketGateway) {
-      websocketGateway.streamPuppeteerStatus(`Authentication: ${isLoggedIn ? 'Success' : 'Failed'}`, 30);
+    if (parentPort) {
+      parentPort.postMessage({
+        type: 'status',
+        data: { status: `Authentication: ${isLoggedIn ? 'Success' : 'Failed'}`, progress: 30 }
+      });
     }
 
     if (!isLoggedIn) {
-      if (process.env.NODE_ENV === 'production') {
+      if (isProduction) {
         // In production, we rely entirely on session cookies - provide better diagnostics
         sendProgress(
           '❌ Not logged in to Facebook. In production mode, this requires valid session cookies.',
@@ -1018,21 +1036,37 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
         }
 
         sendProgress('💡 To fix this:');
-        sendProgress('1. Check if FB_SESSION_COOKIES environment variable is set');
-        sendProgress('2. Verify cookies are not expired (expires field in cookies)');
-        sendProgress('3. Generate fresh cookies by logging in locally and running setup script');
+        sendProgress('1. Run parser locally first to complete human verification');
+        sendProgress('2. Use update-facebook-cookies.js to sync fresh cookies to production');
+        sendProgress('3. Verify FB_SESSION_COOKIES environment variable is set');
 
         throw new Error(
-          'Facebook authentication failed. Session cookies may be expired or invalid. Check logs for details.',
+          'Facebook authentication failed. Complete human verification locally first, then sync cookies to production.',
         );
       } else {
-        // Development mode - attempt interactive login
-        const loginSuccess = await performInteractiveLogin(page, cookiesFilePath);
-        if (!loginSuccess) {
-          throw new Error('Facebook login required. Please login through admin panel first.');
+        // Development mode - show browser for human interaction
+        sendProgress('👨‍💻 Development mode: Browser window is visible for human verification');
+        sendProgress('🔐 Please complete any human verification challenges in the browser window');
+        sendProgress('⏳ Waiting 30 seconds for manual authentication...');
+        
+        // Wait longer for human to complete verification
+        await new Promise((resolve) => setTimeout(resolve, 30000));
+        
+        // Check again after wait
+        const isLoggedInAfterWait = await checkIfLoggedIn(page);
+        if (!isLoggedInAfterWait) {
+          // Try interactive login as fallback
+          const loginSuccess = await performInteractiveLogin(page, cookiesFilePath);
+          if (!loginSuccess) {
+            sendProgress('❌ Authentication failed. Please:');
+            sendProgress('1. Complete any CAPTCHA or human verification challenges');
+            sendProgress('2. Ensure you are logged into Facebook in the browser');
+            sendProgress('3. Try running the parser again');
+            throw new Error('Facebook authentication failed after human verification attempt.');
+          }
         }
 
-        // Navigate back to group page after login
+        // Navigate back to group page after authentication
         await page.goto(mediaUrl, { waitUntil: 'networkidle0', timeout: 30000 });
 
         // Close popups again after re-navigation
@@ -1044,7 +1078,13 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
     await saveFacebookCookies(page, cookiesFilePath);
 
     // Take screenshot after successful authentication
-    await takeAndStreamScreenshot(page, 'Successfully authenticated', websocketGateway);
+    await takeAndStreamScreenshot(page, 'Successfully authenticated');
+
+    // In development, save cookies again to ensure we capture the most recent session
+    if (!isProduction) {
+      sendProgress('💾 Development mode: Saving fresh cookies after human verification...');
+      await saveFacebookCookies(page, cookiesFilePath);
+    }
 
     // Extract header text for group name parsing (optimized - text only instead of HTML)
     sendProgress('📄 Extracting header text for group name...');
@@ -1112,10 +1152,13 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Take screenshot after zooming
-    await takeAndStreamScreenshot(page, 'Zoomed to 50%', websocketGateway);
+    await takeAndStreamScreenshot(page, 'Zoomed to 50%');
 
-    if (websocketGateway) {
-      websocketGateway.streamPuppeteerStatus('Starting to scroll and extract images...', 50);
+    if (parentPort) {
+      parentPort.postMessage({
+        type: 'status',
+        data: { status: 'Starting to scroll and extract images...', progress: 50 }
+      });
     }
 
     // Enhanced scrolling to load all images
@@ -1131,9 +1174,12 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
       sendProgress(`📜 Scroll ${scrollAttempts}/${maxScrollAttempts} - scrolling down...`);
 
       // Update progress for admin
-      if (websocketGateway) {
+      if (parentPort) {
         const progress = 50 + (scrollAttempts / maxScrollAttempts) * 30; // 50-80% for scrolling
-        websocketGateway.streamPuppeteerStatus(`Scrolling ${scrollAttempts}/${maxScrollAttempts}`, progress);
+        parentPort.postMessage({
+          type: 'status',
+          data: { status: `Scrolling ${scrollAttempts}/${maxScrollAttempts}`, progress }
+        });
       }
 
       // Scroll down more aggressively
@@ -1146,7 +1192,7 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
 
       // Take screenshot every 2 scrolls to show progress
       if (scrollAttempts % 2 === 0) {
-        await takeAndStreamScreenshot(page, `After scroll ${scrollAttempts}`, websocketGateway, {
+        await takeAndStreamScreenshot(page, `After scroll ${scrollAttempts}`, {
           scroll: scrollAttempts,
           maxScrolls: maxScrollAttempts
         });
@@ -1186,12 +1232,15 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
     // Take final screenshot before extraction
-    await takeAndStreamScreenshot(page, 'Ready for image extraction', websocketGateway, {
+    await takeAndStreamScreenshot(page, 'Ready for image extraction', {
       totalScrolls: scrollAttempts
     });
 
-    if (websocketGateway) {
-      websocketGateway.streamPuppeteerStatus('Extracting image URLs...', 85);
+    if (parentPort) {
+      parentPort.postMessage({
+        type: 'status',
+        data: { status: 'Extracting image URLs...', progress: 85 }
+      });
     }
 
     // Extract Facebook photo URLs (not CDN thumbnails) for high-resolution access
@@ -1251,8 +1300,11 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
 
     sendProgress(`✅ Extraction complete! Found ${imageUrls.length} Facebook photo URLs`);
 
-    if (websocketGateway) {
-      websocketGateway.streamPuppeteerStatus('Extraction complete!', 100);
+    if (parentPort) {
+      parentPort.postMessage({
+        type: 'status',
+        data: { status: 'Extraction complete!', progress: 100 }
+      });
     }
 
     // Log first few URLs for debugging
@@ -1278,8 +1330,11 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
     const processingTime = Date.now() - startTime;
     sendProgress(`❌ Error after ${processingTime}ms: ${error.message}`);
 
-    if (websocketGateway) {
-      websocketGateway.streamPuppeteerStatus(`Error: ${error.message}`, 0);
+    if (parentPort) {
+      parentPort.postMessage({
+        type: 'status',
+        data: { status: `Error: ${error.message}`, progress: 0 }
+      });
     }
 
     return {
@@ -1293,8 +1348,11 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
       sendProgress('🔒 Closing browser...');
       await browser.close();
       
-      if (websocketGateway) {
-        websocketGateway.streamPuppeteerStatus('Browser closed', 0);
+      if (parentPort) {
+        parentPort.postMessage({
+          type: 'status',
+          data: { status: 'Browser closed', progress: 0 }
+        });
       }
     }
   }
