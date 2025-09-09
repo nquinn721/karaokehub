@@ -30,6 +30,307 @@ interface FacebookGroupResult {
 }
 
 /**
+ * Comprehensive anti-bot detection and logging
+ * Detects various Facebook anti-human measures and logs them for analysis
+ */
+async function detectAndLogAntiBotMeasures(page: any): Promise<{
+  detected: boolean;
+  measures: string[];
+  recommendations: string[];
+}> {
+  const results = {
+    detected: false,
+    measures: [],
+    recommendations: []
+  };
+
+  try {
+    sendProgress('🔍 [ANTI-BOT-DETECTION] Scanning for Facebook anti-bot measures...');
+
+    const detectedMeasures = await page.evaluate(() => {
+      const measures = [];
+      
+      // 1. CAPTCHA Detection
+      const captchaSelectors = [
+        '[data-testid="captcha"]',
+        '.captcha',
+        '#captcha',
+        '[aria-label*="captcha" i]',
+        '[aria-label*="verification" i]',
+        'iframe[src*="recaptcha"]',
+        'iframe[src*="hcaptcha"]',
+        '.g-recaptcha',
+        '.h-captcha',
+        '[id*="captcha"]',
+        '[class*="captcha"]'
+      ];
+      
+      for (const selector of captchaSelectors) {
+        const element = document.querySelector(selector);
+        if (element && window.getComputedStyle(element).display !== 'none') {
+          measures.push({
+            type: 'CAPTCHA',
+            selector: selector,
+            text: element.textContent?.substring(0, 100) || '',
+            visible: true
+          });
+        }
+      }
+
+      // 2. "Are you human?" challenges
+      const humanChallengeTexts = [
+        'are you human',
+        'prove you\'re human',
+        'verify you\'re human',
+        'human verification',
+        'security check',
+        'unusual activity',
+        'automated behavior',
+        'suspicious activity',
+        'verify your identity',
+        'account temporarily restricted'
+      ];
+
+      const allText = document.body.textContent?.toLowerCase() || '';
+      humanChallengeTexts.forEach(text => {
+        if (allText.includes(text)) {
+          measures.push({
+            type: 'HUMAN_CHALLENGE',
+            text: text,
+            context: 'Found in page text'
+          });
+        }
+      });
+
+      // 3. Rate limiting messages
+      const rateLimitTexts = [
+        'too many requests',
+        'slow down',
+        'try again later',
+        'temporarily blocked',
+        'rate limit',
+        'please wait',
+        'cool down'
+      ];
+
+      rateLimitTexts.forEach(text => {
+        if (allText.includes(text)) {
+          measures.push({
+            type: 'RATE_LIMIT',
+            text: text,
+            context: 'Rate limiting detected'
+          });
+        }
+      });
+
+      // 4. Login requirement detection
+      const loginSelectors = [
+        '[data-testid="royal_login_form"]',
+        '#loginform',
+        '[name="login"]',
+        '[data-testid="login_form"]',
+        '.login-form'
+      ];
+
+      loginSelectors.forEach(selector => {
+        const element = document.querySelector(selector);
+        if (element && window.getComputedStyle(element).display !== 'none') {
+          measures.push({
+            type: 'LOGIN_REQUIRED',
+            selector: selector,
+            visible: true
+          });
+        }
+      });
+
+      // 5. Checkpoint/verification challenges
+      const checkpointSelectors = [
+        '[data-testid="checkpoint"]',
+        '.checkpoint',
+        '[aria-label*="checkpoint" i]',
+        '[data-testid="identity_confirmation"]'
+      ];
+
+      checkpointSelectors.forEach(selector => {
+        const element = document.querySelector(selector);
+        if (element) {
+          measures.push({
+            type: 'CHECKPOINT',
+            selector: selector,
+            text: element.textContent?.substring(0, 100) || ''
+          });
+        }
+      });
+
+      // 6. Device verification
+      const deviceVerificationTexts = [
+        'verify this device',
+        'unrecognized device',
+        'new device',
+        'device confirmation',
+        'approve this login'
+      ];
+
+      deviceVerificationTexts.forEach(text => {
+        if (allText.includes(text)) {
+          measures.push({
+            type: 'DEVICE_VERIFICATION',
+            text: text,
+            context: 'Device verification required'
+          });
+        }
+      });
+
+      // 7. Two-factor authentication
+      const twoFactorSelectors = [
+        '[data-testid="2fa"]',
+        '[name="approvals_code"]',
+        '[placeholder*="code" i]',
+        '.two-factor'
+      ];
+
+      twoFactorSelectors.forEach(selector => {
+        const element = document.querySelector(selector);
+        if (element && window.getComputedStyle(element).display !== 'none') {
+          measures.push({
+            type: 'TWO_FACTOR_AUTH',
+            selector: selector,
+            placeholder: (element as HTMLInputElement).placeholder || ''
+          });
+        }
+      });
+
+      // 8. Age verification
+      if (allText.includes('age verification') || allText.includes('confirm your age')) {
+        measures.push({
+          type: 'AGE_VERIFICATION',
+          text: 'Age verification required',
+          context: 'Facebook age gate'
+        });
+      }
+
+      // 9. Terms acceptance
+      const termsSelectors = [
+        '[data-testid="terms_accept"]',
+        'button[type="submit"]:has-text("Accept")',
+        'button:contains("I Agree")',
+        'button:contains("Accept")'
+      ];
+
+      termsSelectors.forEach(selector => {
+        const element = document.querySelector(selector);
+        if (element) {
+          measures.push({
+            type: 'TERMS_ACCEPTANCE',
+            selector: selector,
+            text: element.textContent || ''
+          });
+        }
+      });
+
+      // 10. Cookie consent banners (can block interaction)
+      const cookieSelectors = [
+        '[data-testid="cookie-policy-manage-dialog"]',
+        '.cookie-banner',
+        '[aria-label*="cookie" i]'
+      ];
+
+      cookieSelectors.forEach(selector => {
+        const element = document.querySelector(selector);
+        if (element && window.getComputedStyle(element).display !== 'none') {
+          measures.push({
+            type: 'COOKIE_CONSENT',
+            selector: selector,
+            text: element.textContent?.substring(0, 100) || ''
+          });
+        }
+      });
+
+      // 11. Check for JavaScript challenges
+      if (window.performance && window.performance.timing) {
+        const timing = window.performance.timing;
+        const loadTime = timing.loadEventEnd - timing.navigationStart;
+        if (loadTime > 10000) { // If page takes longer than 10 seconds
+          measures.push({
+            type: 'SLOW_LOAD',
+            context: `Page took ${loadTime}ms to load - possible JS challenge`,
+            loadTime: loadTime
+          });
+        }
+      }
+
+      return measures;
+    });
+
+    // Process detected measures
+    if (detectedMeasures.length > 0) {
+      results.detected = true;
+      
+      sendProgress(`🚨 [ANTI-BOT-DETECTION] Found ${detectedMeasures.length} anti-bot measure(s):`);
+      
+      detectedMeasures.forEach((measure, index) => {
+        results.measures.push(`${measure.type}: ${measure.text || measure.selector || measure.context}`);
+        
+        sendProgress(`   ${index + 1}. ${measure.type}`);
+        if (measure.text) sendProgress(`      Text: "${measure.text}"`);
+        if (measure.selector) sendProgress(`      Selector: ${measure.selector}`);
+        if (measure.context) sendProgress(`      Context: ${measure.context}`);
+        if (measure.loadTime) sendProgress(`      Load Time: ${measure.loadTime}ms`);
+        
+        // Add specific recommendations based on measure type
+        switch (measure.type) {
+          case 'CAPTCHA':
+            results.recommendations.push('Complete CAPTCHA challenge manually');
+            break;
+          case 'HUMAN_CHALLENGE':
+            results.recommendations.push('Follow human verification prompts');
+            break;
+          case 'RATE_LIMIT':
+            results.recommendations.push('Wait before retrying, reduce request frequency');
+            break;
+          case 'LOGIN_REQUIRED':
+            results.recommendations.push('Ensure valid session cookies or complete login');
+            break;
+          case 'CHECKPOINT':
+            results.recommendations.push('Complete Facebook security checkpoint');
+            break;
+          case 'DEVICE_VERIFICATION':
+            results.recommendations.push('Verify device through Facebook mobile app/email');
+            break;
+          case 'TWO_FACTOR_AUTH':
+            results.recommendations.push('Enter 2FA code from authenticator app');
+            break;
+          case 'TERMS_ACCEPTANCE':
+            results.recommendations.push('Accept updated Facebook terms');
+            break;
+          case 'COOKIE_CONSENT':
+            results.recommendations.push('Accept cookie policy');
+            break;
+          case 'SLOW_LOAD':
+            results.recommendations.push('Possible JS challenge - wait for page to fully load');
+            break;
+        }
+      });
+      
+      // Log current page info for context
+      const pageUrl = await page.url();
+      const pageTitle = await page.title();
+      sendProgress(`📍 [CONTEXT] Current URL: ${pageUrl}`);
+      sendProgress(`📄 [CONTEXT] Page Title: ${pageTitle}`);
+      
+    } else {
+      sendProgress('✅ [ANTI-BOT-DETECTION] No anti-bot measures detected');
+    }
+
+    return results;
+
+  } catch (error) {
+    sendProgress(`❌ [ANTI-BOT-DETECTION] Error during detection: ${error.message}`);
+    return results;
+  }
+}
+
+/**
  * Send progress message to parent
  */
 function sendProgress(message: string) {
@@ -466,6 +767,16 @@ async function closeFacebookPopups(page: any, geminiApiKey?: string): Promise<vo
   try {
     sendProgress('🚫 Checking for Facebook popups and overlays...');
 
+    // First, check for anti-bot measures that might be disguised as "popups"
+    const popupAntiBotResults = await detectAndLogAntiBotMeasures(page);
+    if (popupAntiBotResults.detected) {
+      sendProgress('🚨 [POPUP-ANALYSIS] Anti-bot measures detected during popup scan:');
+      popupAntiBotResults.measures.forEach((measure, index) => {
+        sendProgress(`   🔍 ${index + 1}. ${measure}`);
+      });
+      sendProgress('💡 [POPUP-ANALYSIS] These may require manual intervention rather than automated closing');
+    }
+
     // First, use Gemini to analyze the page for blocking elements
     if (geminiApiKey) {
       const geminiAnalysis = await analyzePageWithGemini(page, geminiApiKey);
@@ -870,6 +1181,7 @@ function parseGroupNameFallback(headerText: string): string {
 async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroupResult> {
   const { url, tempDir, cookiesFilePath, geminiApiKey } = data;
   let browser: any = null;
+  let page: any = null; // Declare page outside try block for error handling
   const startTime = Date.now();
 
   try {
@@ -923,7 +1235,7 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
       ],
     });
 
-    const page = await browser.newPage();
+    page = await browser.newPage();
 
     // Block all permission requests and notifications
     await page.evaluateOnNewDocument(() => {
@@ -974,6 +1286,15 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
     // Take screenshot after initial navigation
     await takeAndStreamScreenshot(page, 'Initial page load', { url: mediaUrl });
 
+    // Detect and log any anti-bot measures immediately after navigation
+    const antiBotResults = await detectAndLogAntiBotMeasures(page);
+    if (antiBotResults.detected) {
+      sendProgress('🤖 [ANTI-BOT-DETECTION] Facebook anti-bot measures detected!');
+      antiBotResults.recommendations.forEach((rec, index) => {
+        sendProgress(`   💡 ${index + 1}. ${rec}`);
+      });
+    }
+
     // Close any Facebook popups (notifications, overlays, etc.) - do this once after navigation
     await closeFacebookPopups(page, geminiApiKey);
 
@@ -988,6 +1309,18 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
         type: 'status',
         data: { status: `Authentication: ${isLoggedIn ? 'Success' : 'Failed'}`, progress: 30 }
       });
+    }
+
+    // If not logged in, run another anti-bot detection to see what's blocking us
+    if (!isLoggedIn) {
+      sendProgress('🔍 [AUTHENTICATION] Login failed - checking for anti-bot measures...');
+      const authAntiBotResults = await detectAndLogAntiBotMeasures(page);
+      if (authAntiBotResults.detected) {
+        sendProgress('🚨 [AUTHENTICATION] Anti-bot measures preventing login:');
+        authAntiBotResults.measures.forEach((measure, index) => {
+          sendProgress(`   ⚠️ ${index + 1}. ${measure}`);
+        });
+      }
     }
 
     if (!isLoggedIn) {
@@ -1196,6 +1529,17 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
           scroll: scrollAttempts,
           maxScrolls: maxScrollAttempts
         });
+        
+        // Also check for anti-bot measures during scrolling (every 4 scrolls to avoid spam)
+        if (scrollAttempts % 4 === 0) {
+          const scrollAntiBotResults = await detectAndLogAntiBotMeasures(page);
+          if (scrollAntiBotResults.detected) {
+            sendProgress(`🚨 [SCROLL-MONITORING] Anti-bot measures detected during scroll ${scrollAttempts}:`);
+            scrollAntiBotResults.measures.forEach((measure, index) => {
+              sendProgress(`   ⚠️ ${index + 1}. ${measure}`);
+            });
+          }
+        }
       }
 
       // Check current image count
@@ -1329,6 +1673,28 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
   } catch (error) {
     const processingTime = Date.now() - startTime;
     sendProgress(`❌ Error after ${processingTime}ms: ${error.message}`);
+
+    // Run anti-bot detection on error to understand what went wrong
+    if (page) {
+      try {
+        sendProgress('🔍 [ERROR-ANALYSIS] Checking for anti-bot measures that may have caused the error...');
+        const errorAntiBotResults = await detectAndLogAntiBotMeasures(page);
+        if (errorAntiBotResults.detected) {
+          sendProgress('🚨 [ERROR-ANALYSIS] Anti-bot measures found during error:');
+          errorAntiBotResults.measures.forEach((measure, index) => {
+            sendProgress(`   🔍 ${index + 1}. ${measure}`);
+          });
+          sendProgress('💡 [ERROR-ANALYSIS] Recommended actions:');
+          errorAntiBotResults.recommendations.forEach((rec, index) => {
+            sendProgress(`   ✅ ${index + 1}. ${rec}`);
+          });
+        } else {
+          sendProgress('✅ [ERROR-ANALYSIS] No anti-bot measures detected - error may be technical');
+        }
+      } catch (detectionError) {
+        sendProgress(`❌ [ERROR-ANALYSIS] Could not run anti-bot detection: ${detectionError.message}`);
+      }
+    }
 
     if (parentPort) {
       parentPort.postMessage({
