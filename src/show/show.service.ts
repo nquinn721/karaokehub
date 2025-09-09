@@ -1,11 +1,11 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GeocodingService } from '../geocoding/geocoding.service';
-import { VenueService } from '../venue/venue.service';
-import { DayOfWeek, Show } from './show.entity';
-import { CreateShowDto, UpdateShowDto } from './dto/show.dto';
 import { CreateVenueDto } from '../venue/dto/venue.dto';
+import { VenueService } from '../venue/venue.service';
+import { CreateShowDto, UpdateShowDto } from './dto/show.dto';
+import { DayOfWeek, Show } from './show.entity';
 
 export interface GeocodedShow extends Show {
   distance: number;
@@ -237,16 +237,16 @@ export class ShowService {
   async update(id: string, updateShowDto: UpdateShowDto): Promise<Show> {
     // Get the current show to check if we're trying to remove required fields
     const currentShow = await this.findOne(id);
-    
+
     // Prevent removing DJ or venue from a show
     if (updateShowDto.djId === null || updateShowDto.djId === '') {
       throw new BadRequestException('DJ cannot be removed from a show');
     }
-    
+
     if (updateShowDto.venueId === null || updateShowDto.venueId === '') {
       throw new BadRequestException('Venue cannot be removed from a show');
     }
-    
+
     await this.showRepository.update(id, updateShowDto);
     return await this.findOne(id);
   }

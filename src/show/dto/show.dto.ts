@@ -1,6 +1,17 @@
-import { IsNotEmpty, IsOptional, IsString, IsUUID, IsEnum, IsBoolean, IsUrl } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUrl,
+  IsUUID,
+} from 'class-validator';
+import {
+  HasVenueOrVenueData,
+  RequiredForVenueCreation,
+} from '../../common/validators/venue-validation.decorator';
 import { DayOfWeek } from '../show.entity';
-import { HasVenueOrVenueData, RequiredForVenueCreation } from '../../common/validators/venue-validation.decorator';
 
 export class CreateShowDto {
   @IsNotEmpty({ message: 'DJ is required for a show' })

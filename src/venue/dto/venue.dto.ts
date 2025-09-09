@@ -1,4 +1,12 @@
-import { IsNotEmpty, IsOptional, IsString, IsBoolean, IsUrl, IsNumber, IsLatitude, IsLongitude } from 'class-validator';
+import {
+  IsBoolean,
+  IsLatitude,
+  IsLongitude,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUrl,
+} from 'class-validator';
 
 export class CreateVenueDto {
   @IsNotEmpty({ message: 'Venue name is required' })

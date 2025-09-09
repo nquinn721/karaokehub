@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Venue } from './venue.entity';
 import { CreateVenueDto, UpdateVenueDto, VenueSearchFilters } from './dto/venue.dto';
+import { Venue } from './venue.entity';
 
 @Injectable()
 export class VenueService {
@@ -103,12 +103,12 @@ export class VenueService {
    */
   async update(id: string, updateVenueDto: UpdateVenueDto): Promise<Venue> {
     const venue = await this.findById(id);
-    
+
     // If trying to clear the address, prevent it
     if (updateVenueDto.address === '' || updateVenueDto.address === null) {
       throw new BadRequestException('Address cannot be removed from a venue');
     }
-    
+
     Object.assign(venue, updateVenueDto);
     return await this.venueRepository.save(venue);
   }

@@ -1,4 +1,4 @@
-import { registerDecorator, ValidationOptions, ValidationArguments } from 'class-validator';
+import { registerDecorator, ValidationArguments, ValidationOptions } from 'class-validator';
 
 export function HasVenueOrVenueData(validationOptions?: ValidationOptions) {
   return function (object: Object, propertyName: string) {
@@ -10,17 +10,17 @@ export function HasVenueOrVenueData(validationOptions?: ValidationOptions) {
       validator: {
         validate(value: any, args: ValidationArguments) {
           const obj = args.object as any;
-          
+
           // Must have either venueId OR venue creation data (name + address)
           if (obj.venueId) {
             return true; // Has existing venue ID
           }
-          
+
           // Check if venue creation data is provided
           if (obj.venueName && obj.venueAddress) {
             return true; // Has venue name and address for creation
           }
-          
+
           return false;
         },
         defaultMessage(args: ValidationArguments) {
@@ -41,17 +41,17 @@ export function RequiredForVenueCreation(validationOptions?: ValidationOptions) 
       validator: {
         validate(value: any, args: ValidationArguments) {
           const obj = args.object as any;
-          
+
           // If venueId is provided, this validation passes (not creating new venue)
           if (obj.venueId) {
             return true;
           }
-          
+
           // If venueName is provided, then this field (address) is required
           if (obj.venueName && !value) {
             return false;
           }
-          
+
           return true;
         },
         defaultMessage(args: ValidationArguments) {

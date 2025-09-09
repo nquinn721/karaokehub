@@ -1,7 +1,7 @@
-import React from 'react';
-import { Box, Skeleton } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMusic } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Box, Skeleton } from '@mui/material';
+import React from 'react';
 import { getOptimizedAlbumArt, useProgressiveImage } from '../utils/imageOptimization';
 
 interface OptimizedAlbumArtProps {
@@ -93,7 +93,7 @@ export const OptimizedAlbumArt: React.FC<OptimizedAlbumArtProps> = ({
           }}
         />
       )}
-      
+
       <img
         src={currentSrc}
         alt={alt}
@@ -138,14 +138,7 @@ export const CardAlbumArt: React.FC<{
   alt?: string;
   sx?: any;
 }> = ({ albumArt, alt, sx }) => (
-  <OptimizedAlbumArt
-    albumArt={albumArt}
-    size="card"
-    width={200}
-    height={200}
-    alt={alt}
-    sx={sx}
-  />
+  <OptimizedAlbumArt albumArt={albumArt} size="card" width={200} height={200} alt={alt} sx={sx} />
 );
 
 export const DetailAlbumArt: React.FC<{
@@ -153,12 +146,5 @@ export const DetailAlbumArt: React.FC<{
   alt?: string;
   sx?: any;
 }> = ({ albumArt, alt, sx }) => (
-  <OptimizedAlbumArt
-    albumArt={albumArt}
-    size="detail"
-    width={400}
-    height={400}
-    alt={alt}
-    sx={sx}
-  />
+  <OptimizedAlbumArt albumArt={albumArt} size="detail" width={400} height={400} alt={alt} sx={sx} />
 );

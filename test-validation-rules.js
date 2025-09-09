@@ -101,7 +101,7 @@ console.log('================');
 testCases.forEach((testCase, index) => {
   console.log(`\n${index + 1}. ${testCase.name}`);
   console.log(`   Data: ${JSON.stringify(testCase.data, null, 2)}`);
-  
+
   if (testCase.shouldPass) {
     console.log(`   ✅ Expected: PASS - Valid ${testCase.type || 'show'} data`);
   } else {
@@ -145,4 +145,6 @@ console.log('• No address-less venues (every venue must have an address)');
 console.log('• Data integrity maintained at all entry points');
 console.log('• Clear error messages for validation failures');
 
-console.log('\n✨ Validation complete! Your karaoke data is now protected by comprehensive validation rules.');
+console.log(
+  '\n✨ Validation complete! Your karaoke data is now protected by comprehensive validation rules.',
+);

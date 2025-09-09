@@ -2881,7 +2881,7 @@ ${htmlContent}`;
           if (!venueAddress) {
             this.logAndBroadcast(
               `Skipping venue creation for ${venueName} - no address provided`,
-              'warning'
+              'warning',
             );
             venue = null;
           } else {
@@ -3139,17 +3139,14 @@ ${htmlContent}`;
 
         // Validate required fields before creating show
         if (!djId) {
-          this.logAndBroadcast(
-            `Skipping show at ${showData.venue} - no DJ assigned`,
-            'warning'
-          );
+          this.logAndBroadcast(`Skipping show at ${showData.venue} - no DJ assigned`, 'warning');
           return null; // Skip this show
         }
 
         if (!venue?.id) {
           this.logAndBroadcast(
             `Skipping show at ${showData.venue} - no venue found or created`,
-            'warning'
+            'warning',
           );
           return null; // Skip this show
         }
@@ -3170,7 +3167,7 @@ ${htmlContent}`;
       });
 
       // Wait for all show objects to be prepared
-      const preparedShows = (await Promise.all(showPromises)).filter(show => show !== null);
+      const preparedShows = (await Promise.all(showPromises)).filter((show) => show !== null);
 
       // Bulk insert all shows for maximum performance
       this.logAndBroadcast(`Bulk inserting ${preparedShows.length} shows...`, 'info');

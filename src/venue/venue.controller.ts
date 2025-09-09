@@ -10,9 +10,9 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
+import { CreateVenueDto, UpdateVenueDto, VenueSearchFilters } from './dto/venue.dto';
 import { Venue } from './venue.entity';
 import { VenueService } from './venue.service';
-import { CreateVenueDto, UpdateVenueDto, VenueSearchFilters } from './dto/venue.dto';
 
 @Controller('venues')
 export class VenueController {

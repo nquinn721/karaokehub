@@ -3,6 +3,7 @@
 ## Overview
 
 This implementation adds comprehensive validation to ensure data integrity by preventing:
+
 - Shows without venues or DJs
 - Venues without addresses
 - Removal of required fields from existing records
@@ -10,23 +11,27 @@ This implementation adds comprehensive validation to ensure data integrity by pr
 ## ✅ Validation Rules Implemented
 
 ### Show Validation
+
 1. **DJ Required**: Every show MUST have a DJ (`djId` field is required)
 2. **Venue Required**: Every show MUST have a venue (either `venueId` OR `venueName` + `venueAddress`)
 3. **Complete Venue Data**: When creating a new venue, address is mandatory
 4. **Update Protection**: Cannot remove DJ or venue from existing shows
 
 ### Venue Validation
+
 1. **Address Required**: Every venue MUST have an address
 2. **Update Protection**: Cannot remove address from existing venues
 
 ## 📁 Files Modified
 
 ### New Files Created
+
 - `src/show/dto/show.dto.ts` - Show DTOs with validation decorators
 - `src/venue/dto/venue.dto.ts` - Venue DTOs with validation decorators
 - `src/common/validators/venue-validation.decorator.ts` - Custom validation decorators
 
 ### Modified Files
+
 - `src/show/show.service.ts` - Enhanced with validation logic
 - `src/venue/venue.service.ts` - Enhanced with validation logic
 - `src/show/show.controller.ts` - Updated to use new DTOs
@@ -38,6 +43,7 @@ This implementation adds comprehensive validation to ensure data integrity by pr
 ### 1. Data Transfer Objects (DTOs)
 
 #### Show DTOs (`src/show/dto/show.dto.ts`)
+
 ```typescript
 export class CreateShowDto {
   @IsNotEmpty({ message: 'DJ is required for a show' })
@@ -58,6 +64,7 @@ export class CreateShowDto {
 ```
 
 #### Venue DTOs (`src/venue/dto/venue.dto.ts`)
+
 ```typescript
 export class CreateVenueDto {
   @IsNotEmpty({ message: 'Venue name is required' })
@@ -74,14 +81,17 @@ export class CreateVenueDto {
 ### 2. Custom Validation Decorators
 
 #### `@HasVenueOrVenueData()`
+
 Ensures shows have either an existing venue ID OR complete venue creation data (name + address).
 
 #### `@RequiredForVenueCreation()`
+
 Makes address required when creating a new venue through show creation.
 
 ### 3. Service-Level Validation
 
 #### Show Service Validation
+
 ```typescript
 async create(createShowDto: CreateShowDto): Promise<Show> {
   // Validate that either venueId or venue creation data is provided
@@ -98,6 +108,7 @@ async create(createShowDto: CreateShowDto): Promise<Show> {
 ```
 
 #### Venue Service Validation
+
 ```typescript
 async create(createVenueDto: CreateVenueDto): Promise<Venue> {
   if (!createVenueDto.address) {
@@ -135,6 +146,7 @@ if (!venue?.id) {
 ## 🔧 Usage Examples
 
 ### Valid Show Creation
+
 ```json
 {
   "djId": "123e4567-e89b-12d3-a456-426614174000",
@@ -146,6 +158,7 @@ if (!venue?.id) {
 ```
 
 ### Valid Show with New Venue
+
 ```json
 {
   "djId": "123e4567-e89b-12d3-a456-426614174000",
@@ -160,6 +173,7 @@ if (!venue?.id) {
 ```
 
 ### Invalid Requests (Will Fail)
+
 ```json
 // Missing DJ
 {
@@ -187,6 +201,7 @@ if (!venue?.id) {
 ## 🧪 Testing
 
 Run the validation test script to see the rules in action:
+
 ```bash
 node test-validation-rules.js
 ```
@@ -216,6 +231,7 @@ When validation fails, the API returns detailed error messages:
 ## 🎉 Conclusion
 
 The validation system ensures that:
+
 - Every show has a DJ and a venue
 - Every venue has an address
 - Data integrity is maintained across all entry points

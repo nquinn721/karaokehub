@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { CreateShowDto, UpdateShowDto } from './dto/show.dto';
 import { DayOfWeek } from './show.entity';
 import { ShowService } from './show.service';
-import { CreateShowDto, UpdateShowDto } from './dto/show.dto';
 
 @Controller('shows')
 // @UseGuards(AuthGuard('jwt')) // Temporarily disabled for debugging

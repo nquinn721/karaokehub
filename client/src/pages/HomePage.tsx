@@ -1,7 +1,7 @@
 import { BannerAdWithUpgrade, WideAdWithUpgrade } from '@components/AdWithUpgrade';
-import { BannerAd } from '@components/MonetAGAd';
 import { CustomCard } from '@components/CustomCard';
 import GoogleOneTap from '@components/GoogleOneTap';
+import { BannerAd } from '@components/MonetAGAd';
 import { SEO, seoConfigs } from '@components/SEO';
 import {
   faArrowUp,
@@ -261,7 +261,7 @@ const HomePage: React.FC = observer(() => {
           backgroundColor: 'rgba(0, 0, 0, 0.02)',
         }}
       >
-        <BannerAd />
+        <BannerAd debug={true} />
       </Box>
 
       {/* Music Library Hero Section */}
