@@ -19,6 +19,7 @@ import { VenueProximity } from './services/GeolocationService';
 import AboutPage from './pages/AboutPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminParserPage from './pages/AdminParserPage';
+import AdTestPage from './pages/AdTestPage';
 import AuthError from './pages/AuthError';
 import AuthSuccess from './pages/AuthSuccess';
 import DashboardPage from './pages/DashboardPage';
@@ -32,7 +33,6 @@ import RegisterPage from './pages/RegisterPage';
 import SettingsPage from './pages/SettingsPage';
 import ShowsPage from './pages/ShowsPage';
 import SubmitShowPage from './pages/SubmitShowPage';
-import AdTestPage from './pages/AdTestPage';
 
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -265,7 +265,7 @@ const AppContent: React.FC = observer(() => {
             {/* Public pages */}
             <Route path="/about" element={<AboutPage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-            
+
             {/* Ad Testing (temporary) */}
             <Route path="/ad-test" element={<AdTestPage />} />
 

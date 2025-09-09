@@ -1,6 +1,6 @@
+import { BannerAd, MobileAd, SidebarAd, SquareAd } from '@components/MonetAGAd';
 import { Box, Button, Container, Typography } from '@mui/material';
 import React, { useState } from 'react';
-import { BannerAd, MobileAd, SidebarAd, SquareAd } from '@components/MonetAGAd';
 
 const AdTestPage: React.FC = () => {
   const [showDebug, setShowDebug] = useState(true);
@@ -10,17 +10,12 @@ const AdTestPage: React.FC = () => {
       <Typography variant="h4" gutterBottom>
         MonetAG Ad Testing
       </Typography>
-      
-      <Button 
-        variant="outlined" 
-        onClick={() => setShowDebug(!showDebug)}
-        sx={{ mb: 4 }}
-      >
+
+      <Button variant="outlined" onClick={() => setShowDebug(!showDebug)} sx={{ mb: 4 }}>
         Toggle Debug Mode: {showDebug ? 'ON' : 'OFF'}
       </Button>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        
         <Box>
           <Typography variant="h6" gutterBottom>
             Banner Ad (728x90)
@@ -56,14 +51,9 @@ const AdTestPage: React.FC = () => {
           <Typography variant="body2">
             Check the browser console for MonetAG debug messages.
           </Typography>
-          <Typography variant="body2">
-            Red borders indicate debug mode is active.
-          </Typography>
-          <Typography variant="body2">
-            Zone ID: 169589
-          </Typography>
+          <Typography variant="body2">Red borders indicate debug mode is active.</Typography>
+          <Typography variant="body2">Zone ID: 169589</Typography>
         </Box>
-
       </Box>
     </Container>
   );

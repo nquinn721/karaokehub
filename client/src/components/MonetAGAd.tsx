@@ -26,14 +26,14 @@ export const MonetAGAd: React.FC<MonetAGAdProps> = ({
     if (adRef.current) {
       // Clear any existing content
       adRef.current.innerHTML = '';
-      
+
       // Create the ad script element directly in the container
       const script = document.createElement('script');
       script.type = 'text/javascript';
       script.async = true;
       script.setAttribute('data-cfasync', 'false');
       script.src = `https://fpyf8.com/88/tag.min.js?z=${zoneId}`;
-      
+
       // Alternative approach: inline script with zone configuration
       const configScript = document.createElement('script');
       configScript.type = 'text/javascript';
@@ -47,10 +47,10 @@ export const MonetAGAd: React.FC<MonetAGAdProps> = ({
           document.head.appendChild(script);
         })();
       `;
-      
+
       // Try both approaches
       adRef.current.appendChild(script);
-      
+
       if (debug) {
         console.log('Added MonetAG script to container');
         setTimeout(() => {
@@ -63,7 +63,7 @@ export const MonetAGAd: React.FC<MonetAGAdProps> = ({
       // Cleanup - remove scripts when component unmounts
       if (adRef.current) {
         const scripts = adRef.current.querySelectorAll('script');
-        scripts.forEach(script => script.remove());
+        scripts.forEach((script) => script.remove());
       }
     };
   }, [zoneId, debug]);
@@ -112,18 +112,22 @@ export const MonetAGAd: React.FC<MonetAGAdProps> = ({
 };
 
 // Pre-configured ad components for common placements
-export const BannerAd: React.FC<{ className?: string; debug?: boolean }> = ({ className, debug }) => (
-  <MonetAGAd zoneId="169589" width={728} height={90} className={className} debug={debug} />
-);
+export const BannerAd: React.FC<{ className?: string; debug?: boolean }> = ({
+  className,
+  debug,
+}) => <MonetAGAd zoneId="169589" width={728} height={90} className={className} debug={debug} />;
 
-export const SidebarAd: React.FC<{ className?: string; debug?: boolean }> = ({ className, debug }) => (
-  <MonetAGAd zoneId="169589" width={300} height={250} className={className} debug={debug} />
-);
+export const SidebarAd: React.FC<{ className?: string; debug?: boolean }> = ({
+  className,
+  debug,
+}) => <MonetAGAd zoneId="169589" width={300} height={250} className={className} debug={debug} />;
 
-export const MobileAd: React.FC<{ className?: string; debug?: boolean }> = ({ className, debug }) => (
-  <MonetAGAd zoneId="169589" width={320} height={50} className={className} debug={debug} />
-);
+export const MobileAd: React.FC<{ className?: string; debug?: boolean }> = ({
+  className,
+  debug,
+}) => <MonetAGAd zoneId="169589" width={320} height={50} className={className} debug={debug} />;
 
-export const SquareAd: React.FC<{ className?: string; debug?: boolean }> = ({ className, debug }) => (
-  <MonetAGAd zoneId="169589" width={250} height={250} className={className} debug={debug} />
-);
+export const SquareAd: React.FC<{ className?: string; debug?: boolean }> = ({
+  className,
+  debug,
+}) => <MonetAGAd zoneId="169589" width={250} height={250} className={className} debug={debug} />;
