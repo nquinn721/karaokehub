@@ -611,12 +611,12 @@ export const MusicPage: React.FC = observer(() => {
                       </Card>
                     </Grid>
 
-                    {/* Ad between categories - show after every 2nd category if not ad-free */}
+                    {/* Ad between categories - show after every 3rd category if not ad-free */}
                     {!subscriptionStore.hasAdFreeAccess &&
-                      (index + 1) % 2 === 0 &&
+                      (index + 1) % 3 === 0 &&
                       index !== musicStore.featuredCategories.length - 1 && (
                         <Grid item xs={12}>
-                          <WideAdWithUpgrade showUpgradePrompt={index === 1 || index === 5} />
+                          <WideAdWithUpgrade showUpgradePrompt={index === 2 || index === 5} />
                         </Grid>
                       )}
                   </React.Fragment>

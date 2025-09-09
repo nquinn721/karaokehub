@@ -48,7 +48,7 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
         format: 'iframe',
         height: height,
         width: width,
-        params: {}
+        params: {},
       };
 
       // Create and load the Adsterra script
@@ -110,17 +110,19 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
           border: 'none',
         },
         // Loading indicator
-        '&:empty::after': debug ? {
-          content: `"Loading Adsterra Ad (${adKey})"`,
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          color: '#0096ff',
-          fontSize: '12px',
-          textAlign: 'center',
-          pointerEvents: 'none',
-        } : {},
+        '&:empty::after': debug
+          ? {
+              content: `"Loading Adsterra Ad (${adKey})"`,
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              color: '#0096ff',
+              fontSize: '12px',
+              textAlign: 'center',
+              pointerEvents: 'none',
+            }
+          : {},
       }}
     />
   );
@@ -130,19 +132,51 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
 export const BannerAd: React.FC<{ className?: string; debug?: boolean }> = ({
   className,
   debug,
-}) => <AdsterraAd adKey="038a9ad9f4d055803f60e71662aaf093" width={468} height={60} className={className} debug={debug} />;
+}) => (
+  <AdsterraAd
+    adKey="038a9ad9f4d055803f60e71662aaf093"
+    width={468}
+    height={60}
+    className={className}
+    debug={debug}
+  />
+);
 
 export const SidebarAd: React.FC<{ className?: string; debug?: boolean }> = ({
   className,
   debug,
-}) => <AdsterraAd adKey="038a9ad9f4d055803f60e71662aaf093" width={300} height={250} className={className} debug={debug} />;
+}) => (
+  <AdsterraAd
+    adKey="038a9ad9f4d055803f60e71662aaf093"
+    width={300}
+    height={250}
+    className={className}
+    debug={debug}
+  />
+);
 
 export const MobileAd: React.FC<{ className?: string; debug?: boolean }> = ({
   className,
   debug,
-}) => <AdsterraAd adKey="038a9ad9f4d055803f60e71662aaf093" width={320} height={50} className={className} debug={debug} />;
+}) => (
+  <AdsterraAd
+    adKey="038a9ad9f4d055803f60e71662aaf093"
+    width={320}
+    height={50}
+    className={className}
+    debug={debug}
+  />
+);
 
 export const SquareAd: React.FC<{ className?: string; debug?: boolean }> = ({
   className,
   debug,
-}) => <AdsterraAd adKey="038a9ad9f4d055803f60e71662aaf093" width={250} height={250} className={className} debug={debug} />;
+}) => (
+  <AdsterraAd
+    adKey="038a9ad9f4d055803f60e71662aaf093"
+    width={250}
+    height={250}
+    className={className}
+    debug={debug}
+  />
+);

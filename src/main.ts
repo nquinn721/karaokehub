@@ -60,7 +60,7 @@ async function bootstrap() {
           ],
           mediaSrc: ["'self'", 'https://audio-ssl.itunes.apple.com'],
           frameSrc: [
-            "'self'", 
+            "'self'",
             'https://accounts.google.com',
             'https://www.highperformanceformat.com',
             'https://highperformanceformat.com',
