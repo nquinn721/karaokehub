@@ -1,4 +1,4 @@
-import { BannerAd, WideAd } from '@components/AdPlaceholder';
+import { SquareAd, BannerAd } from '@components/MonetAGAd';
 import FriendsList from '@components/FriendsList';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
@@ -1204,6 +1204,13 @@ const DashboardPage: React.FC = observer(() => {
                       </Stack>
                     </CardContent>
                   </Card>
+
+                  {/* Square Ad in Sidebar */}
+                  {!subscriptionStore.hasAdFreeAccess && (
+                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+                      <SquareAd />
+                    </Box>
+                  )}
                 </Stack>
               </Grid>
             </Grid>
@@ -1211,7 +1218,7 @@ const DashboardPage: React.FC = observer(() => {
             {/* Ad placement at bottom - only show if not ad-free */}
             {!subscriptionStore.hasAdFreeAccess && (
               <Box sx={{ mt: 4, mb: 2 }}>
-                <WideAd />
+                <BannerAd />
               </Box>
             )}
           </Box>

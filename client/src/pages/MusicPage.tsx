@@ -1,4 +1,5 @@
 import { BannerAdWithUpgrade, WideAdWithUpgrade } from '@components/AdWithUpgrade';
+import { SidebarAd, BannerAd } from '@components/MonetAGAd';
 import { OptimizedAlbumArt, ThumbnailAlbumArt } from '@components/OptimizedAlbumArt';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
@@ -628,18 +629,21 @@ export const MusicPage: React.FC = observer(() => {
           {/* Search Results */}
           {musicStore.sortedSongs.length > 0 && (
             <Box sx={{ px: 3 }}>
-              {/* Quick Start Guide */}
-              <Box
-                sx={{
-                  mb: 3,
-                  p: 3,
-                  bgcolor: 'background.paper',
-                  borderRadius: 2,
-                  border: `1px solid ${theme.palette.divider}`,
-                  boxShadow: theme.shadows[2],
-                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
-                }}
-              >
+              <Grid container spacing={3}>
+                {/* Main Content Area */}
+                <Grid item xs={12} lg={9}>
+                  {/* Quick Start Guide */}
+                  <Box
+                    sx={{
+                      mb: 3,
+                      p: 3,
+                      bgcolor: 'background.paper',
+                      borderRadius: 2,
+                      border: `1px solid ${theme.palette.divider}`,
+                      boxShadow: theme.shadows[2],
+                      background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
+                    }}
+                  >
                 <Typography
                   variant="h6"
                   sx={{
@@ -1076,6 +1080,20 @@ export const MusicPage: React.FC = observer(() => {
                     </Typography>
                   </Box>
                 )}
+                </Grid>
+
+                {/* Sidebar with Ads */}
+                <Grid item xs={12} lg={3}>
+                  {!subscriptionStore.hasAdFreeAccess && (
+                    <Box sx={{ position: 'sticky', top: 20 }}>
+                      <SidebarAd />
+                      <Box sx={{ mt: 3 }}>
+                        <BannerAd />
+                      </Box>
+                    </Box>
+                  )}
+                </Grid>
+              </Grid>
             </Box>
           )}
 

@@ -725,6 +725,13 @@ const HomePage: React.FC = observer(() => {
           </Grid>
         </Grid>
 
+        {/* Second Ad placement - after features */}
+        {!subscriptionStore.hasAdFreeAccess && (
+          <Box sx={{ my: 8, display: 'flex', justifyContent: 'center' }}>
+            <BannerAd />
+          </Box>
+        )}
+
         {/* Karaoke Tips Section - Great for SEO */}
         <Box sx={{ mt: 8, mb: 6 }}>
           <Typography
