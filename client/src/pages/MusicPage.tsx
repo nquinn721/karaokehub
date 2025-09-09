@@ -1,6 +1,6 @@
 import { BannerAdWithUpgrade, WideAdWithUpgrade } from '@components/AdWithUpgrade';
 import { BannerAd, SidebarAd } from '@components/MonetAGAd';
-import { OptimizedAlbumArt, ThumbnailAlbumArt } from '@components/OptimizedAlbumArt';
+import { ThumbnailAlbumArt } from '@components/OptimizedAlbumArt';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
@@ -589,17 +589,16 @@ export const MusicPage: React.FC = observer(() => {
                         }}
                         onClick={() => handleCategoryClick(category.id)}
                       >
-                        <OptimizedAlbumArt
-                          albumArt={{ medium: category.image }}
-                          size="card"
-                          width={200}
-                          height={200}
+                        <img
+                          src={category.image}
                           alt={category.title}
-                          sx={{
+                          style={{
                             width: '100%',
                             height: 200,
+                            objectFit: 'cover',
                             backgroundColor: 'rgba(0,0,0,0.05)',
                           }}
+                          loading="lazy"
                         />
                         <CardContent>
                           <Typography variant="h6" component="h3" gutterBottom fontWeight={600}>
@@ -612,17 +611,24 @@ export const MusicPage: React.FC = observer(() => {
                       </Card>
                     </Grid>
 
-                    {/* Ad between categories - show after every 3rd category if not ad-free */}
+                    {/* Ad between categories - show after every 2nd category if not ad-free */}
                     {!subscriptionStore.hasAdFreeAccess &&
-                      (index + 1) % 3 === 0 &&
+                      (index + 1) % 2 === 0 &&
                       index !== musicStore.featuredCategories.length - 1 && (
                         <Grid item xs={12}>
-                          <WideAdWithUpgrade showUpgradePrompt={index === 2} />
+                          <WideAdWithUpgrade showUpgradePrompt={index === 1 || index === 5} />
                         </Grid>
                       )}
                   </React.Fragment>
                 ))}
               </Grid>
+
+              {/* Bottom banner ad - only show if not ad-free */}
+              {!subscriptionStore.hasAdFreeAccess && (
+                <Box sx={{ mt: 4 }}>
+                  <BannerAdWithUpgrade />
+                </Box>
+              )}
             </Box>
           )}
 

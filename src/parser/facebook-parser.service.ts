@@ -325,16 +325,13 @@ export class FacebookParserService {
             this.webSocketGateway.streamPuppeteerScreenshot(
               message.data.screenshot,
               message.data.action,
-              message.data.metadata
+              message.data.metadata,
             );
           }
         } else if (message.type === 'status') {
           // Handle status updates from worker
           if (this.webSocketGateway) {
-            this.webSocketGateway.streamPuppeteerStatus(
-              message.data.status,
-              message.data.progress
-            );
+            this.webSocketGateway.streamPuppeteerStatus(message.data.status, message.data.progress);
           }
         } else if (message.type === 'loginRequired') {
           // Worker is requesting Facebook login credentials

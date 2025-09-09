@@ -125,12 +125,14 @@ const AdminParserPage: React.FC = observer(() => {
   const [currentAction, setCurrentAction] = useState<string>('');
   const [currentStatus, setCurrentStatus] = useState<string>('');
   const [currentProgress, setCurrentProgress] = useState<number>(0);
-  const [screenshotHistory, setScreenshotHistory] = useState<Array<{
-    screenshot: string;
-    action: string;
-    timestamp: string;
-    metadata?: any;
-  }>>([]);
+  const [screenshotHistory, setScreenshotHistory] = useState<
+    Array<{
+      screenshot: string;
+      action: string;
+      timestamp: string;
+      metadata?: any;
+    }>
+  >([]);
   const [puppeteerModalOpen, setPuppeteerModalOpen] = useState(false);
 
   // Approval Modal state
@@ -372,16 +374,16 @@ const AdminParserPage: React.FC = observer(() => {
           console.log('📸 New Puppeteer screenshot received:', data.action);
           setCurrentScreenshot(`data:image/jpeg;base64,${data.screenshot}`);
           setCurrentAction(data.action);
-          
+
           // Add to history (keep only last 5 for performance)
-          setScreenshotHistory(prev => [
+          setScreenshotHistory((prev) => [
             ...prev.slice(-4), // Keep last 4
             {
               screenshot: `data:image/jpeg;base64,${data.screenshot}`,
               action: data.action,
               timestamp: data.timestamp,
-              metadata: data.metadata
-            }
+              metadata: data.metadata,
+            },
           ]);
         });
 
@@ -1546,12 +1548,19 @@ const AdminParserPage: React.FC = observer(() => {
                   },
                 }}
               >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 3,
+                  }}
+                >
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>
                     <FontAwesomeIcon icon={faExclamationTriangle} style={{ marginRight: '8px' }} />
                     Parser Statistics
                   </Typography>
-                  
+
                   {/* Puppeteer Stream Icon */}
                   <IconButton
                     onClick={() => setPuppeteerModalOpen(true)}
@@ -2777,21 +2786,16 @@ const AdminParserPage: React.FC = observer(() => {
               <FontAwesomeIcon icon={faEye} />
               Puppeteer Live Stream
               {puppeteerConnected && (
-                <Chip 
-                  label="LIVE" 
-                  color="success" 
-                  size="small" 
-                  sx={{ ml: 1 }}
-                />
+                <Chip label="LIVE" color="success" size="small" sx={{ ml: 1 }} />
               )}
             </Box>
           </DialogTitle>
           <DialogContent>
             {/* Connection Status */}
-            <Alert severity={puppeteerConnected ? "success" : "info"} sx={{ mb: 2 }}>
-              {puppeteerConnected 
-                ? "🟢 Connected to Puppeteer stream" 
-                : "⭕ Waiting for Puppeteer session to start..."}
+            <Alert severity={puppeteerConnected ? 'success' : 'info'} sx={{ mb: 2 }}>
+              {puppeteerConnected
+                ? '🟢 Connected to Puppeteer stream'
+                : '⭕ Waiting for Puppeteer session to start...'}
             </Alert>
 
             {/* Current Status and Progress */}
@@ -2801,11 +2805,7 @@ const AdminParserPage: React.FC = observer(() => {
                   Status: {currentStatus}
                 </Typography>
                 {currentProgress > 0 && (
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={currentProgress} 
-                    sx={{ mb: 1 }}
-                  />
+                  <LinearProgress variant="determinate" value={currentProgress} sx={{ mb: 1 }} />
                 )}
                 {currentAction && (
                   <Typography variant="body2" color="text.primary">
@@ -2842,9 +2842,9 @@ const AdminParserPage: React.FC = observer(() => {
                   />
                 </Paper>
                 {currentAction && (
-                  <Typography 
-                    variant="caption" 
-                    color="text.secondary" 
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
                     sx={{ display: 'block', mt: 1, textAlign: 'center' }}
                   >
                     {currentAction}
@@ -2859,10 +2859,10 @@ const AdminParserPage: React.FC = observer(() => {
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                   Recent Screenshots:
                 </Typography>
-                <Box 
-                  sx={{ 
-                    display: 'flex', 
-                    gap: 1, 
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 1,
                     overflowX: 'auto',
                     pb: 1,
                     '&::-webkit-scrollbar': {
@@ -2879,9 +2879,9 @@ const AdminParserPage: React.FC = observer(() => {
                   }}
                 >
                   {screenshotHistory.map((item, index) => (
-                    <Box 
+                    <Box
                       key={index}
-                      sx={{ 
+                      sx={{
                         minWidth: '120px',
                         textAlign: 'center',
                         cursor: 'pointer',
@@ -2900,16 +2900,17 @@ const AdminParserPage: React.FC = observer(() => {
                           height: '80px',
                           objectFit: 'cover',
                           borderRadius: '4px',
-                          border: currentScreenshot === item.screenshot 
-                            ? `2px solid ${theme.palette.primary.main}` 
-                            : '1px solid #ccc',
+                          border:
+                            currentScreenshot === item.screenshot
+                              ? `2px solid ${theme.palette.primary.main}`
+                              : '1px solid #ccc',
                         }}
                       />
-                      <Typography 
-                        variant="caption" 
+                      <Typography
+                        variant="caption"
                         color="text.secondary"
-                        sx={{ 
-                          display: 'block', 
+                        sx={{
+                          display: 'block',
                           mt: 0.5,
                           fontSize: '10px',
                           overflow: 'hidden',
