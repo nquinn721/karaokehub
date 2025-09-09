@@ -1,4 +1,4 @@
-import { BannerAd, MobileAd, SidebarAd, SquareAd } from '@components/MonetAGAd';
+import { BannerAd, MobileAd, SidebarAd, SquareAd } from '@components/AdsterraAd';
 import { Box, Button, Container, Typography } from '@mui/material';
 import React, { useState } from 'react';
 
