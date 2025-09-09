@@ -378,6 +378,7 @@ export class FacebookParserService {
         tempDir: path.join(process.cwd(), 'temp'),
         cookiesFilePath: path.join(process.cwd(), 'data', 'facebook-cookies.json'),
         geminiApiKey: process.env.GEMINI_API_KEY || '',
+        websocketGateway: this.webSocketGateway, // Pass WebSocket gateway for screenshot streaming
       });
     });
   }

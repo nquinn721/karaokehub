@@ -119,6 +119,19 @@ const AdminParserPage: React.FC = observer(() => {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadFailed, setUploadFailed] = useState(false);
 
+  // Puppeteer Stream state
+  const [puppeteerConnected, setPuppeteerConnected] = useState(false);
+  const [currentScreenshot, setCurrentScreenshot] = useState<string | null>(null);
+  const [currentAction, setCurrentAction] = useState<string>('');
+  const [currentStatus, setCurrentStatus] = useState<string>('');
+  const [currentProgress, setCurrentProgress] = useState<number>(0);
+  const [screenshotHistory, setScreenshotHistory] = useState<Array<{
+    screenshot: string;
+    action: string;
+    timestamp: string;
+    metadata?: any;
+  }>>([]);
+
   // Approval Modal state
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [pendingApprovalData, setPendingApprovalData] = useState<any>(null);
@@ -341,11 +354,52 @@ const AdminParserPage: React.FC = observer(() => {
       }
     };
 
+    // Set up Puppeteer stream functionality
+    const setupPuppeteerStream = () => {
+      if (webSocketStore.socket) {
+        console.log('Setting up Puppeteer stream WebSocket listeners');
+
+        // Join the stream when connecting
+        webSocketStore.socket.emit('join-puppeteer-stream');
+
+        webSocketStore.socket.on('puppeteer-stream-joined', (data: any) => {
+          console.log('📺 Joined Puppeteer stream:', data);
+          setPuppeteerConnected(true);
+        });
+
+        webSocketStore.socket.on('puppeteer-screenshot', (data: any) => {
+          console.log('📸 New Puppeteer screenshot received:', data.action);
+          setCurrentScreenshot(`data:image/jpeg;base64,${data.screenshot}`);
+          setCurrentAction(data.action);
+          
+          // Add to history (keep only last 5 for performance)
+          setScreenshotHistory(prev => [
+            ...prev.slice(-4), // Keep last 4
+            {
+              screenshot: `data:image/jpeg;base64,${data.screenshot}`,
+              action: data.action,
+              timestamp: data.timestamp,
+              metadata: data.metadata
+            }
+          ]);
+        });
+
+        webSocketStore.socket.on('puppeteer-status', (data: any) => {
+          console.log('📊 Puppeteer status update:', data);
+          setCurrentStatus(data.status);
+          if (data.progress !== undefined) {
+            setCurrentProgress(data.progress);
+          }
+        });
+      }
+    };
+
     // Set up WebSocket for parser logs
     autorun(() => {
       if (webSocketStore.isConnected && webSocketStore.socket) {
         parserStore.setupParserEvents(webSocketStore.socket);
         setupFacebookModal(); // Set up modal when WebSocket is ready
+        setupPuppeteerStream(); // Set up Puppeteer stream when WebSocket is ready
       }
     });
 
@@ -366,6 +420,11 @@ const AdminParserPage: React.FC = observer(() => {
         // Clean up Facebook modal listeners
         webSocketStore.socket.off('facebook-login-required');
         webSocketStore.socket.off('facebook-login-result');
+        // Clean up Puppeteer stream listeners
+        webSocketStore.socket.emit('leave-puppeteer-stream');
+        webSocketStore.socket.off('puppeteer-stream-joined');
+        webSocketStore.socket.off('puppeteer-screenshot');
+        webSocketStore.socket.off('puppeteer-status');
       }
     };
   }, []);
@@ -709,6 +768,14 @@ const AdminParserPage: React.FC = observer(() => {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <CloudUpload />
                         Image Upload
+                      </Box>
+                    }
+                  />
+                  <Tab
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <FontAwesomeIcon icon={faEye} />
+                        Puppeteer Stream
                       </Box>
                     }
                   />
@@ -1455,6 +1522,183 @@ const AdminParserPage: React.FC = observer(() => {
                     <Alert severity="info" sx={{ mt: 2 }}>
                       Upload images of venue websites, social media pages, or event listings for
                       automatic extraction of karaoke show information.
+                    </Alert>
+                  </Paper>
+                </Box>
+
+                {/* Puppeteer Stream Tab Content */}
+                <Box sx={{ display: parserTabValue === 3 ? 'block' : 'none' }}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 3,
+                      borderRadius: 3,
+                      background: `linear-gradient(135deg, 
+                      ${alpha(theme.palette.background.paper, 0.95)} 0%, 
+                      ${alpha(theme.palette.background.paper, 0.8)} 100%)`,
+                      backdropFilter: 'blur(10px)',
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: '3px',
+                        background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                      },
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
+                      <FontAwesomeIcon icon={faEye} style={{ marginRight: '8px' }} />
+                      Puppeteer Live Stream
+                    </Typography>
+
+                    {/* Connection Status */}
+                    <Box sx={{ mb: 3 }}>
+                      <Alert severity={puppeteerConnected ? "success" : "info"}>
+                        {puppeteerConnected 
+                          ? "🟢 Connected to Puppeteer stream" 
+                          : "⭕ Waiting for Puppeteer session to start..."}
+                      </Alert>
+                    </Box>
+
+                    {/* Current Status and Progress */}
+                    {currentStatus && (
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          Current Status: {currentStatus}
+                        </Typography>
+                        {currentProgress > 0 && (
+                          <LinearProgress 
+                            variant="determinate" 
+                            value={currentProgress} 
+                            sx={{ mb: 1 }}
+                          />
+                        )}
+                        {currentAction && (
+                          <Typography variant="body2" color="text.primary">
+                            Last Action: {currentAction}
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+
+                    {/* Live Screenshot Display */}
+                    {currentScreenshot && (
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          Live Browser View:
+                        </Typography>
+                        <Paper
+                          elevation={2}
+                          sx={{
+                            p: 1,
+                            textAlign: 'center',
+                            backgroundColor: '#000',
+                            borderRadius: 2,
+                          }}
+                        >
+                          <img
+                            src={currentScreenshot}
+                            alt="Puppeteer Live View"
+                            style={{
+                              maxWidth: '100%',
+                              height: 'auto',
+                              borderRadius: '4px',
+                              border: '1px solid #333',
+                            }}
+                          />
+                        </Paper>
+                        {currentAction && (
+                          <Typography 
+                            variant="caption" 
+                            color="text.secondary" 
+                            sx={{ display: 'block', mt: 1, textAlign: 'center' }}
+                          >
+                            {currentAction}
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+
+                    {/* Screenshot History */}
+                    {screenshotHistory.length > 0 && (
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          Recent Screenshots:
+                        </Typography>
+                        <Box 
+                          sx={{ 
+                            display: 'flex', 
+                            gap: 1, 
+                            overflowX: 'auto',
+                            pb: 1,
+                            '&::-webkit-scrollbar': {
+                              height: '6px',
+                            },
+                            '&::-webkit-scrollbar-track': {
+                              backgroundColor: alpha(theme.palette.action.hover, 0.3),
+                              borderRadius: '3px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                              backgroundColor: alpha(theme.palette.primary.main, 0.5),
+                              borderRadius: '3px',
+                            },
+                          }}
+                        >
+                          {screenshotHistory.map((item, index) => (
+                            <Box 
+                              key={index}
+                              sx={{ 
+                                minWidth: '120px',
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                                '&:hover': {
+                                  transform: 'scale(1.05)',
+                                },
+                                transition: 'transform 0.2s',
+                              }}
+                              onClick={() => setCurrentScreenshot(item.screenshot)}
+                            >
+                              <img
+                                src={item.screenshot}
+                                alt={`Step ${index + 1}`}
+                                style={{
+                                  width: '120px',
+                                  height: '80px',
+                                  objectFit: 'cover',
+                                  borderRadius: '4px',
+                                  border: currentScreenshot === item.screenshot 
+                                    ? `2px solid ${theme.palette.primary.main}` 
+                                    : '1px solid #ccc',
+                                }}
+                              />
+                              <Typography 
+                                variant="caption" 
+                                color="text.secondary"
+                                sx={{ 
+                                  display: 'block', 
+                                  mt: 0.5,
+                                  fontSize: '10px',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {item.action}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
+
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                      This stream shows live screenshots of what Puppeteer is doing during Facebook parsing. 
+                      Start a Facebook parsing job to see the browser automation in action.
                     </Alert>
                   </Paper>
                 </Box>

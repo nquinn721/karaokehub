@@ -375,4 +375,56 @@ export class KaraokeWebSocketGateway implements OnGatewayConnection, OnGatewayDi
       timestamp: new Date().toISOString(),
     });
   }
+
+  // Puppeteer Screenshot Streaming Methods
+
+  /**
+   * Join the puppeteer streaming room to receive live screenshots
+   */
+  @SubscribeMessage('join-puppeteer-stream')
+  handleJoinPuppeteerStream(@ConnectedSocket() client: Socket) {
+    client.join('puppeteer-stream');
+    this.logger.log(`Client ${client.id} joined puppeteer stream`);
+    client.emit('puppeteer-stream-joined', {
+      success: true,
+      message: 'Connected to Puppeteer stream',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Leave the puppeteer streaming room
+   */
+  @SubscribeMessage('leave-puppeteer-stream')
+  handleLeavePuppeteerStream(@ConnectedSocket() client: Socket) {
+    client.leave('puppeteer-stream');
+    this.logger.log(`Client ${client.id} left puppeteer stream`);
+  }
+
+  /**
+   * Stream a screenshot to all subscribed clients
+   */
+  streamPuppeteerScreenshot(screenshot: string, action: string, metadata?: any) {
+    if (this.server && this.server.to) {
+      this.server.to('puppeteer-stream').emit('puppeteer-screenshot', {
+        screenshot, // Base64 encoded image
+        action, // What action was just performed
+        metadata, // Additional context (url, step number, etc.)
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  /**
+   * Send status update about puppeteer process
+   */
+  streamPuppeteerStatus(status: string, progress?: number) {
+    if (this.server && this.server.to) {
+      this.server.to('puppeteer-stream').emit('puppeteer-status', {
+        status,
+        progress, // Optional: 0-100 percentage
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
 }
