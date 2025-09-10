@@ -36,7 +36,7 @@ async function testUrlSubmission() {
       console.log('\nRecent submissions:');
       queueResponse.data.slice(-3).forEach((url, index) => {
         console.log(`${index + 1}. URL: ${url.url}`);
-        console.log(`   Submitted by: ${url.submittedBy?.username || 'Anonymous'}`);
+        console.log(`   Submitted by: ${url.submittedBy?.name || 'Anonymous'}`);
         console.log(`   User ID: ${url.submittedBy?.id || 'null'}`);
         console.log(`   Created: ${url.createdAt}`);
         console.log('');

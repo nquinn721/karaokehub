@@ -296,7 +296,7 @@ const UrlApprovalComponent = observer(({ onCountChange }: UrlApprovalComponentPr
                     <TableCell sx={{ py: 2.5 }}>
                       {urlItem.submittedBy ? (
                         <Typography variant="body2" color="text.primary" sx={{ fontWeight: 500 }}>
-                          👤 {urlItem.submittedBy.username}
+                          👤 {urlItem.submittedBy.name}
                         </Typography>
                       ) : (
                         <Typography
