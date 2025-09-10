@@ -671,6 +671,13 @@ const HomePage: React.FC = observer(() => {
           </Box>
         </Box>
 
+        {/* Horizontal Banner Ad */}
+        {!subscriptionStore.hasAdFreeAccess && (
+          <Box sx={{ my: 6, display: 'flex', justifyContent: 'center' }}>
+            <BannerAd />
+          </Box>
+        )}
+
         <Grid container spacing={4} sx={{ mt: 4 }}>
           <Grid item xs={12} md={4}>
             <CustomCard

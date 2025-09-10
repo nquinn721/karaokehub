@@ -73,6 +73,11 @@ export interface UrlToParse {
   hasBeenParsed: boolean;
   city?: string;
   state?: string;
+  submittedBy?: {
+    id: number;
+    username: string;
+    email: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

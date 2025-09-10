@@ -2,9 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { User } from '../entities/user.entity';
 
 @Entity('urls_to_parse')
 export class UrlToParse {
@@ -28,6 +31,10 @@ export class UrlToParse {
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   state: string;
+
+  @ManyToOne(() => User, { nullable: true, eager: true })
+  @JoinColumn({ name: 'submittedBy' })
+  submittedBy: User;
 
   @CreateDateColumn()
   createdAt: Date;

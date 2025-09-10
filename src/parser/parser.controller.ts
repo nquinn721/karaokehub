@@ -8,6 +8,7 @@ import {
   Param,
   Post,
   Put,
+  Req,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -465,9 +466,11 @@ export class ParserController {
   }
 
   @Post('urls')
-  async addUrl(@Body() body: { url: string }): Promise<UrlToParse> {
+  async addUrl(@Body() body: { url: string }, @Req() req: any): Promise<UrlToParse> {
     try {
-      return await this.urlToParseService.create(body.url);
+      // Extract user ID from request if user is authenticated
+      const userId = req.user?.id || null;
+      return await this.urlToParseService.create(body.url, userId);
     } catch (error) {
       console.error('Error adding URL:', error);
       throw new HttpException('Failed to add URL', HttpStatus.INTERNAL_SERVER_ERROR);

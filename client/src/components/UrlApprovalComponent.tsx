@@ -219,6 +219,9 @@ const UrlApprovalComponent = observer(({ onCountChange }: UrlApprovalComponentPr
                     Location
                   </TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>
+                    Submitted By
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>
                     Submitted
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.9rem', py: 2 }}>
@@ -287,6 +290,21 @@ const UrlApprovalComponent = observer(({ onCountChange }: UrlApprovalComponentPr
                           sx={{ fontStyle: 'italic' }}
                         >
                           Location not specified
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell sx={{ py: 2.5 }}>
+                      {urlItem.submittedBy ? (
+                        <Typography variant="body2" color="text.primary" sx={{ fontWeight: 500 }}>
+                          👤 {urlItem.submittedBy.username}
+                        </Typography>
+                      ) : (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ fontStyle: 'italic' }}
+                        >
+                          Anonymous
                         </Typography>
                       )}
                     </TableCell>

@@ -19,6 +19,7 @@ export class UrlToParseService {
   async findUnapproved(): Promise<UrlToParse[]> {
     return await this.urlToParseRepository.find({
       where: { isApproved: false },
+      relations: ['submittedBy'],
       order: { createdAt: 'ASC' },
     });
   }
@@ -44,8 +45,15 @@ export class UrlToParseService {
     });
   }
 
-  async create(url: string): Promise<UrlToParse> {
-    const urlToParse = this.urlToParseRepository.create({ url });
+  async create(url: string, userId?: number): Promise<UrlToParse> {
+    const urlToParseData: Partial<UrlToParse> = { url };
+    
+    // Add user relationship if userId is provided
+    if (userId) {
+      urlToParseData.submittedBy = { id: userId } as any;
+    }
+    
+    const urlToParse = this.urlToParseRepository.create(urlToParseData);
     return await this.urlToParseRepository.save(urlToParse);
   }
 
