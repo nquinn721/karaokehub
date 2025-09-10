@@ -51,7 +51,7 @@ export class SubscriptionStore {
       // Note: We can't import at the top level due to circular dependency
       // but this getter approach ensures MobX reactivity
       const { authStore } = require('./index');
-      
+
       // Only trust the auth store if user is authenticated
       if (authStore.isAuthenticated && authStore.user) {
         return authStore.isAdmin;
