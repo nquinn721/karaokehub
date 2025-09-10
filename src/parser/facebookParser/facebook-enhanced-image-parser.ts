@@ -216,7 +216,7 @@ async function extractHighResImageFromPhotoPage(
   sendProgress(workerId, `🚀 Navigating to Facebook photo page...`);
 
   const browser = await puppeteer.launch({
-    headless: true, // Set to false for debugging
+    headless: false, // Set to false to show browser window for Facebook parsing
     defaultViewport: { width: 1200, height: 800 },
   });
 

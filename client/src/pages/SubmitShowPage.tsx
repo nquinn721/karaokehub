@@ -1659,41 +1659,209 @@ const SubmitShowPage: React.FC = observer(() => {
         >
           {imageAnalysisResult && (
             <Box>
+              {/* Vendor Information */}
+              {(imageAnalysisResult.vendor || selectedImageVendor) && (
+                <Box
+                  sx={{
+                    mb: 3,
+                    p: 2,
+                    bgcolor: 'background.paper',
+                    borderRadius: 1,
+                    border: '1px solid rgba(255,255,255,0.1)',
+                  }}
+                >
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    Vendor/Business Information:
+                  </Typography>
+
+                  {/* User Selected Vendor */}
+                  {selectedImageVendor && (
+                    <Box sx={{ mb: 2, p: 1.5, bgcolor: 'success.dark', borderRadius: 1 }}>
+                      <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+                        👤 User Selected Vendor:
+                      </Typography>
+                      <Typography variant="body2" sx={{ ml: 2 }}>
+                        <strong>Name:</strong> {selectedImageVendor.name}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* AI Detected Vendor */}
+                  {imageAnalysisResult.vendor && (
+                    <Box sx={{ p: 1.5, bgcolor: 'info.dark', borderRadius: 1 }}>
+                      <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+                        🤖 AI Detected Vendor:
+                      </Typography>
+                      <Typography variant="body2" sx={{ ml: 2, mb: 1 }}>
+                        <strong>Name:</strong> {imageAnalysisResult.vendor.name}
+                      </Typography>
+                      {imageAnalysisResult.vendor.description && (
+                        <Typography variant="body2" sx={{ ml: 2, mb: 1 }}>
+                          <strong>Description:</strong> {imageAnalysisResult.vendor.description}
+                        </Typography>
+                      )}
+                      {imageAnalysisResult.vendor.website && (
+                        <Typography variant="body2" sx={{ ml: 2, mb: 1 }}>
+                          <strong>Website:</strong> {imageAnalysisResult.vendor.website}
+                        </Typography>
+                      )}
+                      {imageAnalysisResult.vendor.confidence && (
+                        <Typography variant="body2" sx={{ ml: 2, color: 'text.secondary' }}>
+                          <strong>Confidence:</strong>{' '}
+                          {Math.round(imageAnalysisResult.vendor.confidence * 100)}%
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              )}
+
+              {/* Venues Information */}
               {imageAnalysisResult.venues?.length > 0 && (
-                <Box sx={{ mb: 2 }}>
+                <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle2" fontWeight={600} gutterBottom>
                     Venues Found:
                   </Typography>
                   {imageAnalysisResult.venues.map((venue: any, index: number) => (
-                    <Typography key={index} variant="body2" sx={{ ml: 2, mb: 1 }}>
-                      • {venue.name} {venue.address && `- ${venue.address}`}
-                    </Typography>
+                    <Box
+                      key={index}
+                      sx={{
+                        ml: 2,
+                        mb: 2,
+                        p: 2,
+                        bgcolor: 'background.paper',
+                        borderRadius: 1,
+                        border: '1px solid rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+                        {venue.name}
+                      </Typography>
+                      {venue.address && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          <strong>Address:</strong> {venue.address}
+                        </Typography>
+                      )}
+                      {(venue.city || venue.state || venue.zip) && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          <strong>Location:</strong>{' '}
+                          {[venue.city, venue.state, venue.zip].filter(Boolean).join(', ')}
+                        </Typography>
+                      )}
+                      {venue.lat && venue.lng && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          <strong>Coordinates:</strong> {venue.lat}, {venue.lng}
+                        </Typography>
+                      )}
+                      {venue.phone && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          <strong>Phone:</strong> {venue.phone}
+                        </Typography>
+                      )}
+                      {venue.website && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          <strong>Website:</strong> {venue.website}
+                        </Typography>
+                      )}
+                      {venue.confidence && (
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                          <strong>Confidence:</strong> {Math.round(venue.confidence * 100)}%
+                        </Typography>
+                      )}
+                    </Box>
                   ))}
                 </Box>
               )}
 
+              {/* DJs Information */}
               {imageAnalysisResult.djs?.length > 0 && (
-                <Box sx={{ mb: 2 }}>
+                <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle2" fontWeight={600} gutterBottom>
                     DJs Found:
                   </Typography>
                   {imageAnalysisResult.djs.map((dj: any, index: number) => (
-                    <Typography key={index} variant="body2" sx={{ ml: 2, mb: 1 }}>
-                      • {dj.name}
-                    </Typography>
+                    <Box
+                      key={index}
+                      sx={{
+                        ml: 2,
+                        mb: 1,
+                        p: 2,
+                        bgcolor: 'background.paper',
+                        borderRadius: 1,
+                        border: '1px solid rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      <Typography variant="body2" fontWeight={600}>
+                        {dj.name}
+                      </Typography>
+                      {dj.context && (
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                          <strong>Context:</strong> {dj.context}
+                        </Typography>
+                      )}
+                      {dj.confidence && (
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                          <strong>Confidence:</strong> {Math.round(dj.confidence * 100)}%
+                        </Typography>
+                      )}
+                    </Box>
                   ))}
                 </Box>
               )}
 
+              {/* Shows Information */}
               {imageAnalysisResult.shows?.length > 0 && (
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="subtitle2" fontWeight={600} gutterBottom>
                     Shows Found:
                   </Typography>
                   {imageAnalysisResult.shows.map((show: any, index: number) => (
-                    <Typography key={index} variant="body2" sx={{ ml: 2, mb: 1 }}>
-                      • {show.venue} - {show.days?.join(', ')} at {show.startTime}
-                    </Typography>
+                    <Box
+                      key={index}
+                      sx={{
+                        ml: 2,
+                        mb: 2,
+                        p: 2,
+                        bgcolor: 'background.paper',
+                        borderRadius: 1,
+                        border: '1px solid rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+                        {show.venueName || show.venue}
+                      </Typography>
+                      {show.day && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          <strong>Day:</strong> {show.day}
+                        </Typography>
+                      )}
+                      {(show.time || show.startTime) && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          <strong>Time:</strong> {show.time || show.startTime}
+                          {show.endTime && ` - ${show.endTime}`}
+                        </Typography>
+                      )}
+                      {show.djName && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          <strong>DJ:</strong> {show.djName}
+                        </Typography>
+                      )}
+                      {show.vendor && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          <strong>Vendor:</strong> {show.vendor}
+                        </Typography>
+                      )}
+                      {show.description && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          <strong>Description:</strong> {show.description}
+                        </Typography>
+                      )}
+                      {show.confidence && (
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                          <strong>Confidence:</strong> {Math.round(show.confidence * 100)}%
+                        </Typography>
+                      )}
+                    </Box>
                   ))}
                 </Box>
               )}

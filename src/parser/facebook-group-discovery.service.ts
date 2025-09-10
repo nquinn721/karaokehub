@@ -149,7 +149,7 @@ export class FacebookGroupDiscoveryService {
     try {
       // Launch Puppeteer with Facebook-friendly settings
       browser = await puppeteer.launch({
-        headless: true,
+        headless: false, // Show browser window for Facebook parsing
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -588,7 +588,7 @@ export class FacebookGroupDiscoveryService {
 
     try {
       browser = await puppeteer.launch({
-        headless: true,
+        headless: false, // Show browser window for Facebook parsing
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',

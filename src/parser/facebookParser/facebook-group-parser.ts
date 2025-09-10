@@ -883,10 +883,10 @@ async function extractFacebookGroupData(data: WorkerData): Promise<FacebookGroup
     }
 
     // Launch browser with optimal settings
-    // Set headless: false to show browser window for debugging
+    // Set headless: false to show browser window for debugging and monitoring
     const isDebugMode = process.env.FACEBOOK_DEBUG_MODE === 'true';
     browser = await puppeteer.launch({
-      headless: !isDebugMode, // Show browser window when debugging
+      headless: false, // Always show browser window for Facebook parsing
       devtools: isDebugMode, // Open DevTools when debugging
       slowMo: isDebugMode ? 500 : 0, // Slow down actions when debugging (500ms delay)
       args: [

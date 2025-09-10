@@ -20,6 +20,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Alert,
   alpha,
+  Badge,
   Box,
   Button,
   Card,
@@ -41,7 +42,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { adminStore, authStore } from '@stores/index';
+import { adminStore, authStore, parserStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
@@ -76,6 +77,19 @@ const AdminDashboardPageTabbed = observer(() => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [locationTrackingModalOpen, setLocationTrackingModalOpen] = useState(false);
+  const [urlApprovalCount, setUrlApprovalCount] = useState(0);
+
+  // Function to fetch URL approval count
+  const fetchUrlApprovalCount = async () => {
+    try {
+      const result = await parserStore.getUnapprovedUrls();
+      if (result.success && result.data) {
+        setUrlApprovalCount(result.data.length);
+      }
+    } catch (error) {
+      console.error('Failed to fetch URL approval count:', error);
+    }
+  };
 
   useEffect(() => {
     if (!authStore.isAuthenticated || !authStore.user?.isAdmin) {
@@ -83,6 +97,7 @@ const AdminDashboardPageTabbed = observer(() => {
     }
 
     adminStore.fetchStatistics();
+    fetchUrlApprovalCount();
   }, []);
 
   if (!authStore.isAuthenticated || !authStore.user?.isAdmin) {
@@ -93,6 +108,11 @@ const AdminDashboardPageTabbed = observer(() => {
     setTabValue(newValue);
     if (isMobile) {
       setMobileDrawerOpen(false); // Close drawer after selection on mobile
+    }
+
+    // Refresh URL count when switching to URL Approval Queue tab
+    if (newValue === 1) {
+      fetchUrlApprovalCount();
     }
   };
 
@@ -584,7 +604,10 @@ const AdminDashboardPageTabbed = observer(() => {
                   <Button
                     variant="outlined"
                     startIcon={<FontAwesomeIcon icon={faSync} />}
-                    onClick={() => adminStore.fetchStatistics()}
+                    onClick={() => {
+                      adminStore.fetchStatistics();
+                      fetchUrlApprovalCount();
+                    }}
                     disabled={adminStore.isLoading}
                     sx={{
                       borderRadius: 2,
@@ -674,7 +697,22 @@ const AdminDashboardPageTabbed = observer(() => {
                     sx={{ gap: 1 }}
                   />
                   <Tab
-                    icon={<FontAwesomeIcon icon={faGlobe} />}
+                    icon={
+                      <Badge
+                        badgeContent={urlApprovalCount}
+                        color="warning"
+                        max={99}
+                        sx={{
+                          '& .MuiBadge-badge': {
+                            fontSize: '0.75rem',
+                            minWidth: 18,
+                            height: 18,
+                          },
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faGlobe} />
+                      </Badge>
+                    }
                     label="URL Approval Queue"
                     iconPosition="start"
                     sx={{ gap: 1 }}
@@ -689,7 +727,7 @@ const AdminDashboardPageTabbed = observer(() => {
             </TabPanel>
 
             <TabPanel value={tabValue} index={1}>
-              <UrlApprovalComponent />
+              <UrlApprovalComponent onCountChange={setUrlApprovalCount} />
             </TabPanel>
           </Paper>
         </Box>

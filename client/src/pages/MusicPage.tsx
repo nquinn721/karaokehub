@@ -1,5 +1,5 @@
-import { BannerAdWithUpgrade, WideAdWithUpgrade } from '@components/AdWithUpgrade';
-import { BannerAd, SidebarAd } from '@components/MonetAGAd';
+import { WideAdWithUpgrade } from '@components/AdWithUpgrade';
+import { BannerAd, SidebarAd } from '@components/AdsterraAd';
 import { ThumbnailAlbumArt } from '@components/OptimizedAlbumArt';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
@@ -571,8 +571,12 @@ export const MusicPage: React.FC = observer(() => {
                 Featured Categories
               </Typography>
 
-              {/* Ad placement - only show if not ad-free */}
-              {!subscriptionStore.hasAdFreeAccess && <BannerAdWithUpgrade />}
+              {/* Ad placement right below Featured Categories heading - only show if not ad-free */}
+              {!subscriptionStore.hasAdFreeAccess && (
+                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+                  <BannerAd />
+                </Box>
+              )}
 
               <Grid container spacing={3}>
                 {musicStore.featuredCategories.map((category, index) => (
@@ -611,22 +615,22 @@ export const MusicPage: React.FC = observer(() => {
                       </Card>
                     </Grid>
 
-                    {/* Ad between categories - show after every 3rd category if not ad-free */}
-                    {!subscriptionStore.hasAdFreeAccess &&
-                      (index + 1) % 3 === 0 &&
-                      index !== musicStore.featuredCategories.length - 1 && (
-                        <Grid item xs={12}>
-                          <WideAdWithUpgrade showUpgradePrompt={index === 2 || index === 5} />
-                        </Grid>
-                      )}
+                    {/* Ad between rows - show after first row (3 categories) if not ad-free */}
+                    {!subscriptionStore.hasAdFreeAccess && index === 2 && (
+                      <Grid item xs={12}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                          <BannerAd />
+                        </Box>
+                      </Grid>
+                    )}
                   </React.Fragment>
                 ))}
               </Grid>
 
               {/* Bottom banner ad - only show if not ad-free */}
               {!subscriptionStore.hasAdFreeAccess && (
-                <Box sx={{ mt: 4 }}>
-                  <BannerAdWithUpgrade />
+                <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+                  <BannerAd />
                 </Box>
               )}
             </Box>
@@ -637,7 +641,7 @@ export const MusicPage: React.FC = observer(() => {
             <Box sx={{ px: 3 }}>
               <Grid container spacing={3}>
                 {/* Main Content Area */}
-                <Grid item xs={12} lg={9}>
+                <Grid item xs={12} lg={subscriptionStore.hasAdFreeAccess ? 12 : 9}>
                   {/* Quick Start Guide */}
                   <Box
                     sx={{
@@ -1097,17 +1101,17 @@ export const MusicPage: React.FC = observer(() => {
                     )}
                 </Grid>
 
-                {/* Sidebar with Ads */}
-                <Grid item xs={12} lg={3}>
-                  {!subscriptionStore.hasAdFreeAccess && (
+                {/* Sidebar with Ads - only show if not ad-free */}
+                {!subscriptionStore.hasAdFreeAccess && (
+                  <Grid item xs={12} lg={3}>
                     <Box sx={{ position: 'sticky', top: 20 }}>
                       <SidebarAd />
                       <Box sx={{ mt: 3 }}>
                         <BannerAd />
                       </Box>
                     </Box>
-                  )}
-                </Grid>
+                  </Grid>
+                )}
               </Grid>
             </Box>
           )}

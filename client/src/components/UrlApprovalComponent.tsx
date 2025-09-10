@@ -25,7 +25,11 @@ import { UrlToParse } from '@stores/ParserStore';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useState } from 'react';
 
-const UrlApprovalComponent = observer(() => {
+interface UrlApprovalComponentProps {
+  onCountChange?: (count: number) => void;
+}
+
+const UrlApprovalComponent = observer(({ onCountChange }: UrlApprovalComponentProps) => {
   const [unapprovedUrls, setUnapprovedUrls] = useState<UrlToParse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +42,7 @@ const UrlApprovalComponent = observer(() => {
       const result = await parserStore.getUnapprovedUrls();
       if (result.success && result.data) {
         setUnapprovedUrls(result.data);
+        onCountChange?.(result.data.length);
       } else {
         setError(result.error || 'Failed to fetch unapproved URLs');
       }
@@ -56,7 +61,9 @@ const UrlApprovalComponent = observer(() => {
     const result = await parserStore.approveUrl(id);
     if (result.success) {
       // Remove from local state
-      setUnapprovedUrls((prev) => prev.filter((url) => url.id !== id));
+      const newUrls = unapprovedUrls.filter((url) => url.id !== id);
+      setUnapprovedUrls(newUrls);
+      onCountChange?.(newUrls.length);
     } else {
       setError(result.error || 'Failed to approve URL');
     }
@@ -66,7 +73,9 @@ const UrlApprovalComponent = observer(() => {
     const result = await parserStore.deleteUrlToParse(id);
     if (result.success) {
       // Remove from local state
-      setUnapprovedUrls((prev) => prev.filter((url) => url.id !== id));
+      const newUrls = unapprovedUrls.filter((url) => url.id !== id);
+      setUnapprovedUrls(newUrls);
+      onCountChange?.(newUrls.length);
     } else {
       setError(result.error || 'Failed to delete URL');
     }

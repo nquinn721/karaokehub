@@ -253,16 +253,18 @@ const HomePage: React.FC = observer(() => {
       </Box>
 
       {/* Banner Ad Placement */}
-      <Box
-        sx={{
-          py: 4,
-          display: 'flex',
-          justifyContent: 'center',
-          backgroundColor: 'rgba(0, 0, 0, 0.02)',
-        }}
-      >
-        <BannerAd debug={true} />
-      </Box>
+      {!subscriptionStore.hasAdFreeAccess && (
+        <Box
+          sx={{
+            py: 4,
+            display: 'flex',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(0, 0, 0, 0.02)',
+          }}
+        >
+          <BannerAd debug={true} />
+        </Box>
+      )}
 
       {/* Music Library Hero Section */}
       <Box
