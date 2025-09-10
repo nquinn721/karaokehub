@@ -75,7 +75,7 @@ export interface UrlToParse {
   state?: string;
   submittedBy?: {
     id: number;
-    username: string;
+    name: string;
     email: string;
   };
   createdAt: string;

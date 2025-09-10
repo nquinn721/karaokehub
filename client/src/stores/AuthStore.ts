@@ -2,6 +2,20 @@ import { makeAutoObservable, runInAction } from 'mobx';
 import { makePersistable } from 'mobx-persist-store';
 import { apiStore } from './ApiStore';
 
+// Google One Tap interface for cleanup
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        id?: {
+          cancel: () => void;
+          disableAutoSelect: () => void;
+        };
+      };
+    };
+  }
+}
+
 export interface User {
   id: string;
   email: string;
@@ -380,6 +394,16 @@ export class AuthStore {
       await apiStore.post(apiStore.endpoints.auth.logout);
     } catch (error) {
       // Continue with logout even if API call fails
+    }
+
+    // Clean up Google One Tap to prevent CSP violations
+    try {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.cancel();
+        window.google.accounts.id.disableAutoSelect();
+      }
+    } catch (error) {
+      console.warn('Failed to clean up Google One Tap:', error);
     }
 
     runInAction(() => {

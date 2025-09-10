@@ -241,7 +241,7 @@ const UrlApprovalComponent = observer(({ onCountChange }: UrlApprovalComponentPr
                           ${alpha(theme.palette.secondary.main, 0.02)} 100%)`,
                       },
                       '&:nth-of-type(even)': {
-                        backgroundColor: alpha(theme.palette.action.hover, 0.3),
+                        backgroundColor: 'rgb(42 42 42 / 40%)',
                       },
                     }}
                   >

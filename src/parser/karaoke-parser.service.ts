@@ -4551,7 +4551,11 @@ Return ONLY valid JSON:
       });
 
       // Use the existing method to save the data
-      const result = await this.approveAndSaveParsedData(tempParsedSchedule.id, approvedData, userId);
+      const result = await this.approveAndSaveParsedData(
+        tempParsedSchedule.id,
+        approvedData,
+        userId,
+      );
 
       this.logAndBroadcast(
         `Admin data successfully saved via schedule ID: ${tempParsedSchedule.id}`,
