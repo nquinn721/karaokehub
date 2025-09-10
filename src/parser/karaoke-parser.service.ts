@@ -2573,6 +2573,7 @@ ${htmlContent}`;
   async approveAndSaveParsedData(
     parsedScheduleId: string,
     approvedData: ParsedKaraokeData,
+    userId?: string,
   ): Promise<any> {
     this.logAndBroadcast(`Starting approval process for schedule ${parsedScheduleId}`, 'info');
 
@@ -2650,6 +2651,7 @@ ${htmlContent}`;
               owner: vendorData.owner || '',
               website: vendorData.website,
               description: vendorData.description,
+              submittedBy: userId, // Add user attribution for vendor
             });
             vendorsToCreate.push(vendor);
           } else {
@@ -2760,6 +2762,7 @@ ${htmlContent}`;
             name: djData.name,
             vendorId: djVendorId,
             isActive: true,
+            submittedBy: userId, // Add user attribution for DJ
           });
           djsToCreate.push(newDJ);
           djMap.set(compositeKey, newDJ);
@@ -2896,6 +2899,7 @@ ${htmlContent}`;
               lng: venueInfo?.lng || showData.lng || null,
               phone: venueInfo?.phone || showData.venuePhone || null,
               website: venueInfo?.website || showData.venueWebsite || null,
+              submittedBy: userId, // Add user attribution for venue
             });
           }
         }
@@ -3161,6 +3165,7 @@ ${htmlContent}`;
           description: showData.description,
           source: showData.source,
           isActive: true,
+          submittedBy: userId, // Add user attribution for show
         });
 
         return show; // Return the show object instead of saving immediately
@@ -4509,7 +4514,7 @@ Return ONLY valid JSON:
   /**
    * Approve and save admin-uploaded analysis data with deduplication
    */
-  async approveAndSaveAdminData(approvedData: ParsedKaraokeData): Promise<any> {
+  async approveAndSaveAdminData(approvedData: ParsedKaraokeData, userId?: string): Promise<any> {
     this.logAndBroadcast('Starting admin data approval and save process', 'info');
 
     try {
@@ -4546,7 +4551,7 @@ Return ONLY valid JSON:
       });
 
       // Use the existing method to save the data
-      const result = await this.approveAndSaveParsedData(tempParsedSchedule.id, approvedData);
+      const result = await this.approveAndSaveParsedData(tempParsedSchedule.id, approvedData, userId);
 
       this.logAndBroadcast(
         `Admin data successfully saved via schedule ID: ${tempParsedSchedule.id}`,

@@ -1158,6 +1158,7 @@ export class ParserController {
     body: {
       data: any; // ParsedKaraokeData structure
     },
+    @Req() req: any,
   ) {
     try {
       console.log('Admin analysis approval - received data keys:', Object.keys(body.data || {}));
@@ -1166,8 +1167,12 @@ export class ParserController {
         throw new HttpException('Analysis data is required', HttpStatus.BAD_REQUEST);
       }
 
-      // Call the service to save the approved admin data
-      const result = await this.karaokeParserService.approveAndSaveAdminData(body.data);
+      // Extract user ID from request if user is authenticated
+      const userId = await this.extractUserIdFromRequest(req);
+      console.log('🔍 [IMAGE APPROVAL] User ID extracted:', userId);
+
+      // Call the service to save the approved admin data with user attribution
+      const result = await this.karaokeParserService.approveAndSaveAdminData(body.data, userId);
 
       console.log('✅ Admin analysis approved and saved successfully');
 
