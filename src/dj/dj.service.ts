@@ -6,14 +6,14 @@ import { DJ } from './dj.entity';
 export interface CreateDJDto {
   name: string;
   vendorId: string;
-  userSubmitted?: boolean;
+  submittedBy?: string;
 }
 
 export interface UpdateDJDto {
   name?: string;
   vendorId?: string;
   isActive?: boolean;
-  userSubmitted?: boolean;
+  submittedBy?: string;
 }
 
 @Injectable()
@@ -26,7 +26,6 @@ export class DJService {
   async create(createDJDto: CreateDJDto): Promise<DJ> {
     const dj = this.djRepository.create({
       ...createDJDto,
-      userSubmitted: createDJDto.userSubmitted || false,
     });
     return await this.djRepository.save(dj);
   }

@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
+import { User } from '../entities/user.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
 import { Venue } from '../venue/venue.entity';
 
@@ -64,8 +65,8 @@ export class Show {
   @Column({ default: false })
   isFlagged: boolean;
 
-  @Column({ default: false })
-  userSubmitted: boolean;
+  @Column({ nullable: true })
+  submittedBy: string;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -74,6 +75,10 @@ export class Show {
   updatedAt: Date;
 
   // Relationships
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'submittedBy' })
+  submittedByUser: User;
+
   @ManyToOne(() => DJ, (dj) => dj.shows)
   @JoinColumn({ name: 'djId' })
   dj: DJ;

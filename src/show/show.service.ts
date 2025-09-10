@@ -99,7 +99,7 @@ export class ShowService {
         zip: createShowDto.venueZip,
         phone: createShowDto.venuePhone,
         website: createShowDto.venueWebsite,
-        userSubmitted: createShowDto.userSubmitted || false,
+        submittedBy: createShowDto.submittedBy,
       };
 
       const venue = await this.venueService.findOrCreate(venueDto);
@@ -122,7 +122,7 @@ export class ShowService {
       endTime: createShowDto.endTime,
       description: createShowDto.description,
       source: createShowDto.source,
-      userSubmitted: createShowDto.userSubmitted || false,
+      submittedBy: createShowDto.submittedBy,
     });
 
     return await this.showRepository.save(show);

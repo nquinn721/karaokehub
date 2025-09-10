@@ -1330,7 +1330,7 @@ export class ParserStore {
       this.setLoading(true);
       this.setError(null);
 
-      await apiStore.post('/parser/submit-image-analysis', data);
+      await apiStore.post('/parser/approve-admin-analysis', { data });
 
       return { success: true };
     } catch (error: any) {

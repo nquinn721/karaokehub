@@ -2,11 +2,14 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
+import { User } from '../entities/user.entity';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 
 @Entity('vendors')
@@ -45,8 +48,8 @@ export class Vendor {
   @Column({ nullable: true, type: 'text' })
   parseNotes: string;
 
-  @Column({ default: false })
-  userSubmitted: boolean;
+  @Column({ nullable: true })
+  submittedBy: string;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -55,6 +58,10 @@ export class Vendor {
   updatedAt: Date;
 
   // Relationships
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'submittedBy' })
+  submittedByUser: User;
+
   @OneToMany(() => DJ, (dj) => dj.vendor)
   djs: DJ[];
 

@@ -1686,33 +1686,50 @@ const SubmitShowPage: React.FC = observer(() => {
                     </Box>
                   )}
 
-                  {/* AI Detected Vendor */}
-                  {imageAnalysisResult.vendor && (
-                    <Box sx={{ p: 1.5, bgcolor: 'info.dark', borderRadius: 1 }}>
-                      <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                        🤖 AI Detected Vendor:
-                      </Typography>
-                      <Typography variant="body2" sx={{ ml: 2, mb: 1 }}>
-                        <strong>Name:</strong> {imageAnalysisResult.vendor.name}
-                      </Typography>
-                      {imageAnalysisResult.vendor.description && (
+                  {/* AI Detected Vendor - only show if meaningful vendor data exists */}
+                  {imageAnalysisResult.vendor &&
+                    imageAnalysisResult.vendor.name &&
+                    !imageAnalysisResult.vendor.name.includes('admin-upload-user-submission') &&
+                    !imageAnalysisResult.vendor.name.includes('User uploaded image') && (
+                      <Box
+                        sx={{
+                          p: 1.5,
+                          bgcolor: 'background.paper',
+                          border: 1,
+                          borderColor: 'divider',
+                          borderRadius: 1,
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+                          🤖 AI Detected Vendor:
+                        </Typography>
                         <Typography variant="body2" sx={{ ml: 2, mb: 1 }}>
-                          <strong>Description:</strong> {imageAnalysisResult.vendor.description}
+                          <strong>Name:</strong> {imageAnalysisResult.vendor.name}
                         </Typography>
-                      )}
-                      {imageAnalysisResult.vendor.website && (
-                        <Typography variant="body2" sx={{ ml: 2, mb: 1 }}>
-                          <strong>Website:</strong> {imageAnalysisResult.vendor.website}
-                        </Typography>
-                      )}
-                      {imageAnalysisResult.vendor.confidence && (
-                        <Typography variant="body2" sx={{ ml: 2, color: 'text.secondary' }}>
-                          <strong>Confidence:</strong>{' '}
-                          {Math.round(imageAnalysisResult.vendor.confidence * 100)}%
-                        </Typography>
-                      )}
-                    </Box>
-                  )}
+                        {imageAnalysisResult.vendor.description &&
+                          !imageAnalysisResult.vendor.description.includes(
+                            'User uploaded image',
+                          ) && (
+                            <Typography variant="body2" sx={{ ml: 2, mb: 1 }}>
+                              <strong>Description:</strong> {imageAnalysisResult.vendor.description}
+                            </Typography>
+                          )}
+                        {imageAnalysisResult.vendor.website &&
+                          !imageAnalysisResult.vendor.website.includes(
+                            'admin-upload-user-submission',
+                          ) && (
+                            <Typography variant="body2" sx={{ ml: 2, mb: 1 }}>
+                              <strong>Website:</strong> {imageAnalysisResult.vendor.website}
+                            </Typography>
+                          )}
+                        {imageAnalysisResult.vendor.confidence && (
+                          <Typography variant="body2" sx={{ ml: 2, color: 'text.secondary' }}>
+                            <strong>Confidence:</strong>{' '}
+                            {Math.round(imageAnalysisResult.vendor.confidence * 100)}%
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
                 </Box>
               )}
 

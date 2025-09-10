@@ -45,16 +45,20 @@ export class UrlToParseService {
     });
   }
 
-  async create(url: string, userId?: number): Promise<UrlToParse> {
+  async create(url: string, userId?: string): Promise<UrlToParse> {
+    console.log('💾 [DB] Creating URL entry:', { url, userId });
     const urlToParseData: Partial<UrlToParse> = { url };
-    
+
     // Add user relationship if userId is provided
     if (userId) {
+      console.log('💾 [DB] Adding user relationship:', userId);
       urlToParseData.submittedBy = { id: userId } as any;
     }
-    
+
     const urlToParse = this.urlToParseRepository.create(urlToParseData);
-    return await this.urlToParseRepository.save(urlToParse);
+    const result = await this.urlToParseRepository.save(urlToParse);
+    console.log('💾 [DB] Saved URL entry:', result);
+    return result;
   }
 
   async delete(id: number): Promise<void> {

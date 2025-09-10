@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { User } from '../entities/user.entity';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
 
@@ -25,8 +26,8 @@ export class DJ {
   @Column({ default: true })
   isActive: boolean;
 
-  @Column({ default: false })
-  userSubmitted: boolean;
+  @Column({ nullable: true })
+  submittedBy: string;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -35,6 +36,10 @@ export class DJ {
   updatedAt: Date;
 
   // Relationships
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'submittedBy' })
+  submittedByUser: User;
+
   @ManyToOne(() => Vendor, (vendor) => vendor.djs)
   @JoinColumn({ name: 'vendorId' })
   vendor: Vendor;

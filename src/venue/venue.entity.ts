@@ -2,10 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { User } from '../entities/user.entity';
 import { Show } from '../show/show.entity';
 
 @Entity('venues')
@@ -58,8 +61,8 @@ export class Venue {
   @Column({ default: false })
   isFlagged: boolean;
 
-  @Column({ default: false })
-  userSubmitted: boolean;
+  @Column({ nullable: true })
+  submittedBy: string;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -68,6 +71,10 @@ export class Venue {
   updatedAt: Date;
 
   // Relationships
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'submittedBy' })
+  submittedByUser: User;
+
   @OneToMany(() => Show, (show) => show.venue)
   shows: Show[];
 

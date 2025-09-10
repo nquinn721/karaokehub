@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from '../auth/auth.module';
 import { DJ } from '../dj/dj.entity';
 import { GeocodingService } from '../geocoding/geocoding.service';
 import { CancellationService } from '../services/cancellation.service';
 import { FacebookService } from '../services/facebook.service';
 import { Show } from '../show/show.entity';
+import { UserModule } from '../user/user.module';
 import { Vendor } from '../vendor/vendor.entity';
 import { Venue } from '../venue/venue.entity';
 import { VenueModule } from '../venue/venue.module';
@@ -30,6 +32,8 @@ import { WorkerBasedWebsiteParserService } from './websiteParser/worker-based-we
     VenueModule,
     WebSocketModule,
     ConfigModule,
+    AuthModule,
+    UserModule,
   ],
   controllers: [ParserController],
   providers: [

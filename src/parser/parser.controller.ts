@@ -10,11 +10,14 @@ import {
   Put,
   Req,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DJ } from '../dj/dj.entity';
 import { CancellationService } from '../services/cancellation.service';
 import { Show } from '../show/show.entity';
+import { UserService } from '../user/user.service';
 import { VenueService } from '../venue/venue.service';
 import { FacebookCookieValidatorService } from './facebook-cookie-validator.service';
 import { FacebookGroupDiscoveryService } from './facebook-group-discovery.service';
@@ -37,6 +40,9 @@ export class ParserController {
     private readonly cancellationService: CancellationService,
     private readonly workerBasedWebsiteParserService: WorkerBasedWebsiteParserService,
     private readonly venueService: VenueService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+    private readonly userService: UserService,
     @InjectRepository(DJ)
     private readonly djRepository: Repository<DJ>,
     @InjectRepository(Show)
@@ -468,12 +474,52 @@ export class ParserController {
   @Post('urls')
   async addUrl(@Body() body: { url: string }, @Req() req: any): Promise<UrlToParse> {
     try {
+      console.log('📝 [URL SUBMIT] Received URL submission:', body.url);
       // Extract user ID from request if user is authenticated
-      const userId = req.user?.id || null;
+      const userId = await this.extractUserIdFromRequest(req);
+      console.log('📝 [URL SUBMIT] User ID extracted:', userId);
       return await this.urlToParseService.create(body.url, userId);
     } catch (error) {
       console.error('Error adding URL:', error);
       throw new HttpException('Failed to add URL', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  private async extractUserIdFromRequest(req: any): Promise<string | null> {
+    try {
+      console.log('🔍 [AUTH DEBUG] Extracting user from request...');
+      console.log('🔍 [AUTH DEBUG] Headers:', Object.keys(req.headers));
+
+      const authHeader = req.headers.authorization;
+      console.log('🔍 [AUTH DEBUG] Authorization header:', authHeader ? 'Present' : 'Missing');
+
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.log('🔍 [AUTH DEBUG] No Bearer token found');
+        return null;
+      }
+
+      const token = authHeader.substring(7);
+      console.log('🔍 [AUTH DEBUG] Token extracted, length:', token.length);
+
+      // Verify the JWT token
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
+
+      console.log('🔍 [AUTH DEBUG] JWT payload:', payload);
+
+      // Extract user ID from payload
+      if (payload && payload.sub) {
+        console.log('🔍 [AUTH DEBUG] User ID found:', payload.sub);
+        return payload.sub; // Return as string UUID, not parseInt
+      }
+
+      console.log('🔍 [AUTH DEBUG] No user ID in payload');
+      return null;
+    } catch (error) {
+      console.log('🔍 [AUTH DEBUG] Token verification failed:', error.message);
+      // Token verification failed - this is normal for anonymous users
+      return null;
     }
   }
 

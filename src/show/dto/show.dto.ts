@@ -75,8 +75,8 @@ export class CreateShowDto {
   source?: string;
 
   @IsOptional()
-  @IsBoolean()
-  userSubmitted?: boolean;
+  @IsString()
+  submittedBy?: string;
 }
 
 export class UpdateShowDto {
@@ -113,6 +113,6 @@ export class UpdateShowDto {
   source?: string;
 
   @IsOptional()
-  @IsBoolean()
-  userSubmitted?: boolean;
+  @IsString()
+  submittedBy?: string;
 }

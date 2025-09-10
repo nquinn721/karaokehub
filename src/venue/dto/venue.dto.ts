@@ -58,8 +58,8 @@ export class CreateVenueDto {
   description?: string;
 
   @IsOptional()
-  @IsBoolean()
-  userSubmitted?: boolean;
+  @IsString()
+  submittedBy?: string;
 }
 
 export class UpdateVenueDto {
@@ -112,8 +112,8 @@ export class UpdateVenueDto {
   description?: string;
 
   @IsOptional()
-  @IsBoolean()
-  userSubmitted?: boolean;
+  @IsString()
+  submittedBy?: string;
 
   @IsOptional()
   @IsBoolean()

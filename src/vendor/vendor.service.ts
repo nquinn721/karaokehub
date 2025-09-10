@@ -8,7 +8,7 @@ export interface CreateVendorDto {
   website?: string;
   instagram?: string;
   facebook?: string;
-  userSubmitted?: boolean;
+  submittedBy?: string;
 }
 
 export interface UpdateVendorDto {
@@ -17,7 +17,7 @@ export interface UpdateVendorDto {
   instagram?: string;
   facebook?: string;
   isActive?: boolean;
-  userSubmitted?: boolean;
+  submittedBy?: string;
 }
 
 @Injectable()
@@ -30,7 +30,6 @@ export class VendorService {
   async create(createVendorDto: CreateVendorDto): Promise<Vendor> {
     const vendor = this.vendorRepository.create({
       ...createVendorDto,
-      userSubmitted: createVendorDto.userSubmitted || false,
     });
     return await this.vendorRepository.save(vendor);
   }

@@ -22,7 +22,6 @@ export class VenueService {
 
     const venue = this.venueRepository.create({
       ...createVenueDto,
-      userSubmitted: createVenueDto.userSubmitted || false,
     });
     return await this.venueRepository.save(venue);
   }
@@ -161,8 +160,8 @@ export class VenueService {
       }
 
       // Mark as user submitted if this submission is user-generated
-      if (venueData.userSubmitted && !existing.userSubmitted) {
-        existing.userSubmitted = true;
+      if (venueData.submittedBy && !existing.submittedBy) {
+        existing.submittedBy = venueData.submittedBy;
         updated = true;
       }
 
