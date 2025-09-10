@@ -5,9 +5,9 @@ import { apiStore } from '../stores/ApiStore';
 // Types for Google Identity Services
 declare global {
   interface Window {
-    google: {
-      accounts: {
-        id: {
+    google?: {
+      accounts?: {
+        id?: {
           initialize: (config: GoogleOneTapConfig) => void;
           prompt: (momentListener?: (notification: any) => void) => void;
           renderButton: (parent: HTMLElement, options: GoogleButtonConfig) => void;
