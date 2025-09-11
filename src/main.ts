@@ -57,6 +57,11 @@ async function bootstrap() {
             'https://*.adsterra.com',
             'https://*.adsterraadblocker.com',
             'https://*.adsterranet.com',
+            // Additional ad network domains that might be used
+            'https://*.adsystem.com',
+            'https://*.doubleclick.net',
+            'https://*.googleadservices.com',
+            'https://*.googlesyndication.com',
           ],
           connectSrc: [
             "'self'",
@@ -70,6 +75,11 @@ async function bootstrap() {
             'https://*.adsterra.com',
             'https://*.adsterraadblocker.com',
             'https://*.adsterranet.com',
+            // Additional ad network domains that might be used
+            'https://*.adsystem.com',
+            'https://*.doubleclick.net',
+            'https://*.googleadservices.com',
+            'https://*.googlesyndication.com',
           ],
           mediaSrc: ["'self'", 'https://audio-ssl.itunes.apple.com'],
           frameSrc: [
@@ -81,8 +91,16 @@ async function bootstrap() {
             'https://*.adsterra.com',
             'https://*.adsterraadblocker.com',
             'https://*.adsterranet.com',
+            // Additional ad network domains that might be used
+            'https://*.adsystem.com',
+            'https://*.doubleclick.net',
+            'https://*.googleadservices.com',
+            'https://*.googlesyndication.com',
           ],
+          // Report CSP violations for monitoring
+          reportUri: ['/api/csp-violation-report'],
         },
+        reportOnly: false, // Set to true for monitoring without blocking
       },
       crossOriginEmbedderPolicy: false,
     }),

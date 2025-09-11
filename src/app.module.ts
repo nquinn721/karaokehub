@@ -18,6 +18,7 @@ import { LocationModule } from './location/location.module';
 import { MusicModule } from './music/music.module';
 import { ParserModule } from './parser/parser.module';
 import { ProductionUploadModule } from './production-upload/production-upload.module';
+import { SecurityModule } from './security/security.module';
 import { ShowReviewModule } from './show-review/show-review.module';
 import { ShowModule } from './show/show.module';
 import { SubscriptionModule } from './subscription/subscription.module';
@@ -78,6 +79,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     SubscriptionModule,
     UploadModule,
     ProductionUploadModule,
+    SecurityModule,
   ],
   controllers: [AppController],
   providers: [AppService],

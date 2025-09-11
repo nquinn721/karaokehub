@@ -19,6 +19,8 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
   const adRef = useRef<HTMLDivElement>(null);
   const scriptLoadedRef = useRef<boolean>(false);
   const mountedRef = useRef<boolean>(true);
+  const [isAdLoaded, setIsAdLoaded] = React.useState<boolean>(false);
+  const [hasError, setHasError] = React.useState<boolean>(false);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -37,6 +39,8 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
     // Clear any existing content
     adRef.current.innerHTML = '';
     scriptLoadedRef.current = false;
+    setIsAdLoaded(false);
+    setHasError(false);
 
     // Add CSP violation event listener for debugging
     const handleCSPViolation = (e: SecurityPolicyViolationEvent) => {
@@ -47,6 +51,7 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
           originalPolicy: e.originalPolicy,
         });
       }
+      setHasError(true);
     };
 
     document.addEventListener('securitypolicyviolation', handleCSPViolation);
@@ -74,6 +79,7 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
         script.onload = () => {
           if (mountedRef.current) {
             scriptLoadedRef.current = true;
+            setIsAdLoaded(true);
             if (debug) {
               console.log('Adsterra script loaded successfully');
             }
@@ -81,17 +87,31 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
         };
 
         script.onerror = () => {
-          if (debug) {
-            console.error('Failed to load Adsterra script');
+          if (mountedRef.current) {
+            setHasError(true);
+            if (debug) {
+              console.error('Failed to load Adsterra script');
+            }
           }
         };
 
         // Append script to the ad container
         adRef.current.appendChild(script);
+
+        // Timeout to detect if ad failed to load
+        setTimeout(() => {
+          if (!scriptLoadedRef.current && mountedRef.current) {
+            setHasError(true);
+            if (debug) {
+              console.warn('Ad load timeout - may be blocked by CSP or ad blocker');
+            }
+          }
+        }, 5000); // 5 second timeout
       } catch (error) {
         if (debug) {
           console.error('Error loading ad:', error);
         }
+        setHasError(true);
       }
     };
 
@@ -119,7 +139,13 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
         minWidth: width,
         minHeight: height,
         display: 'block',
-        backgroundColor: debug ? 'rgba(0, 150, 255, 0.1)' : 'transparent',
+        backgroundColor: debug 
+          ? hasError 
+            ? 'rgba(255, 0, 0, 0.1)' 
+            : isAdLoaded 
+              ? 'rgba(0, 255, 0, 0.1)' 
+              : 'rgba(0, 150, 255, 0.1)'
+          : 'transparent',
         border: debug ? '1px dashed #0096ff' : 'none',
         borderRadius: 1,
         overflow: 'hidden',
@@ -132,12 +158,16 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
         // Loading indicator
         '&:empty::after': debug
           ? {
-              content: `"Loading Adsterra Ad (${adKey})"`,
+              content: hasError 
+                ? `"Ad Error (${adKey})"` 
+                : isAdLoaded 
+                  ? `"Ad Loaded (${adKey})"` 
+                  : `"Loading Ad (${adKey})"`,
               position: 'absolute',
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              color: '#0096ff',
+              color: hasError ? '#ff0000' : isAdLoaded ? '#00ff00' : '#0096ff',
               fontSize: '12px',
               textAlign: 'center',
               pointerEvents: 'none',
@@ -152,7 +182,7 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
 // BannerAd: 468x60 - Used between content sections, at bottom of pages
 export const BannerAd: React.FC<{ className?: string; debug?: boolean }> = ({
   className,
-  debug,
+  debug = process.env.NODE_ENV === 'development', // Enable debug in development
 }) => (
   <AdsterraAd
     adKey="038a9ad9f4d055803f60e71662aaf093"
@@ -166,7 +196,7 @@ export const BannerAd: React.FC<{ className?: string; debug?: boolean }> = ({
 // SidebarAd: 160x600 - Tall sidebar ad for music list and similar pages
 export const SidebarAd: React.FC<{ className?: string; debug?: boolean }> = ({
   className,
-  debug,
+  debug = process.env.NODE_ENV === 'development', // Enable debug in development
 }) => (
   <AdsterraAd
     adKey="34ab6262a83446b76aea83e4e1c1347b"
@@ -179,7 +209,7 @@ export const SidebarAd: React.FC<{ className?: string; debug?: boolean }> = ({
 
 export const MobileAd: React.FC<{ className?: string; debug?: boolean }> = ({
   className,
-  debug,
+  debug = process.env.NODE_ENV === 'development', // Enable debug in development
 }) => (
   <AdsterraAd
     adKey="038a9ad9f4d055803f60e71662aaf093"
@@ -192,7 +222,7 @@ export const MobileAd: React.FC<{ className?: string; debug?: boolean }> = ({
 
 export const SquareAd: React.FC<{ className?: string; debug?: boolean }> = ({
   className,
-  debug,
+  debug = process.env.NODE_ENV === 'development', // Enable debug in development
 }) => (
   <AdsterraAd
     adKey="038a9ad9f4d055803f60e71662aaf093"
