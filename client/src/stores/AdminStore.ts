@@ -119,6 +119,7 @@ export interface AdminShow {
   source?: string;
   readableSource?: string;
   isActive: boolean;
+  submittedBy?: string; // User ID who submitted this show
   dj?: AdminDJ;
   venue?: {
     id: string;
@@ -132,6 +133,7 @@ export interface AdminShow {
     phone?: string;
     website?: string;
   };
+  submittedByUser?: AdminUser; // User who submitted this show
   createdAt: Date;
   updatedAt: Date;
 }

@@ -1239,18 +1239,17 @@ const AdminDataTables: React.FC = observer(() => {
                 <TableCell>Contact</TableCell>
                 <TableCell>
                   <TableSortLabel
-                    active={sortBy.shows === 'isActive'}
+                    active={sortBy.shows === 'submittedBy'}
                     direction={
-                      sortBy.shows === 'isActive'
+                      sortBy.shows === 'submittedBy'
                         ? (sortOrder.shows.toLowerCase() as 'asc' | 'desc')
                         : 'asc'
                     }
-                    onClick={() => handleSort('shows', 'isActive')}
+                    onClick={() => handleSort('shows', 'submittedBy')}
                   >
-                    Status
+                    Submitted By
                   </TableSortLabel>
                 </TableCell>
-                <TableCell>Source</TableCell>
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.shows === 'createdAt'}
@@ -1270,7 +1269,7 @@ const AdminDataTables: React.FC = observer(() => {
             <TableBody>
               {adminStore.isLoadingTable ? (
                 <TableRow>
-                  <TableCell colSpan={10} align="center">
+                  <TableCell colSpan={9} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
@@ -1360,34 +1359,11 @@ const AdminDataTables: React.FC = observer(() => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Chip
-                        label={show.isActive ? 'Active' : 'Inactive'}
-                        color={show.isActive ? 'success' : 'default'}
-                        size="small"
-                      />
+                      {show.submittedByUser?.name || show.submittedByUser?.email || 'System'}
                     </TableCell>
                     <TableCell>
-                      {show.readableSource || show.source ? (
-                        <Link
-                          href={show.source}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{ textDecoration: 'none' }}
-                        >
-                          <Chip
-                            label="Source"
-                            size="small"
-                            color="info"
-                            variant="outlined"
-                            title={show.source} // Show full URL on hover
-                            component="span"
-                          />
-                        </Link>
-                      ) : (
-                        'Manual'
-                      )}
+                      {new Date(show.createdAt).toLocaleDateString()}
                     </TableCell>
-                    <TableCell>{formatDate(show.createdAt)}</TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 1 }}>
                         <Tooltip title="Edit">

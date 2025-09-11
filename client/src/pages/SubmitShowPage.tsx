@@ -598,14 +598,34 @@ const SubmitShowPage: React.FC = observer(() => {
               }}
             >
               <Tab
-                icon={<Link />}
-                label="Submit URL for Review"
+                icon={<CloudUpload />}
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    Submit Show Image
+                    <Chip
+                      label="RECOMMENDED"
+                      size="small"
+                      sx={{
+                        fontSize: '0.5rem',
+                        height: '16px',
+                        bgcolor: 'rgba(76, 175, 80, 0.2)',
+                        color: 'success.main',
+                        fontWeight: 500,
+                        letterSpacing: '0.2px',
+                        border: '1px solid rgba(76, 175, 80, 0.3)',
+                        '&:hover': {
+                          bgcolor: 'rgba(76, 175, 80, 0.3)',
+                        },
+                      }}
+                    />
+                  </Box>
+                }
                 iconPosition="start"
                 sx={{ gap: 1 }}
               />
               <Tab
-                icon={<CloudUpload />}
-                label="Submit Show Image"
+                icon={<Link />}
+                label="Submit URL for Review"
                 iconPosition="start"
                 sx={{ gap: 1 }}
               />
@@ -619,6 +639,157 @@ const SubmitShowPage: React.FC = observer(() => {
           </Box>
 
           <TabPanel value={tabValue} index={0}>
+            <Card
+              elevation={0}
+              sx={{
+                p: { xs: 2, sm: 3 },
+                mb: 3,
+                border: `1px solid ${theme.palette.divider}`,
+                borderRadius: 2,
+                background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+              }}
+            >
+              <Box sx={{ mb: { xs: 3, sm: 4 } }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    mb: 3,
+                    gap: { xs: 2, sm: 0 },
+                  }}
+                >
+                  <CloudUpload
+                    sx={{
+                      fontSize: { xs: 24, sm: 32 },
+                      color: 'primary.main',
+                      mr: { xs: 0, sm: 2 },
+                    }}
+                  />
+                  <Box>
+                    <Typography variant="h5" component="h2" gutterBottom fontWeight={600}>
+                      Upload Show Image
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary">
+                      Upload an image from a karaoke show schedule or flyer for AI analysis
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {/* Vendor Selection */}
+                <Box sx={{ mb: 3 }}>
+                  <Autocomplete
+                    value={selectedImageVendor}
+                    onChange={(_, newValue) => {
+                      if (typeof newValue === 'string') {
+                        // Create new vendor placeholder
+                        setSelectedImageVendor({ id: '', name: newValue } as Vendor);
+                      } else {
+                        setSelectedImageVendor(newValue);
+                      }
+                    }}
+                    inputValue={imageVendorInputValue}
+                    onInputChange={(_, newInputValue) => {
+                      setImageVendorInputValue(newInputValue);
+                    }}
+                    options={vendorStore.vendors}
+                    getOptionLabel={(option) => (typeof option === 'string' ? option : option.name)}
+                    freeSolo
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Vendor (Optional)"
+                        placeholder="Start typing to search or create new vendor"
+                        helperText="Select existing vendor or type new name to create vendor and DJ relationship"
+                        fullWidth
+                      />
+                    )}
+                    sx={{ mb: 2 }}
+                  />
+                </Box>
+
+                {/* Image Upload Area */}
+                <Box
+                  onDrop={handleImageDrop}
+                  onDragOver={handleImageDragOver}
+                  onDragLeave={handleImageDragLeave}
+                  sx={{
+                    border: `2px dashed ${isDragOver ? theme.palette.primary.main : 'rgba(255, 255, 255, 0.1)'}`,
+                    borderRadius: 2,
+                    p: 4,
+                    textAlign: 'center',
+                    backgroundColor: isDragOver
+                      ? alpha(theme.palette.primary.main, 0.1)
+                      : 'transparent',
+                    transition: 'all 0.3s ease',
+                    cursor: 'pointer',
+                    mb: 3,
+                  }}
+                  onClick={() => document.getElementById('image-upload')?.click()}
+                >
+                  <input
+                    type="file"
+                    id="image-upload"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleImageFileSelect}
+                  />
+                  {uploadedImage ? (
+                    <Box>
+                      <img
+                        src={uploadedImage}
+                        alt="Uploaded"
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '300px',
+                          borderRadius: '8px',
+                          marginBottom: '16px',
+                        }}
+                      />
+                      <Typography variant="body2" color="text.secondary">
+                        Click to change image or drag a new one here
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box>
+                      <CloudUpload sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                      <Typography variant="h6" gutterBottom>
+                        Drop an image here or click to browse
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Supports JPG, PNG, GIF, and other common image formats
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+
+                {/* Analyze Button */}
+                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={handleAnalyzeImage}
+                    disabled={!uploadedImage || imageAnalyzing}
+                    startIcon={imageAnalyzing ? <CircularProgress size={20} /> : <CloudUpload />}
+                    sx={{
+                      px: 3,
+                      py: 1.5,
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {imageAnalyzing ? 'Analyzing...' : 'Analyze Image'}
+                  </Button>
+                </Box>
+
+                {/* Analysis Results */}
+                {/* Results will be shown in a modal */}
+              </Box>
+            </Card>
+          </TabPanel>
+
+          <TabPanel value={tabValue} index={1}>
             <Card
               elevation={0}
               sx={{
@@ -904,157 +1075,6 @@ const SubmitShowPage: React.FC = observer(() => {
                 </CardActions>
               </Card>
             )}
-          </TabPanel>
-
-          <TabPanel value={tabValue} index={1}>
-            <Card
-              elevation={0}
-              sx={{
-                p: { xs: 2, sm: 3 },
-                mb: 3,
-                border: `1px solid ${theme.palette.divider}`,
-                borderRadius: 2,
-                background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
-              }}
-            >
-              <Box sx={{ mb: { xs: 3, sm: 4 } }}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: { xs: 'flex-start', sm: 'center' },
-                    flexDirection: { xs: 'column', sm: 'row' },
-                    mb: 3,
-                    gap: { xs: 2, sm: 0 },
-                  }}
-                >
-                  <CloudUpload
-                    sx={{
-                      fontSize: { xs: 24, sm: 32 },
-                      color: 'primary.main',
-                      mr: { xs: 0, sm: 2 },
-                    }}
-                  />
-                  <Box>
-                    <Typography variant="h5" component="h2" gutterBottom fontWeight={600}>
-                      Upload Show Image
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary">
-                      Upload an image from a karaoke show schedule or flyer for AI analysis
-                    </Typography>
-                  </Box>
-                </Box>
-
-                {/* Vendor Selection */}
-                <Box sx={{ mb: 3 }}>
-                  <Autocomplete
-                    value={selectedImageVendor}
-                    onChange={(_, newValue) => {
-                      if (typeof newValue === 'string') {
-                        // Create new vendor placeholder
-                        setSelectedImageVendor({ id: '', name: newValue } as Vendor);
-                      } else {
-                        setSelectedImageVendor(newValue);
-                      }
-                    }}
-                    inputValue={imageVendorInputValue}
-                    onInputChange={(_, newInputValue) => {
-                      setImageVendorInputValue(newInputValue);
-                    }}
-                    options={vendorStore.vendors}
-                    getOptionLabel={(option) => (typeof option === 'string' ? option : option.name)}
-                    freeSolo
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Vendor (Optional)"
-                        placeholder="Start typing to search or create new vendor"
-                        helperText="Select existing vendor or type new name to create vendor and DJ relationship"
-                        fullWidth
-                      />
-                    )}
-                    sx={{ mb: 2 }}
-                  />
-                </Box>
-
-                {/* Image Upload Area */}
-                <Box
-                  onDrop={handleImageDrop}
-                  onDragOver={handleImageDragOver}
-                  onDragLeave={handleImageDragLeave}
-                  sx={{
-                    border: `2px dashed ${isDragOver ? theme.palette.primary.main : 'rgba(255, 255, 255, 0.1)'}`,
-                    borderRadius: 2,
-                    p: 4,
-                    textAlign: 'center',
-                    backgroundColor: isDragOver
-                      ? alpha(theme.palette.primary.main, 0.1)
-                      : 'transparent',
-                    transition: 'all 0.3s ease',
-                    cursor: 'pointer',
-                    mb: 3,
-                  }}
-                  onClick={() => document.getElementById('image-upload')?.click()}
-                >
-                  <input
-                    type="file"
-                    id="image-upload"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={handleImageFileSelect}
-                  />
-                  {uploadedImage ? (
-                    <Box>
-                      <img
-                        src={uploadedImage}
-                        alt="Uploaded"
-                        style={{
-                          maxWidth: '100%',
-                          maxHeight: '300px',
-                          borderRadius: '8px',
-                          marginBottom: '16px',
-                        }}
-                      />
-                      <Typography variant="body2" color="text.secondary">
-                        Click to change image or drag a new one here
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Box>
-                      <CloudUpload sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                      <Typography variant="h6" gutterBottom>
-                        Drop an image here or click to browse
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Supports JPG, PNG, GIF, and other common image formats
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-
-                {/* Analyze Button */}
-                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    onClick={handleAnalyzeImage}
-                    disabled={!uploadedImage || imageAnalyzing}
-                    startIcon={imageAnalyzing ? <CircularProgress size={20} /> : <CloudUpload />}
-                    sx={{
-                      px: 3,
-                      py: 1.5,
-                      borderRadius: 2,
-                      textTransform: 'none',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {imageAnalyzing ? 'Analyzing...' : 'Analyze Image'}
-                  </Button>
-                </Box>
-
-                {/* Analysis Results */}
-                {/* Results will be shown in a modal */}
-              </Box>
-            </Card>
           </TabPanel>
 
           <TabPanel value={tabValue} index={2}>
