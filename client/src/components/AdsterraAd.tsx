@@ -129,6 +129,7 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
 };
 
 // Pre-configured ad components for common placements
+// BannerAd: 468x60 - Used between content sections, at bottom of pages
 export const BannerAd: React.FC<{ className?: string; debug?: boolean }> = ({
   className,
   debug,
@@ -142,14 +143,15 @@ export const BannerAd: React.FC<{ className?: string; debug?: boolean }> = ({
   />
 );
 
+// SidebarAd: 160x600 - Tall sidebar ad for music list and similar pages
 export const SidebarAd: React.FC<{ className?: string; debug?: boolean }> = ({
   className,
   debug,
 }) => (
   <AdsterraAd
-    adKey="038a9ad9f4d055803f60e71662aaf093"
-    width={300}
-    height={250}
+    adKey="34ab6262a83446b76aea83e4e1c1347b"
+    width={160}
+    height={600}
     className={className}
     debug={debug}
   />
