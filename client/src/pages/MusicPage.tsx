@@ -615,8 +615,8 @@ export const MusicPage: React.FC = observer(() => {
                       </Card>
                     </Grid>
 
-                    {/* Ad between rows - show after first row (3 categories) if not ad-free */}
-                    {!subscriptionStore.hasAdFreeAccess && index === 2 && (
+                    {/* Ad between rows - show after second row (6 categories) if not ad-free */}
+                    {!subscriptionStore.hasAdFreeAccess && index === 5 && (
                       <Grid item xs={12}>
                         <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
                           <BannerAd />
