@@ -1,5 +1,4 @@
 import { BannerAd } from '@components/AdsterraAd';
-import { BannerAdWithUpgrade, WideAdWithUpgrade } from '@components/AdWithUpgrade';
 import { CustomCard } from '@components/CustomCard';
 import GoogleOneTap from '@components/GoogleOneTap';
 import { SEO, seoConfigs } from '@components/SEO';
@@ -550,7 +549,7 @@ const HomePage: React.FC = observer(() => {
         {/* Ad placement - only show if not ad-free */}
         {!subscriptionStore.hasAdFreeAccess && (
           <Box sx={{ mb: 6 }}>
-            <BannerAdWithUpgrade />
+            <BannerAd />
           </Box>
         )}
 
@@ -798,7 +797,7 @@ const HomePage: React.FC = observer(() => {
         {/* Ad placement after feature cards - only show if not ad-free */}
         {!subscriptionStore.hasAdFreeAccess ? (
           <Box sx={{ mt: 6, mb: 8 }}>
-            <WideAdWithUpgrade />
+            <BannerAd />
           </Box>
         ) : (
           // Add spacing for premium users who don't see ads

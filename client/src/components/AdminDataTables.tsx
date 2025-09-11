@@ -1361,9 +1361,7 @@ const AdminDataTables: React.FC = observer(() => {
                     <TableCell>
                       {show.submittedByUser?.name || show.submittedByUser?.email || 'System'}
                     </TableCell>
-                    <TableCell>
-                      {new Date(show.createdAt).toLocaleDateString()}
-                    </TableCell>
+                    <TableCell>{new Date(show.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 1 }}>
                         <Tooltip title="Edit">
