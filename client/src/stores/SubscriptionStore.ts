@@ -47,16 +47,18 @@ export class SubscriptionStore {
   // Helper method to check if current user is admin - reactive to auth store changes
   private get isCurrentUserAdmin(): boolean {
     try {
-      // Import authStore to ensure proper reactivity
-      // Note: We can't import at the top level due to circular dependency
-      // but this getter approach ensures MobX reactivity
-      const { authStore } = require('./index');
+      // Access authStore from window global to avoid circular dependency
+      // This is set in index.ts and available globally for debugging/utility access
+      if (typeof window !== 'undefined' && (window as any).authStore) {
+        const authStore = (window as any).authStore;
 
-      // Only trust the auth store if user is authenticated
-      if (authStore.isAuthenticated && authStore.user) {
-        return authStore.isAdmin;
+        // Only trust the auth store if user is authenticated
+        if (authStore.isAuthenticated && authStore.user) {
+          return authStore.user.isAdmin === true;
+        }
       }
-      // If not authenticated, user is definitely not admin
+
+      // If not authenticated or authStore not available, user is definitely not admin
       return false;
     } catch (error) {
       console.warn('SubscriptionStore: Failed to check admin status:', error);
