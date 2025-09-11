@@ -38,42 +38,61 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
     adRef.current.innerHTML = '';
     scriptLoadedRef.current = false;
 
+    // Add CSP violation event listener for debugging
+    const handleCSPViolation = (e: SecurityPolicyViolationEvent) => {
+      if (debug) {
+        console.warn('CSP Violation in ad:', {
+          blockedURI: e.blockedURI,
+          violatedDirective: e.violatedDirective,
+          originalPolicy: e.originalPolicy,
+        });
+      }
+    };
+
+    document.addEventListener('securitypolicyviolation', handleCSPViolation);
+
     // Add a small delay to ensure DOM is ready
     const loadAd = () => {
       if (!adRef.current || !mountedRef.current) return;
 
-      // Set up the global atOptions for this ad
-      (window as any).atOptions = {
-        key: adKey,
-        format: 'iframe',
-        height: height,
-        width: width,
-        params: {},
-      };
+      try {
+        // Set up the global atOptions for this ad
+        (window as any).atOptions = {
+          key: adKey,
+          format: 'iframe',
+          height: height,
+          width: width,
+          params: {},
+        };
 
-      // Create and load the Adsterra script
-      const script = document.createElement('script');
-      script.type = 'text/javascript';
-      script.src = `//www.highperformanceformat.com/${adKey}/invoke.js`;
-      script.async = true;
+        // Create and load the Adsterra script
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = `//www.highperformanceformat.com/${adKey}/invoke.js`;
+        script.async = true;
 
-      script.onload = () => {
-        if (mountedRef.current) {
-          scriptLoadedRef.current = true;
-          if (debug) {
-            console.log('Adsterra script loaded successfully');
+        script.onload = () => {
+          if (mountedRef.current) {
+            scriptLoadedRef.current = true;
+            if (debug) {
+              console.log('Adsterra script loaded successfully');
+            }
           }
-        }
-      };
+        };
 
-      script.onerror = () => {
+        script.onerror = () => {
+          if (debug) {
+            console.error('Failed to load Adsterra script');
+          }
+        };
+
+        // Append script to the ad container
+        adRef.current.appendChild(script);
+      } catch (error) {
         if (debug) {
-          console.error('Failed to load Adsterra script');
+          console.error('Error loading ad:', error);
         }
-      };
-
-      // Append script to the ad container
-      adRef.current.appendChild(script);
+      }
     };
 
     // Small delay to ensure proper loading after navigation
@@ -81,6 +100,7 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
 
     return () => {
       clearTimeout(timeoutId);
+      document.removeEventListener('securitypolicyviolation', handleCSPViolation);
       // Cleanup on unmount
       scriptLoadedRef.current = false;
       if (adRef.current) {
