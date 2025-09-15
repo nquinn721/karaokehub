@@ -139,11 +139,11 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
         minWidth: width,
         minHeight: height,
         display: 'block',
-        backgroundColor: debug 
-          ? hasError 
-            ? 'rgba(255, 0, 0, 0.1)' 
-            : isAdLoaded 
-              ? 'rgba(0, 255, 0, 0.1)' 
+        backgroundColor: debug
+          ? hasError
+            ? 'rgba(255, 0, 0, 0.1)'
+            : isAdLoaded
+              ? 'rgba(0, 255, 0, 0.1)'
               : 'rgba(0, 150, 255, 0.1)'
           : 'transparent',
         border: debug ? '1px dashed #0096ff' : 'none',
@@ -158,10 +158,10 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
         // Loading indicator
         '&:empty::after': debug
           ? {
-              content: hasError 
-                ? `"Ad Error (${adKey})"` 
-                : isAdLoaded 
-                  ? `"Ad Loaded (${adKey})"` 
+              content: hasError
+                ? `"Ad Error (${adKey})"`
+                : isAdLoaded
+                  ? `"Ad Loaded (${adKey})"`
                   : `"Loading Ad (${adKey})"`,
               position: 'absolute',
               top: '50%',
@@ -212,7 +212,7 @@ export const MobileAd: React.FC<{ className?: string; debug?: boolean }> = ({
   debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
 }) => (
   <AdsterraAd
-    adKey="038a9ad9f4d055803f60e71662aaf093"
+    adKey="27549731" // Using the 320x50 banner ad key from your dashboard
     width={320}
     height={50}
     className={className}
@@ -227,6 +227,20 @@ export const SquareAd: React.FC<{ className?: string; debug?: boolean }> = ({
   <AdsterraAd
     adKey="038a9ad9f4d055803f60e71662aaf093"
     width={250}
+    height={250}
+    className={className}
+    debug={debug}
+  />
+);
+
+// Native Banner Ad: Blends with content for better engagement
+export const NativeBannerAd: React.FC<{ className?: string; debug?: boolean }> = ({
+  className,
+  debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
+}) => (
+  <AdsterraAd
+    adKey="27549712" // Using the Native Banner ad key from your dashboard
+    width={300}
     height={250}
     className={className}
     debug={debug}

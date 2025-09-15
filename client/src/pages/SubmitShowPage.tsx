@@ -44,6 +44,7 @@ import {
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import CustomModal from '../components/CustomModal';
+import MobileBanner from '../components/MobileBanner';
 import { apiStore, authStore, parserStore, vendorStore } from '../stores';
 import { ParsedScheduleItem } from '../stores/ParserStore';
 import { Vendor } from '../stores/VendorStore';
@@ -532,16 +533,20 @@ const SubmitShowPage: React.FC = observer(() => {
             paragraph
             sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
           >
-            Help us expand our karaoke database by submitting venue URLs for parsing or manually
-            adding show information.
+            Help us expand our karaoke database by contributing show information to help fellow
+            enthusiasts discover new venues and events.
           </Typography>
           <Box sx={{ maxWidth: 600, mx: 'auto', px: { xs: 2, sm: 0 } }}>
             <Typography variant="body2" color="text.secondary">
-              Whether you have a website URL to parse or want to add show details manually, your
-              contributions help fellow karaoke enthusiasts discover new venues and events.
+              Share karaoke show details through multiple convenient methods. Upload images of
+              schedules or flyers for the fastest and most accurate results, or submit venue
+              information manually.
             </Typography>
           </Box>
         </Box>
+
+        {/* Mobile Banner Ad */}
+        <MobileBanner position="between" variant="banner" />
 
         <Paper
           elevation={0}
@@ -671,7 +676,8 @@ const SubmitShowPage: React.FC = observer(() => {
                       Upload Show Image
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
-                      Upload an image from a karaoke show schedule or flyer for AI analysis
+                      Upload an image of a karaoke schedule, flyer, or venue posting for fast and
+                      accurate AI analysis
                     </Typography>
                   </Box>
                 </Box>

@@ -6,6 +6,7 @@ import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
 import FeedbackModal from './components/FeedbackModal';
+import FloatingAddShowButton from './components/FloatingAddShowButton';
 import FloatingVolumeControl from './components/FloatingVolumeControl';
 import FooterComponent from './components/FooterComponent';
 import GlobalNotifications from './components/GlobalNotifications';
@@ -351,6 +352,9 @@ const App: React.FC = observer(() => {
 
         {/* Floating Volume Control */}
         <FloatingVolumeControl />
+
+        {/* Floating Add Show Button */}
+        <FloatingAddShowButton />
 
         {/* Global Notifications */}
         <GlobalNotifications />

@@ -1,5 +1,6 @@
 import { WideAdWithUpgrade } from '@components/AdWithUpgrade';
-import { BannerAd, SidebarAd } from '@components/AdsterraAd';
+import { NativeBannerAd, SidebarAd } from '@components/AdsterraAd';
+import MobileBanner from '@components/MobileBanner';
 import { ThumbnailAlbumArt } from '@components/OptimizedAlbumArt';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
@@ -574,7 +575,7 @@ export const MusicPage: React.FC = observer(() => {
               {/* Ad placement right below Featured Categories heading - only show if not ad-free */}
               {!subscriptionStore.hasAdFreeAccess && (
                 <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
-                  <BannerAd />
+                  <MobileBanner position="between" variant="banner" />
                 </Box>
               )}
 
@@ -619,7 +620,7 @@ export const MusicPage: React.FC = observer(() => {
                     {!subscriptionStore.hasAdFreeAccess && index === 5 && (
                       <Grid item xs={12}>
                         <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-                          <BannerAd />
+                          <MobileBanner position="between" variant="banner" />
                         </Box>
                       </Grid>
                     )}
@@ -630,7 +631,7 @@ export const MusicPage: React.FC = observer(() => {
               {/* Bottom banner ad - only show if not ad-free */}
               {!subscriptionStore.hasAdFreeAccess && (
                 <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-                  <BannerAd />
+                  <MobileBanner position="between" variant="banner" />
                 </Box>
               )}
             </Box>
@@ -769,6 +770,13 @@ export const MusicPage: React.FC = observer(() => {
                       </Box>
                     </Box>
                   </Box>
+
+                  {/* Native Banner - Content-style ad integration */}
+                  {!subscriptionStore.hasAdFreeAccess && (
+                    <Box sx={{ my: 4, display: 'flex', justifyContent: 'center' }}>
+                      <NativeBannerAd />
+                    </Box>
+                  )}
 
                   <Box
                     sx={{
@@ -1107,7 +1115,7 @@ export const MusicPage: React.FC = observer(() => {
                     <Box sx={{ position: 'sticky', top: 20 }}>
                       <SidebarAd />
                       <Box sx={{ mt: 3 }}>
-                        <BannerAd />
+                        <MobileBanner position="between" variant="banner" />
                       </Box>
                     </Box>
                   </Grid>

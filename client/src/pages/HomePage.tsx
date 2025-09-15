@@ -1,6 +1,7 @@
-import { BannerAd } from '@components/AdsterraAd';
+import { NativeBannerAd } from '@components/AdsterraAd';
 import { CustomCard } from '@components/CustomCard';
 import GoogleOneTap from '@components/GoogleOneTap';
+import MobileBanner from '@components/MobileBanner';
 import { SEO, seoConfigs } from '@components/SEO';
 import {
   faArrowUp,
@@ -261,7 +262,7 @@ const HomePage: React.FC = observer(() => {
             backgroundColor: 'rgba(0, 0, 0, 0.02)',
           }}
         >
-          <BannerAd debug={true} />
+          <MobileBanner position="between" variant="banner" />
         </Box>
       )}
 
@@ -549,7 +550,7 @@ const HomePage: React.FC = observer(() => {
         {/* Ad placement - only show if not ad-free */}
         {!subscriptionStore.hasAdFreeAccess && (
           <Box sx={{ mb: 6 }}>
-            <BannerAd />
+            <MobileBanner position="between" variant="banner" />
           </Box>
         )}
 
@@ -673,8 +674,15 @@ const HomePage: React.FC = observer(() => {
         {/* Horizontal Banner Ad */}
         {!subscriptionStore.hasAdFreeAccess && (
           <Box sx={{ my: 6, display: 'flex', justifyContent: 'center' }}>
-            <BannerAd />
+            <MobileBanner position="between" variant="banner" />
           </Box>
+        )}
+
+        {/* Native Banner - Content-style ad */}
+        {!subscriptionStore.hasAdFreeAccess && (
+          <Container maxWidth="lg" sx={{ py: 4 }}>
+            <NativeBannerAd />
+          </Container>
         )}
 
         <Grid container spacing={4} sx={{ mt: 4 }}>
@@ -736,7 +744,7 @@ const HomePage: React.FC = observer(() => {
         {/* Second Ad placement - after features */}
         {!subscriptionStore.hasAdFreeAccess && (
           <Box sx={{ my: 8, display: 'flex', justifyContent: 'center' }}>
-            <BannerAd />
+            <MobileBanner position="between" variant="banner" />
           </Box>
         )}
 
@@ -797,7 +805,7 @@ const HomePage: React.FC = observer(() => {
         {/* Ad placement after feature cards - only show if not ad-free */}
         {!subscriptionStore.hasAdFreeAccess ? (
           <Box sx={{ mt: 6, mb: 8 }}>
-            <BannerAd />
+            <MobileBanner position="between" variant="banner" />
           </Box>
         ) : (
           // Add spacing for premium users who don't see ads

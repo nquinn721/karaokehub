@@ -1,5 +1,6 @@
-import { BannerAd, SquareAd } from '@components/AdsterraAd';
+import { NativeBannerAd, SquareAd } from '@components/AdsterraAd';
 import FriendsList from '@components/FriendsList';
+import MobileBanner from '@components/MobileBanner';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
 import {
@@ -843,7 +844,7 @@ const DashboardPage: React.FC = observer(() => {
             {/* Ad placement after welcome section - only show if not ad-free */}
             {!subscriptionStore.hasAdFreeAccess && (
               <Box sx={{ mb: 4 }}>
-                <BannerAd />
+                <MobileBanner position="between" variant="banner" />
               </Box>
             )}
 
@@ -1124,6 +1125,15 @@ const DashboardPage: React.FC = observer(() => {
                 </Card>
               </Grid>
 
+              {/* Native Banner between sections */}
+              {!subscriptionStore.hasAdFreeAccess && (
+                <Grid item xs={12}>
+                  <Box sx={{ my: 3, display: 'flex', justifyContent: 'center' }}>
+                    <NativeBannerAd />
+                  </Box>
+                </Grid>
+              )}
+
               {/* Right Sidebar */}
               <Grid item xs={12} lg={4}>
                 <Stack spacing={3}>
@@ -1218,7 +1228,7 @@ const DashboardPage: React.FC = observer(() => {
             {/* Ad placement at bottom - only show if not ad-free */}
             {!subscriptionStore.hasAdFreeAccess && (
               <Box sx={{ mt: 4, mb: 2 }}>
-                <BannerAd />
+                <MobileBanner position="between" variant="banner" />
               </Box>
             )}
           </Box>

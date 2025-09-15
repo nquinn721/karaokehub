@@ -28,6 +28,7 @@ import React, { useEffect, useState } from 'react';
 import { BottomSheet } from '../components/BottomSheet';
 import { DayOfWeek } from '../components/DayPicker/DayPicker';
 import MapComponent from '../components/MapComponent';
+import MobileBanner from '../components/MobileBanner';
 import { AuthRequiredModal } from '../components/modals/AuthRequiredModal';
 import { CombinedScheduleModal } from '../components/modals/CombinedScheduleModal';
 import { DJScheduleModal } from '../components/modals/DJScheduleModal';
@@ -765,6 +766,9 @@ const ShowsPage: React.FC = observer(() => {
                     </List>
                   </Box>
                 )}
+
+                {/* Mobile Banner - shown between content sections on mobile */}
+                <MobileBanner position="between" variant="banner" />
               </Box>
             </Box>
           </BottomSheet>
