@@ -573,9 +573,11 @@ export const MusicPage: React.FC = observer(() => {
               </Typography>
 
               {/* Ad placement right below Featured Categories heading */}
-              <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
-                <MobileBanner position="between" variant="banner" />
-              </Box>
+              {!authStore.isAdmin && !subscriptionStore.hasAdFreeAccess && (
+                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+                  <MobileBanner position="between" variant="banner" />
+                </Box>
+              )}
 
               <Grid container spacing={3}>
                 {musicStore.featuredCategories.map((category, index) => (
@@ -615,7 +617,7 @@ export const MusicPage: React.FC = observer(() => {
                     </Grid>
 
                     {/* Ad between rows - show after second row (6 categories) */}
-                    {index === 5 && (
+                    {index === 5 && !authStore.isAdmin && !subscriptionStore.hasAdFreeAccess && (
                       <Grid item xs={12}>
                         <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
                           <MobileBanner position="between" variant="banner" />
@@ -627,9 +629,11 @@ export const MusicPage: React.FC = observer(() => {
               </Grid>
 
               {/* Bottom banner ad */}
-              <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-                <MobileBanner position="between" variant="banner" />
-              </Box>
+              {!authStore.isAdmin && !subscriptionStore.hasAdFreeAccess && (
+                <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+                  <MobileBanner position="between" variant="banner" />
+                </Box>
+              )}
             </Box>
           )}
 
@@ -638,7 +642,7 @@ export const MusicPage: React.FC = observer(() => {
             <Box sx={{ px: 3 }}>
               <Grid container spacing={3}>
                 {/* Main Content Area */}
-                <Grid item xs={12} lg={9}>
+                <Grid item xs={12} lg={authStore.isAdmin || subscriptionStore.hasAdFreeAccess ? 12 : 9}>
                   {/* Quick Start Guide */}
                   <Box
                     sx={{
@@ -768,9 +772,11 @@ export const MusicPage: React.FC = observer(() => {
                   </Box>
 
                   {/* Leaderboard Banner - Horizontal ad integration */}
-                  <Box sx={{ my: 4, display: 'flex', justifyContent: 'center' }}>
-                    <LeaderboardAd />
-                  </Box>
+                  {!authStore.isAdmin && !subscriptionStore.hasAdFreeAccess && (
+                    <Box sx={{ my: 4, display: 'flex', justifyContent: 'center' }}>
+                      <LeaderboardAd />
+                    </Box>
+                  )}
 
                   <Box
                     sx={{
@@ -1102,27 +1108,29 @@ export const MusicPage: React.FC = observer(() => {
                     )}
                 </Grid>
 
-                {/* Sidebar with Ads */}
-                <Grid item xs={12} lg={3}>
-                  <Box sx={{ position: 'sticky', top: 20 }}>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        '& > div': {
-                          // Target the ad container
-                          margin: 0,
-                          padding: 0,
-                        },
-                      }}
-                    >
-                      <SidebarAd />
+                {/* Sidebar with Ads - Only show for users without ad-free access */}
+                {!authStore.isAdmin && !subscriptionStore.hasAdFreeAccess && (
+                  <Grid item xs={12} lg={3}>
+                    <Box sx={{ position: 'sticky', top: 20 }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'center',
+                          '& > div': {
+                            // Target the ad container
+                            margin: 0,
+                            padding: 0,
+                          },
+                        }}
+                      >
+                        <SidebarAd />
+                      </Box>
+                      <Box sx={{ mt: 2 }}>
+                        <MobileBanner position="between" variant="banner" />
+                      </Box>
                     </Box>
-                    <Box sx={{ mt: 2 }}>
-                      <MobileBanner position="between" variant="banner" />
-                    </Box>
-                  </Box>
-                </Grid>
+                  </Grid>
+                )}
               </Grid>
             </Box>
           )}

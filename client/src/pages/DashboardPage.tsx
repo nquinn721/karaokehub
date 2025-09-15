@@ -1199,10 +1199,8 @@ const DashboardPage: React.FC = observer(() => {
                     )}
                   </CardContent>
                 </Card>
-              </Grid>
 
-              {/* Native Banner between sections */}
-              <Grid item xs={12}>
+                {/* Native Banner inside main content */}
                 <Box sx={{ my: 3, display: 'flex', justifyContent: 'center' }}>
                   <NativeBannerAd />
                 </Box>
@@ -1210,7 +1208,7 @@ const DashboardPage: React.FC = observer(() => {
 
               {/* Right Sidebar */}
               <Grid item xs={12} lg={4}>
-                <Stack spacing={{ xs: 2, sm: 3 }}>
+                <Stack spacing={3} sx={{ position: 'sticky', top: 20, maxHeight: 'calc(100vh - 40px)', overflowY: 'auto' }}>
                   {/* Friends List */}
                   <FriendsList onUserSelect={(userId) => console.log('Selected user:', userId)} />
 
