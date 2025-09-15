@@ -22,11 +22,6 @@ const FloatingAddShowButton: React.FC<FloatingAddShowButtonProps> = ({
   // Check if we're already on the submit show page
   const isSubmitPage = location.pathname === '/submit';
 
-  // Hide the button if we're already on the submit page
-  if (isSubmitPage) {
-    return null;
-  }
-
   // Check if we're on shows page where bottom sheet might interfere
   const isShowsPage = location.pathname === '/shows';
 
@@ -76,6 +71,11 @@ const FloatingAddShowButton: React.FC<FloatingAddShowButtonProps> = ({
   const handleClick = () => {
     navigate('/submit');
   };
+
+  // Hide the button if we're already on the submit page
+  if (isSubmitPage) {
+    return null;
+  }
 
   return (
     <Tooltip title="Add a Show" placement="right">
