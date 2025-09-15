@@ -25,7 +25,7 @@ import {
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
-import { MobileAd, BannerAd } from '../components/AdsterraAd';
+import { BannerAd, MobileAd } from '../components/AdsterraAd';
 import { BottomSheet } from '../components/BottomSheet';
 import { DayOfWeek } from '../components/DayPicker/DayPicker';
 import MapComponent from '../components/MapComponent';

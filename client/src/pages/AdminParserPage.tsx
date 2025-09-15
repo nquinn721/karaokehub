@@ -254,7 +254,7 @@ const AdminParserPage: React.FC = observer(() => {
     }
 
     // Analyze all uploaded images, not just the first one
-    const allImageDataUrls = uploadedImages.map(img => img.dataUrl);
+    const allImageDataUrls = uploadedImages.map((img) => img.dataUrl);
     await analyzeMultipleImagesWithRetry(allImageDataUrls);
   };
 
@@ -268,7 +268,7 @@ const AdminParserPage: React.FC = observer(() => {
 
     try {
       console.log(`� Analyzing ${imageDataUrls.length} images in parallel...`);
-      
+
       const response = await fetch(
         `${apiStore.environmentInfo.baseURL}/parser/analyze-admin-screenshots-parallel`,
         {
@@ -299,7 +299,7 @@ const AdminParserPage: React.FC = observer(() => {
         openApprovalModal(result.data);
         uiStore.addNotification(
           `Successfully analyzed ${imageDataUrls.length} image(s) in parallel with speedup benefits`,
-          'success'
+          'success',
         );
       } else {
         throw new Error(result.error || 'Parallel analysis failed');
@@ -2883,162 +2883,442 @@ const AdminParserPage: React.FC = observer(() => {
           <Box sx={{ p: 2 }}>
             {pendingApprovalData && (
               <>
-                <Typography variant="h6" gutterBottom>
-                  Analysis Results
+                <Typography
+                  variant="h5"
+                  gutterBottom
+                  sx={{ mb: 3, fontWeight: 600, color: 'primary.main' }}
+                >
+                  🎤 Analysis Results
                 </Typography>
 
+                {/* Summary Stats */}
+                <Card
+                  sx={{
+                    mb: 3,
+                    p: 2,
+                    bgcolor: 'background.paper',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    gutterBottom
+                    sx={{ color: 'primary.main', fontWeight: 600 }}
+                  >
+                    📊 Summary
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                    {pendingApprovalData.vendor && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Vendor:
+                        </Typography>
+                        <Typography variant="body2" fontWeight="600">
+                          1
+                        </Typography>
+                      </Box>
+                    )}
+                    {pendingApprovalData.venues && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Venues:
+                        </Typography>
+                        <Typography variant="body2" fontWeight="600">
+                          {pendingApprovalData.venues.length}
+                        </Typography>
+                      </Box>
+                    )}
+                    {pendingApprovalData.djs && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          DJs:
+                        </Typography>
+                        <Typography variant="body2" fontWeight="600">
+                          {pendingApprovalData.djs.length}
+                        </Typography>
+                      </Box>
+                    )}
+                    {pendingApprovalData.shows && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Shows:
+                        </Typography>
+                        <Typography variant="body2" fontWeight="600">
+                          {pendingApprovalData.shows.length}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                </Card>
+
+                {/* Vendor Information */}
                 {pendingApprovalData.vendor && (
-                  <Card sx={{ mb: 2, p: 2 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      <strong>Vendor/DJ Information:</strong>
-                    </Typography>
-                    <Typography>
-                      <strong>Name:</strong> {pendingApprovalData.vendor.name || 'Unknown'}
-                    </Typography>
-                    {pendingApprovalData.vendor.website && (
-                      <Typography>
-                        <strong>Website:</strong> {pendingApprovalData.vendor.website}
+                  <Card
+                    sx={{
+                      mb: 3,
+                      border: '1px solid',
+                      borderColor: 'primary.light',
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Box sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                      <Typography
+                        variant="h6"
+                        sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
+                      >
+                        🏢 Vendor Information
                       </Typography>
-                    )}
-                    {pendingApprovalData.vendor.description && (
-                      <Typography>
-                        <strong>Description:</strong> {pendingApprovalData.vendor.description}
-                      </Typography>
-                    )}
-                    {pendingApprovalData.vendor.confidence && (
-                      <Typography>
-                        <strong>Confidence:</strong>{' '}
-                        {(pendingApprovalData.vendor.confidence * 100).toFixed(1)}%
-                      </Typography>
-                    )}
+                    </Box>
+                    <Box sx={{ p: 2 }}>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Name
+                          </Typography>
+                          <Typography variant="body1" fontWeight="600">
+                            {pendingApprovalData.vendor.name || 'Unknown'}
+                          </Typography>
+                        </Grid>
+                        {pendingApprovalData.vendor.confidence && (
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body2" color="text.secondary">
+                              Confidence
+                            </Typography>
+                            <Typography variant="body1" fontWeight="600" color="success.main">
+                              {(pendingApprovalData.vendor.confidence * 100).toFixed(1)}%
+                            </Typography>
+                          </Grid>
+                        )}
+                        {pendingApprovalData.vendor.website && (
+                          <Grid item xs={12}>
+                            <Typography variant="body2" color="text.secondary">
+                              Website
+                            </Typography>
+                            <Typography variant="body1">
+                              {pendingApprovalData.vendor.website}
+                            </Typography>
+                          </Grid>
+                        )}
+                        {pendingApprovalData.vendor.description && (
+                          <Grid item xs={12}>
+                            <Typography variant="body2" color="text.secondary">
+                              Description
+                            </Typography>
+                            <Typography variant="body1">
+                              {pendingApprovalData.vendor.description}
+                            </Typography>
+                          </Grid>
+                        )}
+                      </Grid>
+                    </Box>
                   </Card>
                 )}
 
+                {/* Venues */}
                 {pendingApprovalData.venues && pendingApprovalData.venues.length > 0 && (
-                  <Card sx={{ mb: 2, p: 2 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      <strong>Venues ({pendingApprovalData.venues.length}):</strong>
-                    </Typography>
-                    {pendingApprovalData.venues.map((venue: any, index: number) => (
-                      <Box
-                        key={index}
-                        sx={{ mb: 1, p: 1, border: '1px solid #ddd', borderRadius: 1 }}
+                  <Card
+                    sx={{ mb: 3, border: '1px solid', borderColor: 'info.light', borderRadius: 2 }}
+                  >
+                    <Box sx={{ p: 2, bgcolor: 'info.light', color: 'info.contrastText' }}>
+                      <Typography
+                        variant="h6"
+                        sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
                       >
-                        <Typography>
-                          <strong>Name:</strong> {venue.name || 'Unknown'}
-                        </Typography>
-                        {venue.address && (
-                          <Typography>
-                            <strong>Address:</strong> {venue.address}
-                            {venue.city && `, ${venue.city}`}
-                            {venue.state && `, ${venue.state}`}
-                            {venue.zip && ` ${venue.zip}`}
-                          </Typography>
-                        )}
-                        {venue.lat && venue.lng && (
-                          <Typography>
-                            <strong>Coordinates:</strong> {venue.lat}, {venue.lng}
-                          </Typography>
-                        )}
-                        {venue.phone && (
-                          <Typography>
-                            <strong>Phone:</strong> {venue.phone}
-                          </Typography>
-                        )}
-                        {venue.website && (
-                          <Typography>
-                            <strong>Website:</strong> {venue.website}
-                          </Typography>
-                        )}
-                        {venue.confidence && (
-                          <Typography>
-                            <strong>Confidence:</strong> {(venue.confidence * 100).toFixed(1)}%
-                          </Typography>
-                        )}
-                      </Box>
-                    ))}
+                        📍 Venues ({pendingApprovalData.venues.length})
+                      </Typography>
+                    </Box>
+                    <Box sx={{ p: 2 }}>
+                      <Grid container spacing={2}>
+                        {pendingApprovalData.venues.map((venue: any, index: number) => (
+                          <Grid item xs={12} md={6} key={index}>
+                            <Paper
+                              sx={{
+                                p: 2,
+                                border: '1px solid',
+                                borderColor: 'grey.200',
+                                borderRadius: 1,
+                              }}
+                            >
+                              <Grid container spacing={1}>
+                                <Grid item xs={12}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Name
+                                  </Typography>
+                                  <Typography variant="body1" fontWeight="600">
+                                    {venue.name || 'Unknown'}
+                                  </Typography>
+                                </Grid>
+                                {venue.address && (
+                                  <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Full Address
+                                    </Typography>
+                                    <Typography variant="body1">
+                                      {venue.address}
+                                      {venue.city && `, ${venue.city}`}
+                                      {venue.state && `, ${venue.state}`}
+                                      {venue.zip && ` ${venue.zip}`}
+                                    </Typography>
+                                  </Grid>
+                                )}
+                                {(venue.city || venue.state) && (
+                                  <Grid item xs={12} sm={6}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Location
+                                    </Typography>
+                                    <Typography variant="body1">
+                                      {venue.city && venue.state ? `${venue.city}, ${venue.state}` : venue.city || venue.state}
+                                    </Typography>
+                                  </Grid>
+                                )}
+                                {venue.zip && (
+                                  <Grid item xs={12} sm={6}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      ZIP Code
+                                    </Typography>
+                                    <Typography variant="body1">{venue.zip}</Typography>
+                                  </Grid>
+                                )}
+                                {(venue.lat && venue.lng) && (
+                                  <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Coordinates
+                                    </Typography>
+                                    <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                      {venue.lat}, {venue.lng}
+                                    </Typography>
+                                  </Grid>
+                                )}
+                                {venue.phone && (
+                                  <Grid item xs={12} sm={6}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Phone
+                                    </Typography>
+                                    <Typography variant="body1">{venue.phone}</Typography>
+                                  </Grid>
+                                )}
+                                {venue.confidence && (
+                                  <Grid item xs={12} sm={6}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Confidence
+                                    </Typography>
+                                    <Typography
+                                      variant="body1"
+                                      fontWeight="600"
+                                      color="success.main"
+                                    >
+                                      {(venue.confidence * 100).toFixed(1)}%
+                                    </Typography>
+                                  </Grid>
+                                )}
+                                {venue.website && (
+                                  <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Website
+                                    </Typography>
+                                    <Typography variant="body1">{venue.website}</Typography>
+                                  </Grid>
+                                )}
+                                {venue.lat && venue.lng && (
+                                  <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Coordinates
+                                    </Typography>
+                                    <Typography variant="body1">
+                                      {venue.lat}, {venue.lng}
+                                    </Typography>
+                                  </Grid>
+                                )}
+                              </Grid>
+                            </Paper>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
                   </Card>
                 )}
 
+                {/* DJs */}
                 {pendingApprovalData.djs && pendingApprovalData.djs.length > 0 && (
-                  <Card sx={{ mb: 2, p: 2 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      <strong>DJs ({pendingApprovalData.djs.length}):</strong>
-                    </Typography>
-                    {pendingApprovalData.djs.map((dj: any, index: number) => (
-                      <Box
-                        key={index}
-                        sx={{ mb: 1, p: 1, border: '1px solid #ddd', borderRadius: 1 }}
+                  <Card
+                    sx={{
+                      mb: 3,
+                      border: '1px solid',
+                      borderColor: 'warning.light',
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Box sx={{ p: 2, bgcolor: 'warning.light', color: 'warning.contrastText' }}>
+                      <Typography
+                        variant="h6"
+                        sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
                       >
-                        <Typography>
-                          <strong>Name:</strong> {dj.name || 'Unknown'}
-                        </Typography>
-                        {dj.context && (
-                          <Typography>
-                            <strong>Context:</strong> {dj.context}
-                          </Typography>
-                        )}
-                        {dj.confidence && (
-                          <Typography>
-                            <strong>Confidence:</strong> {(dj.confidence * 100).toFixed(1)}%
-                          </Typography>
-                        )}
-                      </Box>
-                    ))}
+                        🎧 DJs ({pendingApprovalData.djs.length})
+                      </Typography>
+                    </Box>
+                    <Box sx={{ p: 2 }}>
+                      <Grid container spacing={2}>
+                        {pendingApprovalData.djs.map((dj: any, index: number) => (
+                          <Grid item xs={12} sm={6} md={4} key={index}>
+                            <Paper
+                              sx={{
+                                p: 2,
+                                border: '1px solid',
+                                borderColor: 'grey.200',
+                                borderRadius: 1,
+                              }}
+                            >
+                              <Grid container spacing={1}>
+                                <Grid item xs={12}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Name
+                                  </Typography>
+                                  <Typography variant="body1" fontWeight="600">
+                                    {dj.name || 'Unknown'}
+                                  </Typography>
+                                </Grid>
+                                {dj.context && (
+                                  <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Context
+                                    </Typography>
+                                    <Typography variant="body1">{dj.context}</Typography>
+                                  </Grid>
+                                )}
+                                {dj.confidence && (
+                                  <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Confidence
+                                    </Typography>
+                                    <Typography
+                                      variant="body1"
+                                      fontWeight="600"
+                                      color="success.main"
+                                    >
+                                      {(dj.confidence * 100).toFixed(1)}%
+                                    </Typography>
+                                  </Grid>
+                                )}
+                              </Grid>
+                            </Paper>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
                   </Card>
                 )}
 
+                {/* Karaoke Shows */}
                 {pendingApprovalData.shows && pendingApprovalData.shows.length > 0 && (
-                  <Card sx={{ mb: 2, p: 2 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      <strong>Karaoke Shows ({pendingApprovalData.shows.length}):</strong>
-                    </Typography>
-                    {pendingApprovalData.shows.map((show: any, index: number) => (
-                      <Box
-                        key={index}
-                        sx={{ mb: 1, p: 1, border: '1px solid #ddd', borderRadius: 1 }}
+                  <Card
+                    sx={{
+                      mb: 3,
+                      border: '1px solid',
+                      borderColor: 'success.light',
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Box sx={{ p: 2, bgcolor: 'success.light', color: 'success.contrastText' }}>
+                      <Typography
+                        variant="h6"
+                        sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
                       >
-                        <Typography>
-                          <strong>Venue:</strong> {show.venueName || show.venue || 'Unknown'}
-                        </Typography>
-                        {show.date && (
-                          <Typography>
-                            <strong>Date:</strong> {show.date}
-                          </Typography>
-                        )}
-                        {(show.startTime || show.endTime) && (
-                          <Typography>
-                            <strong>Time:</strong> {show.startTime || ''}{' '}
-                            {show.endTime ? `- ${show.endTime}` : ''}
-                          </Typography>
-                        )}
-                        {show.dayOfWeek && (
-                          <Typography>
-                            <strong>Day:</strong> {show.dayOfWeek}
-                          </Typography>
-                        )}
-                        {show.eventType && (
-                          <Typography>
-                            <strong>Type:</strong> {show.eventType}
-                          </Typography>
-                        )}
-                        {show.djName && (
-                          <Typography>
-                            <strong>DJ:</strong> {show.djName}
-                          </Typography>
-                        )}
-                        {show.description && (
-                          <Typography>
-                            <strong>Description:</strong> {show.description}
-                          </Typography>
-                        )}
-                        {show.confidence && (
-                          <Typography>
-                            <strong>Confidence:</strong> {(show.confidence * 100).toFixed(1)}%
-                          </Typography>
-                        )}
-                      </Box>
-                    ))}
+                        🎤 Karaoke Shows ({pendingApprovalData.shows.length})
+                      </Typography>
+                    </Box>
+                    <Box sx={{ p: 2 }}>
+                      <Grid container spacing={2}>
+                        {pendingApprovalData.shows.map((show: any, index: number) => (
+                          <Grid item xs={12} md={6} key={index}>
+                            <Paper
+                              sx={{
+                                p: 2,
+                                border: '1px solid',
+                                borderColor: 'grey.200',
+                                borderRadius: 1,
+                              }}
+                            >
+                              <Grid container spacing={1}>
+                                <Grid item xs={12}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Venue
+                                  </Typography>
+                                  <Typography variant="body1" fontWeight="600">
+                                    {show.venueName || show.venue || 'Unknown'}
+                                  </Typography>
+                                </Grid>
+                                {show.date && (
+                                  <Grid item xs={12} sm={6}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Date
+                                    </Typography>
+                                    <Typography variant="body1">{show.date}</Typography>
+                                  </Grid>
+                                )}
+                                {show.dayOfWeek && (
+                                  <Grid item xs={12} sm={6}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Day
+                                    </Typography>
+                                    <Typography variant="body1">{show.dayOfWeek}</Typography>
+                                  </Grid>
+                                )}
+                                {(show.startTime || show.endTime) && (
+                                  <Grid item xs={12} sm={6}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Time
+                                    </Typography>
+                                    <Typography variant="body1">
+                                      {show.startTime || ''}
+                                      {show.endTime ? ` - ${show.endTime}` : ''}
+                                    </Typography>
+                                  </Grid>
+                                )}
+                                {show.eventType && (
+                                  <Grid item xs={12} sm={6}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Type
+                                    </Typography>
+                                    <Typography variant="body1">{show.eventType}</Typography>
+                                  </Grid>
+                                )}
+                                {show.djName && (
+                                  <Grid item xs={12} sm={6}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      DJ
+                                    </Typography>
+                                    <Typography variant="body1">{show.djName}</Typography>
+                                  </Grid>
+                                )}
+                                {show.confidence && (
+                                  <Grid item xs={12} sm={6}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Confidence
+                                    </Typography>
+                                    <Typography
+                                      variant="body1"
+                                      fontWeight="600"
+                                      color="success.main"
+                                    >
+                                      {(show.confidence * 100).toFixed(1)}%
+                                    </Typography>
+                                  </Grid>
+                                )}
+                                {show.description && (
+                                  <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">
+                                      Description
+                                    </Typography>
+                                    <Typography variant="body1">{show.description}</Typography>
+                                  </Grid>
+                                )}
+                              </Grid>
+                            </Paper>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
                   </Card>
                 )}
 

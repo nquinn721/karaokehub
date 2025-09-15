@@ -27,7 +27,7 @@ interface AnalysisResult {
 
 async function analyzeImageWithGemini(workerData: WorkerData): Promise<AnalysisResult> {
   const startTime = Date.now();
-  
+
   try {
     console.log(`🖼️ Worker: Starting analysis of image ${workerData.imageIndex + 1}`);
 
@@ -75,11 +75,15 @@ Ensure no duplicates within this image, but don't worry about cross-image duplic
       const cleanedText = text.replace(/```json\n?|\n?```/g, '').trim();
       parsedData = JSON.parse(cleanedText);
     } catch (parseError) {
-      throw new Error(`Failed to parse Gemini response as JSON: ${parseError.message}. Response: ${text}`);
+      throw new Error(
+        `Failed to parse Gemini response as JSON: ${parseError.message}. Response: ${text}`,
+      );
     }
 
     const processingTime = Date.now() - startTime;
-    console.log(`✅ Worker: Successfully analyzed image ${workerData.imageIndex + 1} in ${processingTime}ms`);
+    console.log(
+      `✅ Worker: Successfully analyzed image ${workerData.imageIndex + 1} in ${processingTime}ms`,
+    );
 
     return {
       success: true,
@@ -87,10 +91,12 @@ Ensure no duplicates within this image, but don't worry about cross-image duplic
       data: parsedData,
       processingTime,
     };
-
   } catch (error) {
     const processingTime = Date.now() - startTime;
-    console.error(`❌ Worker: Failed to analyze image ${workerData.imageIndex + 1}:`, error.message);
+    console.error(
+      `❌ Worker: Failed to analyze image ${workerData.imageIndex + 1}:`,
+      error.message,
+    );
 
     return {
       success: false,
@@ -105,7 +111,7 @@ Ensure no duplicates within this image, but don't worry about cross-image duplic
 (async () => {
   try {
     const result = await analyzeImageWithGemini(workerData);
-    
+
     // Send result back to main thread
     if (parentPort) {
       parentPort.postMessage(result);

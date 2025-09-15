@@ -64,9 +64,11 @@ export class ParallelGeminiService {
     maxConcurrentWorkers: number = 3, // Limit concurrent workers to avoid rate limits
   ): Promise<ParallelAnalysisResult> {
     const startTime = Date.now();
-    
+
     try {
-      this.logger.log(`🚀 Starting parallel analysis of ${screenshots.length} images with max ${maxConcurrentWorkers} workers`);
+      this.logger.log(
+        `🚀 Starting parallel analysis of ${screenshots.length} images with max ${maxConcurrentWorkers} workers`,
+      );
 
       // Prepare the base prompt for image analysis
       const basePrompt = this.generateImageAnalysisPrompt(url, description);
@@ -82,20 +84,25 @@ export class ParallelGeminiService {
         const batchEndIndex = Math.min(i + maxConcurrentWorkers, screenshots.length);
         const batchImages = screenshots.slice(i, batchEndIndex);
         const batchSize = batchImages.length;
-        
-        this.logger.log(`📦 Processing batch ${Math.floor(i / maxConcurrentWorkers) + 1}: images ${i + 1}-${batchEndIndex} (${batchSize} images)`);
+
+        this.logger.log(
+          `📦 Processing batch ${Math.floor(i / maxConcurrentWorkers) + 1}: images ${i + 1}-${batchEndIndex} (${batchSize} images)`,
+        );
 
         // Create worker promises for this batch
         const workerPromises = batchImages.map((imageData, batchIndex) => {
           const globalIndex = i + batchIndex;
-          return this.analyzeImageWithWorker({
-            imageBase64: imageData,
-            imageIndex: globalIndex,
-            prompt: basePrompt,
-            description,
-            venue: url,
-            url,
-          }, new Set());
+          return this.analyzeImageWithWorker(
+            {
+              imageBase64: imageData,
+              imageIndex: globalIndex,
+              prompt: basePrompt,
+              description,
+              venue: url,
+              url,
+            },
+            new Set(),
+          );
         });
 
         // Process batch concurrently
@@ -126,12 +133,14 @@ export class ParallelGeminiService {
 
           // Log progress
           const progressPercent = Math.round((processedCount / screenshots.length) * 100);
-          this.logger.log(`📊 Progress: ${processedCount}/${screenshots.length} (${progressPercent}%) - Success: ${successfulCount}, Failed: ${failedCount}`);
+          this.logger.log(
+            `📊 Progress: ${processedCount}/${screenshots.length} (${progressPercent}%) - Success: ${successfulCount}, Failed: ${failedCount}`,
+          );
         });
 
         // Small delay between batches to be respectful to API
         if (i + maxConcurrentWorkers < screenshots.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
 
@@ -144,15 +153,22 @@ export class ParallelGeminiService {
       const totalProcessingTime = Date.now() - startTime;
 
       // Calculate parallelization benefit
-      const avgProcessingTime = successfulCount > 0 
-        ? data.filter(r => r.success).reduce((sum, r) => sum + r.processingTime, 0) / successfulCount
-        : 0;
+      const avgProcessingTime =
+        successfulCount > 0
+          ? data.filter((r) => r.success).reduce((sum, r) => sum + r.processingTime, 0) /
+            successfulCount
+          : 0;
       const estimatedSequentialTime = avgProcessingTime * screenshots.length;
       const timeSaved = estimatedSequentialTime - totalProcessingTime;
-      const speedupFactor = estimatedSequentialTime > 0 ? (estimatedSequentialTime / totalProcessingTime).toFixed(2) : '1.00';
+      const speedupFactor =
+        estimatedSequentialTime > 0
+          ? (estimatedSequentialTime / totalProcessingTime).toFixed(2)
+          : '1.00';
 
       this.logger.log(`✅ Parallel analysis completed in ${totalProcessingTime}ms`);
-      this.logger.log(`📊 Final Results: ${successfulCount} successful, ${failedCount} failed out of ${screenshots.length} total`);
+      this.logger.log(
+        `📊 Final Results: ${successfulCount} successful, ${failedCount} failed out of ${screenshots.length} total`,
+      );
       this.logger.log(`⚡ Speedup: ${speedupFactor}x faster (saved ~${Math.round(timeSaved)}ms)`);
 
       return {
@@ -168,16 +184,17 @@ export class ParallelGeminiService {
           batchesProcessed: Math.ceil(screenshots.length / maxConcurrentWorkers),
           averageProcessingTime: Math.round(avgProcessingTime),
           parallelizationBenefit: `${speedupFactor}x speedup, saved ~${Math.round(timeSaved)}ms`,
-          progressEvents: [{
-            timestamp: Date.now(),
-            completed: processedCount,
-            total: screenshots.length,
-            percentage: Math.round((processedCount / screenshots.length) * 100),
-            message: 'Batch processing completed'
-          }]
+          progressEvents: [
+            {
+              timestamp: Date.now(),
+              completed: processedCount,
+              total: screenshots.length,
+              percentage: Math.round((processedCount / screenshots.length) * 100),
+              message: 'Batch processing completed',
+            },
+          ],
         },
       };
-
     } catch (error) {
       this.logger.error(`❌ Parallel analysis failed:`, error);
       throw error;
@@ -197,12 +214,14 @@ export class ParallelGeminiService {
     // Process jobs in batches to limit concurrency
     for (let i = 0; i < jobs.length; i += maxConcurrentWorkers) {
       const batch = jobs.slice(i, i + maxConcurrentWorkers);
-      const batchPromises = batch.map(job => this.analyzeImageWithWorker(job, activeWorkers));
-      
-      this.logger.log(`🔄 Processing batch ${Math.floor(i / maxConcurrentWorkers) + 1}: images ${i + 1}-${Math.min(i + maxConcurrentWorkers, jobs.length)}`);
-      
+      const batchPromises = batch.map((job) => this.analyzeImageWithWorker(job, activeWorkers));
+
+      this.logger.log(
+        `🔄 Processing batch ${Math.floor(i / maxConcurrentWorkers) + 1}: images ${i + 1}-${Math.min(i + maxConcurrentWorkers, jobs.length)}`,
+      );
+
       const batchResults = await Promise.allSettled(batchPromises);
-      
+
       // Process batch results
       batchResults.forEach((result, batchIndex) => {
         if (result.status === 'fulfilled') {
@@ -221,7 +240,7 @@ export class ParallelGeminiService {
     }
 
     // Cleanup any remaining workers
-    activeWorkers.forEach(worker => {
+    activeWorkers.forEach((worker) => {
       try {
         worker.terminate();
       } catch (error) {
@@ -241,7 +260,7 @@ export class ParallelGeminiService {
   ): Promise<ImageAnalysisResult> {
     return new Promise((resolve, reject) => {
       const workerPath = path.join(__dirname, 'gemini-image-worker.js');
-      
+
       const worker = new Worker(workerPath, {
         workerData: {
           imageBase64: job.imageBase64,
@@ -324,31 +343,51 @@ Source: ${url}
 ${description ? `Description: ${description}` : ''}
 
 🏢 VENUE & ADDRESS EXTRACTION - CRITICAL:
+- Extract each unique VENUE into a separate "venues" array entry with complete geographic data
 - Look for complete address patterns like "1234 Main St, Columbus, OH" 
 - Extract phone numbers that appear near venue names
 - Look for venue websites or social media handles
 - Extract any pricing information mentioned
 - Look for special event details or themes
+- SEPARATE venues from vendors/companies (venues = physical locations, vendors = service providers)
 
 📅 TIME & DATE EXTRACTION:
 - Extract specific dates if mentioned
 - Extract day of the week (Monday, Tuesday, etc.)
 - Extract exact times (7:00 PM, 8:30 PM, etc.)
 - Look for recurring schedule patterns
+- Extract both start and end times when available
 
 🎤 DJ & HOST EXTRACTION:
 - Extract DJ names and host information
 - Look for social media handles for DJs
 - Extract any special DJ or host details
 
+🏭 VENDOR/COMPANY EXTRACTION:
+- Extract karaoke service companies (different from venues)
+- Look for company websites and contact information
+- Identify service providers vs physical locations
+
 Expected JSON format:
 {
   "vendors": [
     {
-      "name": "Venue Name",
+      "name": "Company/Service Provider Name",
       "website": "https://...",
-      "description": "Brief venue description",
+      "description": "Brief company description",
       "confidence": 0.95
+    }
+  ],
+  "venues": [
+    {
+      "name": "Venue Name",
+      "address": "1234 Main St",
+      "city": "City",
+      "state": "State",
+      "zip": "12345",
+      "phone": "(555) 123-4567",
+      "website": "https://...",
+      "confidence": 0.90
     }
   ],
   "djs": [
@@ -362,16 +401,16 @@ Expected JSON format:
   ],
   "shows": [
     {
+      "venueName": "Venue Name (reference to venues array)",
       "venue": "Complete Venue Name",
       "time": "7:00 PM",
+      "startTime": "7:00 PM",
+      "endTime": "10:00 PM",
+      "dayOfWeek": "Friday",
+      "date": "2025-09-15",
       "djName": "DJ Name",
       "description": "Show details",
-      "address": "1234 Main St, City, State 12345",
-      "city": "City",
-      "state": "State",
-      "zip": "12345",
-      "venuePhone": "(555) 123-4567",
-      "venueWebsite": "https://...",
+      "eventType": "Karaoke Night",
       "source": "${url}",
       "confidence": 0.85
     }
@@ -383,38 +422,61 @@ Expected JSON format:
    * Combine results from multiple image analyses with deduplication
    */
   private combineAnalysisResults(results: ImageAnalysisResult[]): ParsedKaraokeData {
-    const successfulResults = results.filter(r => r.success && r.data);
-    
+    const successfulResults = results.filter((r) => r.success && r.data);
+
     if (successfulResults.length === 0) {
       return {
         vendors: [],
+        venues: [],
         djs: [],
         shows: [],
       };
     }
 
     const allVendors: any[] = [];
+    const allVenues: any[] = [];
     const allDJs: any[] = [];
     const allShows: any[] = [];
+    let primaryVendor: any = null;
 
     // Combine all data from successful analyses
-    successfulResults.forEach(result => {
+    successfulResults.forEach((result) => {
       const data = result.data;
+      
+      // Handle vendors (both singular and plural)
+      if (data.vendor) {
+        if (!primaryVendor) primaryVendor = data.vendor;
+        allVendors.push(data.vendor);
+      }
       if (data.vendors) allVendors.push(...data.vendors);
+      
+      // Handle venues
+      if (data.venues) allVenues.push(...data.venues);
+      
+      // Handle DJs
       if (data.djs) allDJs.push(...data.djs);
+      
+      // Handle shows
       if (data.shows) allShows.push(...data.shows);
     });
 
     // Deduplicate combined results
     const deduplicatedVendors = this.deduplicateVendors(allVendors);
+    const deduplicatedVenues = this.deduplicateVenues(allVenues);
     const deduplicatedDJs = this.deduplicateDJs(allDJs);
     const deduplicatedShows = this.deduplicateShows(allShows);
 
-    this.logger.log(`📊 Combined results: ${deduplicatedShows.length} shows, ${deduplicatedDJs.length} DJs, ${deduplicatedVendors.length} vendors`);
-    this.logger.log(`🔄 Deduplication: ${allShows.length} → ${deduplicatedShows.length} shows, ${allDJs.length} → ${deduplicatedDJs.length} DJs, ${allVendors.length} → ${deduplicatedVendors.length} vendors`);
+    this.logger.log(
+      `📊 Combined results: ${deduplicatedShows.length} shows, ${deduplicatedDJs.length} DJs, ${deduplicatedVendors.length} vendors, ${deduplicatedVenues.length} venues`,
+    );
+    this.logger.log(
+      `🔄 Deduplication: ${allShows.length} → ${deduplicatedShows.length} shows, ${allDJs.length} → ${deduplicatedDJs.length} DJs, ${allVendors.length} → ${deduplicatedVendors.length} vendors, ${allVenues.length} → ${deduplicatedVenues.length} venues`,
+    );
 
     return {
+      vendor: primaryVendor, // Primary vendor for backward compatibility
       vendors: deduplicatedVendors,
+      venues: deduplicatedVenues,
       djs: deduplicatedDJs,
       shows: deduplicatedShows,
     };
@@ -425,8 +487,21 @@ Expected JSON format:
    */
   private deduplicateVendors(vendors: any[]): any[] {
     const seen = new Set<string>();
-    return vendors.filter(vendor => {
+    return vendors.filter((vendor) => {
       const key = `${vendor.name?.toLowerCase() || ''}-${vendor.website?.toLowerCase() || ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  /**
+   * Deduplicate venues by name and address
+   */
+  private deduplicateVenues(venues: any[]): any[] {
+    const seen = new Set<string>();
+    return venues.filter((venue) => {
+      const key = `${venue.name?.toLowerCase() || ''}-${venue.address?.toLowerCase() || ''}-${venue.city?.toLowerCase() || ''}-${venue.state?.toLowerCase() || ''}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -438,7 +513,7 @@ Expected JSON format:
    */
   private deduplicateDJs(djs: any[]): any[] {
     const seen = new Set<string>();
-    return djs.filter(dj => {
+    return djs.filter((dj) => {
       const key = dj.name?.toLowerCase() || '';
       if (seen.has(key)) return false;
       seen.add(key);
@@ -451,7 +526,7 @@ Expected JSON format:
    */
   private deduplicateShows(shows: any[]): any[] {
     const seen = new Set<string>();
-    return shows.filter(show => {
+    return shows.filter((show) => {
       const key = `${show.venue?.toLowerCase() || ''}-${show.time?.toLowerCase() || ''}-${show.date?.toLowerCase() || ''}`;
       if (seen.has(key)) return false;
       seen.add(key);

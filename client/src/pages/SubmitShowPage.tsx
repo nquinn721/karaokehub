@@ -522,7 +522,7 @@ const SubmitShowPage: React.FC = observer(() => {
 
     try {
       // Analyze all uploaded images in parallel for faster processing
-      const allImageDataUrls = uploadedImages.map(img => img.dataUrl);
+      const allImageDataUrls = uploadedImages.map((img) => img.dataUrl);
       const result = await parserStore.analyzeUserImagesParallel({
         images: allImageDataUrls,
         vendorId: selectedImageVendor?.id,
@@ -533,7 +533,7 @@ const SubmitShowPage: React.FC = observer(() => {
         setImageAnalysisResult(result.data);
         setShowAnalysisModal(true);
         setSuccess(
-          `Successfully analyzed ${uploadedImages.length} image(s) in parallel: ${uploadedImages.map(img => img.name).join(', ')}`
+          `Successfully analyzed ${uploadedImages.length} image(s) in parallel: ${uploadedImages.map((img) => img.name).join(', ')}`,
         );
       } else {
         setError(result.error || 'Failed to analyze images in parallel');

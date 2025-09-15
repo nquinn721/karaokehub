@@ -1274,7 +1274,10 @@ export class ParserController {
   ) {
     try {
       // Debug logging
-      console.log('Parallel admin screenshot analysis - received request body keys:', Object.keys(body));
+      console.log(
+        'Parallel admin screenshot analysis - received request body keys:',
+        Object.keys(body),
+      );
       console.log('Screenshots count:', body.screenshots?.length || 'undefined');
       console.log('Vendor:', body.vendor);
       console.log('Max concurrent workers:', body.maxConcurrentWorkers || 'default (3)');

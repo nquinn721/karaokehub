@@ -14,11 +14,11 @@ const mockImageData = [
 
 async function testParallelProcessing() {
   console.log('🧪 Testing parallel image processing...');
-  
+
   try {
     // This would require the actual service instantiation which needs NestJS context
     // For now, we'll just verify the files compile and the architecture is sound
-    
+
     console.log('✅ Parallel processing architecture setup completed successfully');
     console.log('📋 Implementation summary:');
     console.log('   - Created gemini-image-worker.ts for individual image processing');
@@ -26,20 +26,20 @@ async function testParallelProcessing() {
     console.log('   - Added parallel methods to karaoke-parser.service.ts');
     console.log('   - Created new API endpoints for parallel processing');
     console.log('   - Updated frontend to use parallel processing');
-    
+
     console.log('\n🎯 Benefits of parallel processing:');
     console.log('   - Images are processed concurrently instead of sequentially');
     console.log('   - Up to 3x faster processing for multiple images');
     console.log('   - Non-blocking architecture prevents UI freezing');
     console.log('   - Configurable worker limits to respect API rate limits');
     console.log('   - Automatic retry and error handling for failed workers');
-    
+
     console.log('\n🔧 Usage:');
     console.log('   - Admin Parser: Uses analyze-admin-screenshots-parallel endpoint');
     console.log('   - Submit Show: Uses analyze-screenshots-parallel endpoint');
     console.log('   - Workers are automatically managed and cleaned up');
     console.log('   - Progress and performance metrics are tracked');
-    
+
     return true;
   } catch (error) {
     console.error('❌ Test failed:', error);
@@ -49,7 +49,7 @@ async function testParallelProcessing() {
 
 // Run the test
 testParallelProcessing()
-  .then(success => {
+  .then((success) => {
     if (success) {
       console.log('\n🎉 Parallel image processing implementation is ready!');
       process.exit(0);
@@ -58,7 +58,7 @@ testParallelProcessing()
       process.exit(1);
     }
   })
-  .catch(error => {
+  .catch((error) => {
     console.error('💥 Unexpected error:', error);
     process.exit(1);
   });

@@ -73,7 +73,7 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
           script.async = true;
           script.setAttribute('data-cfasync', 'false');
           script.src = '//pl27650211.revenuecpmgate.com/54560d75c04fd0479493b4cb2cef087d/invoke.js';
-          
+
           script.onload = () => {
             if (mountedRef.current) {
               scriptLoadedRef.current = true;
@@ -96,7 +96,7 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
           // Create container div for native banner
           const containerDiv = document.createElement('div');
           containerDiv.id = 'container-54560d75c04fd0479493b4cb2cef087d';
-          
+
           adRef.current.appendChild(script);
           adRef.current.appendChild(containerDiv);
         } else {
@@ -182,18 +182,22 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
         maxWidth: `${width}px`,
         maxHeight: `${height}px`,
         display: 'block',
-        backgroundColor: showPlaceholder && !isAdLoaded && !hasError 
-          ? 'rgba(200, 200, 200, 0.1)' 
-          : debug
-            ? hasError
-              ? 'rgba(255, 0, 0, 0.1)'
-              : isAdLoaded
-                ? 'rgba(0, 255, 0, 0.1)'
-                : 'rgba(0, 150, 255, 0.1)'
-            : 'transparent',
-        border: showPlaceholder && !isAdLoaded && !hasError 
-          ? '1px solid rgba(200, 200, 200, 0.3)' 
-          : debug ? '1px dashed #0096ff' : 'none',
+        backgroundColor:
+          showPlaceholder && !isAdLoaded && !hasError
+            ? 'rgba(200, 200, 200, 0.1)'
+            : debug
+              ? hasError
+                ? 'rgba(255, 0, 0, 0.1)'
+                : isAdLoaded
+                  ? 'rgba(0, 255, 0, 0.1)'
+                  : 'rgba(0, 150, 255, 0.1)'
+              : 'transparent',
+        border:
+          showPlaceholder && !isAdLoaded && !hasError
+            ? '1px solid rgba(200, 200, 200, 0.3)'
+            : debug
+              ? '1px dashed #0096ff'
+              : 'none',
         borderRadius: 1,
         overflow: 'hidden',
         position: 'relative',
@@ -206,33 +210,38 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
           display: 'block',
         },
         // Placeholder content
-        '&:empty::after': showPlaceholder || debug
-          ? {
-              content: debug
-                ? hasError
-                  ? `"Ad Error (${adKey})"`
-                  : isAdLoaded
-                    ? `"Ad Loaded (${adKey})"`
-                    : `"Loading Ad (${adKey})"`
-                : hasError
-                  ? '"Advertisement"'
-                  : isAdLoaded
-                    ? '""'
-                    : '"Advertisement"',
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              color: debug 
-                ? (hasError ? '#ff0000' : isAdLoaded ? '#00ff00' : '#0096ff')
-                : 'rgba(150, 150, 150, 0.7)',
-              fontSize: debug ? '12px' : '14px',
-              textAlign: 'center',
-              pointerEvents: 'none',
-              fontFamily: 'Arial, sans-serif',
-              letterSpacing: '0.5px',
-            }
-          : {},
+        '&:empty::after':
+          showPlaceholder || debug
+            ? {
+                content: debug
+                  ? hasError
+                    ? `"Ad Error (${adKey})"`
+                    : isAdLoaded
+                      ? `"Ad Loaded (${adKey})"`
+                      : `"Loading Ad (${adKey})"`
+                  : hasError
+                    ? '"Advertisement"'
+                    : isAdLoaded
+                      ? '""'
+                      : '"Advertisement"',
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                color: debug
+                  ? hasError
+                    ? '#ff0000'
+                    : isAdLoaded
+                      ? '#00ff00'
+                      : '#0096ff'
+                  : 'rgba(150, 150, 150, 0.7)',
+                fontSize: debug ? '12px' : '14px',
+                textAlign: 'center',
+                pointerEvents: 'none',
+                fontFamily: 'Arial, sans-serif',
+                letterSpacing: '0.5px',
+              }
+            : {},
       }}
     />
   );
