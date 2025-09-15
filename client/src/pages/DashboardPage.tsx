@@ -293,44 +293,59 @@ const DashboardPage: React.FC = observer(() => {
         },
       }}
     >
-      <CardContent sx={{ p: 3 }}>
+      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
         <Typography
           variant="h6"
           gutterBottom
           sx={{
             textAlign: 'center',
             fontWeight: 600,
-            mb: 3,
+            mb: { xs: 2, sm: 3 },
             color: theme.palette.text.primary,
+            fontSize: { xs: '1.1rem', sm: '1.25rem' },
           }}
         >
           Quick Stats
         </Typography>
 
-        <Grid container spacing={2}>
+        <Grid container spacing={{ xs: 1.5, sm: 2 }}>
           {/* Today's Shows */}
           <Grid item xs={6}>
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: 'center', px: { xs: 0.5, sm: 1 } }}>
               <Box
                 sx={{
                   background: `linear-gradient(135deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`,
                   borderRadius: '12px',
-                  p: 1.5,
+                  p: { xs: 1, sm: 1.5 },
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   mb: 1,
                   boxShadow: `0 2px 8px ${alpha(theme.palette.success.main, 0.3)}`,
-                  minWidth: 44,
-                  minHeight: 44,
+                  minWidth: { xs: 36, sm: 44 },
+                  minHeight: { xs: 36, sm: 44 },
                 }}
               >
                 <FontAwesomeIcon icon={faCalendar} size="sm" color="white" />
               </Box>
-              <Typography variant="h5" fontWeight={700} color="success.main">
+              <Typography 
+                variant="h5" 
+                fontWeight={700} 
+                color="success.main"
+                sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
+              >
                 {showStats.todayCount}
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+              <Typography 
+                variant="caption" 
+                color="text.secondary" 
+                sx={{ 
+                  fontWeight: 500,
+                  fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                  display: 'block',
+                  lineHeight: 1.2
+                }}
+              >
                 Today's Shows
               </Typography>
             </Box>
@@ -338,27 +353,41 @@ const DashboardPage: React.FC = observer(() => {
 
           {/* Favorite Shows */}
           <Grid item xs={6}>
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: 'center', px: { xs: 0.5, sm: 1 } }}>
               <Box
                 sx={{
                   background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
                   borderRadius: '12px',
-                  p: 1.5,
+                  p: { xs: 1, sm: 1.5 },
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   mb: 1,
                   boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.3)}`,
-                  minWidth: 44,
-                  minHeight: 44,
+                  minWidth: { xs: 36, sm: 44 },
+                  minHeight: { xs: 36, sm: 44 },
                 }}
               >
                 <FontAwesomeIcon icon={faHeartSolid} size="sm" color="white" />
               </Box>
-              <Typography variant="h5" fontWeight={700} color="primary.main">
+              <Typography 
+                variant="h5" 
+                fontWeight={700} 
+                color="primary.main"
+                sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
+              >
                 {showStats.weekCount}
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+              <Typography 
+                variant="caption" 
+                color="text.secondary" 
+                sx={{ 
+                  fontWeight: 500,
+                  fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                  display: 'block',
+                  lineHeight: 1.2
+                }}
+              >
                 Favorite Shows
               </Typography>
             </Box>
@@ -366,27 +395,41 @@ const DashboardPage: React.FC = observer(() => {
 
           {/* Favorite Songs */}
           <Grid item xs={6}>
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: 'center', px: { xs: 0.5, sm: 1 } }}>
               <Box
                 sx={{
                   background: `linear-gradient(135deg, ${theme.palette.secondary.main}, ${theme.palette.secondary.dark})`,
                   borderRadius: '12px',
-                  p: 1.5,
+                  p: { xs: 1, sm: 1.5 },
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   mb: 1,
                   boxShadow: `0 2px 8px ${alpha(theme.palette.secondary.main, 0.3)}`,
-                  minWidth: 44,
-                  minHeight: 44,
+                  minWidth: { xs: 36, sm: 44 },
+                  minHeight: { xs: 36, sm: 44 },
                 }}
               >
                 <FontAwesomeIcon icon={faMusic} size="sm" color="white" />
               </Box>
-              <Typography variant="h5" fontWeight={700} color="secondary.main">
+              <Typography 
+                variant="h5" 
+                fontWeight={700} 
+                color="secondary.main"
+                sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
+              >
                 {showStats.songFavoriteCount}
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+              <Typography 
+                variant="caption" 
+                color="text.secondary" 
+                sx={{ 
+                  fontWeight: 500,
+                  fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                  display: 'block',
+                  lineHeight: 1.2
+                }}
+              >
                 Favorite Songs
               </Typography>
             </Box>
@@ -394,7 +437,7 @@ const DashboardPage: React.FC = observer(() => {
 
           {/* Subscription */}
           <Grid item xs={6}>
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: 'center', px: { xs: 0.5, sm: 1 } }}>
               <Box
                 sx={{
                   background: `linear-gradient(135deg, ${
@@ -407,7 +450,7 @@ const DashboardPage: React.FC = observer(() => {
                       : theme.palette.warning.dark
                   })`,
                   borderRadius: '12px',
-                  p: 1.5,
+                  p: { xs: 1, sm: 1.5 },
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -418,8 +461,8 @@ const DashboardPage: React.FC = observer(() => {
                       : theme.palette.warning.main,
                     0.3,
                   )}`,
-                  minWidth: 44,
-                  minHeight: 44,
+                  minWidth: { xs: 36, sm: 44 },
+                  minHeight: { xs: 36, sm: 44 },
                 }}
               >
                 <FontAwesomeIcon icon={faTrophy} size="sm" color="white" />
@@ -428,11 +471,20 @@ const DashboardPage: React.FC = observer(() => {
                 variant="h6"
                 fontWeight={700}
                 color={subscriptionStore.hasAdFreeAccess ? 'success.main' : 'warning.main'}
-                sx={{ fontSize: '1.1rem' }}
+                sx={{ fontSize: { xs: '1rem', sm: '1.1rem' } }}
               >
                 {subscriptionStore.hasAdFreeAccess ? 'Pro' : 'Free'}
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+              <Typography 
+                variant="caption" 
+                color="text.secondary" 
+                sx={{ 
+                  fontWeight: 500,
+                  fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                  display: 'block',
+                  lineHeight: 1.2
+                }}
+              >
                 Subscription
               </Typography>
             </Box>
@@ -793,14 +845,20 @@ const DashboardPage: React.FC = observer(() => {
           },
         }}
       >
-        <Box sx={{ maxWidth: '1400px', mx: 'auto', py: 6, position: 'relative', zIndex: 1 }}>
-          <Box sx={{ px: 3 }}>
+        <Box sx={{ 
+          maxWidth: { xs: '100%', sm: '95%', md: '1200px', xl: '1400px' }, 
+          mx: 'auto', 
+          py: { xs: 3, sm: 4, md: 6 }, 
+          position: 'relative', 
+          zIndex: 1 
+        }}>
+          <Box sx={{ px: { xs: 2, sm: 3, md: 4 } }}>
             {/* Enhanced Welcome Header */}
-            <Box sx={{ mb: 5, textAlign: 'center' }}>
+            <Box sx={{ mb: { xs: 3, sm: 4, md: 5 }, textAlign: 'center' }}>
               <Box
                 sx={{
                   display: 'inline-block',
-                  p: 3,
+                  p: { xs: 2, sm: 2.5, md: 3 },
                   borderRadius: '24px',
                   background: `linear-gradient(135deg, 
                   ${alpha(theme.palette.primary.main, 0.08)}, 
@@ -808,6 +866,8 @@ const DashboardPage: React.FC = observer(() => {
                   border: `1px solid ${alpha(theme.palette.primary.main, 0.15)}`,
                   backdropFilter: 'blur(10px)',
                   mb: 2,
+                  width: { xs: '95%', sm: 'auto' },
+                  maxWidth: '800px',
                 }}
               >
                 <Typography
@@ -821,6 +881,7 @@ const DashboardPage: React.FC = observer(() => {
                     color: 'transparent',
                     mb: 1,
                     textShadow: `0 2px 4px ${alpha(theme.palette.primary.main, 0.1)}`,
+                    fontSize: { xs: '1.75rem', sm: '2.25rem', md: '3rem' },
                   }}
                 >
                   {getGreeting()},{' '}
@@ -834,6 +895,7 @@ const DashboardPage: React.FC = observer(() => {
                     maxWidth: '600px',
                     mx: 'auto',
                     lineHeight: 1.4,
+                    fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' },
                   }}
                 >
                   Ready to rock the stage? Here's what's happening in your karaoke world.
@@ -842,19 +904,19 @@ const DashboardPage: React.FC = observer(() => {
             </Box>
 
             {/* Ad placement after welcome section */}
-            <Box sx={{ mb: 4 }}>
+            <Box sx={{ mb: { xs: 2, sm: 3, md: 4 } }}>
               <MobileBanner position="between" variant="banner" />
             </Box>
 
             {/* Enhanced Stats Cards */}
             {/* Mobile: Compact Stats Card */}
-            <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 4 }}>
+            <Box sx={{ display: { xs: 'block', md: 'none' }, mb: { xs: 3, sm: 4 } }}>
               <CompactStatsCard />
             </Box>
 
             {/* Desktop: Individual Stats Cards */}
             <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-              <Grid container spacing={4} sx={{ mb: 5 }}>
+              <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 3, sm: 4, md: 5 } }}>
                 <Grid item xs={12} sm={6} lg={3}>
                   <StatCard
                     icon={faCalendar}
@@ -900,23 +962,26 @@ const DashboardPage: React.FC = observer(() => {
               </Grid>
             </Box>
 
-            <Grid container spacing={4}>
+            <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
               {/* Main Content - Favorite Shows and Songs */}
               <Grid item xs={12} lg={8}>
                 <Card
                   sx={{
-                    mb: 3,
+                    mb: { xs: 2, sm: 3 },
                     background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
                     border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                    borderRadius: '16px',
                   }}
                 >
-                  <CardContent sx={{ p: 3 }}>
+                  <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                     <Box
                       sx={{
                         display: 'flex',
-                        alignItems: 'center',
+                        alignItems: { xs: 'flex-start', sm: 'center' },
                         justifyContent: 'space-between',
                         mb: 3,
+                        flexDirection: { xs: 'column', sm: 'row' },
+                        gap: { xs: 2, sm: 0 },
                       }}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -928,12 +993,19 @@ const DashboardPage: React.FC = observer(() => {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            minWidth: '48px',
+                            minHeight: '48px',
                           }}
                         >
                           <FontAwesomeIcon icon={faHeartSolid} color="white" size="lg" />
                         </Box>
                         <Box>
-                          <Typography variant="h5" component="h2" fontWeight={600}>
+                          <Typography 
+                            variant="h5" 
+                            component="h2" 
+                            fontWeight={600}
+                            sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
+                          >
                             Your Favorites
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
@@ -1132,16 +1204,25 @@ const DashboardPage: React.FC = observer(() => {
 
               {/* Right Sidebar */}
               <Grid item xs={12} lg={4}>
-                <Stack spacing={3}>
+                <Stack spacing={{ xs: 2, sm: 3 }}>
                   {/* Friends List */}
                   <FriendsList onUserSelect={(userId) => console.log('Selected user:', userId)} />
 
                   {/* Performance Stats */}
-                  <Card>
-                    <CardContent sx={{ p: 3 }}>
+                  <Card
+                    sx={{
+                      borderRadius: '16px',
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                    }}
+                  >
+                    <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <FontAwesomeIcon icon={faChartLine} color={theme.palette.primary.main} />
-                        <Typography variant="h6" fontWeight={600}>
+                        <Typography 
+                          variant="h6" 
+                          fontWeight={600}
+                          sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+                        >
                           Your Progress
                         </Typography>
                       </Box>
@@ -1156,7 +1237,7 @@ const DashboardPage: React.FC = observer(() => {
                           <LinearProgress
                             variant="determinate"
                             value={0}
-                            sx={{ borderRadius: '4px' }}
+                            sx={{ borderRadius: '4px', height: '6px' }}
                           />
                         </Box>
                         <Box>
@@ -1169,7 +1250,7 @@ const DashboardPage: React.FC = observer(() => {
                           <LinearProgress
                             variant="determinate"
                             value={0}
-                            sx={{ borderRadius: '4px' }}
+                            sx={{ borderRadius: '4px', height: '6px' }}
                           />
                         </Box>
                         <Divider />
