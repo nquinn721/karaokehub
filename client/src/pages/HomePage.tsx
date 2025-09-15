@@ -252,11 +252,11 @@ const HomePage: React.FC = observer(() => {
         />
       </Box>
 
-      {/* Banner Ad Placement */}
+      {/* Banner Ad Placement - Mobile Only */}
       <Box
         sx={{
-          py: 4,
-          display: 'flex',
+          py: 2,
+          display: { xs: 'flex', md: 'none' }, // Only show on mobile/tablet
           justifyContent: 'center',
           backgroundColor: 'rgba(0, 0, 0, 0.02)',
         }}
@@ -264,12 +264,21 @@ const HomePage: React.FC = observer(() => {
         <MobileBanner position="between" variant="banner" />
       </Box>
 
-      {/* Desktop Leaderboard Ad */}
-      <Container maxWidth="lg" sx={{ py: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-          <LeaderboardAd />
-        </Box>
-      </Container>
+      {/* Desktop Leaderboard Ad - Desktop Only */}
+      <Box
+        sx={{
+          py: 4,
+          display: { xs: 'none', md: 'flex' }, // Only show on desktop
+          justifyContent: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.02)',
+        }}
+      >
+        <Container maxWidth="lg">
+          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            <LeaderboardAd />
+          </Box>
+        </Container>
+      </Box>
 
       {/* Music Library Hero Section */}
       <Box

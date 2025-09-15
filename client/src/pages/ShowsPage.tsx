@@ -329,7 +329,7 @@ const ShowsPage: React.FC = observer(() => {
                   </Box>
 
                   {/* Mobile Ad under search */}
-                  <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+                  <Box sx={{ mb: 0.5, display: 'flex', justifyContent: 'center' }}>
                     <MobileAd />
                   </Box>
                 </Box>

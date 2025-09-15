@@ -46,6 +46,7 @@ async function bootstrap() {
           scriptSrc: [
             "'self'",
             "'unsafe-inline'",
+            "'unsafe-eval'",
             'https://maps.googleapis.com',
             'https://maps.gstatic.com',
             'https://www.googletagmanager.com',

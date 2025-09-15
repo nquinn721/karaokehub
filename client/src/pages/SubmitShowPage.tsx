@@ -546,9 +546,7 @@ const SubmitShowPage: React.FC = observer(() => {
         </Box>
 
         {/* Mobile Banner Ad */}
-        {!subscriptionStore.hasAdFreeAccess && (
-          <MobileBanner position="between" variant="banner" />
-        )}
+        {!subscriptionStore.hasAdFreeAccess && <MobileBanner position="between" variant="banner" />}
 
         <Paper
           elevation={0}
@@ -630,12 +628,13 @@ const SubmitShowPage: React.FC = observer(() => {
                 iconPosition="start"
                 sx={{ gap: 1 }}
               />
-              <Tab
+              {/* Temporarily disabled URL submission tab */}
+              {/* <Tab
                 icon={<Link />}
                 label="Submit URL for Review"
                 iconPosition="start"
                 sx={{ gap: 1 }}
-              />
+              /> */}
               <Tab
                 icon={<Event />}
                 label="Add Show Manually"
