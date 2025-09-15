@@ -841,12 +841,10 @@ const DashboardPage: React.FC = observer(() => {
               </Box>
             </Box>
 
-            {/* Ad placement after welcome section - only show if not ad-free */}
-            {!subscriptionStore.hasAdFreeAccess && (
-              <Box sx={{ mb: 4 }}>
-                <MobileBanner position="between" variant="banner" />
-              </Box>
-            )}
+            {/* Ad placement after welcome section */}
+            <Box sx={{ mb: 4 }}>
+              <MobileBanner position="between" variant="banner" />
+            </Box>
 
             {/* Enhanced Stats Cards */}
             {/* Mobile: Compact Stats Card */}
@@ -1126,13 +1124,11 @@ const DashboardPage: React.FC = observer(() => {
               </Grid>
 
               {/* Native Banner between sections */}
-              {!subscriptionStore.hasAdFreeAccess && (
-                <Grid item xs={12}>
-                  <Box sx={{ my: 3, display: 'flex', justifyContent: 'center' }}>
-                    <NativeBannerAd />
-                  </Box>
-                </Grid>
-              )}
+              <Grid item xs={12}>
+                <Box sx={{ my: 3, display: 'flex', justifyContent: 'center' }}>
+                  <NativeBannerAd />
+                </Box>
+              </Grid>
 
               {/* Right Sidebar */}
               <Grid item xs={12} lg={4}>
@@ -1216,21 +1212,17 @@ const DashboardPage: React.FC = observer(() => {
                   </Card>
 
                   {/* Square Ad in Sidebar */}
-                  {!subscriptionStore.hasAdFreeAccess && (
-                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
-                      <SquareAd />
-                    </Box>
-                  )}
+                  <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+                    <SquareAd />
+                  </Box>
                 </Stack>
               </Grid>
             </Grid>
 
-            {/* Ad placement at bottom - only show if not ad-free */}
-            {!subscriptionStore.hasAdFreeAccess && (
-              <Box sx={{ mt: 4, mb: 2 }}>
-                <MobileBanner position="between" variant="banner" />
-              </Box>
-            )}
+            {/* Ad placement at bottom */}
+            <Box sx={{ mt: 4, mb: 2 }}>
+              <MobileBanner position="between" variant="banner" />
+            </Box>
           </Box>
         </Box>
       </Box>

@@ -1,4 +1,4 @@
-import { Body, Controller, Logger, Post, HttpStatus, HttpCode } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Logger, Post } from '@nestjs/common';
 
 interface CSPViolationReport {
   'csp-report': {

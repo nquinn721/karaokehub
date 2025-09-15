@@ -1,4 +1,6 @@
 import { Box } from '@mui/material';
+import { subscriptionStore } from '@stores/index';
+import { observer } from 'mobx-react-lite';
 import React, { useEffect, useRef } from 'react';
 
 interface AdsterraAdProps {
@@ -9,7 +11,8 @@ interface AdsterraAdProps {
   debug?: boolean;
 }
 
-export const AdsterraAd: React.FC<AdsterraAdProps> = ({
+// Base Adsterra Ad Component (internal use)
+const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
   adKey,
   width = 468,
   height = 60,
@@ -178,71 +181,110 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = ({
   );
 };
 
+// Subscription-aware wrapper for AdsterraAd
+export const AdsterraAd: React.FC<AdsterraAdProps> = observer((props) => {
+  // Don't show ads if user has ad-free access
+  if (subscriptionStore.hasAdFreeAccess) {
+    if (props.debug) {
+      console.log('AdsterraAd: Hiding ad - user has ad-free access');
+    }
+    return null;
+  }
+
+  return <BaseAdsterraAd {...props} />;
+});
+
 // Pre-configured ad components for common placements
 // BannerAd: 468x60 - Used between content sections, at bottom of pages
-export const BannerAd: React.FC<{ className?: string; debug?: boolean }> = ({
-  className,
-  debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
-}) => (
-  <AdsterraAd
-    adKey="038a9ad9f4d055803f60e71662aaf093"
-    width={468}
-    height={60}
-    className={className}
-    debug={debug}
-  />
+export const BannerAd: React.FC<{ className?: string; debug?: boolean }> = observer(
+  ({
+    className,
+    debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
+  }) => (
+    <AdsterraAd
+      adKey="038a9ad9f4d055803f60e71662aaf093"
+      width={468}
+      height={60}
+      className={className}
+      debug={debug}
+    />
+  ),
 );
 
 // SidebarAd: 160x600 - Tall sidebar ad for music list and similar pages
-export const SidebarAd: React.FC<{ className?: string; debug?: boolean }> = ({
-  className,
-  debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
-}) => (
-  <AdsterraAd
-    adKey="34ab6262a83446b76aea83e4e1c1347b"
-    width={160}
-    height={600}
-    className={className}
-    debug={debug}
-  />
+export const SidebarAd: React.FC<{ className?: string; debug?: boolean }> = observer(
+  ({
+    className,
+    debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
+  }) => (
+    <AdsterraAd
+      adKey="34ab6262a83446b76aea83e4e1c1347b"
+      width={160}
+      height={600}
+      className={className}
+      debug={debug}
+    />
+  ),
 );
 
-export const MobileAd: React.FC<{ className?: string; debug?: boolean }> = ({
-  className,
-  debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
-}) => (
-  <AdsterraAd
-    adKey="27549731" // Using the 320x50 banner ad key from your dashboard
-    width={320}
-    height={50}
-    className={className}
-    debug={debug}
-  />
+export const MobileAd: React.FC<{ className?: string; debug?: boolean }> = observer(
+  ({
+    className,
+    debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
+  }) => (
+    <AdsterraAd
+      adKey="27549731" // Using the 320x50 banner ad key from your dashboard
+      width={320}
+      height={50}
+      className={className}
+      debug={debug}
+    />
+  ),
 );
 
-export const SquareAd: React.FC<{ className?: string; debug?: boolean }> = ({
-  className,
-  debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
-}) => (
-  <AdsterraAd
-    adKey="038a9ad9f4d055803f60e71662aaf093"
-    width={250}
-    height={250}
-    className={className}
-    debug={debug}
-  />
+export const SquareAd: React.FC<{ className?: string; debug?: boolean }> = observer(
+  ({
+    className,
+    debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
+  }) => (
+    <AdsterraAd
+      adKey="038a9ad9f4d055803f60e71662aaf093"
+      width={250}
+      height={250}
+      className={className}
+      debug={debug}
+    />
+  ),
 );
 
 // Native Banner Ad: Blends with content for better engagement
-export const NativeBannerAd: React.FC<{ className?: string; debug?: boolean }> = ({
-  className,
-  debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
-}) => (
-  <AdsterraAd
-    adKey="27549712" // Using the Native Banner ad key from your dashboard
-    width={300}
-    height={250}
-    className={className}
-    debug={debug}
-  />
+export const NativeBannerAd: React.FC<{ className?: string; debug?: boolean }> = observer(
+  ({
+    className,
+    debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
+  }) => (
+    <AdsterraAd
+      adKey="27549712" // Using the Native Banner ad key from your dashboard
+      width={300}
+      height={250}
+      className={className}
+      debug={debug}
+    />
+  ),
+);
+
+// Leaderboard Ad: 728x90 - Premium desktop ad format for headers and content sections
+export const LeaderboardAd: React.FC<{ className?: string; debug?: boolean }> = observer(
+  ({
+    className,
+    debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
+  }) => (
+    <AdsterraAd
+      adKey="038a9ad9f4d055803f60e71662aaf093" // Using banner ad key for leaderboard
+      width={728}
+      height={90}
+      className={className}
+      debug={debug}
+    />
+  ),
 );

@@ -572,12 +572,10 @@ export const MusicPage: React.FC = observer(() => {
                 Featured Categories
               </Typography>
 
-              {/* Ad placement right below Featured Categories heading - only show if not ad-free */}
-              {!subscriptionStore.hasAdFreeAccess && (
-                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
-                  <MobileBanner position="between" variant="banner" />
-                </Box>
-              )}
+              {/* Ad placement right below Featured Categories heading */}
+              <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+                <MobileBanner position="between" variant="banner" />
+              </Box>
 
               <Grid container spacing={3}>
                 {musicStore.featuredCategories.map((category, index) => (
@@ -616,8 +614,8 @@ export const MusicPage: React.FC = observer(() => {
                       </Card>
                     </Grid>
 
-                    {/* Ad between rows - show after second row (6 categories) if not ad-free */}
-                    {!subscriptionStore.hasAdFreeAccess && index === 5 && (
+                    {/* Ad between rows - show after second row (6 categories) */}
+                    {index === 5 && (
                       <Grid item xs={12}>
                         <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
                           <MobileBanner position="between" variant="banner" />
@@ -628,12 +626,10 @@ export const MusicPage: React.FC = observer(() => {
                 ))}
               </Grid>
 
-              {/* Bottom banner ad - only show if not ad-free */}
-              {!subscriptionStore.hasAdFreeAccess && (
-                <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-                  <MobileBanner position="between" variant="banner" />
-                </Box>
-              )}
+              {/* Bottom banner ad */}
+              <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+                <MobileBanner position="between" variant="banner" />
+              </Box>
             </Box>
           )}
 
@@ -642,7 +638,7 @@ export const MusicPage: React.FC = observer(() => {
             <Box sx={{ px: 3 }}>
               <Grid container spacing={3}>
                 {/* Main Content Area */}
-                <Grid item xs={12} lg={subscriptionStore.hasAdFreeAccess ? 12 : 9}>
+                <Grid item xs={12} lg={9}>
                   {/* Quick Start Guide */}
                   <Box
                     sx={{
@@ -772,11 +768,9 @@ export const MusicPage: React.FC = observer(() => {
                   </Box>
 
                   {/* Native Banner - Content-style ad integration */}
-                  {!subscriptionStore.hasAdFreeAccess && (
-                    <Box sx={{ my: 4, display: 'flex', justifyContent: 'center' }}>
-                      <NativeBannerAd />
-                    </Box>
-                  )}
+                  <Box sx={{ my: 4, display: 'flex', justifyContent: 'center' }}>
+                    <NativeBannerAd />
+                  </Box>
 
                   <Box
                     sx={{
@@ -1054,9 +1048,8 @@ export const MusicPage: React.FC = observer(() => {
                             </ListItemButton>
                           </ListItem>
 
-                          {/* Ad between songs - show after every 10th song if not ad-free */}
-                          {!subscriptionStore.hasAdFreeAccess &&
-                            (index + 1) % 10 === 0 &&
+                          {/* Ad between songs - show after every 10th song */}
+                          {(index + 1) % 10 === 0 &&
                             index !== musicStore.sortedSongs.length - 1 && (
                               <ListItem sx={{ px: 0, py: 1 }}>
                                 <Box sx={{ width: '100%' }}>
@@ -1109,17 +1102,15 @@ export const MusicPage: React.FC = observer(() => {
                     )}
                 </Grid>
 
-                {/* Sidebar with Ads - only show if not ad-free */}
-                {!subscriptionStore.hasAdFreeAccess && (
-                  <Grid item xs={12} lg={3}>
-                    <Box sx={{ position: 'sticky', top: 20 }}>
-                      <SidebarAd />
-                      <Box sx={{ mt: 3 }}>
-                        <MobileBanner position="between" variant="banner" />
-                      </Box>
+                {/* Sidebar with Ads */}
+                <Grid item xs={12} lg={3}>
+                  <Box sx={{ position: 'sticky', top: 20 }}>
+                    <SidebarAd />
+                    <Box sx={{ mt: 3 }}>
+                      <MobileBanner position="between" variant="banner" />
                     </Box>
-                  </Grid>
-                )}
+                  </Box>
+                </Grid>
               </Grid>
             </Box>
           )}

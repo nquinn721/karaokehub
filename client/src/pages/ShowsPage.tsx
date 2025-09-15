@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
+import { MobileAd, SquareAd } from '../components/AdsterraAd';
 import { BottomSheet } from '../components/BottomSheet';
 import { DayOfWeek } from '../components/DayPicker/DayPicker';
 import MapComponent from '../components/MapComponent';
@@ -325,6 +326,11 @@ const ShowsPage: React.FC = observer(() => {
                       size="small"
                       shows={showStore.filteredShows}
                     />
+                  </Box>
+
+                  {/* Mobile Ad under search */}
+                  <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+                    <MobileAd />
                   </Box>
                 </Box>
 
@@ -919,6 +925,11 @@ const ShowsPage: React.FC = observer(() => {
                 }}
               >
                 <Typography variant="h6">Shows {showStore.filteredShows.length}</Typography>
+              </Box>
+
+              {/* Desktop sidebar ad */}
+              <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+                <SquareAd />
               </Box>
 
               {showStore.isLoading ? (

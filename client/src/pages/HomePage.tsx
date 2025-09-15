@@ -1,4 +1,4 @@
-import { NativeBannerAd } from '@components/AdsterraAd';
+import { BannerAd, LeaderboardAd } from '@components/AdsterraAd';
 import { CustomCard } from '@components/CustomCard';
 import GoogleOneTap from '@components/GoogleOneTap';
 import MobileBanner from '@components/MobileBanner';
@@ -12,7 +12,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Box, Button, Container, Grid, Typography, useTheme } from '@mui/material';
-import { authStore, subscriptionStore } from '@stores/index';
+import { authStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -253,18 +253,23 @@ const HomePage: React.FC = observer(() => {
       </Box>
 
       {/* Banner Ad Placement */}
-      {!subscriptionStore.hasAdFreeAccess && (
-        <Box
-          sx={{
-            py: 4,
-            display: 'flex',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(0, 0, 0, 0.02)',
-          }}
-        >
-          <MobileBanner position="between" variant="banner" />
+      <Box
+        sx={{
+          py: 4,
+          display: 'flex',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.02)',
+        }}
+      >
+        <MobileBanner position="between" variant="banner" />
+      </Box>
+
+      {/* Desktop Leaderboard Ad */}
+      <Container maxWidth="lg" sx={{ py: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <LeaderboardAd />
         </Box>
-      )}
+      </Container>
 
       {/* Music Library Hero Section */}
       <Box
@@ -457,6 +462,13 @@ const HomePage: React.FC = observer(() => {
         </Container>
       </Box>
 
+      {/* Desktop Banner Ad */}
+      <Container maxWidth="lg" sx={{ py: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+          <BannerAd />
+        </Box>
+      </Container>
+
       {/* Venue Discovery Hero Section */}
       <Box
         sx={{
@@ -547,12 +559,10 @@ const HomePage: React.FC = observer(() => {
       </Box>
 
       <Container maxWidth="lg" sx={{ mt: 8 }}>
-        {/* Ad placement - only show if not ad-free */}
-        {!subscriptionStore.hasAdFreeAccess && (
-          <Box sx={{ mb: 6 }}>
-            <MobileBanner position="between" variant="banner" />
-          </Box>
-        )}
+        {/* Ad placement */}
+        <Box sx={{ mb: 6 }}>
+          <MobileBanner position="between" variant="banner" />
+        </Box>
 
         {/* How KaraokeHub Works - Inspired by SingSpot's 3-step process */}
         <Box
@@ -672,18 +682,16 @@ const HomePage: React.FC = observer(() => {
         </Box>
 
         {/* Horizontal Banner Ad */}
-        {!subscriptionStore.hasAdFreeAccess && (
-          <Box sx={{ my: 6, display: 'flex', justifyContent: 'center' }}>
-            <MobileBanner position="between" variant="banner" />
-          </Box>
-        )}
+        <Box sx={{ my: 6, display: 'flex', justifyContent: 'center' }}>
+          <MobileBanner position="between" variant="banner" />
+        </Box>
 
-        {/* Native Banner - Content-style ad */}
-        {!subscriptionStore.hasAdFreeAccess && (
-          <Container maxWidth="lg" sx={{ py: 4 }}>
-            <NativeBannerAd />
-          </Container>
-        )}
+        {/* Desktop Banner Ad - Horizontal format */}
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+            <BannerAd />
+          </Box>
+        </Container>
 
         <Grid container spacing={4} sx={{ mt: 4 }}>
           <Grid item xs={12} md={4}>
@@ -742,11 +750,9 @@ const HomePage: React.FC = observer(() => {
         </Grid>
 
         {/* Second Ad placement - after features */}
-        {!subscriptionStore.hasAdFreeAccess && (
-          <Box sx={{ my: 8, display: 'flex', justifyContent: 'center' }}>
-            <MobileBanner position="between" variant="banner" />
-          </Box>
-        )}
+        <Box sx={{ my: 8, display: 'flex', justifyContent: 'center' }}>
+          <MobileBanner position="between" variant="banner" />
+        </Box>
 
         {/* Karaoke Tips Section - Great for SEO */}
         <Box sx={{ mt: 8, mb: 6 }}>
@@ -802,15 +808,10 @@ const HomePage: React.FC = observer(() => {
           </Grid>
         </Box>
 
-        {/* Ad placement after feature cards - only show if not ad-free */}
-        {!subscriptionStore.hasAdFreeAccess ? (
-          <Box sx={{ mt: 6, mb: 8 }}>
-            <MobileBanner position="between" variant="banner" />
-          </Box>
-        ) : (
-          // Add spacing for premium users who don't see ads
-          <Box sx={{ mb: 8 }} />
-        )}
+        {/* Ad placement after feature cards */}
+        <Box sx={{ mt: 6, mb: 8 }}>
+          <MobileBanner position="between" variant="banner" />
+        </Box>
       </Container>
 
       {/* Scroll to Top Button */}
