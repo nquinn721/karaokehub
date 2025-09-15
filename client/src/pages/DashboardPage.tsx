@@ -328,22 +328,22 @@ const DashboardPage: React.FC = observer(() => {
               >
                 <FontAwesomeIcon icon={faCalendar} size="sm" color="white" />
               </Box>
-              <Typography 
-                variant="h5" 
-                fontWeight={700} 
+              <Typography
+                variant="h5"
+                fontWeight={700}
                 color="success.main"
                 sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
               >
                 {showStats.todayCount}
               </Typography>
-              <Typography 
-                variant="caption" 
-                color="text.secondary" 
-                sx={{ 
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
                   fontWeight: 500,
                   fontSize: { xs: '0.65rem', sm: '0.75rem' },
                   display: 'block',
-                  lineHeight: 1.2
+                  lineHeight: 1.2,
                 }}
               >
                 Today's Shows
@@ -370,22 +370,22 @@ const DashboardPage: React.FC = observer(() => {
               >
                 <FontAwesomeIcon icon={faHeartSolid} size="sm" color="white" />
               </Box>
-              <Typography 
-                variant="h5" 
-                fontWeight={700} 
+              <Typography
+                variant="h5"
+                fontWeight={700}
                 color="primary.main"
                 sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
               >
                 {showStats.weekCount}
               </Typography>
-              <Typography 
-                variant="caption" 
-                color="text.secondary" 
-                sx={{ 
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
                   fontWeight: 500,
                   fontSize: { xs: '0.65rem', sm: '0.75rem' },
                   display: 'block',
-                  lineHeight: 1.2
+                  lineHeight: 1.2,
                 }}
               >
                 Favorite Shows
@@ -412,22 +412,22 @@ const DashboardPage: React.FC = observer(() => {
               >
                 <FontAwesomeIcon icon={faMusic} size="sm" color="white" />
               </Box>
-              <Typography 
-                variant="h5" 
-                fontWeight={700} 
+              <Typography
+                variant="h5"
+                fontWeight={700}
                 color="secondary.main"
                 sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
               >
                 {showStats.songFavoriteCount}
               </Typography>
-              <Typography 
-                variant="caption" 
-                color="text.secondary" 
-                sx={{ 
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
                   fontWeight: 500,
                   fontSize: { xs: '0.65rem', sm: '0.75rem' },
                   display: 'block',
-                  lineHeight: 1.2
+                  lineHeight: 1.2,
                 }}
               >
                 Favorite Songs
@@ -475,14 +475,14 @@ const DashboardPage: React.FC = observer(() => {
               >
                 {subscriptionStore.hasAdFreeAccess ? 'Pro' : 'Free'}
               </Typography>
-              <Typography 
-                variant="caption" 
-                color="text.secondary" 
-                sx={{ 
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
                   fontWeight: 500,
                   fontSize: { xs: '0.65rem', sm: '0.75rem' },
                   display: 'block',
-                  lineHeight: 1.2
+                  lineHeight: 1.2,
                 }}
               >
                 Subscription
@@ -845,13 +845,15 @@ const DashboardPage: React.FC = observer(() => {
           },
         }}
       >
-        <Box sx={{ 
-          maxWidth: { xs: '100%', sm: '95%', md: '1200px', xl: '1400px' }, 
-          mx: 'auto', 
-          py: { xs: 3, sm: 4, md: 6 }, 
-          position: 'relative', 
-          zIndex: 1 
-        }}>
+        <Box
+          sx={{
+            maxWidth: { xs: '100%', sm: '95%', md: '1200px', xl: '1400px' },
+            mx: 'auto',
+            py: { xs: 3, sm: 4, md: 6 },
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
           <Box sx={{ px: { xs: 2, sm: 3, md: 4 } }}>
             {/* Enhanced Welcome Header */}
             <Box sx={{ mb: { xs: 3, sm: 4, md: 5 }, textAlign: 'center' }}>
@@ -916,7 +918,11 @@ const DashboardPage: React.FC = observer(() => {
 
             {/* Desktop: Individual Stats Cards */}
             <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-              <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 3, sm: 4, md: 5 } }}>
+              <Grid
+                container
+                spacing={{ xs: 2, sm: 3, md: 4 }}
+                sx={{ mb: { xs: 3, sm: 4, md: 5 } }}
+              >
                 <Grid item xs={12} sm={6} lg={3}>
                   <StatCard
                     icon={faCalendar}
@@ -1000,9 +1006,9 @@ const DashboardPage: React.FC = observer(() => {
                           <FontAwesomeIcon icon={faHeartSolid} color="white" size="lg" />
                         </Box>
                         <Box>
-                          <Typography 
-                            variant="h5" 
-                            component="h2" 
+                          <Typography
+                            variant="h5"
+                            component="h2"
                             fontWeight={600}
                             sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
                           >
@@ -1218,8 +1224,8 @@ const DashboardPage: React.FC = observer(() => {
                     <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <FontAwesomeIcon icon={faChartLine} color={theme.palette.primary.main} />
-                        <Typography 
-                          variant="h6" 
+                        <Typography
+                          variant="h6"
                           fontWeight={600}
                           sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
                         >

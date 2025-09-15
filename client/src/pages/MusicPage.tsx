@@ -1,5 +1,5 @@
 import { WideAdWithUpgrade } from '@components/AdWithUpgrade';
-import { NativeBannerAd, SidebarAd } from '@components/AdsterraAd';
+import { LeaderboardAd, SidebarAd } from '@components/AdsterraAd';
 import MobileBanner from '@components/MobileBanner';
 import { ThumbnailAlbumArt } from '@components/OptimizedAlbumArt';
 import { PaywallModal } from '@components/PaywallModal';
@@ -767,9 +767,9 @@ export const MusicPage: React.FC = observer(() => {
                     </Box>
                   </Box>
 
-                  {/* Native Banner - Content-style ad integration */}
+                  {/* Leaderboard Banner - Horizontal ad integration */}
                   <Box sx={{ my: 4, display: 'flex', justifyContent: 'center' }}>
-                    <NativeBannerAd />
+                    <LeaderboardAd />
                   </Box>
 
                   <Box
@@ -1105,8 +1105,20 @@ export const MusicPage: React.FC = observer(() => {
                 {/* Sidebar with Ads */}
                 <Grid item xs={12} lg={3}>
                   <Box sx={{ position: 'sticky', top: 20 }}>
-                    <SidebarAd />
-                    <Box sx={{ mt: 3 }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        '& > div': {
+                          // Target the ad container
+                          margin: 0,
+                          padding: 0,
+                        },
+                      }}
+                    >
+                      <SidebarAd />
+                    </Box>
+                    <Box sx={{ mt: 2 }}>
                       <MobileBanner position="between" variant="banner" />
                     </Box>
                   </Box>
