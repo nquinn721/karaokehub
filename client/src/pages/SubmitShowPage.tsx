@@ -45,7 +45,7 @@ import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import CustomModal from '../components/CustomModal';
 import MobileBanner from '../components/MobileBanner';
-import { apiStore, authStore, parserStore, vendorStore } from '../stores';
+import { apiStore, authStore, parserStore, subscriptionStore, vendorStore } from '../stores';
 import { ParsedScheduleItem } from '../stores/ParserStore';
 import { Vendor } from '../stores/VendorStore';
 
@@ -546,7 +546,9 @@ const SubmitShowPage: React.FC = observer(() => {
         </Box>
 
         {/* Mobile Banner Ad */}
-        <MobileBanner position="between" variant="banner" />
+        {!subscriptionStore.hasAdFreeAccess && (
+          <MobileBanner position="between" variant="banner" />
+        )}
 
         <Paper
           elevation={0}
