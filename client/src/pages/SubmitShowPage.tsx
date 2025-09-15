@@ -28,6 +28,7 @@ import {
   DialogTitle,
   FormControl,
   Grid,
+  IconButton,
   InputLabel,
   ListItemText,
   MenuItem,
@@ -118,6 +119,9 @@ const SubmitShowPage: React.FC = observer(() => {
   // Image Upload state
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<
+    Array<{ id: string; dataUrl: string; file: File; name: string }>
+  >([]);
   const [selectedImageVendor, setSelectedImageVendor] = useState<Vendor | null>(null);
   const [imageVendorInputValue, setImageVendorInputValue] = useState('');
   const [imageAnalyzing, setImageAnalyzing] = useState(false);
@@ -388,10 +392,8 @@ const SubmitShowPage: React.FC = observer(() => {
     event.preventDefault();
     setIsDragOver(false);
 
-    const files = event.dataTransfer.files;
-    if (files.length > 0) {
-      handleImageFile(files[0]);
-    }
+    const files = Array.from(event.dataTransfer.files);
+    handleMultipleImageFiles(files, false); // Use multiple image handler with compound mode
   };
 
   const handleImageDragOver = (event: React.DragEvent) => {
@@ -407,11 +409,13 @@ const SubmitShowPage: React.FC = observer(() => {
   const handleImageFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      handleImageFile(files[0]);
+      handleMultipleImageFiles(Array.from(files), false); // Add to existing images
     }
   };
 
-  const handleImageFile = (file: File) => {
+  // Commented out unused function to fix TypeScript build
+  /*
+  const _handleImageFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
       setError('Please select a valid image file');
       return;
@@ -430,7 +434,117 @@ const SubmitShowPage: React.FC = observer(() => {
     };
     reader.readAsDataURL(file);
   };
+  */
 
+  const handleMultipleImageFiles = (files: File[], replaceMode: boolean = false) => {
+    const validImages: Array<{ id: string; dataUrl: string; file: File; name: string }> = [];
+    let invalidCount = 0;
+
+    const processFile = (file: File, index: number) => {
+      return new Promise<void>((resolve) => {
+        if (!file.type.startsWith('image/')) {
+          invalidCount++;
+          resolve();
+          return;
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+          // 10MB limit
+          invalidCount++;
+          resolve();
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const id = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`;
+          validImages.push({
+            id,
+            dataUrl: e.target?.result as string,
+            file,
+            name: file.name,
+          });
+          resolve();
+        };
+        reader.onerror = () => {
+          invalidCount++;
+          resolve();
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+
+    // Process all files
+    Promise.all(files.map((file, index) => processFile(file, index))).then(() => {
+      console.log(
+        `Processing ${files.length} files, valid: ${validImages.length}, replaceMode: ${replaceMode}`,
+      );
+      if (validImages.length > 0) {
+        if (replaceMode) {
+          console.log('Replacing all images');
+          setUploadedImages(validImages); // Replace all images
+        } else {
+          console.log('Adding to existing images');
+          setUploadedImages((prev) => {
+            console.log(`Previous count: ${prev.length}, adding: ${validImages.length}`);
+            return [...prev, ...validImages];
+          }); // Add to existing
+        }
+        setError('');
+      }
+
+      if (invalidCount > 0) {
+        setError(
+          `${invalidCount} file(s) were skipped (invalid format or too large). Please use image files under 10MB.`,
+        );
+      }
+    });
+  };
+
+  const removeImage = (imageId: string) => {
+    setUploadedImages((prev) => prev.filter((img) => img.id !== imageId));
+  };
+
+  /*
+  const _clearAllImages = () => {
+    setUploadedImages([]);
+    setError('');
+  };
+  */
+
+  const handleAnalyzeImages = async () => {
+    if (uploadedImages.length === 0) {
+      setError('Please upload at least one image first');
+      return;
+    }
+
+    setImageAnalyzing(true);
+    setError('');
+
+    try {
+      // For now, analyze the first image. In the future, you could analyze all images
+      const firstImage = uploadedImages[0];
+      const result = await parserStore.analyzeUserImage({
+        image: firstImage.dataUrl,
+        vendorId: selectedImageVendor?.id,
+      });
+
+      if (result.success) {
+        setImageAnalysisResult(result.data);
+        setShowAnalysisModal(true);
+        setSuccess(`Successfully analyzed image: ${firstImage.name}`);
+      } else {
+        setError(result.error || 'Failed to analyze image');
+      }
+    } catch (err) {
+      setError('Failed to analyze image');
+      console.error('Image analysis error:', err);
+    } finally {
+      setImageAnalyzing(false);
+    }
+  };
+
+  /*
   const handleAnalyzeImage = async () => {
     if (!uploadedImage) {
       setError('Please upload an image first');
@@ -460,6 +574,7 @@ const SubmitShowPage: React.FC = observer(() => {
       setImageAnalyzing(false);
     }
   };
+  */
 
   const handleSubmitImageAnalysis = async () => {
     if (!imageAnalysisResult) {
@@ -732,39 +847,119 @@ const SubmitShowPage: React.FC = observer(() => {
                     cursor: 'pointer',
                     mb: 3,
                   }}
-                  onClick={() => document.getElementById('image-upload')?.click()}
+                  onClick={() => {
+                    // Only trigger file browser if we don't have images
+                    if (uploadedImages.length === 0) {
+                      document.getElementById('image-upload')?.click();
+                    }
+                  }}
                 >
                   <input
                     type="file"
                     id="image-upload"
                     accept="image/*"
+                    multiple
                     style={{ display: 'none' }}
                     onChange={handleImageFileSelect}
                   />
-                  {uploadedImage ? (
+                  {uploadedImages.length > 0 ? (
                     <Box>
-                      <img
-                        src={uploadedImage}
-                        alt="Uploaded"
-                        style={{
-                          maxWidth: '100%',
-                          maxHeight: '300px',
-                          borderRadius: '8px',
-                          marginBottom: '16px',
+                      <Grid container spacing={2} sx={{ mb: 2 }}>
+                        {uploadedImages.map((image) => (
+                          <Grid item xs={6} sm={4} md={3} key={image.id}>
+                            <Box sx={{ position: 'relative' }}>
+                              <img
+                                src={image.dataUrl}
+                                alt={image.name}
+                                style={{
+                                  width: '100%',
+                                  height: '120px',
+                                  objectFit: 'cover',
+                                  borderRadius: '8px',
+                                }}
+                              />
+                              <IconButton
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeImage(image.id);
+                                }}
+                                sx={{
+                                  position: 'absolute',
+                                  top: 6,
+                                  right: 6,
+                                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                  color: 'white',
+                                  border: '2px solid rgba(255, 255, 255, 0.9)',
+                                  boxShadow: '0 3px 8px rgba(0, 0, 0, 0.4)',
+                                  backdropFilter: 'blur(4px)',
+                                  '&:hover': { 
+                                    backgroundColor: 'error.main',
+                                    color: 'white',
+                                    transform: 'scale(1.15)',
+                                    boxShadow: '0 4px 12px rgba(244, 67, 54, 0.5)',
+                                    border: '2px solid white',
+                                  },
+                                  width: 32,
+                                  height: 32,
+                                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                  zIndex: 10,
+                                }}
+                              >
+                                <Cancel sx={{ fontSize: 20, fontWeight: 'bold' }} />
+                              </IconButton>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  position: 'absolute',
+                                  bottom: 4,
+                                  left: 4,
+                                  right: 4,
+                                  backgroundColor: 'rgba(0,0,0,0.7)',
+                                  color: 'white',
+                                  padding: '2px 4px',
+                                  borderRadius: '4px',
+                                  fontSize: '10px',
+                                  textOverflow: 'ellipsis',
+                                  overflow: 'hidden',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {image.name}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        ))}
+                      </Grid>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          mt: 2,
                         }}
-                      />
-                      <Typography variant="body2" color="text.secondary">
-                        Click to change image or drag a new one here
-                      </Typography>
+                      >
+                        <Typography variant="body2" color="text.secondary">
+                          {uploadedImages.length} image(s) uploaded. Drag more images to add them.
+                        </Typography>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<CloudUpload />}
+                          onClick={() => document.getElementById('image-upload')?.click()}
+                          sx={{ ml: 2 }}
+                        >
+                          Add More Images
+                        </Button>
+                      </Box>
                     </Box>
                   ) : (
                     <Box>
                       <CloudUpload sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
                       <Typography variant="h6" gutterBottom>
-                        Drop an image here or click to browse
+                        Drop images here or click to browse
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Supports JPG, PNG, GIF, and other common image formats
+                        Supports multiple files: JPG, PNG, GIF, and other common image formats
                       </Typography>
                     </Box>
                   )}
@@ -775,8 +970,8 @@ const SubmitShowPage: React.FC = observer(() => {
                   <Button
                     variant="contained"
                     size="large"
-                    onClick={handleAnalyzeImage}
-                    disabled={!uploadedImage || imageAnalyzing}
+                    onClick={handleAnalyzeImages}
+                    disabled={uploadedImages.length === 0 || imageAnalyzing}
                     startIcon={imageAnalyzing ? <CircularProgress size={20} /> : <CloudUpload />}
                     sx={{
                       px: 3,
@@ -786,7 +981,9 @@ const SubmitShowPage: React.FC = observer(() => {
                       fontWeight: 600,
                     }}
                   >
-                    {imageAnalyzing ? 'Analyzing...' : 'Analyze Image'}
+                    {imageAnalyzing
+                      ? 'Analyzing Images...'
+                      : `Analyze ${uploadedImages.length} Image${uploadedImages.length > 1 ? 's' : ''}`}
                   </Button>
                 </Box>
 
