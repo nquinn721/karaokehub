@@ -1,7 +1,7 @@
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Fab, Tooltip, useMediaQuery, useTheme } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 interface FloatingAddShowButtonProps {
@@ -32,7 +32,7 @@ const FloatingAddShowButton: React.FC<FloatingAddShowButtonProps> = ({
 
   // Adjust bottom position based on device and page
   // On the shows page, position the FAB above the bottom sheet to ensure it's always accessible
-  const calculateBottomPosition = () => {
+  const calculateBottomPosition = useCallback(() => {
     if (isMobile) {
       if (isShowsPage) {
         // Calculate position above bottom sheet
@@ -52,13 +52,13 @@ const FloatingAddShowButton: React.FC<FloatingAddShowButtonProps> = ({
       return 24; // Standard mobile bottom position
     }
     return 24; // Standard desktop bottom position
-  };
+  }, [isMobile, isShowsPage]);
 
   // Update position when relevant conditions change
   useEffect(() => {
     const newPosition = calculateBottomPosition();
     setBottomPosition(newPosition);
-  }, [isMobile, isShowsPage]);
+  }, [isMobile, isShowsPage, calculateBottomPosition]);
 
   // Handle window resize
   useEffect(() => {
@@ -71,7 +71,7 @@ const FloatingAddShowButton: React.FC<FloatingAddShowButtonProps> = ({
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [isMobile, isShowsPage]);
+  }, [isMobile, isShowsPage, calculateBottomPosition]);
 
   const handleClick = () => {
     navigate('/submit');

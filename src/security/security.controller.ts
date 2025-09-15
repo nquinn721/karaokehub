@@ -1,4 +1,4 @@
-import { Body, Controller, Logger, Post } from '@nestjs/common';
+import { Body, Controller, Logger, Post, HttpStatus, HttpCode } from '@nestjs/common';
 
 interface CSPViolationReport {
   'csp-report': {
@@ -22,6 +22,7 @@ export class SecurityController {
   private readonly logger = new Logger(SecurityController.name);
 
   @Post('csp-violation-report')
+  @HttpCode(HttpStatus.NO_CONTENT)
   async reportCSPViolation(@Body() report: CSPViolationReport) {
     // Log CSP violations for monitoring and debugging
     this.logger.warn('CSP Violation Report:', {
