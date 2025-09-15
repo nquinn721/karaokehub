@@ -2,9 +2,11 @@ import AdminBreadcrumb from '@components/AdminBreadcrumb';
 import AdminDataTables from '@components/AdminDataTables';
 import DataUploadModal from '@components/DataUploadModal';
 import LocationTrackingModal from '@components/modals/LocationTrackingModal';
+import ShowAnalytics from '@components/ShowAnalytics';
 import UrlApprovalComponent from '@components/UrlApprovalComponent';
 import {
   faBars,
+  faChartBar,
   faChevronRight,
   faDatabase,
   faGlobe,
@@ -111,7 +113,7 @@ const AdminDashboardPageTabbed = observer(() => {
     }
 
     // Refresh URL count when switching to URL Approval Queue tab
-    if (newValue === 1) {
+    if (newValue === 2) {
       fetchUrlApprovalCount();
     }
   };
@@ -126,10 +128,17 @@ const AdminDashboardPageTabbed = observer(() => {
     },
     {
       id: 1,
+      title: 'Show Analytics',
+      icon: faChartBar,
+      description: 'Visualize show statistics and data insights',
+      component: <ShowAnalytics />,
+    },
+    {
+      id: 2,
       title: 'URL Approval Queue',
       icon: faGlobe,
       description: 'Review and approve submitted URLs',
-      component: <UrlApprovalComponent />,
+      component: <UrlApprovalComponent onCountChange={setUrlApprovalCount} />,
     },
   ];
 
@@ -697,6 +706,12 @@ const AdminDashboardPageTabbed = observer(() => {
                     sx={{ gap: 1 }}
                   />
                   <Tab
+                    icon={<FontAwesomeIcon icon={faChartBar} />}
+                    label="Show Analytics"
+                    iconPosition="start"
+                    sx={{ gap: 1 }}
+                  />
+                  <Tab
                     icon={
                       <Badge
                         badgeContent={urlApprovalCount}
@@ -727,6 +742,10 @@ const AdminDashboardPageTabbed = observer(() => {
             </TabPanel>
 
             <TabPanel value={tabValue} index={1}>
+              <ShowAnalytics />
+            </TabPanel>
+
+            <TabPanel value={tabValue} index={2}>
               <UrlApprovalComponent onCountChange={setUrlApprovalCount} />
             </TabPanel>
           </Paper>

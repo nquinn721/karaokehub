@@ -22,6 +22,14 @@ export interface Show {
   endTime: string;
   description?: string;
   isFlagged?: boolean; // Whether the show has been flagged as non-existent
+  submittedBy?: string; // User ID who submitted this show
+  submittedByUser?: {
+    id: string;
+    name: string;
+    email: string;
+    stageName?: string;
+    avatar?: string;
+  };
   dj?: {
     id: string;
     name: string;

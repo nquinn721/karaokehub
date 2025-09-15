@@ -484,7 +484,8 @@ export class AdminService {
       .createQueryBuilder('show')
       .leftJoinAndSelect('show.dj', 'dj')
       .leftJoinAndSelect('dj.vendor', 'vendor')
-      .leftJoinAndSelect('show.venue', 'venue');
+      .leftJoinAndSelect('show.venue', 'venue')
+      .leftJoinAndSelect('show.submittedByUser', 'submittedBy');
 
     if (search) {
       query.where(
