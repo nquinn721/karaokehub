@@ -1876,7 +1876,7 @@ const SubmitShowPage: React.FC = observer(() => {
           </DialogActions>
         </Dialog>
 
-        {/* Image Analysis Results Modal */}
+        {/* Enhanced Image Analysis Results Modal */}
         <CustomModal
           open={showAnalysisModal}
           onClose={() => setShowAnalysisModal(false)}
@@ -1885,274 +1885,509 @@ const SubmitShowPage: React.FC = observer(() => {
         >
           {imageAnalysisResult && (
             <Box>
-              {/* Vendor Information */}
-              {(imageAnalysisResult.vendor || selectedImageVendor) && (
-                <Box
-                  sx={{
-                    mb: 3,
-                    p: 2,
-                    bgcolor: 'background.paper',
-                    borderRadius: 1,
-                    border: '1px solid rgba(255,255,255,0.1)',
-                  }}
-                >
-                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                    Vendor/Business Information:
+              {/* Summary Card */}
+              <Card
+                sx={{ mb: 3, border: '1px solid', borderColor: 'primary.light', borderRadius: 2 }}
+              >
+                <Box sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
+                  >
+                    📊 Analysis Summary
                   </Typography>
-
-                  {/* User Selected Vendor */}
-                  {selectedImageVendor && (
-                    <Box sx={{ mb: 2, p: 1.5, bgcolor: 'success.dark', borderRadius: 1 }}>
-                      <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                        👤 User Selected Vendor:
+                </Box>
+                <Box sx={{ p: 2 }}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="body2" color="text.secondary">
+                        Vendors
                       </Typography>
-                      <Typography variant="body2" sx={{ ml: 2 }}>
-                        <strong>Name:</strong> {selectedImageVendor.name}
+                      <Typography variant="h6" fontWeight="600" color="secondary.main">
+                        {(imageAnalysisResult.vendors?.length || 0) +
+                          (imageAnalysisResult.vendor ? 1 : 0)}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="body2" color="text.secondary">
+                        Venues
+                      </Typography>
+                      <Typography variant="h6" fontWeight="600" color="info.main">
+                        {imageAnalysisResult.venues?.length || 0}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="body2" color="text.secondary">
+                        DJs
+                      </Typography>
+                      <Typography variant="h6" fontWeight="600" color="warning.main">
+                        {imageAnalysisResult.djs?.length || 0}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <Typography variant="body2" color="text.secondary">
+                        Shows
+                      </Typography>
+                      <Typography variant="h6" fontWeight="600" color="success.main">
+                        {imageAnalysisResult.shows?.length || 0}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Box>
+              </Card>
+
+              {/* User Selected Vendor */}
+              {selectedImageVendor && (
+                <Card
+                  sx={{ mb: 3, border: '1px solid', borderColor: 'success.light', borderRadius: 2 }}
+                >
+                  <Box sx={{ p: 2, bgcolor: 'success.light', color: 'success.contrastText' }}>
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
+                    >
+                      👤 User Selected Vendor
+                    </Typography>
+                  </Box>
+                  <Box sx={{ p: 2 }}>
+                    <Grid container spacing={1}>
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary">
+                          Name
+                        </Typography>
+                        <Typography variant="body1" fontWeight="600">
+                          {selectedImageVendor.name}
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                </Card>
+              )}
+
+              {/* AI Detected Vendor */}
+              {imageAnalysisResult.vendor &&
+                imageAnalysisResult.vendor.name &&
+                !imageAnalysisResult.vendor.name.includes('admin-upload-user-submission') &&
+                !imageAnalysisResult.vendor.name.includes('User uploaded image') && (
+                  <Card
+                    sx={{
+                      mb: 3,
+                      border: '1px solid',
+                      borderColor: 'primary.light',
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Box sx={{ p: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+                      <Typography
+                        variant="h6"
+                        sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
+                      >
+                        🏢 AI Detected Vendor
                       </Typography>
                     </Box>
-                  )}
-
-                  {/* AI Detected Vendor - only show if meaningful vendor data exists */}
-                  {imageAnalysisResult.vendor &&
-                    imageAnalysisResult.vendor.name &&
-                    !imageAnalysisResult.vendor.name.includes('admin-upload-user-submission') &&
-                    !imageAnalysisResult.vendor.name.includes('User uploaded image') && (
-                      <Box
-                        sx={{
-                          p: 1.5,
-                          bgcolor: 'background.paper',
-                          border: 1,
-                          borderColor: 'divider',
-                          borderRadius: 1,
-                        }}
-                      >
-                        <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                          🤖 AI Detected Vendor:
-                        </Typography>
-                        <Typography variant="body2" sx={{ ml: 2, mb: 1 }}>
-                          <strong>Name:</strong> {imageAnalysisResult.vendor.name}
-                        </Typography>
+                    <Box sx={{ p: 2 }}>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Name
+                          </Typography>
+                          <Typography variant="body1" fontWeight="600">
+                            {imageAnalysisResult.vendor.name}
+                          </Typography>
+                        </Grid>
+                        {imageAnalysisResult.vendor.confidence && (
+                          <Grid item xs={12} sm={6}>
+                            <Typography variant="body2" color="text.secondary">
+                              Confidence
+                            </Typography>
+                            <Typography variant="body1" fontWeight="600" color="success.main">
+                              {Math.round(imageAnalysisResult.vendor.confidence * 100)}%
+                            </Typography>
+                          </Grid>
+                        )}
                         {imageAnalysisResult.vendor.description &&
                           !imageAnalysisResult.vendor.description.includes(
                             'User uploaded image',
                           ) && (
-                            <Typography variant="body2" sx={{ ml: 2, mb: 1 }}>
-                              <strong>Description:</strong> {imageAnalysisResult.vendor.description}
-                            </Typography>
+                            <Grid item xs={12}>
+                              <Typography variant="body2" color="text.secondary">
+                                Description
+                              </Typography>
+                              <Typography variant="body1">
+                                {imageAnalysisResult.vendor.description}
+                              </Typography>
+                            </Grid>
                           )}
                         {imageAnalysisResult.vendor.website &&
                           !imageAnalysisResult.vendor.website.includes(
                             'admin-upload-user-submission',
                           ) && (
-                            <Typography variant="body2" sx={{ ml: 2, mb: 1 }}>
-                              <strong>Website:</strong> {imageAnalysisResult.vendor.website}
-                            </Typography>
+                            <Grid item xs={12}>
+                              <Typography variant="body2" color="text.secondary">
+                                Website
+                              </Typography>
+                              <Typography variant="body1">
+                                {imageAnalysisResult.vendor.website}
+                              </Typography>
+                            </Grid>
                           )}
-                        {imageAnalysisResult.vendor.confidence && (
-                          <Typography variant="body2" sx={{ ml: 2, color: 'text.secondary' }}>
-                            <strong>Confidence:</strong>{' '}
-                            {Math.round(imageAnalysisResult.vendor.confidence * 100)}%
-                          </Typography>
-                        )}
-                      </Box>
-                    )}
-                </Box>
-              )}
+                      </Grid>
+                    </Box>
+                  </Card>
+                )}
 
-              {/* Vendors (Multiple) Information */}
+              {/* Vendors (Multiple) */}
               {imageAnalysisResult.vendors?.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                    Vendors Found ({imageAnalysisResult.vendors.length}):
-                  </Typography>
-                  {imageAnalysisResult.vendors.map((vendor: any, index: number) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        ml: 2,
-                        mb: 2,
-                        p: 2,
-                        bgcolor: 'background.paper',
-                        borderRadius: 1,
-                        border: '1px solid rgba(255,255,255,0.1)',
-                      }}
+                <Card
+                  sx={{
+                    mb: 3,
+                    border: '1px solid',
+                    borderColor: 'secondary.light',
+                    borderRadius: 2,
+                  }}
+                >
+                  <Box sx={{ p: 2, bgcolor: 'secondary.light', color: 'secondary.contrastText' }}>
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
                     >
-                      <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
-                        {vendor.name}
-                      </Typography>
-                      {vendor.description && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Description:</strong> {vendor.description}
-                        </Typography>
-                      )}
-                      {vendor.website && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Website:</strong> {vendor.website}
-                        </Typography>
-                      )}
-                      {vendor.owner && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Owner:</strong> {vendor.owner}
-                        </Typography>
-                      )}
-                      {vendor.confidence && (
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          <strong>Confidence:</strong> {Math.round(vendor.confidence * 100)}%
-                        </Typography>
-                      )}
-                    </Box>
-                  ))}
-                </Box>
+                      🏭 Vendors ({imageAnalysisResult.vendors.length})
+                    </Typography>
+                  </Box>
+                  <Box sx={{ p: 2 }}>
+                    <Grid container spacing={2}>
+                      {imageAnalysisResult.vendors.map((vendor: any, index: number) => (
+                        <Grid item xs={12} md={6} key={index}>
+                          <Paper
+                            sx={{
+                              p: 2,
+                              border: '1px solid',
+                              borderColor: 'grey.200',
+                              borderRadius: 1,
+                            }}
+                          >
+                            <Grid container spacing={1}>
+                              <Grid item xs={12}>
+                                <Typography variant="body2" color="text.secondary">
+                                  Name
+                                </Typography>
+                                <Typography variant="body1" fontWeight="600">
+                                  {vendor.name || 'Unknown'}
+                                </Typography>
+                              </Grid>
+                              {vendor.confidence && (
+                                <Grid item xs={12} sm={6}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Confidence
+                                  </Typography>
+                                  <Typography variant="body1" fontWeight="600" color="success.main">
+                                    {Math.round(vendor.confidence * 100)}%
+                                  </Typography>
+                                </Grid>
+                              )}
+                              {vendor.description && (
+                                <Grid item xs={12}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Description
+                                  </Typography>
+                                  <Typography variant="body1">{vendor.description}</Typography>
+                                </Grid>
+                              )}
+                              {vendor.website && (
+                                <Grid item xs={12}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Website
+                                  </Typography>
+                                  <Typography variant="body1">{vendor.website}</Typography>
+                                </Grid>
+                              )}
+                              {vendor.owner && (
+                                <Grid item xs={12}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Owner
+                                  </Typography>
+                                  <Typography variant="body1">{vendor.owner}</Typography>
+                                </Grid>
+                              )}
+                            </Grid>
+                          </Paper>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Box>
+                </Card>
               )}
 
-              {/* Venues Information */}
+              {/* Venues */}
               {imageAnalysisResult.venues?.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                    Venues Found ({imageAnalysisResult.venues.length}):
-                  </Typography>
-                  {imageAnalysisResult.venues.map((venue: any, index: number) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        ml: 2,
-                        mb: 2,
-                        p: 2,
-                        bgcolor: 'background.paper',
-                        borderRadius: 1,
-                        border: '1px solid rgba(255,255,255,0.1)',
-                      }}
+                <Card
+                  sx={{ mb: 3, border: '1px solid', borderColor: 'info.light', borderRadius: 2 }}
+                >
+                  <Box sx={{ p: 2, bgcolor: 'info.light', color: 'info.contrastText' }}>
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
                     >
-                      <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
-                        📍 {venue.name}
-                      </Typography>
-                      {venue.address && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Address:</strong> {venue.address}
-                        </Typography>
-                      )}
-                      {(venue.city || venue.state || venue.zip) && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Location:</strong>{' '}
-                          {[venue.city, venue.state, venue.zip].filter(Boolean).join(', ')}
-                        </Typography>
-                      )}
-                      {venue.lat && venue.lng && (
-                        <Typography variant="body2" sx={{ mb: 0.5, color: 'success.main' }}>
-                          <strong>Coordinates:</strong> {venue.lat}, {venue.lng}
-                        </Typography>
-                      )}
-                      {venue.phone && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>📞 Phone:</strong> {venue.phone}
-                        </Typography>
-                      )}
-                      {venue.website && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>🌐 Website:</strong> {venue.website}
-                        </Typography>
-                      )}
-                      {venue.confidence && (
-                        <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 600 }}>
-                          <strong>✓ Confidence:</strong> {Math.round(venue.confidence * 100)}%
-                        </Typography>
-                      )}
-                    </Box>
-                  ))}
-                </Box>
+                      📍 Venues ({imageAnalysisResult.venues.length})
+                    </Typography>
+                  </Box>
+                  <Box sx={{ p: 2 }}>
+                    <Grid container spacing={2}>
+                      {imageAnalysisResult.venues.map((venue: any, index: number) => (
+                        <Grid item xs={12} md={6} key={index}>
+                          <Paper
+                            sx={{
+                              p: 2,
+                              border: '1px solid',
+                              borderColor: 'grey.200',
+                              borderRadius: 1,
+                            }}
+                          >
+                            <Grid container spacing={1}>
+                              <Grid item xs={12}>
+                                <Typography variant="body2" color="text.secondary">
+                                  Name
+                                </Typography>
+                                <Typography variant="body1" fontWeight="600">
+                                  {venue.name || 'Unknown'}
+                                </Typography>
+                              </Grid>
+                              {venue.address && (
+                                <Grid item xs={12}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Full Address
+                                  </Typography>
+                                  <Typography variant="body1">
+                                    {venue.address}
+                                    {venue.city && `, ${venue.city}`}
+                                    {venue.state && `, ${venue.state}`}
+                                    {venue.zip && ` ${venue.zip}`}
+                                  </Typography>
+                                </Grid>
+                              )}
+                              {(venue.city || venue.state) && (
+                                <Grid item xs={12} sm={6}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Location
+                                  </Typography>
+                                  <Typography variant="body1">
+                                    {venue.city && venue.state
+                                      ? `${venue.city}, ${venue.state}`
+                                      : venue.city || venue.state}
+                                  </Typography>
+                                </Grid>
+                              )}
+                              {venue.zip && (
+                                <Grid item xs={12} sm={6}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    ZIP Code
+                                  </Typography>
+                                  <Typography variant="body1">{venue.zip}</Typography>
+                                </Grid>
+                              )}
+                              {venue.lat && venue.lng && (
+                                <Grid item xs={12}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Coordinates
+                                  </Typography>
+                                  <Typography
+                                    variant="body1"
+                                    sx={{ fontFamily: 'monospace', fontSize: '0.9rem' }}
+                                  >
+                                    {venue.lat}, {venue.lng}
+                                  </Typography>
+                                </Grid>
+                              )}
+                              {venue.phone && (
+                                <Grid item xs={12} sm={6}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Phone
+                                  </Typography>
+                                  <Typography variant="body1">{venue.phone}</Typography>
+                                </Grid>
+                              )}
+                              {venue.website && (
+                                <Grid item xs={12}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Website
+                                  </Typography>
+                                  <Typography variant="body1">{venue.website}</Typography>
+                                </Grid>
+                              )}
+                              {venue.confidence && (
+                                <Grid item xs={12} sm={6}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Confidence
+                                  </Typography>
+                                  <Typography variant="body1" fontWeight="600" color="success.main">
+                                    {Math.round(venue.confidence * 100)}%
+                                  </Typography>
+                                </Grid>
+                              )}
+                            </Grid>
+                          </Paper>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Box>
+                </Card>
               )}
 
-              {/* DJs Information */}
+              {/* DJs */}
               {imageAnalysisResult.djs?.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                    DJs Found ({imageAnalysisResult.djs.length}):
-                  </Typography>
-                  {imageAnalysisResult.djs.map((dj: any, index: number) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        ml: 2,
-                        mb: 1,
-                        p: 2,
-                        bgcolor: 'background.paper',
-                        borderRadius: 1,
-                        border: '1px solid rgba(255,255,255,0.1)',
-                      }}
+                <Card
+                  sx={{ mb: 3, border: '1px solid', borderColor: 'warning.light', borderRadius: 2 }}
+                >
+                  <Box sx={{ p: 2, bgcolor: 'warning.light', color: 'warning.contrastText' }}>
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
                     >
-                      <Typography variant="body2" fontWeight={600}>
-                        {dj.name}
-                      </Typography>
-                      {dj.context && (
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          <strong>Context:</strong> {dj.context}
-                        </Typography>
-                      )}
-                      {dj.confidence && (
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          <strong>Confidence:</strong> {Math.round(dj.confidence * 100)}%
-                        </Typography>
-                      )}
-                    </Box>
-                  ))}
-                </Box>
+                      🎧 DJs ({imageAnalysisResult.djs.length})
+                    </Typography>
+                  </Box>
+                  <Box sx={{ p: 2 }}>
+                    <Grid container spacing={2}>
+                      {imageAnalysisResult.djs.map((dj: any, index: number) => (
+                        <Grid item xs={12} sm={6} md={4} key={index}>
+                          <Paper
+                            sx={{
+                              p: 2,
+                              border: '1px solid',
+                              borderColor: 'grey.200',
+                              borderRadius: 1,
+                            }}
+                          >
+                            <Grid container spacing={1}>
+                              <Grid item xs={12}>
+                                <Typography variant="body2" color="text.secondary">
+                                  Name
+                                </Typography>
+                                <Typography variant="body1" fontWeight="600">
+                                  {dj.name || 'Unknown'}
+                                </Typography>
+                              </Grid>
+                              {dj.context && (
+                                <Grid item xs={12}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Context
+                                  </Typography>
+                                  <Typography variant="body1">{dj.context}</Typography>
+                                </Grid>
+                              )}
+                              {dj.confidence && (
+                                <Grid item xs={12}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Confidence
+                                  </Typography>
+                                  <Typography variant="body1" fontWeight="600" color="success.main">
+                                    {Math.round(dj.confidence * 100)}%
+                                  </Typography>
+                                </Grid>
+                              )}
+                            </Grid>
+                          </Paper>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Box>
+                </Card>
               )}
 
-              {/* Shows Information */}
+              {/* Karaoke Shows */}
               {imageAnalysisResult.shows?.length > 0 && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                    Shows Found ({imageAnalysisResult.shows.length}):
-                  </Typography>
-                  {imageAnalysisResult.shows.map((show: any, index: number) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        ml: 2,
-                        mb: 2,
-                        p: 2,
-                        bgcolor: 'background.paper',
-                        borderRadius: 1,
-                        border: '1px solid rgba(255,255,255,0.1)',
-                      }}
+                <Card
+                  sx={{ mb: 3, border: '1px solid', borderColor: 'success.light', borderRadius: 2 }}
+                >
+                  <Box sx={{ p: 2, bgcolor: 'success.light', color: 'success.contrastText' }}>
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}
                     >
-                      <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
-                        {show.venueName || show.venue}
-                      </Typography>
-                      {show.day && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Day:</strong> {show.day}
-                        </Typography>
-                      )}
-                      {(show.time || show.startTime) && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Time:</strong> {show.time || show.startTime}
-                          {show.endTime && ` - ${show.endTime}`}
-                        </Typography>
-                      )}
-                      {show.djName && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>DJ:</strong> {show.djName}
-                        </Typography>
-                      )}
-                      {show.vendor && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Vendor:</strong> {show.vendor}
-                        </Typography>
-                      )}
-                      {show.description && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Description:</strong> {show.description}
-                        </Typography>
-                      )}
-                      {show.confidence && (
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          <strong>Confidence:</strong> {Math.round(show.confidence * 100)}%
-                        </Typography>
-                      )}
-                    </Box>
-                  ))}
-                </Box>
+                      🎤 Karaoke Shows ({imageAnalysisResult.shows.length})
+                    </Typography>
+                  </Box>
+                  <Box sx={{ p: 2 }}>
+                    <Grid container spacing={2}>
+                      {imageAnalysisResult.shows.map((show: any, index: number) => (
+                        <Grid item xs={12} md={6} key={index}>
+                          <Paper
+                            sx={{
+                              p: 2,
+                              border: '1px solid',
+                              borderColor: 'grey.200',
+                              borderRadius: 1,
+                            }}
+                          >
+                            <Grid container spacing={1}>
+                              <Grid item xs={12}>
+                                <Typography variant="body2" color="text.secondary">
+                                  Venue
+                                </Typography>
+                                <Typography variant="body1" fontWeight="600">
+                                  {show.venueName || show.venue || 'Unknown'}
+                                </Typography>
+                              </Grid>
+                              {show.day && (
+                                <Grid item xs={12} sm={6}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Day
+                                  </Typography>
+                                  <Typography variant="body1">{show.day}</Typography>
+                                </Grid>
+                              )}
+                              {(show.time || show.startTime) && (
+                                <Grid item xs={12} sm={6}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Time
+                                  </Typography>
+                                  <Typography variant="body1">
+                                    {show.time || show.startTime}
+                                    {show.endTime && ` - ${show.endTime}`}
+                                  </Typography>
+                                </Grid>
+                              )}
+                              {show.djName && (
+                                <Grid item xs={12} sm={6}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    DJ
+                                  </Typography>
+                                  <Typography variant="body1">{show.djName}</Typography>
+                                </Grid>
+                              )}
+                              {show.vendor && (
+                                <Grid item xs={12} sm={6}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Vendor
+                                  </Typography>
+                                  <Typography variant="body1">{show.vendor}</Typography>
+                                </Grid>
+                              )}
+                              {show.description && (
+                                <Grid item xs={12}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Description
+                                  </Typography>
+                                  <Typography variant="body1">{show.description}</Typography>
+                                </Grid>
+                              )}
+                              {show.confidence && (
+                                <Grid item xs={12} sm={6}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    Confidence
+                                  </Typography>
+                                  <Typography variant="body1" fontWeight="600" color="success.main">
+                                    {Math.round(show.confidence * 100)}%
+                                  </Typography>
+                                </Grid>
+                              )}
+                            </Grid>
+                          </Paper>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Box>
+                </Card>
               )}
 
               <Box sx={{ display: 'flex', gap: 2, mt: 3, justifyContent: 'flex-end' }}>

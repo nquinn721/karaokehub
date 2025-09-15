@@ -339,6 +339,8 @@ export class ShowStore {
       // Dynamic import to avoid circular dependency
       const { mapStore } = await import('./MapStore');
       if (mapStore && mapStore.isInitialized) {
+        // Clear the selected show to close any open info windows
+        mapStore.clearSelectedShow();
         // Let MapStore handle data fetching based on current zoom/location
         mapStore.refreshDataForCurrentView();
       }

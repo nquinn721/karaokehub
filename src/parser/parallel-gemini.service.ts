@@ -349,7 +349,6 @@ ${description ? `Description: ${description}` : ''}
 - Look for venue websites or social media handles
 - Extract any pricing information mentioned
 - Look for special event details or themes
-- SEPARATE venues from vendors/companies (venues = physical locations, vendors = service providers)
 
 📅 TIME & DATE EXTRACTION:
 - Extract specific dates if mentioned
@@ -363,10 +362,13 @@ ${description ? `Description: ${description}` : ''}
 - Look for social media handles for DJs
 - Extract any special DJ or host details
 
-🏭 VENDOR/COMPANY EXTRACTION:
-- Extract karaoke service companies (different from venues)
-- Look for company websites and contact information
-- Identify service providers vs physical locations
+🏭 VENDOR/COMPANY EXTRACTION - CRITICAL:
+- Look for karaoke service companies, DJ companies, or entertainment companies
+- These are different from venues - they are the businesses that PROVIDE karaoke services
+- Examples: "Steve's DJ Service", "Tri-State Entertainment", "All-Star Karaoke", "Music Masters"
+- Look for company names in text like "Brought to you by...", "Sponsored by...", "Karaoke by..."
+- Extract company websites and contact information
+- If a company name appears that provides karaoke services, include it as a vendor
 
 Expected JSON format:
 {
@@ -442,20 +444,20 @@ Expected JSON format:
     // Combine all data from successful analyses
     successfulResults.forEach((result) => {
       const data = result.data;
-      
+
       // Handle vendors (both singular and plural)
       if (data.vendor) {
         if (!primaryVendor) primaryVendor = data.vendor;
         allVendors.push(data.vendor);
       }
       if (data.vendors) allVendors.push(...data.vendors);
-      
+
       // Handle venues
       if (data.venues) allVenues.push(...data.venues);
-      
+
       // Handle DJs
       if (data.djs) allDJs.push(...data.djs);
-      
+
       // Handle shows
       if (data.shows) allShows.push(...data.shows);
     });

@@ -2704,13 +2704,37 @@ ${htmlContent}`;
         }
       }
 
+      // Handle empty DJs array gracefully - move before vendor check
+      const djsData = approvedData.djs || [];
+
+      // Ensure we have a primary vendor - create default if none detected
+      if (!primaryVendor && djsData.length > 0) {
+        this.logAndBroadcast('No vendors detected, creating default vendor for DJs', 'info');
+
+        // Check if default vendor already exists
+        let defaultVendor = await this.vendorRepository.findOne({
+          where: { name: 'User Submission' },
+        });
+
+        if (!defaultVendor) {
+          defaultVendor = this.vendorRepository.create({
+            name: 'User Submission',
+            owner: 'Community',
+            description: 'Default vendor for user-submitted content without detected vendor',
+            submittedBy: userId,
+          });
+          defaultVendor = await this.vendorRepository.save(defaultVendor);
+          this.logAndBroadcast(`Created default vendor with ID: ${defaultVendor.id}`, 'success');
+        }
+
+        primaryVendor = defaultVendor;
+        vendorMap.set('User Submission', defaultVendor);
+      }
+
       // 2. Create or update DJs (associate with their respective vendors) - Optimized for bulk operations
       const djMap = new Map<string, DJ>();
       let djsCreated = 0;
       let djsUpdated = 0;
-
-      // Handle empty DJs array gracefully
-      const djsData = approvedData.djs || [];
 
       // Collect all unique vendor+name combinations for bulk lookup
       const djLookupKeys = djsData
