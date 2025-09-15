@@ -36,6 +36,16 @@ interface ParallelAnalysisResult {
     failedImages: number;
     averageProcessingTime: number;
     parallelizationBenefit: string;
+    totalImages: number;
+    maxConcurrentWorkers: number;
+    batchesProcessed: number;
+    progressEvents: Array<{
+      timestamp: number;
+      completed: number;
+      total: number;
+      percentage: number;
+      message: string;
+    }>;
   };
 }
 
@@ -45,6 +55,7 @@ export class ParallelGeminiService {
 
   /**
    * Analyze multiple images in parallel using worker threads
+   * Similar to Facebook parser pattern with batching and progress tracking
    */
   async analyzeImagesInParallel(
     screenshots: string[],
@@ -60,48 +71,110 @@ export class ParallelGeminiService {
       // Prepare the base prompt for image analysis
       const basePrompt = this.generateImageAnalysisPrompt(url, description);
 
-      // Create analysis jobs
-      const jobs: ImageAnalysisJob[] = screenshots.map((screenshot, index) => ({
-        imageBase64: screenshot,
-        imageIndex: index,
-        prompt: basePrompt,
-        description,
-        venue: url,
-        url,
-      }));
+      // Initialize data array and progress tracking
+      const data: ImageAnalysisResult[] = [];
+      let processedCount = 0;
+      let successfulCount = 0;
+      let failedCount = 0;
 
-      // Process jobs in parallel with concurrency limit
-      const results = await this.processJobsInParallel(jobs, maxConcurrentWorkers);
+      // Process images in batches like Facebook parser
+      for (let i = 0; i < screenshots.length; i += maxConcurrentWorkers) {
+        const batchEndIndex = Math.min(i + maxConcurrentWorkers, screenshots.length);
+        const batchImages = screenshots.slice(i, batchEndIndex);
+        const batchSize = batchImages.length;
+        
+        this.logger.log(`📦 Processing batch ${Math.floor(i / maxConcurrentWorkers) + 1}: images ${i + 1}-${batchEndIndex} (${batchSize} images)`);
 
-      // Combine results from all successful analyses
-      const combinedData = this.combineAnalysisResults(results);
+        // Create worker promises for this batch
+        const workerPromises = batchImages.map((imageData, batchIndex) => {
+          const globalIndex = i + batchIndex;
+          return this.analyzeImageWithWorker({
+            imageBase64: imageData,
+            imageIndex: globalIndex,
+            prompt: basePrompt,
+            description,
+            venue: url,
+            url,
+          }, new Set());
+        });
+
+        // Process batch concurrently
+        const batchResults = await Promise.allSettled(workerPromises);
+
+        // Process batch results and update progress
+        batchResults.forEach((result, batchIndex) => {
+          const globalIndex = i + batchIndex;
+          processedCount++;
+
+          if (result.status === 'fulfilled') {
+            data.push(result.value);
+            if (result.value.success) {
+              successfulCount++;
+            } else {
+              failedCount++;
+            }
+          } else {
+            // Handle rejected promises
+            failedCount++;
+            data.push({
+              success: false,
+              imageIndex: globalIndex,
+              error: result.reason?.message || 'Worker promise rejected',
+              processingTime: 0,
+            });
+          }
+
+          // Log progress
+          const progressPercent = Math.round((processedCount / screenshots.length) * 100);
+          this.logger.log(`📊 Progress: ${processedCount}/${screenshots.length} (${progressPercent}%) - Success: ${successfulCount}, Failed: ${failedCount}`);
+        });
+
+        // Small delay between batches to be respectful to API
+        if (i + maxConcurrentWorkers < screenshots.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      // Sort results by original image index
+      data.sort((a, b) => a.imageIndex - b.imageIndex);
+
+      // Clean and combine data (like Facebook parser)
+      const cleanedData = this.combineAnalysisResults(data);
 
       const totalProcessingTime = Date.now() - startTime;
-      const successfulResults = results.filter(r => r.success);
-      const failedResults = results.filter(r => !r.success);
 
-      // Calculate parallelization benefit (estimated)
-      const avgProcessingTime = successfulResults.length > 0 
-        ? successfulResults.reduce((sum, r) => sum + r.processingTime, 0) / successfulResults.length 
+      // Calculate parallelization benefit
+      const avgProcessingTime = successfulCount > 0 
+        ? data.filter(r => r.success).reduce((sum, r) => sum + r.processingTime, 0) / successfulCount
         : 0;
       const estimatedSequentialTime = avgProcessingTime * screenshots.length;
       const timeSaved = estimatedSequentialTime - totalProcessingTime;
       const speedupFactor = estimatedSequentialTime > 0 ? (estimatedSequentialTime / totalProcessingTime).toFixed(2) : '1.00';
 
       this.logger.log(`✅ Parallel analysis completed in ${totalProcessingTime}ms`);
-      this.logger.log(`📊 Results: ${successfulResults.length} successful, ${failedResults.length} failed`);
-      this.logger.log(`⚡ Speedup: ${speedupFactor}x faster (saved ~${timeSaved}ms)`);
+      this.logger.log(`📊 Final Results: ${successfulCount} successful, ${failedCount} failed out of ${screenshots.length} total`);
+      this.logger.log(`⚡ Speedup: ${speedupFactor}x faster (saved ~${Math.round(timeSaved)}ms)`);
 
       return {
-        success: successfulResults.length > 0,
-        results,
-        combinedData,
+        success: successfulCount > 0,
+        results: data,
+        combinedData: cleanedData,
         totalProcessingTime,
         stats: {
-          successfulImages: successfulResults.length,
-          failedImages: failedResults.length,
+          successfulImages: successfulCount,
+          failedImages: failedCount,
+          totalImages: screenshots.length,
+          maxConcurrentWorkers,
+          batchesProcessed: Math.ceil(screenshots.length / maxConcurrentWorkers),
           averageProcessingTime: Math.round(avgProcessingTime),
           parallelizationBenefit: `${speedupFactor}x speedup, saved ~${Math.round(timeSaved)}ms`,
+          progressEvents: [{
+            timestamp: Date.now(),
+            completed: processedCount,
+            total: screenshots.length,
+            percentage: Math.round((processedCount / screenshots.length) * 100),
+            message: 'Batch processing completed'
+          }]
         },
       };
 
