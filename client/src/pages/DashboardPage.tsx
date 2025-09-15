@@ -1,4 +1,4 @@
-import { NativeBannerAd, SquareAd } from '@components/AdsterraAd';
+import { NativeBannerAd } from '@components/AdsterraAd';
 import FriendsList from '@components/FriendsList';
 import MobileBanner from '@components/MobileBanner';
 import { PaywallModal } from '@components/PaywallModal';
@@ -1304,10 +1304,8 @@ const DashboardPage: React.FC = observer(() => {
                     </CardContent>
                   </Card>
 
-                  {/* Square Ad in Sidebar */}
-                  <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
-                    <SquareAd />
-                  </Box>
+                  {/* Native Banner Ad in Sidebar */}
+                  <NativeBannerAd />
                 </Stack>
               </Grid>
             </Grid>

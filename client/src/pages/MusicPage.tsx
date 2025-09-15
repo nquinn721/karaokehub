@@ -1,6 +1,5 @@
 import { WideAdWithUpgrade } from '@components/AdWithUpgrade';
-import { LeaderboardAd, SidebarAd } from '@components/AdsterraAd';
-import MobileBanner from '@components/MobileBanner';
+import { BannerAd, LeaderboardAd, SidebarAd } from '@components/AdsterraAd';
 import { ThumbnailAlbumArt } from '@components/OptimizedAlbumArt';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
@@ -573,11 +572,9 @@ export const MusicPage: React.FC = observer(() => {
               </Typography>
 
               {/* Ad placement right below Featured Categories heading */}
-              {!authStore.isAdmin && !subscriptionStore.hasAdFreeAccess && (
-                <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
-                  <MobileBanner position="between" variant="banner" />
-                </Box>
-              )}
+              <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+                <BannerAd />
+              </Box>
 
               <Grid container spacing={3}>
                 {musicStore.featuredCategories.map((category, index) => (
@@ -617,10 +614,10 @@ export const MusicPage: React.FC = observer(() => {
                     </Grid>
 
                     {/* Ad between rows - show after second row (6 categories) */}
-                    {index === 5 && !authStore.isAdmin && !subscriptionStore.hasAdFreeAccess && (
+                    {index === 5 && (
                       <Grid item xs={12}>
                         <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-                          <MobileBanner position="between" variant="banner" />
+                          <BannerAd />
                         </Box>
                       </Grid>
                     )}
@@ -629,11 +626,9 @@ export const MusicPage: React.FC = observer(() => {
               </Grid>
 
               {/* Bottom banner ad */}
-              {!authStore.isAdmin && !subscriptionStore.hasAdFreeAccess && (
-                <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-                  <MobileBanner position="between" variant="banner" />
-                </Box>
-              )}
+              <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+                <BannerAd />
+              </Box>
             </Box>
           )}
 
@@ -1130,7 +1125,7 @@ export const MusicPage: React.FC = observer(() => {
                         <SidebarAd />
                       </Box>
                       <Box sx={{ mt: 2 }}>
-                        <MobileBanner position="between" variant="banner" />
+                        <BannerAd />
                       </Box>
                     </Box>
                   </Grid>

@@ -5,19 +5,21 @@ import React, { useEffect, useRef } from 'react';
 
 interface AdsterraAdProps {
   adKey: string;
-  width?: number;
-  height?: number;
+  width: number;
+  height: number;
   className?: string;
   debug?: boolean;
+  showPlaceholder?: boolean;
 }
 
 // Base Adsterra Ad Component (internal use)
 const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
   adKey,
-  width = 468,
-  height = 60,
+  width,
+  height,
   className,
   debug = false,
+  showPlaceholder = true,
 }) => {
   const adRef = useRef<HTMLDivElement>(null);
   const scriptLoadedRef = useRef<boolean>(false);
@@ -64,42 +66,78 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
       if (!adRef.current || !mountedRef.current) return;
 
       try {
-        // Set up the global atOptions for this ad
-        (window as any).atOptions = {
-          key: adKey,
-          format: 'iframe',
-          height: height,
-          width: width,
-          params: {},
-        };
-
-        // Create and load the Adsterra script
-        const script = document.createElement('script');
-        script.type = 'text/javascript';
-        script.src = `//www.highperformanceformat.com/${adKey}/invoke.js`;
-        script.async = true;
-
-        script.onload = () => {
-          if (mountedRef.current) {
-            scriptLoadedRef.current = true;
-            setIsAdLoaded(true);
-            if (debug) {
-              console.log('Adsterra script loaded successfully');
+        // Special handling for native banner format
+        if (adKey === '54560d75c04fd0479493b4cb2cef087d') {
+          // Native banner uses different loading mechanism
+          const script = document.createElement('script');
+          script.async = true;
+          script.setAttribute('data-cfasync', 'false');
+          script.src = '//pl27650211.revenuecpmgate.com/54560d75c04fd0479493b4cb2cef087d/invoke.js';
+          
+          script.onload = () => {
+            if (mountedRef.current) {
+              scriptLoadedRef.current = true;
+              setIsAdLoaded(true);
+              if (debug) {
+                console.log('Native banner script loaded successfully');
+              }
             }
-          }
-        };
+          };
 
-        script.onerror = () => {
-          if (mountedRef.current) {
-            setHasError(true);
-            if (debug) {
-              console.error('Failed to load Adsterra script');
+          script.onerror = () => {
+            if (mountedRef.current) {
+              setHasError(true);
+              if (debug) {
+                console.error('Failed to load native banner script');
+              }
             }
-          }
-        };
+          };
 
-        // Append script to the ad container
-        adRef.current.appendChild(script);
+          // Create container div for native banner
+          const containerDiv = document.createElement('div');
+          containerDiv.id = 'container-54560d75c04fd0479493b4cb2cef087d';
+          
+          adRef.current.appendChild(script);
+          adRef.current.appendChild(containerDiv);
+        } else {
+          // Standard iframe banner format
+          // Set up the global atOptions for this ad
+          (window as any).atOptions = {
+            key: adKey,
+            format: 'iframe',
+            height: height,
+            width: width,
+            params: {},
+          };
+
+          // Create and load the Adsterra script
+          const script = document.createElement('script');
+          script.type = 'text/javascript';
+          script.src = `//www.highperformanceformat.com/${adKey}/invoke.js`;
+          script.async = true;
+
+          script.onload = () => {
+            if (mountedRef.current) {
+              scriptLoadedRef.current = true;
+              setIsAdLoaded(true);
+              if (debug) {
+                console.log('Adsterra script loaded successfully');
+              }
+            }
+          };
+
+          script.onerror = () => {
+            if (mountedRef.current) {
+              setHasError(true);
+              if (debug) {
+                console.error('Failed to load Adsterra script');
+              }
+            }
+          };
+
+          // Append script to the ad container
+          adRef.current.appendChild(script);
+        }
 
         // Timeout to detect if ad failed to load
         setTimeout(() => {
@@ -137,43 +175,62 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
       ref={adRef}
       className={className}
       sx={{
-        width,
-        height,
-        minWidth: width,
-        minHeight: height,
+        width: `${width}px`,
+        height: `${height}px`,
+        minWidth: `${width}px`,
+        minHeight: `${height}px`,
+        maxWidth: `${width}px`,
+        maxHeight: `${height}px`,
         display: 'block',
-        backgroundColor: debug
-          ? hasError
-            ? 'rgba(255, 0, 0, 0.1)'
-            : isAdLoaded
-              ? 'rgba(0, 255, 0, 0.1)'
-              : 'rgba(0, 150, 255, 0.1)'
-          : 'transparent',
-        border: debug ? '1px dashed #0096ff' : 'none',
+        backgroundColor: showPlaceholder && !isAdLoaded && !hasError 
+          ? 'rgba(200, 200, 200, 0.1)' 
+          : debug
+            ? hasError
+              ? 'rgba(255, 0, 0, 0.1)'
+              : isAdLoaded
+                ? 'rgba(0, 255, 0, 0.1)'
+                : 'rgba(0, 150, 255, 0.1)'
+            : 'transparent',
+        border: showPlaceholder && !isAdLoaded && !hasError 
+          ? '1px solid rgba(200, 200, 200, 0.3)' 
+          : debug ? '1px dashed #0096ff' : 'none',
         borderRadius: 1,
         overflow: 'hidden',
         position: 'relative',
+        margin: 0,
+        padding: 0,
         '& iframe': {
           width: '100%',
           height: '100%',
           border: 'none',
+          display: 'block',
         },
-        // Loading indicator
-        '&:empty::after': debug
+        // Placeholder content
+        '&:empty::after': showPlaceholder || debug
           ? {
-              content: hasError
-                ? `"Ad Error (${adKey})"`
-                : isAdLoaded
-                  ? `"Ad Loaded (${adKey})"`
-                  : `"Loading Ad (${adKey})"`,
+              content: debug
+                ? hasError
+                  ? `"Ad Error (${adKey})"`
+                  : isAdLoaded
+                    ? `"Ad Loaded (${adKey})"`
+                    : `"Loading Ad (${adKey})"`
+                : hasError
+                  ? '"Advertisement"'
+                  : isAdLoaded
+                    ? '""'
+                    : '"Advertisement"',
               position: 'absolute',
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              color: hasError ? '#ff0000' : isAdLoaded ? '#00ff00' : '#0096ff',
-              fontSize: '12px',
+              color: debug 
+                ? (hasError ? '#ff0000' : isAdLoaded ? '#00ff00' : '#0096ff')
+                : 'rgba(150, 150, 150, 0.7)',
+              fontSize: debug ? '12px' : '14px',
               textAlign: 'center',
               pointerEvents: 'none',
+              fontFamily: 'Arial, sans-serif',
+              letterSpacing: '0.5px',
             }
           : {},
       }}
@@ -194,97 +251,194 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = observer((props) => {
   return <BaseAdsterraAd {...props} />;
 });
 
-// Pre-configured ad components for common placements
-// BannerAd: 468x60 - Used between content sections, at bottom of pages
+// Banner 468x60 - Small horizontal ad for content sections
 export const BannerAd: React.FC<{ className?: string; debug?: boolean }> = observer(
-  ({
-    className,
-    debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
-  }) => (
-    <AdsterraAd
-      adKey="038a9ad9f4d055803f60e71662aaf093"
-      width={468}
-      height={60}
-      className={className}
-      debug={debug}
-    />
-  ),
+  ({ className, debug = import.meta.env.DEV }) => {
+    // Don't show anything if user has ad-free access
+    if (subscriptionStore.hasAdFreeAccess) {
+      return null;
+    }
+
+    return (
+      <Box
+        className={className}
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          width: '100%',
+          minHeight: '60px',
+          my: 1,
+        }}
+      >
+        <AdsterraAd
+          adKey="038a9ad9f4d055803f60e71662aaf093"
+          width={468}
+          height={60}
+          debug={debug}
+          showPlaceholder={true}
+        />
+      </Box>
+    );
+  },
 );
 
-// SidebarAd: 160x600 - Tall sidebar ad for music list and similar pages
-export const SidebarAd: React.FC<{ className?: string; debug?: boolean }> = observer(
-  ({
-    className,
-    debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
-  }) => (
-    <AdsterraAd
-      adKey="34ab6262a83446b76aea83e4e1c1347b"
-      width={160}
-      height={600}
-      className={className}
-      debug={debug}
-    />
-  ),
-);
-
+// Banner 320x50 - Mobile banner format
 export const MobileAd: React.FC<{ className?: string; debug?: boolean }> = observer(
-  ({
-    className,
-    debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
-  }) => (
-    <AdsterraAd
-      adKey="27549731" // Using the 320x50 banner ad key from your dashboard
-      width={320}
-      height={50}
-      className={className}
-      debug={debug}
-    />
-  ),
+  ({ className, debug = import.meta.env.DEV }) => {
+    // Don't show anything if user has ad-free access
+    if (subscriptionStore.hasAdFreeAccess) {
+      return null;
+    }
+
+    return (
+      <Box
+        className={className}
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          width: '100%',
+          minHeight: '50px',
+          my: 1,
+        }}
+      >
+        <AdsterraAd
+          adKey="b549f615190383a65d0304eb918564ae"
+          width={320}
+          height={50}
+          debug={debug}
+          showPlaceholder={true}
+        />
+      </Box>
+    );
+  },
 );
 
-export const SquareAd: React.FC<{ className?: string; debug?: boolean }> = observer(
-  ({
-    className,
-    debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
-  }) => (
-    <AdsterraAd
-      adKey="038a9ad9f4d055803f60e71662aaf093"
-      width={250}
-      height={250}
-      className={className}
-      debug={debug}
-    />
-  ),
-);
-
-// Native Banner Ad: Blends with content for better engagement
-export const NativeBannerAd: React.FC<{ className?: string; debug?: boolean }> = observer(
-  ({
-    className,
-    debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
-  }) => (
-    <AdsterraAd
-      adKey="27549712" // Using the Native Banner ad key from your dashboard
-      width={300}
-      height={250}
-      className={className}
-      debug={debug}
-    />
-  ),
-);
-
-// Leaderboard Ad: 728x90 - Premium desktop ad format for headers and content sections
+// Banner 728x90 - Leaderboard format for headers and prominent placements
 export const LeaderboardAd: React.FC<{ className?: string; debug?: boolean }> = observer(
-  ({
-    className,
-    debug = import.meta.env.DEV, // Enable debug in development using Vite's built-in env
-  }) => (
-    <AdsterraAd
-      adKey="038a9ad9f4d055803f60e71662aaf093" // Using banner ad key for leaderboard
-      width={728}
-      height={90}
-      className={className}
-      debug={debug}
-    />
-  ),
+  ({ className, debug = import.meta.env.DEV }) => {
+    // Don't show anything if user has ad-free access
+    if (subscriptionStore.hasAdFreeAccess) {
+      return null;
+    }
+
+    return (
+      <Box
+        className={className}
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          width: '100%',
+          minHeight: '90px',
+          my: 2,
+        }}
+      >
+        <AdsterraAd
+          adKey="536884b13bc4f27d5af920ce7cd25cb4"
+          width={728}
+          height={90}
+          debug={debug}
+          showPlaceholder={true}
+        />
+      </Box>
+    );
+  },
+);
+
+// Banner 160x600 - Skyscraper format for sidebars
+export const SidebarAd: React.FC<{ className?: string; debug?: boolean }> = observer(
+  ({ className, debug = import.meta.env.DEV }) => {
+    // Don't show anything if user has ad-free access
+    if (subscriptionStore.hasAdFreeAccess) {
+      return null;
+    }
+
+    return (
+      <Box
+        className={className}
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+          width: '100%',
+          minHeight: '600px',
+          my: 2,
+        }}
+      >
+        <AdsterraAd
+          adKey="34ab6262a83446b76aea83e4e1c1347b"
+          width={160}
+          height={600}
+          debug={debug}
+          showPlaceholder={true}
+        />
+      </Box>
+    );
+  },
+);
+
+// Native Banner - Blends with content, responsive design
+export const NativeBannerAd: React.FC<{ className?: string; debug?: boolean }> = observer(
+  ({ className, debug = import.meta.env.DEV }) => {
+    // Don't show anything if user has ad-free access
+    if (subscriptionStore.hasAdFreeAccess) {
+      return null;
+    }
+
+    return (
+      <Box
+        className={className}
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          width: '100%',
+          minHeight: '250px',
+          my: 2,
+        }}
+      >
+        <AdsterraAd
+          adKey="54560d75c04fd0479493b4cb2cef087d"
+          width={300}
+          height={250}
+          debug={debug}
+          showPlaceholder={true}
+        />
+      </Box>
+    );
+  },
+);
+
+// Square Ad - For smaller sidebar placements (300x250 format)
+export const SquareAd: React.FC<{ className?: string; debug?: boolean }> = observer(
+  ({ className, debug = import.meta.env.DEV }) => {
+    // Don't show anything if user has ad-free access
+    if (subscriptionStore.hasAdFreeAccess) {
+      return null;
+    }
+
+    return (
+      <Box
+        className={className}
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          width: '100%',
+          minHeight: '250px',
+          my: 1.5,
+        }}
+      >
+        <AdsterraAd
+          adKey="54560d75c04fd0479493b4cb2cef087d" // Using native banner for square replacement
+          width={300}
+          height={250}
+          debug={debug}
+          showPlaceholder={true}
+        />
+      </Box>
+    );
+  },
 );

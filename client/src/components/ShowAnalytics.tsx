@@ -30,7 +30,7 @@ import {
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useMemo, useState } from 'react';
-import { showStore } from '../stores';
+import { adminStore } from '../stores';
 
 interface ShowAnalyticsProps {}
 
@@ -111,8 +111,8 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
   };
 
   useEffect(() => {
-    // Fetch shows data for analytics
-    showStore.fetchShows();
+    // Fetch shows data for analytics - using admin endpoint to get user relationships
+    adminStore.fetchShows(1, 10000); // Fetch a large number to get all shows
   }, []);
 
   const toggleCard = (cardId: string) => {
@@ -123,7 +123,7 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
   };
 
   // Calculate analytics
-  const shows = showStore.shows;
+  const shows = adminStore.shows?.items || [];
   const totalShows = shows.length;
 
   // City analytics
