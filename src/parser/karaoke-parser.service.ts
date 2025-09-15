@@ -13,6 +13,7 @@ import { Vendor } from '../vendor/vendor.entity';
 import { VenueService } from '../venue/venue.service';
 import { KaraokeWebSocketGateway } from '../websocket/websocket.gateway';
 import { FacebookParserService } from './facebook-parser.service';
+import { ParallelGeminiService } from './parallel-gemini.service';
 import { ParsedSchedule, ParseStatus } from './parsed-schedule.entity';
 import { UrlToParse } from './url-to-parse.entity';
 import { UrlToParseService } from './url-to-parse.service';
@@ -112,6 +113,7 @@ export class KaraokeParserService {
     private facebookParserService: FacebookParserService,
     private urlToParseService: UrlToParseService,
     private venueService: VenueService,
+    private parallelGeminiService: ParallelGeminiService,
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -5159,7 +5161,68 @@ Return ONLY valid JSON:
 
       return finalData;
     } catch (error) {
-      this.logAndBroadcast(`Error analyzing Instagram content: ${error.message}`, 'error');
+      this.logger.error(`Error analyzing Instagram content: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Analyze multiple screenshots with Gemini using parallel processing
+   * Uses workers to process images concurrently for better performance
+   */
+  async analyzeScreenshotsWithGeminiParallel(
+    screenshots: string[], // base64 encoded images
+    url: string,
+    description?: string,
+    maxConcurrentWorkers: number = 3, // Limit concurrent workers
+  ): Promise<ParsedKaraokeData> {
+    try {
+      this.logAndBroadcast(
+        `🚀 Starting PARALLEL analysis of ${screenshots.length} screenshots with max ${maxConcurrentWorkers} workers`,
+        'info',
+      );
+
+      // Use the parallel processing service
+      const parallelResult = await this.parallelGeminiService.analyzeImagesInParallel(
+        screenshots,
+        url,
+        description,
+        maxConcurrentWorkers,
+      );
+
+      if (!parallelResult.success) {
+        throw new Error('Parallel analysis failed - no successful results');
+      }
+
+      // Log performance benefits
+      this.logAndBroadcast(
+        `⚡ Parallel processing completed: ${parallelResult.stats.parallelizationBenefit}`,
+        'success',
+      );
+      this.logAndBroadcast(
+        `📊 Results: ${parallelResult.stats.successfulImages}/${screenshots.length} images processed successfully`,
+        'info',
+      );
+
+      // Add raw data for tracking
+      const finalData: ParsedKaraokeData = {
+        ...parallelResult.combinedData,
+        rawData: {
+          url,
+          title: `Parallel Analysis (${screenshots.length} images)`,
+          content: `Processed ${parallelResult.stats.successfulImages} images in parallel. ${parallelResult.stats.parallelizationBenefit}`,
+          parsedAt: new Date(),
+        },
+      };
+
+      this.logAndBroadcast(
+        `✅ Parallel analysis complete: ${finalData.shows?.length || 0} shows, ${finalData.djs?.length || 0} DJs, ${finalData.vendors?.length || 0} vendors`,
+        'success',
+      );
+
+      return finalData;
+    } catch (error) {
+      this.logAndBroadcast(`❌ Error in parallel analysis: ${error.message}`, 'error');
       throw error;
     }
   }

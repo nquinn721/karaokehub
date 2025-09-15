@@ -258,7 +258,7 @@ const AdminParserPage: React.FC = observer(() => {
     await analyzeMultipleImagesWithRetry(allImageDataUrls);
   };
 
-  // Image analysis function with retry logic for multiple images
+  // Image analysis function with retry logic for multiple images (using parallel processing)
   const analyzeMultipleImagesWithRetry = async (imageDataUrls: string[], retryCount = 0) => {
     const maxRetries = 3;
     const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff
@@ -267,10 +267,10 @@ const AdminParserPage: React.FC = observer(() => {
     setUploadFailed(false);
 
     try {
-      console.log(`🖼️ Analyzing ${imageDataUrls.length} images...`);
+      console.log(`� Analyzing ${imageDataUrls.length} images in parallel...`);
       
       const response = await fetch(
-        `${apiStore.environmentInfo.baseURL}/parser/analyze-admin-screenshots`,
+        `${apiStore.environmentInfo.baseURL}/parser/analyze-admin-screenshots-parallel`,
         {
           method: 'POST',
           headers: {
@@ -280,7 +280,8 @@ const AdminParserPage: React.FC = observer(() => {
           body: JSON.stringify({
             screenshots: imageDataUrls, // Pass all images
             vendor: selectedVendor?.name || vendorSearchValue || null,
-            description: `Admin uploaded ${imageDataUrls.length} image(s) for analysis`,
+            description: `Admin uploaded ${imageDataUrls.length} image(s) for parallel analysis`,
+            maxConcurrentWorkers: Math.min(imageDataUrls.length, 3), // Optimize worker count
           }),
         },
       );
@@ -292,20 +293,23 @@ const AdminParserPage: React.FC = observer(() => {
 
       const result = await response.json();
 
-      console.log('✅ Image analysis successful:', result);
+      console.log('✅ Parallel image analysis successful:', result);
 
       if (result.success && result.data) {
         openApprovalModal(result.data);
-        uiStore.addNotification(`Successfully analyzed ${imageDataUrls.length} image(s)`, 'success');
+        uiStore.addNotification(
+          `Successfully analyzed ${imageDataUrls.length} image(s) in parallel with speedup benefits`,
+          'success'
+        );
       } else {
-        throw new Error(result.error || 'Analysis failed');
+        throw new Error(result.error || 'Parallel analysis failed');
       }
     } catch (error: any) {
-      console.error(`Image analysis error (attempt ${retryCount + 1}):`, error);
+      console.error(`Parallel image analysis error (attempt ${retryCount + 1}):`, error);
 
       if (retryCount < maxRetries) {
         uiStore.addNotification(
-          `Analysis failed, retrying in ${retryDelay / 1000}s... (${retryCount + 1}/${maxRetries + 1})`,
+          `Parallel analysis failed, retrying in ${retryDelay / 1000}s... (${retryCount + 1}/${maxRetries + 1})`,
           'warning',
         );
 
@@ -315,7 +319,7 @@ const AdminParserPage: React.FC = observer(() => {
       } else {
         setUploadFailed(true);
         uiStore.addNotification(
-          `Failed to analyze images after ${maxRetries + 1} attempts. You can try again with the retry button.`,
+          `Failed to analyze images in parallel after ${maxRetries + 1} attempts. You can try again with the retry button.`,
           'error',
         );
       }

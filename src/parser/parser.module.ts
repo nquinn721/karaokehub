@@ -16,6 +16,7 @@ import { FacebookCookieValidatorService } from './facebook-cookie-validator.serv
 import { FacebookGroupDiscoveryService } from './facebook-group-discovery.service';
 import { FacebookParserService } from './facebook-parser.service';
 import { KaraokeParserService } from './karaoke-parser.service';
+import { ParallelGeminiService } from './parallel-gemini.service';
 import { ParsedSchedule } from './parsed-schedule.entity';
 import { ParserController } from './parser.controller';
 import { UrlToParse } from './url-to-parse.entity';
@@ -50,6 +51,7 @@ import { WorkerBasedWebsiteParserService } from './websiteParser/worker-based-we
     HtmlParserService,
     ImageParserService,
     DeepSeekParserService,
+    ParallelGeminiService,
   ],
   exports: [
     KaraokeParserService,

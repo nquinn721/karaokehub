@@ -894,6 +894,116 @@ export class ParserController {
     }
   }
 
+  @Post('analyze-screenshots-parallel')
+  async analyzeScreenshotsParallel(
+    @Body()
+    body: {
+      screenshots: string[]; // base64 encoded screenshot data
+      url?: string; // Optional for admin uploads
+      description?: string;
+      vendor?: string; // For admin uploads
+      isAdminUpload?: boolean; // Flag to distinguish admin uploads
+      maxConcurrentWorkers?: number; // Optional limit for concurrent workers
+    },
+  ) {
+    try {
+      // Debug logging
+      console.log('Parallel screenshot analysis - received request body keys:', Object.keys(body));
+      console.log('URL value:', body.url);
+      console.log('URL type:', typeof body.url);
+      console.log('Screenshots count:', body.screenshots?.length || 'undefined');
+      console.log('Is admin upload:', body.isAdminUpload);
+      console.log('Vendor:', body.vendor);
+      console.log('Max concurrent workers:', body.maxConcurrentWorkers || 'default (3)');
+
+      // Validate screenshots array
+      if (!body.screenshots || !Array.isArray(body.screenshots)) {
+        throw new HttpException('Screenshots array is required', HttpStatus.BAD_REQUEST);
+      }
+
+      if (body.screenshots.length === 0) {
+        throw new HttpException('At least one screenshot is required', HttpStatus.BAD_REQUEST);
+      }
+
+      // URL validation - required for user submissions, optional for admin uploads
+      let url = '';
+      if (body.isAdminUpload) {
+        // For admin uploads, use a placeholder URL or vendor name
+        url = body.vendor ? `admin-upload-${body.vendor}` : 'admin-upload';
+      } else {
+        // For user submissions, URL is required
+        const providedUrl = typeof body.url === 'string' ? body.url.trim() : body.url;
+        if (!providedUrl || typeof providedUrl !== 'string' || providedUrl.length === 0) {
+          throw new HttpException(
+            'URL is required and must be a non-empty string for user submissions',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        url = providedUrl;
+      }
+
+      // Basic validation of screenshot data
+      body.screenshots.forEach((screenshot, index) => {
+        if (typeof screenshot !== 'string') {
+          throw new HttpException(
+            `Screenshot at index ${index} must be a string`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        if (screenshot.length === 0) {
+          throw new HttpException(
+            `Screenshot at index ${index} cannot be empty`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        // Check for suspicious data length (extremely long strings might be corrupted)
+        if (screenshot.length > 10_000_000) {
+          // 10MB limit
+          throw new HttpException(
+            `Screenshot at index ${index} is too large (max 10MB)`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      });
+
+      // Validate max concurrent workers
+      const maxWorkers = body.maxConcurrentWorkers || 3;
+      if (maxWorkers < 1 || maxWorkers > 5) {
+        throw new HttpException(
+          'maxConcurrentWorkers must be between 1 and 5',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      console.log(`🚀 Starting parallel analysis with ${maxWorkers} max workers`);
+
+      const result = await this.karaokeParserService.analyzeScreenshotsWithGeminiParallel(
+        body.screenshots,
+        url,
+        body.description,
+        maxWorkers,
+      );
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      console.error('Error in parallel screenshot analysis:', error);
+
+      // If it's already an HttpException, re-throw it
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        `Failed to analyze screenshots in parallel: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   /**
    * EMERGENCY CANCELLATION ENDPOINT
    * Immediately stops all parsing operations, workers, and browsers
@@ -1147,6 +1257,86 @@ export class ParserController {
       console.error('❌ Admin screenshot analysis failed:', error.message);
       throw new HttpException(
         `Failed to analyze admin screenshots: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('analyze-admin-screenshots-parallel')
+  async analyzeAdminScreenshotsParallel(
+    @Body()
+    body: {
+      screenshots: string[]; // base64 encoded screenshot data
+      vendor?: string;
+      description?: string;
+      maxConcurrentWorkers?: number; // Optional limit for concurrent workers
+    },
+  ) {
+    try {
+      // Debug logging
+      console.log('Parallel admin screenshot analysis - received request body keys:', Object.keys(body));
+      console.log('Screenshots count:', body.screenshots?.length || 'undefined');
+      console.log('Vendor:', body.vendor);
+      console.log('Max concurrent workers:', body.maxConcurrentWorkers || 'default (3)');
+
+      // Validate screenshots array
+      if (!body.screenshots || !Array.isArray(body.screenshots)) {
+        throw new HttpException('Screenshots array is required', HttpStatus.BAD_REQUEST);
+      }
+
+      if (body.screenshots.length === 0) {
+        throw new HttpException('At least one screenshot is required', HttpStatus.BAD_REQUEST);
+      }
+
+      // Basic validation of screenshot data
+      body.screenshots.forEach((screenshot, index) => {
+        if (typeof screenshot !== 'string') {
+          throw new HttpException(
+            `Screenshot at index ${index} must be a string`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        if (screenshot.length === 0) {
+          throw new HttpException(
+            `Screenshot at index ${index} cannot be empty`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+      });
+
+      // Validate max concurrent workers
+      const maxWorkers = body.maxConcurrentWorkers || 3;
+      if (maxWorkers < 1 || maxWorkers > 5) {
+        throw new HttpException(
+          'maxConcurrentWorkers must be between 1 and 5',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      console.log(`🚀 Starting parallel admin analysis with ${maxWorkers} max workers`);
+
+      // Call the parallel service to analyze screenshots
+      const result = await this.karaokeParserService.analyzeScreenshotsWithGeminiParallel(
+        body.screenshots,
+        body.vendor || 'Unknown Venue', // Use vendor as URL placeholder for admin uploads
+        body.description,
+        maxWorkers,
+      );
+
+      console.log('✅ Parallel admin screenshot analysis completed successfully');
+
+      // Return the analysis result for admin review
+      return {
+        success: true,
+        data: result,
+        timestamp: new Date().toISOString(),
+        requiresApproval: true,
+      };
+    } catch (error) {
+      console.error('❌ Parallel admin screenshot analysis failed:', error.message);
+      throw new HttpException(
+        `Failed to analyze admin screenshots in parallel: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

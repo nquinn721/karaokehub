@@ -1359,6 +1359,42 @@ export class ParserStore {
     }
   }
 
+  // Analyze multiple user images in parallel for faster processing
+  async analyzeUserImagesParallel(data: {
+    images: string[];
+    vendorId?: string | null;
+    maxConcurrentWorkers?: number;
+  }): Promise<{ success: boolean; error?: string; data?: any }> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      console.log(`🚀 Analyzing ${data.images.length} user images in parallel...`);
+
+      // Pass all images to screenshots array and add vendor context
+      const requestBody = {
+        screenshots: data.images,
+        isAdminUpload: true, // Use admin upload flow for user images with vendor
+        vendor: data.vendorId || 'user-submission',
+        description: `User uploaded ${data.images.length} image(s) for parallel karaoke show analysis`,
+        maxConcurrentWorkers: data.maxConcurrentWorkers || Math.min(data.images.length, 3),
+      };
+
+      const response = await apiStore.post('/parser/analyze-screenshots-parallel', requestBody);
+
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to analyze images in parallel';
+      this.setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
   async submitImageAnalysis(data: any): Promise<{ success: boolean; error?: string }> {
     try {
       this.setLoading(true);

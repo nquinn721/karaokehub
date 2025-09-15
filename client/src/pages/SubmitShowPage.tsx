@@ -521,23 +521,26 @@ const SubmitShowPage: React.FC = observer(() => {
     setError('');
 
     try {
-      // Analyze all uploaded images
+      // Analyze all uploaded images in parallel for faster processing
       const allImageDataUrls = uploadedImages.map(img => img.dataUrl);
-      const result = await parserStore.analyzeUserImages({
+      const result = await parserStore.analyzeUserImagesParallel({
         images: allImageDataUrls,
         vendorId: selectedImageVendor?.id,
+        maxConcurrentWorkers: Math.min(uploadedImages.length, 3), // Optimize worker count
       });
 
       if (result.success) {
         setImageAnalysisResult(result.data);
         setShowAnalysisModal(true);
-        setSuccess(`Successfully analyzed ${uploadedImages.length} image(s): ${uploadedImages.map(img => img.name).join(', ')}`);
+        setSuccess(
+          `Successfully analyzed ${uploadedImages.length} image(s) in parallel: ${uploadedImages.map(img => img.name).join(', ')}`
+        );
       } else {
-        setError(result.error || 'Failed to analyze images');
+        setError(result.error || 'Failed to analyze images in parallel');
       }
     } catch (err) {
-      setError('Failed to analyze images');
-      console.error('Image analysis error:', err);
+      setError('Failed to analyze images in parallel');
+      console.error('Parallel image analysis error:', err);
     } finally {
       setImageAnalyzing(false);
     }
