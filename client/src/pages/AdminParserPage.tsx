@@ -2912,10 +2912,20 @@ const AdminParserPage: React.FC = observer(() => {
                     {pendingApprovalData.vendor && (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="body2" color="text.secondary">
-                          Vendor:
+                          Primary Vendor:
                         </Typography>
                         <Typography variant="body2" fontWeight="600">
                           1
+                        </Typography>
+                      </Box>
+                    )}
+                    {pendingApprovalData.vendors && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Vendors:
+                        </Typography>
+                        <Typography variant="body2" fontWeight="600">
+                          {pendingApprovalData.vendors.length}
                         </Typography>
                       </Box>
                     )}
@@ -3010,6 +3020,59 @@ const AdminParserPage: React.FC = observer(() => {
                             </Typography>
                           </Grid>
                         )}
+                      </Grid>
+                    </Box>
+                  </Card>
+                )}
+
+                {/* Vendors (Multiple) */}
+                {pendingApprovalData.vendors && pendingApprovalData.vendors.length > 0 && (
+                  <Card sx={{ mb: 3, border: '1px solid', borderColor: 'secondary.light', borderRadius: 2 }}>
+                    <Box sx={{ p: 2, bgcolor: 'secondary.light', color: 'secondary.contrastText' }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        🏭 Vendors ({pendingApprovalData.vendors.length})
+                      </Typography>
+                    </Box>
+                    <Box sx={{ p: 2 }}>
+                      <Grid container spacing={2}>
+                        {pendingApprovalData.vendors.map((vendor: any, index: number) => (
+                          <Grid item xs={12} md={6} key={index}>
+                            <Paper sx={{ p: 2, border: '1px solid', borderColor: 'grey.200', borderRadius: 1 }}>
+                              <Grid container spacing={1}>
+                                <Grid item xs={12}>
+                                  <Typography variant="body2" color="text.secondary">Name</Typography>
+                                  <Typography variant="body1" fontWeight="600">{vendor.name || 'Unknown'}</Typography>
+                                </Grid>
+                                {vendor.confidence && (
+                                  <Grid item xs={12} sm={6}>
+                                    <Typography variant="body2" color="text.secondary">Confidence</Typography>
+                                    <Typography variant="body1" fontWeight="600" color="success.main">
+                                      {(vendor.confidence * 100).toFixed(1)}%
+                                    </Typography>
+                                  </Grid>
+                                )}
+                                {vendor.website && (
+                                  <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">Website</Typography>
+                                    <Typography variant="body1">{vendor.website}</Typography>
+                                  </Grid>
+                                )}
+                                {vendor.description && (
+                                  <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">Description</Typography>
+                                    <Typography variant="body1">{vendor.description}</Typography>
+                                  </Grid>
+                                )}
+                                {vendor.owner && (
+                                  <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">Owner</Typography>
+                                    <Typography variant="body1">{vendor.owner}</Typography>
+                                  </Grid>
+                                )}
+                              </Grid>
+                            </Paper>
+                          </Grid>
+                        ))}
                       </Grid>
                     </Box>
                   </Card>

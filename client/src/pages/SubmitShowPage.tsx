@@ -1959,11 +1959,57 @@ const SubmitShowPage: React.FC = observer(() => {
                 </Box>
               )}
 
+              {/* Vendors (Multiple) Information */}
+              {imageAnalysisResult.vendors?.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    Vendors Found ({imageAnalysisResult.vendors.length}):
+                  </Typography>
+                  {imageAnalysisResult.vendors.map((vendor: any, index: number) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        ml: 2,
+                        mb: 2,
+                        p: 2,
+                        bgcolor: 'background.paper',
+                        borderRadius: 1,
+                        border: '1px solid rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+                        {vendor.name}
+                      </Typography>
+                      {vendor.description && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          <strong>Description:</strong> {vendor.description}
+                        </Typography>
+                      )}
+                      {vendor.website && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          <strong>Website:</strong> {vendor.website}
+                        </Typography>
+                      )}
+                      {vendor.owner && (
+                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                          <strong>Owner:</strong> {vendor.owner}
+                        </Typography>
+                      )}
+                      {vendor.confidence && (
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                          <strong>Confidence:</strong> {Math.round(vendor.confidence * 100)}%
+                        </Typography>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+              )}
+
               {/* Venues Information */}
               {imageAnalysisResult.venues?.length > 0 && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                    Venues Found:
+                    Venues Found ({imageAnalysisResult.venues.length}):
                   </Typography>
                   {imageAnalysisResult.venues.map((venue: any, index: number) => (
                     <Box
@@ -1978,7 +2024,7 @@ const SubmitShowPage: React.FC = observer(() => {
                       }}
                     >
                       <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
-                        {venue.name}
+                        📍 {venue.name}
                       </Typography>
                       {venue.address && (
                         <Typography variant="body2" sx={{ mb: 0.5 }}>
@@ -1992,23 +2038,23 @@ const SubmitShowPage: React.FC = observer(() => {
                         </Typography>
                       )}
                       {venue.lat && venue.lng && (
-                        <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        <Typography variant="body2" sx={{ mb: 0.5, color: 'success.main' }}>
                           <strong>Coordinates:</strong> {venue.lat}, {venue.lng}
                         </Typography>
                       )}
                       {venue.phone && (
                         <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Phone:</strong> {venue.phone}
+                          <strong>📞 Phone:</strong> {venue.phone}
                         </Typography>
                       )}
                       {venue.website && (
                         <Typography variant="body2" sx={{ mb: 0.5 }}>
-                          <strong>Website:</strong> {venue.website}
+                          <strong>🌐 Website:</strong> {venue.website}
                         </Typography>
                       )}
                       {venue.confidence && (
-                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          <strong>Confidence:</strong> {Math.round(venue.confidence * 100)}%
+                        <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 600 }}>
+                          <strong>✓ Confidence:</strong> {Math.round(venue.confidence * 100)}%
                         </Typography>
                       )}
                     </Box>
@@ -2020,7 +2066,7 @@ const SubmitShowPage: React.FC = observer(() => {
               {imageAnalysisResult.djs?.length > 0 && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                    DJs Found:
+                    DJs Found ({imageAnalysisResult.djs.length}):
                   </Typography>
                   {imageAnalysisResult.djs.map((dj: any, index: number) => (
                     <Box
@@ -2056,7 +2102,7 @@ const SubmitShowPage: React.FC = observer(() => {
               {imageAnalysisResult.shows?.length > 0 && (
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                    Shows Found:
+                    Shows Found ({imageAnalysisResult.shows.length}):
                   </Typography>
                   {imageAnalysisResult.shows.map((show: any, index: number) => (
                     <Box
