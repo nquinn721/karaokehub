@@ -118,7 +118,6 @@ const SubmitShowPage: React.FC = observer(() => {
 
   // Image Upload state
   const [isDragOver, setIsDragOver] = useState(false);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [uploadedImages, setUploadedImages] = useState<
     Array<{ id: string; dataUrl: string; file: File; name: string }>
   >([]);
@@ -592,7 +591,7 @@ const SubmitShowPage: React.FC = observer(() => {
       if (result.success) {
         setSuccess('Show information submitted successfully!');
         // Reset form
-        setUploadedImage('');
+        setUploadedImages([]);
         setSelectedImageVendor(null);
         setImageAnalysisResult(null);
         setShowAnalysisModal(false);
@@ -892,7 +891,7 @@ const SubmitShowPage: React.FC = observer(() => {
                                   border: '2px solid rgba(255, 255, 255, 0.9)',
                                   boxShadow: '0 3px 8px rgba(0, 0, 0, 0.4)',
                                   backdropFilter: 'blur(4px)',
-                                  '&:hover': { 
+                                  '&:hover': {
                                     backgroundColor: 'error.main',
                                     color: 'white',
                                     transform: 'scale(1.15)',

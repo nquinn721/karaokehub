@@ -20,7 +20,7 @@ import {
   faUserShield,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { CloudUpload } from '@mui/icons-material';
+import { Cancel, CloudUpload } from '@mui/icons-material';
 import {
   Accordion,
   AccordionDetails,
@@ -113,7 +113,9 @@ const AdminParserPage: React.FC = observer(() => {
 
   // Image Upload state
   const [isDragOver, setIsDragOver] = useState(false);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<
+    Array<{ id: string; dataUrl: string; file: File; name: string }>
+  >([]);
   const [selectedVendor, setSelectedVendor] = useState<any>(null);
   const [vendorSearchValue, setVendorSearchValue] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -175,6 +177,86 @@ const AdminParserPage: React.FC = observer(() => {
 
   // Get current URL to check if it's Facebook or Instagram
   const currentUrl = selectedUrl || customUrl;
+
+  // Multiple image handling functions
+  const handleMultipleImageFiles = (files: File[], replaceMode: boolean = false) => {
+    const validImages: Array<{ id: string; dataUrl: string; file: File; name: string }> = [];
+    let invalidCount = 0;
+
+    const processFile = (file: File, index: number) => {
+      return new Promise<void>((resolve) => {
+        if (!file.type.startsWith('image/')) {
+          invalidCount++;
+          resolve();
+          return;
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+          // 10MB limit
+          invalidCount++;
+          resolve();
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const id = `img-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${index}`;
+          validImages.push({
+            id,
+            dataUrl: e.target?.result as string,
+            file,
+            name: file.name,
+          });
+          resolve();
+        };
+        reader.onerror = () => {
+          invalidCount++;
+          resolve();
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+
+    // Process all files
+    Promise.all(files.map((file, index) => processFile(file, index))).then(() => {
+      console.log(
+        `Processing ${files.length} files, valid: ${validImages.length}, replaceMode: ${replaceMode}`,
+      );
+      if (validImages.length > 0) {
+        if (replaceMode) {
+          console.log('Replacing all images');
+          setUploadedImages(validImages); // Replace all images
+        } else {
+          console.log('Adding to existing images');
+          setUploadedImages((prev) => {
+            console.log(`Previous count: ${prev.length}, adding: ${validImages.length}`);
+            return [...prev, ...validImages];
+          }); // Add to existing
+        }
+      }
+
+      if (invalidCount > 0) {
+        console.error(
+          `${invalidCount} file(s) were skipped (invalid format or too large). Please use image files under 10MB.`,
+        );
+      }
+    });
+  };
+
+  const removeImage = (imageId: string) => {
+    setUploadedImages((prev) => prev.filter((img) => img.id !== imageId));
+  };
+
+  const handleAnalyzeImages = async () => {
+    if (uploadedImages.length === 0) {
+      console.error('Please upload at least one image first');
+      return;
+    }
+
+    // For now, analyze the first image. You could extend this to analyze all images
+    const firstImage = uploadedImages[0];
+    await analyzeImageWithRetry(firstImage.dataUrl);
+  };
 
   // Image analysis function with retry logic
   const analyzeImageWithRetry = async (base64: string, retryCount = 0) => {
@@ -242,13 +324,6 @@ const AdminParserPage: React.FC = observer(() => {
     }
   };
 
-  // Manual retry function
-  const retryImageAnalysis = () => {
-    if (uploadedImage) {
-      analyzeImageWithRetry(uploadedImage);
-    }
-  };
-
   // Open approval modal with analysis results
   const openApprovalModal = (analysisData: any) => {
     setPendingApprovalData(analysisData);
@@ -292,8 +367,8 @@ const AdminParserPage: React.FC = observer(() => {
             );
           }
 
-          // Clear the uploaded image and reset vendor selection after successful save
-          setUploadedImage(null);
+          // Clear the uploaded images and reset vendor selection after successful save
+          setUploadedImages([]);
           setSelectedVendor(null);
           setVendorSearchValue('');
           setUploadFailed(false);
@@ -1413,22 +1488,12 @@ const AdminParserPage: React.FC = observer(() => {
 
                     {/* Image Upload Area */}
                     <Box
-                      onDrop={async (e) => {
+                      onDrop={(e) => {
                         e.preventDefault();
                         setIsDragOver(false);
 
                         const files = Array.from(e.dataTransfer.files);
-                        const imageFile = files.find((file) => file.type.startsWith('image/'));
-
-                        if (imageFile) {
-                          const reader = new FileReader();
-                          reader.onload = async (event) => {
-                            const base64 = event.target?.result as string;
-                            setUploadedImage(base64);
-                            await analyzeImageWithRetry(base64);
-                          };
-                          reader.readAsDataURL(imageFile);
-                        }
+                        handleMultipleImageFiles(files, false); // Add to existing images
                       }}
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -1436,22 +1501,20 @@ const AdminParserPage: React.FC = observer(() => {
                       }}
                       onDragLeave={() => setIsDragOver(false)}
                       onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'image/*';
-                        input.onchange = async (e) => {
-                          const file = (e.target as HTMLInputElement).files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = async (event) => {
-                              const base64 = event.target?.result as string;
-                              setUploadedImage(base64);
-                              await analyzeImageWithRetry(base64);
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        };
-                        input.click();
+                        // Only trigger file browser if we don't have images
+                        if (uploadedImages.length === 0) {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.multiple = true;
+                          input.onchange = (e) => {
+                            const files = (e.target as HTMLInputElement).files;
+                            if (files) {
+                              handleMultipleImageFiles(Array.from(files), false);
+                            }
+                          };
+                          input.click();
+                        }
                       }}
                       sx={{
                         border: `2px dashed ${isDragOver ? theme.palette.primary.main : theme.palette.divider}`,
@@ -1471,44 +1534,192 @@ const AdminParserPage: React.FC = observer(() => {
                     >
                       {isUploadingImage ? (
                         <CircularProgress size={48} />
-                      ) : uploadedImage ? (
+                      ) : uploadedImages.length > 0 ? (
                         <Box>
-                          <img
-                            src={uploadedImage}
-                            alt="Uploaded"
-                            style={{
-                              maxWidth: '100%',
-                              maxHeight: '200px',
-                              borderRadius: '8px',
-                              marginBottom: '16px',
+                          <Grid container spacing={2} sx={{ mb: 2 }}>
+                            {uploadedImages.map((image) => (
+                              <Grid item xs={6} sm={4} md={3} key={image.id}>
+                                <Box sx={{ position: 'relative' }}>
+                                  <img
+                                    src={image.dataUrl}
+                                    alt={image.name}
+                                    style={{
+                                      width: '100%',
+                                      height: '120px',
+                                      objectFit: 'cover',
+                                      borderRadius: '8px',
+                                    }}
+                                  />
+                                  <IconButton
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeImage(image.id);
+                                    }}
+                                    sx={{
+                                      position: 'absolute',
+                                      top: 6,
+                                      right: 6,
+                                      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                      color: 'white',
+                                      border: '2px solid rgba(255, 255, 255, 0.9)',
+                                      boxShadow: '0 3px 8px rgba(0, 0, 0, 0.4)',
+                                      backdropFilter: 'blur(4px)',
+                                      '&:hover': {
+                                        backgroundColor: 'error.main',
+                                        color: 'white',
+                                        transform: 'scale(1.15)',
+                                        boxShadow: '0 4px 12px rgba(244, 67, 54, 0.5)',
+                                        border: '2px solid white',
+                                      },
+                                      width: 32,
+                                      height: 32,
+                                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                      zIndex: 10,
+                                    }}
+                                  >
+                                    <Cancel sx={{ fontSize: 20, fontWeight: 'bold' }} />
+                                  </IconButton>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      position: 'absolute',
+                                      bottom: 4,
+                                      left: 4,
+                                      right: 4,
+                                      backgroundColor: 'rgba(0,0,0,0.7)',
+                                      color: 'white',
+                                      padding: '2px 4px',
+                                      borderRadius: '4px',
+                                      fontSize: '10px',
+                                      textOverflow: 'ellipsis',
+                                      overflow: 'hidden',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    {image.name}
+                                  </Typography>
+                                </Box>
+                              </Grid>
+                            ))}
+                          </Grid>
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              mt: 2,
                             }}
-                          />
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                            Click to upload a different image
-                          </Typography>
-                          {uploadFailed && (
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              startIcon={<FontAwesomeIcon icon={faRefresh} />}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                retryImageAnalysis();
+                          >
+                            <Typography variant="body2" color="text.secondary">
+                              {uploadedImages.length} image(s) uploaded. Drag more images to add
+                              them.
+                            </Typography>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                gap: 2,
+                                flexWrap: 'wrap',
+                                justifyContent: 'center',
                               }}
-                              sx={{ mb: 1 }}
                             >
-                              Retry Analysis
-                            </Button>
+                              <Button
+                                variant="outlined"
+                                size="medium"
+                                startIcon={<CloudUpload />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const input = document.createElement('input');
+                                  input.type = 'file';
+                                  input.accept = 'image/*';
+                                  input.multiple = true;
+                                  input.onchange = (e) => {
+                                    const files = (e.target as HTMLInputElement).files;
+                                    if (files) {
+                                      handleMultipleImageFiles(Array.from(files), false);
+                                    }
+                                  };
+                                  input.click();
+                                }}
+                                sx={{
+                                  px: 3,
+                                  py: 1,
+                                  borderRadius: 2,
+                                  textTransform: 'none',
+                                  fontWeight: 500,
+                                }}
+                              >
+                                Add More Images
+                              </Button>
+                              <Button
+                                variant="contained"
+                                size="medium"
+                                startIcon={
+                                  isUploadingImage ? (
+                                    <CircularProgress size={16} />
+                                  ) : (
+                                    <CloudUpload />
+                                  )
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAnalyzeImages();
+                                }}
+                                disabled={isUploadingImage}
+                                sx={{
+                                  px: 3,
+                                  py: 1,
+                                  borderRadius: 2,
+                                  textTransform: 'none',
+                                  fontWeight: 600,
+                                  boxShadow: 2,
+                                  '&:hover': {
+                                    boxShadow: 4,
+                                  },
+                                }}
+                              >
+                                {isUploadingImage
+                                  ? 'Analyzing...'
+                                  : `Analyze ${uploadedImages.length} Image${uploadedImages.length > 1 ? 's' : ''}`}
+                              </Button>
+                            </Box>
+                          </Box>
+                          {uploadFailed && (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                              <Button
+                                variant="outlined"
+                                size="medium"
+                                startIcon={<FontAwesomeIcon icon={faRefresh} />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAnalyzeImages();
+                                }}
+                                sx={{
+                                  px: 3,
+                                  py: 1,
+                                  borderRadius: 2,
+                                  textTransform: 'none',
+                                  fontWeight: 500,
+                                  color: 'warning.main',
+                                  borderColor: 'warning.main',
+                                  '&:hover': {
+                                    borderColor: 'warning.dark',
+                                    backgroundColor: 'warning.light',
+                                  },
+                                }}
+                              >
+                                Retry Analysis
+                              </Button>
+                            </Box>
                           )}
                         </Box>
                       ) : (
                         <Box>
                           <CloudUpload sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
                           <Typography variant="h6" gutterBottom>
-                            Drop image here or click to select
+                            Drop images here or click to select
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            Upload an image for analysis and venue information extraction
+                            Upload multiple images for analysis and venue information extraction
                           </Typography>
                         </Box>
                       )}
