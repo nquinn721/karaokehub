@@ -642,7 +642,11 @@ export const MusicPage: React.FC = observer(() => {
             <Box sx={{ px: 3 }}>
               <Grid container spacing={3}>
                 {/* Main Content Area */}
-                <Grid item xs={12} lg={authStore.isAdmin || subscriptionStore.hasAdFreeAccess ? 12 : 9}>
+                <Grid
+                  item
+                  xs={12}
+                  lg={authStore.isAdmin || subscriptionStore.hasAdFreeAccess ? 12 : 9}
+                >
                   {/* Quick Start Guide */}
                   <Box
                     sx={{

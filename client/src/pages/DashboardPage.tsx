@@ -1208,7 +1208,15 @@ const DashboardPage: React.FC = observer(() => {
 
               {/* Right Sidebar */}
               <Grid item xs={12} lg={4}>
-                <Stack spacing={3} sx={{ position: 'sticky', top: 20, maxHeight: 'calc(100vh - 40px)', overflowY: 'auto' }}>
+                <Stack
+                  spacing={3}
+                  sx={{
+                    position: 'sticky',
+                    top: 20,
+                    maxHeight: 'calc(100vh - 40px)',
+                    overflowY: 'auto',
+                  }}
+                >
                   {/* Friends List */}
                   <FriendsList onUserSelect={(userId) => console.log('Selected user:', userId)} />
 

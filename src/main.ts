@@ -78,6 +78,16 @@ async function bootstrap() {
             'https://*.openx.net',
             'https://*.contextweb.com',
             'https://*.casalemedia.com',
+            // Adsterra tracking and analytics domains (they use many rotating domains)
+            'https://rashcolonizeexpand.com',
+            'https://*.rashcolonizeexpand.com',
+            // Additional common Adsterra tracking domains
+            'https://*.exosrv.com',
+            'https://*.exdynsrv.com',
+            'https://*.dynsrvtbg.com',
+            'https://*.exoclick.com',
+            'https://*.propellerads.com',
+            'https://*.adnium.com',
           ],
           connectSrc: [
             "'self'",
@@ -113,6 +123,20 @@ async function bootstrap() {
             'https://*.openx.net',
             'https://*.contextweb.com',
             'https://*.casalemedia.com',
+            // Adsterra tracking and analytics domains (they use many rotating domains)
+            'https://rashcolonizeexpand.com',
+            'https://*.rashcolonizeexpand.com',
+            'https://skinnycrawlinglax.com',
+            'https://*.skinnycrawlinglax.com',
+            // Additional common Adsterra tracking domains
+            'https://*.exosrv.com',
+            'https://*.exdynsrv.com',
+            'https://*.dynsrvtbg.com',
+            'https://*.exoclick.com',
+            'https://*.propellerads.com',
+            'https://*.adnium.com',
+            // More permissive for ad tracking connections (less security risk than scripts)
+            'https://*.com',
           ],
           mediaSrc: ["'self'", 'https://audio-ssl.itunes.apple.com'],
           frameSrc: [
@@ -143,6 +167,16 @@ async function bootstrap() {
             'https://*.openx.net',
             'https://*.contextweb.com',
             'https://*.casalemedia.com',
+            // Adsterra tracking and analytics domains (they use many rotating domains)
+            'https://rashcolonizeexpand.com',
+            'https://*.rashcolonizeexpand.com',
+            // Additional common Adsterra tracking domains
+            'https://*.exosrv.com',
+            'https://*.exdynsrv.com',
+            'https://*.dynsrvtbg.com',
+            'https://*.exoclick.com',
+            'https://*.propellerads.com',
+            'https://*.adnium.com',
           ],
           // Report CSP violations for monitoring
           reportUri: ['/api/csp-violation-report'],
