@@ -24,55 +24,9 @@ export const MobileBanner: React.FC<MobileBannerProps> = observer(
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
 
-    // Show placeholder if user has ad-free access
+    // Don't show anything if user has ad-free access
     if (subscriptionStore.hasAdFreeAccess) {
-      const dimensions = variant === 'native' ? { width: 300, height: 250 } : { width: 320, height: 50 };
-      
-      return (
-        <Box
-          className={className}
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            width: '100%',
-            minHeight: `${dimensions.height}px`,
-            my: 1,
-          }}
-        >
-          <Box
-            sx={{
-              width: `${dimensions.width}px`,
-              height: `${dimensions.height}px`,
-              minWidth: `${dimensions.width}px`,
-              minHeight: `${dimensions.height}px`,
-              maxWidth: `${dimensions.width}px`,
-              maxHeight: `${dimensions.height}px`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'rgba(240, 240, 240, 0.1)',
-              border: '1px solid rgba(200, 200, 200, 0.2)',
-              borderRadius: 1,
-              position: 'relative',
-              '&::after': {
-                content: '"Premium User - No Ads"',
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                color: 'rgba(150, 150, 150, 0.6)',
-                fontSize: '12px',
-                textAlign: 'center',
-                pointerEvents: 'none',
-                fontFamily: 'Arial, sans-serif',
-                letterSpacing: '0.5px',
-                fontWeight: 500,
-              },
-            }}
-          />
-        </Box>
-      );
+      return null;
     }
 
     // Don't show on desktop unless it's a native ad

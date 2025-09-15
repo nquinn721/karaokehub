@@ -3663,12 +3663,16 @@ CRITICAL RESPONSE REQUIREMENTS:
 - Maximum 100 shows per response to prevent truncation
 
 🚫 DUPLICATE PREVENTION - CRITICAL RULES:
-- ONLY extract UNIQUE shows - no duplicates allowed
+- ONLY extract UNIQUE shows - no duplicates allowed across ALL images
 - If the same venue appears multiple times with the same day/time, only include it ONCE
 - Different days at the same venue = separate shows (e.g., "Bar Monday" vs "Bar Saturday")  
 - Different times at the same venue = separate shows (e.g., "Bar 7:00 PM" vs "Bar 10:00 PM")
 - Same venue, same day, same time = DUPLICATE, include only once
-- Verify each show is truly distinct before adding to the list
+- Cross-check ALL screenshots to prevent duplicates between different images
+- Before adding a show, verify it doesn't already exist in your response
+- Merge duplicate venues into single venue entry with most complete information
+- Merge duplicate DJs into single DJ entry with most complete information
+- Final deduplication: Review entire response before returning to ensure no duplicates
 
 CRITICAL: This page contains shows for ALL 7 DAYS (Monday through Sunday). You must extract shows from the COMPLETE page, not just the top section.
 
@@ -4266,20 +4270,29 @@ CRITICAL RESPONSE REQUIREMENTS:
 - Look at BOTH the profile description/bio area AND individual posts
 
 🚫 DUPLICATE PREVENTION - CRITICAL RULES:
-- ONLY extract UNIQUE shows - no duplicates allowed
+- ONLY extract UNIQUE shows - no duplicates allowed across ALL images
 - If the same venue appears multiple times with the same day/time, only include it ONCE
 - Different days at the same venue = separate shows (e.g., "Bar Monday" vs "Bar Saturday")  
 - Different times at the same venue = separate shows (e.g., "Bar 7:00 PM" vs "Bar 10:00 PM")
 - Same venue, same day, same time = DUPLICATE, include only once
-- Cross-check all screenshots to prevent duplicates between different images
+- Cross-check ALL screenshots to prevent duplicates between different images
+- Before adding a show, verify it doesn't already exist in your response
+- Merge duplicate venues into single venue entry with most complete information
+- Merge duplicate DJs into single DJ entry with most complete information
+- Final deduplication: Review entire response before returning to ensure no duplicates
 
 Instagram Profile: ${url}
 ${description ? `Description: ${description}` : ''}
 
 📸 SCREENSHOT ANALYSIS INSTRUCTIONS:
-Screenshot 1 (Top): Contains profile bio/description with weekly schedule summary
-Screenshot 2 (Middle): May contain detailed posts with venue information  
-Screenshot 3 (Bottom): Additional posts with venue details and addresses
+Analyze ALL provided screenshots comprehensively:
+- Screenshot 1: May contain profile bio/description with weekly schedule summary
+- Screenshot 2: May contain detailed posts with venue information  
+- Screenshot 3+: Additional posts with venue details and addresses
+- Combine information from ALL screenshots for complete extraction
+- If venue appears in multiple screenshots, use most complete information
+- Extract ALL unique shows across ALL screenshots
+- Do NOT miss any venue or show that appears in any of the screenshots
 
 🏢 VENUE & ADDRESS EXTRACTION - CRITICAL:
 - Look for complete address patterns like "1234 Main St, Columbus, OH" 

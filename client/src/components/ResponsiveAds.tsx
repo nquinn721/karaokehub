@@ -16,106 +16,12 @@ export const ResponsiveAd: React.FC<{
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
 
-  // Show placeholder if user has ad-free access
+  // Don't show anything if user has ad-free access
   if (subscriptionStore.hasAdFreeAccess) {
     if (debug) {
-      console.log(`ResponsiveAd[${placement}]: Showing placeholder due to ad-free subscription`);
+      console.log(`ResponsiveAd[${placement}]: Hidden due to ad-free subscription`);
     }
-    
-    // Return appropriately sized placeholder based on placement and device
-    const getPlaceholderDimensions = () => {
-      if (isMobile) {
-        switch (placement) {
-          case 'header':
-          case 'footer':
-          case 'content':
-          case 'inline':
-            return { width: 320, height: 50 };
-          case 'sidebar':
-            return { width: 300, height: 250 };
-          default:
-            return { width: 320, height: 50 };
-        }
-      }
-      
-      if (isTablet) {
-        switch (placement) {
-          case 'header':
-          case 'footer':
-            return { width: 468, height: 60 };
-          case 'content':
-          case 'inline':
-            return size === 'large' ? { width: 300, height: 250 } : { width: 468, height: 60 };
-          case 'sidebar':
-            return { width: 300, height: 250 };
-          default:
-            return { width: 468, height: 60 };
-        }
-      }
-      
-      // Desktop
-      switch (placement) {
-        case 'header':
-        case 'footer':
-          return { width: 468, height: 60 };
-        case 'content':
-          return size === 'large' ? { width: 300, height: 250 } : { width: 468, height: 60 };
-        case 'inline':
-          return { width: 300, height: 250 };
-        case 'sidebar':
-          return size === 'large' ? { width: 160, height: 600 } : { width: 300, height: 250 };
-        default:
-          return { width: 300, height: 250 };
-      }
-    };
-    
-    const { width, height } = getPlaceholderDimensions();
-    
-    return (
-      <Box
-        className={className}
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          width: '100%',
-          minHeight: `${height}px`,
-          my: placement === 'header' || placement === 'footer' ? 1 : 2,
-        }}
-      >
-        <Box
-          sx={{
-            width: `${width}px`,
-            height: `${height}px`,
-            minWidth: `${width}px`,
-            minHeight: `${height}px`,
-            maxWidth: `${width}px`,
-            maxHeight: `${height}px`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(240, 240, 240, 0.1)',
-            border: '1px solid rgba(200, 200, 200, 0.2)',
-            borderRadius: 1,
-            position: 'relative',
-            '&::after': {
-              content: '"Premium User - No Ads"',
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              color: 'rgba(150, 150, 150, 0.6)',
-              fontSize: '12px',
-              textAlign: 'center',
-              pointerEvents: 'none',
-              fontFamily: 'Arial, sans-serif',
-              letterSpacing: '0.5px',
-              fontWeight: 500,
-            },
-          }}
-        />
-      </Box>
-    );
+    return null;
   }
 
   const getAdComponent = () => {

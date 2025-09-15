@@ -253,12 +253,78 @@ const AdminParserPage: React.FC = observer(() => {
       return;
     }
 
-    // For now, analyze the first image. You could extend this to analyze all images
-    const firstImage = uploadedImages[0];
-    await analyzeImageWithRetry(firstImage.dataUrl);
+    // Analyze all uploaded images, not just the first one
+    const allImageDataUrls = uploadedImages.map(img => img.dataUrl);
+    await analyzeMultipleImagesWithRetry(allImageDataUrls);
   };
 
-  // Image analysis function with retry logic
+  // Image analysis function with retry logic for multiple images
+  const analyzeMultipleImagesWithRetry = async (imageDataUrls: string[], retryCount = 0) => {
+    const maxRetries = 3;
+    const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+
+    setIsUploadingImage(true);
+    setUploadFailed(false);
+
+    try {
+      console.log(`🖼️ Analyzing ${imageDataUrls.length} images...`);
+      
+      const response = await fetch(
+        `${apiStore.environmentInfo.baseURL}/parser/analyze-admin-screenshots`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authStore.token}`,
+          },
+          body: JSON.stringify({
+            screenshots: imageDataUrls, // Pass all images
+            vendor: selectedVendor?.name || vendorSearchValue || null,
+            description: `Admin uploaded ${imageDataUrls.length} image(s) for analysis`,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      console.log('✅ Image analysis successful:', result);
+
+      if (result.success && result.data) {
+        openApprovalModal(result.data);
+        uiStore.addNotification(`Successfully analyzed ${imageDataUrls.length} image(s)`, 'success');
+      } else {
+        throw new Error(result.error || 'Analysis failed');
+      }
+    } catch (error: any) {
+      console.error(`Image analysis error (attempt ${retryCount + 1}):`, error);
+
+      if (retryCount < maxRetries) {
+        uiStore.addNotification(
+          `Analysis failed, retrying in ${retryDelay / 1000}s... (${retryCount + 1}/${maxRetries + 1})`,
+          'warning',
+        );
+
+        // Wait before retrying
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+        return analyzeMultipleImagesWithRetry(imageDataUrls, retryCount + 1);
+      } else {
+        setUploadFailed(true);
+        uiStore.addNotification(
+          `Failed to analyze images after ${maxRetries + 1} attempts. You can try again with the retry button.`,
+          'error',
+        );
+      }
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Image analysis function with retry logic for single image (legacy support)
   const analyzeImageWithRetry = async (base64: string, retryCount = 0) => {
     const maxRetries = 3;
     const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff

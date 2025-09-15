@@ -521,22 +521,22 @@ const SubmitShowPage: React.FC = observer(() => {
     setError('');
 
     try {
-      // For now, analyze the first image. In the future, you could analyze all images
-      const firstImage = uploadedImages[0];
-      const result = await parserStore.analyzeUserImage({
-        image: firstImage.dataUrl,
+      // Analyze all uploaded images
+      const allImageDataUrls = uploadedImages.map(img => img.dataUrl);
+      const result = await parserStore.analyzeUserImages({
+        images: allImageDataUrls,
         vendorId: selectedImageVendor?.id,
       });
 
       if (result.success) {
         setImageAnalysisResult(result.data);
         setShowAnalysisModal(true);
-        setSuccess(`Successfully analyzed image: ${firstImage.name}`);
+        setSuccess(`Successfully analyzed ${uploadedImages.length} image(s): ${uploadedImages.map(img => img.name).join(', ')}`);
       } else {
-        setError(result.error || 'Failed to analyze image');
+        setError(result.error || 'Failed to analyze images');
       }
     } catch (err) {
-      setError('Failed to analyze image');
+      setError('Failed to analyze images');
       console.error('Image analysis error:', err);
     } finally {
       setImageAnalyzing(false);
