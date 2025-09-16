@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
+import { InfiniteScrollAdInjector } from '../components/ads/EnhancedAdPlacements';
 import { BannerAd, MobileAd } from '../components/AdsterraAd';
 import { BottomSheet } from '../components/BottomSheet';
 import { DayOfWeek } from '../components/DayPicker/DayPicker';
@@ -390,13 +391,19 @@ const ShowsPage: React.FC = observer(() => {
                     <List
                       sx={{ p: 0, pb: { xs: 10, md: 1 }, mr: '15px', mt: '5px', minHeight: '100%' }}
                     >
-                      {showStore.filteredShows.map((show: Show) => {
+                      {showStore.filteredShows.map((show: Show, index: number) => {
                         const isFavorited = authStore.isAuthenticated
                           ? show.favorites?.some((fav: any) => fav.userId === authStore.user?.id)
                           : false;
 
                         return (
                           <React.Fragment key={show.id}>
+                            {/* Inject ads every 5 shows */}
+                            <InfiniteScrollAdInjector
+                              itemIndex={index}
+                              adFrequency={5}
+                              adVariant="auto"
+                            />
                             <ListItem disablePadding>
                               <ListItemButton
                                 onClick={() => mapStore.selectShowFromSidebar(show)}
@@ -941,9 +948,15 @@ const ShowsPage: React.FC = observer(() => {
                 </Typography>
               ) : (
                 <List sx={{ p: 0, pb: 2, mr: '15px', mt: '5px' }}>
-                  {showStore.filteredShows.map((show: Show) => {
+                  {showStore.filteredShows.map((show: Show, index: number) => {
                     return (
                       <React.Fragment key={show.id}>
+                        {/* Inject ads every 5 shows in mobile view */}
+                        <InfiniteScrollAdInjector
+                          itemIndex={index}
+                          adFrequency={5}
+                          adVariant="auto"
+                        />
                         <ListItem
                           sx={{ p: 0, mb: { xs: 0.25, md: 0.75 }, mx: { xs: 0.25, md: 0.75 } }}
                         >

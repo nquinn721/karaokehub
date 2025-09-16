@@ -1,3 +1,4 @@
+import { ContentSectionAd, StickyHeaderAd } from '@components/ads/EnhancedAdPlacements';
 import { BannerAd, LeaderboardAd } from '@components/AdsterraAd';
 import { CustomCard } from '@components/CustomCard';
 import GoogleOneTap from '@components/GoogleOneTap';
@@ -42,6 +43,9 @@ const HomePage: React.FC = observer(() => {
   return (
     <Box data-homepage>
       <SEO {...seoConfigs.home} />
+
+      {/* Sticky Header Ad - High visibility */}
+      <StickyHeaderAd />
 
       {/* Google One Tap for non-authenticated users */}
       {!authStore.isAuthenticated && (
@@ -382,6 +386,9 @@ const HomePage: React.FC = observer(() => {
         </Container>
       </Box>
 
+      {/* Strategic Ad Placement - Between Hero Sections */}
+      <ContentSectionAd variant="prominent" spacing="large" />
+
       {/* Community Hero Section */}
       <Box
         sx={{
@@ -572,6 +579,9 @@ const HomePage: React.FC = observer(() => {
         <Box sx={{ mb: 6 }}>
           <MobileBanner position="between" variant="banner" />
         </Box>
+
+        {/* Native Ad Integration - Before How It Works */}
+        <ContentSectionAd variant="native" spacing="medium" />
 
         {/* How KaraokeHub Works - Inspired by SingSpot's 3-step process */}
         <Box

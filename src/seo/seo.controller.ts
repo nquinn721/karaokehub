@@ -27,7 +27,12 @@ google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
   // OpenGraph image endpoint
   @Get('og-image.png')
   serveOgImage(@Res() res: Response) {
-    // You'll need to create an actual image file
-    res.redirect('/vite.svg'); // Temporary redirect
+    // Serve the actual vite.svg file directly instead of redirecting
+    res.sendFile('vite.svg', { root: './public' }, (err) => {
+      if (err) {
+        // Fallback if file doesn't exist
+        res.status(404).json({ error: 'Image not found' });
+      }
+    });
   }
 }

@@ -1,8 +1,9 @@
 import { WideAdWithUpgrade } from '@components/AdWithUpgrade';
-import { BannerAd, LeaderboardAd, SidebarAd } from '@components/AdsterraAd';
+import { BannerAd, LeaderboardAd } from '@components/AdsterraAd';
 import { ThumbnailAlbumArt } from '@components/OptimizedAlbumArt';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
+import { InfiniteScrollAdInjector, SidebarAdContainer } from '@components/ads/EnhancedAdPlacements';
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
   faBookmark,
@@ -821,6 +822,12 @@ export const MusicPage: React.FC = observer(() => {
 
                       return (
                         <React.Fragment key={`${song.id}-${index}`}>
+                          {/* Enhanced ad injection with better frequency */}
+                          <InfiniteScrollAdInjector
+                            itemIndex={index}
+                            adFrequency={6}
+                            adVariant="native"
+                          />
                           <ListItem disablePadding>
                             <ListItemButton
                               onClick={() => musicStore.setSelectedSong(song)}
@@ -1107,14 +1114,10 @@ export const MusicPage: React.FC = observer(() => {
                     )}
                 </Grid>
 
-                {/* Sidebar with Ads - Only show for users without ad-free access */}
+                {/* Enhanced Sidebar with Multiple Ad Slots */}
                 {!authStore.isAdmin && !subscriptionStore.hasAdFreeAccess && (
                   <Grid item xs={12} lg={3}>
-                    <Box sx={{ position: 'sticky', top: 20 }}>
-                      <Box sx={{ mt: 2 }}>
-                        <SidebarAd />
-                      </Box>
-                    </Box>
+                    <SidebarAdContainer slots={2} spacing={3} />
                   </Grid>
                 )}
               </Grid>

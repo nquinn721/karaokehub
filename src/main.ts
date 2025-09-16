@@ -60,6 +60,14 @@ async function bootstrap() {
             'https://*.adsterra.com',
             'https://*.adsterraadblocker.com',
             'https://*.adsterranet.com',
+            // Native banner ad domains - comprehensive coverage
+            'https://*.revenuecpmgate.com',
+            'https://pl27650211.revenuecpmgate.com',
+            'https://*.cpmstar.com',
+            'https://*.adblockers.com',
+            'https://*.adblockanalytics.com',
+            'https://*.adsterra-serve.com',
+            'https://*.adsterra-network.com',
             // Additional ad network domains that might be used
             'https://*.adsystem.com',
             'https://*.doubleclick.net',
@@ -104,6 +112,14 @@ async function bootstrap() {
             'https://*.adsterra.com',
             'https://*.adsterraadblocker.com',
             'https://*.adsterranet.com',
+            // Native banner ad connection domains
+            'https://*.revenuecpmgate.com',
+            'https://pl27650211.revenuecpmgate.com',
+            'https://*.cpmstar.com',
+            'https://*.adblockers.com',
+            'https://*.adblockanalytics.com',
+            'https://*.adsterra-serve.com',
+            'https://*.adsterra-network.com',
             // Additional ad network domains that might be used
             'https://*.adsystem.com',
             'https://*.doubleclick.net',
@@ -149,6 +165,14 @@ async function bootstrap() {
             'https://*.adsterra.com',
             'https://*.adsterraadblocker.com',
             'https://*.adsterranet.com',
+            // Native banner ad frame domains
+            'https://*.revenuecpmgate.com',
+            'https://pl27650211.revenuecpmgate.com',
+            'https://*.cpmstar.com',
+            'https://*.adblockers.com',
+            'https://*.adblockanalytics.com',
+            'https://*.adsterra-serve.com',
+            'https://*.adsterra-network.com',
             // Additional ad network domains that might be used
             'https://*.adsystem.com',
             'https://*.doubleclick.net',
