@@ -19,6 +19,11 @@ export class ShowStore {
   private _vendorFilter: string | null = null;
   private _useDayFilter = true;
 
+  // Fetch control to prevent loops
+  private _lastFetchTime = 0;
+  private _fetchDebounceTime = 2000; // 2 seconds minimum between fetches
+  private _isInitialized = false;
+
   constructor() {
     makeAutoObservable(this);
   }
@@ -34,6 +39,23 @@ export class ShowStore {
 
   get useDayFilter(): boolean {
     return this._useDayFilter;
+  }
+
+  get isInitialized(): boolean {
+    return this._isInitialized;
+  }
+
+  // Check if we should fetch (prevent rapid successive calls)
+  private shouldFetch(): boolean {
+    const now = Date.now();
+    const timeSinceLastFetch = now - this._lastFetchTime;
+    return timeSinceLastFetch >= this._fetchDebounceTime;
+  }
+
+  // Mark fetch as completed
+  private markFetchCompleted() {
+    this._lastFetchTime = Date.now();
+    this._isInitialized = true;
   }
 
   get filteredShows(): Show[] {
@@ -90,8 +112,21 @@ export class ShowStore {
   }
 
   // Fetch shows with optional filters
-  async fetchShows(day?: DayOfWeek, location?: MapBounds) {
+  async fetchShows(day?: DayOfWeek, location?: MapBounds, force = false) {
+    // Prevent fetch loops
+    if (!force && !this.shouldFetch()) {
+      console.log('🚫 Skipping fetch - too soon since last fetch');
+      return { success: true, cached: true };
+    }
+
+    // If already loading, don't start another fetch
+    if (this.isLoading) {
+      console.log('🚫 Skipping fetch - already loading');
+      return { success: true, loading: true };
+    }
+
     try {
+      console.log('📡 Fetching shows from production API...');
       this.setLoading(true);
 
       const params: any = {};
@@ -110,7 +145,9 @@ export class ShowStore {
         params.vendorId = this._vendorFilter;
       }
 
+      console.log('📡 API request params:', params);
       const response = await apiService.get(apiService.endpoints.shows.list, { params });
+      console.log('✅ Shows loaded successfully:', response?.shows?.length || 0, 'shows');
 
       runInAction(() => {
         this.shows = response.shows || [];
@@ -118,16 +155,22 @@ export class ShowStore {
         this.isLoading = false;
       });
 
-      return { success: true };
+      this.markFetchCompleted();
+      return { success: true, shows: this.shows };
     } catch (error: any) {
+      console.error('❌ Failed to fetch shows:', error);
+      
       runInAction(() => {
         this.isLoading = false;
       });
 
-      console.error('Failed to fetch shows:', error);
+      // Still mark as completed to prevent immediate retries
+      this.markFetchCompleted();
+
       return {
         success: false,
-        error: error.response?.data?.message || 'Failed to fetch shows',
+        error: error.response?.data?.message || error.message || 'Failed to fetch shows',
+        status: error.response?.status,
       };
     }
   }
@@ -362,6 +405,23 @@ export class ShowStore {
     return this.shows.filter((show) => show.venue?.id === venueId);
   }
 
+  // Initialize store - call this once when app starts
+  async initialize() {
+    if (this._isInitialized) {
+      console.log('📱 ShowStore already initialized');
+      return { success: true, cached: true };
+    }
+
+    console.log('🚀 Initializing ShowStore with production data...');
+    return await this.fetchShows(undefined, undefined, true);
+  }
+
+  // Force refresh (ignores debounce)
+  async refresh() {
+    console.log('🔄 Force refreshing shows...');
+    return await this.fetchShows(undefined, undefined, true);
+  }
+
   // Clear all data
   clearData() {
     runInAction(() => {
@@ -370,6 +430,8 @@ export class ShowStore {
       this.selectedShow = null;
       this.currentShow = null;
       this.isUsingCityView = false;
+      this._isInitialized = false;
+      this._lastFetchTime = 0;
     });
   }
 }

@@ -24,16 +24,41 @@ const ShowsScreen = observer(() => {
   const bottomSheetRef = useRef<BottomSheet>(null);
   const mapRef = useRef<MapView>(null);
   const snapPoints = ['25%', '50%', '90%'];
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    // Initialize the screen when it loads
-    showStore.fetchShows();
-    
-    // Initialize map store and get user location
-    mapStore.initialize().then(() => {
-      mapStore.goToCurrentLocation();
-    });
-  }, []);
+    // Initialize the screen when it loads - only once
+    const initializeScreen = async () => {
+      if (isInitialized) return;
+
+      console.log('🚀 Initializing ShowsScreen...');
+      
+      try {
+        // Initialize show store first
+        const showResult = await showStore.initialize();
+        console.log('📱 Show initialization result:', showResult);
+        
+        if (showResult.success) {
+          console.log(`✅ Loaded ${showStore.shows.length} shows from production`);
+        } else if ('error' in showResult) {
+          console.error('❌ Failed to load shows:', showResult.error);
+        }
+
+        // Initialize map store
+        await mapStore.initialize();
+        
+        // Get user location after initialization
+        await mapStore.goToCurrentLocation();
+
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('❌ Screen initialization failed:', error);
+        setIsInitialized(true); // Still mark as initialized to prevent loops
+      }
+    };
+
+    initializeScreen();
+  }, []); // Empty dependency array - only run once
 
   const onRegionChange = useCallback((region: Region) => {
     mapStore.setRegion(region);
@@ -42,6 +67,23 @@ const ShowsScreen = observer(() => {
   const handleMarkerPress = useCallback((show: Show) => {
     showStore.setSelectedShow(show);
     bottomSheetRef.current?.expand();
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    try {
+      uiStore.setAppLoading(true, 'Refreshing shows...');
+      const result = await showStore.refresh();
+      
+      if (result.success) {
+        console.log(`✅ Refreshed ${showStore.shows.length} shows`);
+      } else if ('error' in result) {
+        Alert.alert('Refresh Error', result.error || 'Could not refresh shows');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Could not refresh shows');
+    } finally {
+      uiStore.setAppLoading(false);
+    }
   }, []);
 
   const handleGetLocation = useCallback(async () => {
@@ -91,14 +133,19 @@ const ShowsScreen = observer(() => {
     </TouchableOpacity>
   ), []);
 
-  if (uiStore.isAppLoading || showStore.isLoading) {
+  if (uiStore.isAppLoading || (showStore.isLoading && !isInitialized)) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#007AFF" />
           <Text style={styles.loadingText}>
-            {uiStore.globalLoadingMessage || 'Loading shows...'}
+            {uiStore.globalLoadingMessage || 'Loading shows from production...'}
           </Text>
+          {showStore.shows.length > 0 && (
+            <Text style={styles.emptySubtext}>
+              {showStore.shows.length} shows loaded
+            </Text>
+          )}
         </View>
       </SafeAreaView>
     );
@@ -138,6 +185,12 @@ const ShowsScreen = observer(() => {
 
         {/* Floating controls */}
         <View style={styles.floatingControls}>
+          <TouchableOpacity 
+            style={[styles.floatingButton, styles.refreshButton]}
+            onPress={handleRefresh}
+          >
+            <Ionicons name="refresh" size={24} color="white" />
+          </TouchableOpacity>
           <TouchableOpacity 
             style={styles.floatingButton}
             onPress={handleGetLocation}
@@ -385,6 +438,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#BBBBBB',
     textAlign: 'center',
+  },
+  refreshButton: {
+    backgroundColor: '#28a745', // Green color for refresh
   },
 });
 
