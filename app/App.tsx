@@ -11,6 +11,12 @@ const App = observer(() => {
   useEffect(() => {
     // Any additional app-level initialization can go here
     console.log('KaraokeHub Mobile App Started');
+    
+    // HMR debug logging
+    if (__DEV__) {
+      console.log('🔥 Development mode - HMR enabled');
+      console.log('📱 Fast Refresh should work for component changes');
+    }
 
     return () => {
       // Cleanup when app is destroyed
@@ -25,6 +31,11 @@ const App = observer(() => {
     </GestureHandlerRootView>
   );
 });
+
+// Enable Fast Refresh for this component
+if (__DEV__) {
+  App.displayName = 'App';
+}
 
 const styles = StyleSheet.create({
   container: {

@@ -7,6 +7,9 @@ export default {
     icon: "./assets/icon.png",
     userInterfaceStyle: "dark",
     newArchEnabled: true,
+    developmentClient: {
+      silentLaunch: false,
+    },
     splash: {
       image: "./assets/splash-icon.png",
       resizeMode: "contain",
@@ -46,6 +49,7 @@ export default {
       favicon: "./assets/favicon.png"
     },
     plugins: [
+      "expo-dev-client",
       "expo-location",
       "expo-av",
       "expo-camera",
@@ -55,12 +59,6 @@ export default {
         "expo-image-picker",
         {
           photosPermission: "The app accesses your photos to let you upload karaoke schedule images."
-        }
-      ],
-      [
-        "@react-native-async-storage/async-storage",
-        {
-          schemes: ["karaokehub"]
         }
       ]
     ]
