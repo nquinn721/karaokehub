@@ -143,7 +143,7 @@ npx tsc --noEmit
 The app automatically detects development vs production:
 
 - **Development**: Uses `http://localhost:3000/api`
-- **Production**: Uses `https://api.karaokehub.com/api`
+- **Production**: Uses `https://karaoke-hub.com/api`
 
 ## Permissions Required
 

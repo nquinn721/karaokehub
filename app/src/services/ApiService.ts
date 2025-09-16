@@ -55,7 +55,7 @@ class ApiService {
     // Use different base URLs for development and production
     this.baseURL = __DEV__
       ? 'http://localhost:3000/api' // Local development
-      : 'https://api.karaokehub.com/api'; // Production
+      : 'https://karaoke-hub.com/api'; // Production
 
     this.api = axios.create({
       baseURL: this.baseURL,
