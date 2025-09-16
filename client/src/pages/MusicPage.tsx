@@ -1,5 +1,5 @@
 import { WideAdWithUpgrade } from '@components/AdWithUpgrade';
-import { BannerAd, LeaderboardAd, SidebarAd } from '@components/AdsterraAd';
+import { BannerAd, LeaderboardAd } from '@components/AdsterraAd';
 import { ThumbnailAlbumArt } from '@components/OptimizedAlbumArt';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
@@ -1111,19 +1111,6 @@ export const MusicPage: React.FC = observer(() => {
                 {!authStore.isAdmin && !subscriptionStore.hasAdFreeAccess && (
                   <Grid item xs={12} lg={3}>
                     <Box sx={{ position: 'sticky', top: 20 }}>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          justifyContent: 'center',
-                          '& > div': {
-                            // Target the ad container
-                            margin: 0,
-                            padding: 0,
-                          },
-                        }}
-                      >
-                        <SidebarAd />
-                      </Box>
                       <Box sx={{ mt: 2 }}>
                         <BannerAd />
                       </Box>

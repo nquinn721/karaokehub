@@ -100,28 +100,46 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
           adRef.current.appendChild(script);
           adRef.current.appendChild(containerDiv);
         } else {
-          // Standard iframe banner format
-          // Set up the global atOptions for this ad
-          (window as any).atOptions = {
-            key: adKey,
-            format: 'iframe',
-            height: height,
-            width: width,
-            params: {},
-          };
+          // Standard iframe banner format with unique container approach
+          const uniqueAdId = `adsterra_${adKey}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-          // Create and load the Adsterra script
+          // Create unique container div for this ad
+          const adContainer = document.createElement('div');
+          adContainer.id = uniqueAdId;
+          adRef.current.appendChild(adContainer);
+
+          // Set up the global atOptions right before the script loads
           const script = document.createElement('script');
           script.type = 'text/javascript';
-          script.src = `//www.highperformanceformat.com/${adKey}/invoke.js`;
           script.async = true;
+
+          // Set atOptions and load the script in one go to minimize conflicts
+          script.innerHTML = `
+            (function() {
+              // Set atOptions with small delay to ensure proper loading
+              setTimeout(function() {
+                window.atOptions = {
+                  'key': '${adKey}',
+                  'format': 'iframe',
+                  'height': ${height},
+                  'width': ${width},
+                  'params': {}
+                };
+                var script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = '//www.highperformanceformat.com/${adKey}/invoke.js';
+                script.async = true;
+                document.getElementById('${uniqueAdId}').appendChild(script);
+              }, Math.random() * 100 + 50); // Random delay 50-150ms to prevent conflicts
+            })();
+          `;
 
           script.onload = () => {
             if (mountedRef.current) {
               scriptLoadedRef.current = true;
               setIsAdLoaded(true);
               if (debug) {
-                console.log('Adsterra script loaded successfully');
+                console.log('Adsterra script loaded successfully for container:', uniqueAdId);
               }
             }
           };
@@ -130,12 +148,12 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
             if (mountedRef.current) {
               setHasError(true);
               if (debug) {
-                console.error('Failed to load Adsterra script');
+                console.error('Failed to load Adsterra script for container:', uniqueAdId);
               }
             }
           };
 
-          // Append script to the ad container
+          // Append the wrapper script to the main ad container
           adRef.current.appendChild(script);
         }
 

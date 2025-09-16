@@ -1,6 +1,5 @@
-import { NativeBannerAd } from '@components/AdsterraAd';
+import { SquareAd } from '@components/AdsterraAd';
 import FriendsList from '@components/FriendsList';
-import MobileBanner from '@components/MobileBanner';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
 import {
@@ -905,11 +904,6 @@ const DashboardPage: React.FC = observer(() => {
               </Box>
             </Box>
 
-            {/* Ad placement after welcome section */}
-            <Box sx={{ mb: { xs: 2, sm: 3, md: 4 } }}>
-              <MobileBanner position="between" variant="banner" />
-            </Box>
-
             {/* Enhanced Stats Cards */}
             {/* Mobile: Compact Stats Card */}
             <Box sx={{ display: { xs: 'block', md: 'none' }, mb: { xs: 3, sm: 4 } }}>
@@ -1199,11 +1193,6 @@ const DashboardPage: React.FC = observer(() => {
                     )}
                   </CardContent>
                 </Card>
-
-                {/* Native Banner inside main content */}
-                <Box sx={{ my: 3, display: 'flex', justifyContent: 'center' }}>
-                  <NativeBannerAd />
-                </Box>
               </Grid>
 
               {/* Right Sidebar */}
@@ -1217,6 +1206,11 @@ const DashboardPage: React.FC = observer(() => {
                     overflowY: 'auto',
                   }}
                 >
+                  {/* Square Ad above Friends */}
+                  <Box sx={{ mb: 3 }}>
+                    <SquareAd />
+                  </Box>
+
                   {/* Friends List */}
                   <FriendsList onUserSelect={(userId) => console.log('Selected user:', userId)} />
 
@@ -1304,16 +1298,13 @@ const DashboardPage: React.FC = observer(() => {
                     </CardContent>
                   </Card>
 
-                  {/* Native Banner Ad in Sidebar */}
-                  <NativeBannerAd />
+                  {/* Square Ad below Coming Soon */}
+                  <Box sx={{ mt: 3 }}>
+                    <SquareAd />
+                  </Box>
                 </Stack>
               </Grid>
             </Grid>
-
-            {/* Ad placement at bottom */}
-            <Box sx={{ mt: 4, mb: 2 }}>
-              <MobileBanner position="between" variant="banner" />
-            </Box>
           </Box>
         </Box>
       </Box>
