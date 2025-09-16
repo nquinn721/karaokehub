@@ -2,6 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import RootNavigator from './src/navigation/RootNavigator';
 import { rootStore } from './src/stores';
 
@@ -18,10 +19,10 @@ const App = observer(() => {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <GestureHandlerRootView style={styles.container}>
       <StatusBar style="light" backgroundColor="#121212" />
       <RootNavigator />
-    </View>
+    </GestureHandlerRootView>
   );
 });
 

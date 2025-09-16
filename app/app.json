@@ -51,6 +51,12 @@
         {
           "photosPermission": "The app accesses your photos to let you upload karaoke schedule images."
         }
+      ],
+      [
+        "@react-native-async-storage/async-storage",
+        {
+          "schemes": ["karaokehub"]
+        }
       ]
     ]
   }
