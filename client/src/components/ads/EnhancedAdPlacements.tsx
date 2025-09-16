@@ -4,7 +4,7 @@ import { observer } from 'mobx-react-lite';
 import React from 'react';
 import { BannerAd, LeaderboardAd, MobileAd, NativeBannerAd, SidebarAd } from '../AdsterraAd';
 
-// Sticky header ad that follows user while scrolling
+// Header ad that appears at the top but doesn't stick while scrolling
 export const StickyHeaderAd: React.FC<{ className?: string; debug?: boolean }> = observer(
   ({ className, debug = false }) => {
     const theme = useTheme();
@@ -16,14 +16,12 @@ export const StickyHeaderAd: React.FC<{ className?: string; debug?: boolean }> =
       <Box
         className={className}
         sx={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 1000,
+          width: '100%',
           backgroundColor: theme.palette.background.paper,
           borderBottom: `1px solid ${theme.palette.divider}`,
           py: 1,
           px: 2,
-          boxShadow: theme.shadows[2],
+          boxShadow: theme.shadows[1], // Reduced shadow intensity
         }}
       >
         <Container maxWidth="lg" sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -115,7 +113,14 @@ export const SidebarAdContainer: React.FC<{
     const ads = [];
     for (let i = 0; i < slots; i++) {
       ads.push(
-        <Box key={i} sx={{ mb: i < slots - 1 ? spacing : 0 }}>
+        <Box
+          key={i}
+          sx={{
+            mb: i < slots - 1 ? spacing : 0,
+            width: '100%',
+            overflow: 'hidden', // Prevent individual ads from overflowing
+          }}
+        >
           {i === 0 ? <SidebarAd debug={debug} /> : <NativeBannerAd debug={debug} />}
         </Box>,
       );
@@ -130,10 +135,14 @@ export const SidebarAdContainer: React.FC<{
         position: 'sticky',
         top: 20,
         maxHeight: 'calc(100vh - 40px)',
-        overflow: 'auto',
+        overflow: 'visible',
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
+        width: '100%',
+        maxWidth: '100%', // Ensure it doesn't exceed Grid container width
+        minWidth: 0, // Allow flex shrinking
+        boxSizing: 'border-box', // Include padding/border in width calculation
       }}
     >
       {renderAdSlots()}

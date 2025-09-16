@@ -197,7 +197,7 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
         height: `${height}px`,
         minWidth: `${width}px`,
         minHeight: `${height}px`,
-        maxWidth: `${width}px`,
+        maxWidth: '100%', // Allow responsive shrinking
         maxHeight: `${height}px`,
         display: 'block',
         backgroundColor:
@@ -221,6 +221,12 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
         position: 'relative',
         margin: 0,
         padding: 0,
+        flexShrink: 0, // Prevent the ad from shrinking in flex containers
+        // Ensure content fits within bounds
+        '& *': {
+          maxWidth: '100%',
+          maxHeight: '100%',
+        },
         '& iframe': {
           width: '100%',
           height: '100%',
@@ -390,8 +396,11 @@ export const SidebarAd: React.FC<{ className?: string; debug?: boolean }> = obse
           justifyContent: 'center',
           alignItems: 'flex-start',
           width: '100%',
+          maxWidth: '100%', // Ensure it doesn't exceed container width
           minHeight: '600px',
           my: 2,
+          overflow: 'hidden', // Prevent overflow
+          boxSizing: 'border-box',
         }}
       >
         <AdsterraAd
@@ -422,8 +431,11 @@ export const NativeBannerAd: React.FC<{ className?: string; debug?: boolean }> =
           justifyContent: 'center',
           alignItems: 'center',
           width: '100%',
+          maxWidth: '100%', // Ensure it doesn't exceed container width
           minHeight: '250px',
           my: 2,
+          overflow: 'hidden', // Prevent overflow
+          boxSizing: 'border-box',
         }}
       >
         <AdsterraAd
