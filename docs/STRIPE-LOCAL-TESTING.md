@@ -113,7 +113,7 @@ STRIPE_WEBHOOK_SECRET=whsec_your_actual_webhook_secret
 ### 1. Start Local Server
 
 ```bash
-cd /d/Projects/KaraokePal
+cd /d/Projects/KaraokeHub
 npm run start:dev
 ```
 

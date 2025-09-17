@@ -125,4 +125,4 @@ export interface AdminShow {
 ✅ **Maintained Performance**: No impact on loading or responsiveness  
 ✅ **Future-Ready**: Table structure supports additional enhancements
 
-The admin dashboard now provides a comprehensive view of karaoke events with complete venue and location information, making it much easier for administrators to manage the KaraokePal platform!
+The admin dashboard now provides a comprehensive view of karaoke events with complete venue and location information, making it much easier for administrators to manage the KaraokeHub platform!

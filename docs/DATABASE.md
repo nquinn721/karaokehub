@@ -1,4 +1,4 @@
-# 🎤 KaraokePal Database Documentation
+# 🎤 KaraokeHub Database Documentation
 
 ## Quick Start
 

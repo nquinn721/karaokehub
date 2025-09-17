@@ -29,7 +29,7 @@ const PostLoginModal: React.FC = observer(() => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const steps = authStore.isNewUser
-    ? ['Welcome to KaraokePal!', 'Set Your Stage Name']
+    ? ['Welcome to KaraokeHub!', 'Set Your Stage Name']
     : ['Set Your Stage Name'];
 
   const handleNext = () => {
@@ -78,7 +78,7 @@ const PostLoginModal: React.FC = observer(() => {
       <DialogTitle>
         <Box display="flex" alignItems="center" justifyContent="space-between">
           <Typography variant="h5" component="div">
-            {authStore.isNewUser ? 'Welcome to KaraokePal!' : 'Complete Your Profile'}
+            {authStore.isNewUser ? 'Welcome to KaraokeHub!' : 'Complete Your Profile'}
           </Typography>
         </Box>
         {authStore.isNewUser && (
@@ -102,7 +102,7 @@ const PostLoginModal: React.FC = observer(() => {
             </Typography>
 
             <Typography variant="body1" paragraph>
-              KaraokePal helps you discover amazing karaoke experiences and connect with fellow
+              KaraokeHub helps you discover amazing karaoke experiences and connect with fellow
               singers.
             </Typography>
 

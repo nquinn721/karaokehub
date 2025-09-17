@@ -1,28 +1,30 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
+import { observer } from 'mobx-react-lite';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
   Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { observer } from 'mobx-react-lite';
-import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker, Region } from 'react-native-maps';
-import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
+
+// Conditional map component
+import ConditionalMap from '../components/ConditionalMap';
 
 // Import stores
-import { showStore, mapStore, authStore, uiStore } from '../stores';
-import { Show, DayOfWeek } from '../types';
+import { mapStore, showStore, uiStore } from '../stores';
+import { Show } from '../types';
 
 const { width, height } = Dimensions.get('window');
 
 const ShowsScreen = observer(() => {
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   const snapPoints = ['25%', '50%', '90%'];
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -32,12 +34,12 @@ const ShowsScreen = observer(() => {
       if (isInitialized) return;
 
       console.log('🚀 Initializing ShowsScreen...');
-      
+
       try {
         // Initialize show store first
         const showResult = await showStore.initialize();
         console.log('📱 Show initialization result:', showResult);
-        
+
         if (showResult.success) {
           console.log(`✅ Loaded ${showStore.shows.length} shows from production`);
         } else if ('error' in showResult) {
@@ -46,7 +48,7 @@ const ShowsScreen = observer(() => {
 
         // Initialize map store
         await mapStore.initialize();
-        
+
         // Get user location after initialization
         await mapStore.goToCurrentLocation();
 
@@ -60,7 +62,7 @@ const ShowsScreen = observer(() => {
     initializeScreen();
   }, []); // Empty dependency array - only run once
 
-  const onRegionChange = useCallback((region: Region) => {
+  const onRegionChange = useCallback((region: any) => {
     mapStore.setRegion(region);
   }, []);
 
@@ -73,7 +75,7 @@ const ShowsScreen = observer(() => {
     try {
       uiStore.setAppLoading(true, 'Refreshing shows...');
       const result = await showStore.refresh();
-      
+
       if (result.success) {
         console.log(`✅ Refreshed ${showStore.shows.length} shows`);
       } else if ('error' in result) {
@@ -103,35 +105,35 @@ const ShowsScreen = observer(() => {
     }
   }, []);
 
-  const renderShowItem = useCallback(({ item: show }: { item: Show }) => (
-    <TouchableOpacity
-      style={styles.showItem}
-      onPress={() => handleMarkerPress(show)}
-    >
-      <View style={styles.showHeader}>
-        <Text style={styles.venueName}>{show.venue?.name || 'Unknown Venue'}</Text>
-        <Text style={styles.showTime}>
-          {show.day} {show.startTime}
-        </Text>
-      </View>
-      <Text style={styles.showAddress}>{show.venue?.address || 'No address'}</Text>
-      {show.description && (
-        <Text style={styles.showDescription} numberOfLines={2}>
-          {show.description}
-        </Text>
-      )}
-      <View style={styles.showActions}>
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="navigate" size={16} color="#007AFF" />
-          <Text style={styles.actionText}>Directions</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="information-circle" size={16} color="#007AFF" />
-          <Text style={styles.actionText}>Details</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  ), []);
+  const renderShowItem = useCallback(
+    ({ item: show }: { item: Show }) => (
+      <TouchableOpacity style={styles.showItem} onPress={() => handleMarkerPress(show)}>
+        <View style={styles.showHeader}>
+          <Text style={styles.venueName}>{show.venue?.name || 'Unknown Venue'}</Text>
+          <Text style={styles.showTime}>
+            {show.day} {show.startTime}
+          </Text>
+        </View>
+        <Text style={styles.showAddress}>{show.venue?.address || 'No address'}</Text>
+        {show.description && (
+          <Text style={styles.showDescription} numberOfLines={2}>
+            {show.description}
+          </Text>
+        )}
+        <View style={styles.showActions}>
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="navigate" size={16} color="#007AFF" />
+            <Text style={styles.actionText}>Directions</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="information-circle" size={16} color="#007AFF" />
+            <Text style={styles.actionText}>Details</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    ),
+    [],
+  );
 
   if (uiStore.isAppLoading || (showStore.isLoading && !isInitialized)) {
     return (
@@ -142,9 +144,7 @@ const ShowsScreen = observer(() => {
             {uiStore.globalLoadingMessage || 'Loading shows from production...'}
           </Text>
           {showStore.shows.length > 0 && (
-            <Text style={styles.emptySubtext}>
-              {showStore.shows.length} shows loaded
-            </Text>
+            <Text style={styles.emptySubtext}>{showStore.shows.length} shows loaded</Text>
           )}
         </View>
       </SafeAreaView>
@@ -155,46 +155,24 @@ const ShowsScreen = observer(() => {
     <SafeAreaView style={styles.container}>
       {/* Map View */}
       <View style={styles.mapContainer}>
-        <MapView
+        <ConditionalMap
           ref={mapRef}
           style={styles.map}
           region={mapStore.currentRegion || undefined}
-          onRegionChange={onRegionChange}
-          showsUserLocation={true}
-          showsMyLocationButton={false}
-          userInterfaceStyle="dark"
-          mapType="standard"
-        >
-          {showStore.shows.map((show) => (
-            <Marker
-              key={show.id}
-              coordinate={{
-                latitude: show.venue?.lat || 0,
-                longitude: show.venue?.lng || 0,
-              }}
-              title={show.venue?.name || 'Unknown Venue'}
-              description={`${show.day} ${show.startTime}`}
-              onPress={() => handleMarkerPress(show)}
-            >
-              <View style={styles.markerContainer}>
-                <Ionicons name="musical-notes" size={20} color="white" />
-              </View>
-            </Marker>
-          ))}
-        </MapView>
+          onRegionChangeComplete={onRegionChange}
+          shows={showStore.shows}
+          onMarkerPress={handleMarkerPress}
+        />
 
         {/* Floating controls */}
         <View style={styles.floatingControls}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.floatingButton, styles.refreshButton]}
             onPress={handleRefresh}
           >
             <Ionicons name="refresh" size={24} color="white" />
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.floatingButton}
-            onPress={handleGetLocation}
-          >
+          <TouchableOpacity style={styles.floatingButton} onPress={handleGetLocation}>
             <Ionicons name="location" size={24} color="white" />
           </TouchableOpacity>
         </View>
@@ -222,14 +200,12 @@ const ShowsScreen = observer(() => {
       >
         <View style={styles.bottomSheetContent}>
           <View style={styles.bottomSheetHeader}>
-            <Text style={styles.bottomSheetTitle}>
-              Karaoke Shows ({showStore.shows.length})
-            </Text>
+            <Text style={styles.bottomSheetTitle}>Karaoke Shows ({showStore.shows.length})</Text>
             <TouchableOpacity onPress={() => bottomSheetRef.current?.collapse()}>
               <Ionicons name="chevron-down" size={24} color="#007AFF" />
             </TouchableOpacity>
           </View>
-          
+
           <BottomSheetFlatList
             data={showStore.shows}
             renderItem={renderShowItem}
@@ -441,6 +417,37 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     backgroundColor: '#28a745', // Green color for refresh
+  },
+  mapPlaceholder: {
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  placeholderTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  placeholderText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  placeholderSubtext: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
+    marginBottom: 15,
+  },
+  placeholderNote: {
+    fontSize: 12,
+    color: '#888',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    maxWidth: 250,
   },
 });
 

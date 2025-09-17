@@ -21,7 +21,7 @@ export class ShowStore {
 
   // Fetch control to prevent loops
   private _lastFetchTime = 0;
-  private _fetchDebounceTime = 2000; // 2 seconds minimum between fetches
+  private _fetchDebounceTime = 500; // 500ms minimum between fetches
   private _isInitialized = false;
 
   constructor() {
@@ -47,6 +47,11 @@ export class ShowStore {
 
   // Check if we should fetch (prevent rapid successive calls)
   private shouldFetch(): boolean {
+    // Always allow first fetch
+    if (!this._isInitialized) {
+      return true;
+    }
+
     const now = Date.now();
     const timeSinceLastFetch = now - this._lastFetchTime;
     return timeSinceLastFetch >= this._fetchDebounceTime;
@@ -147,10 +152,10 @@ export class ShowStore {
 
       console.log('📡 API request params:', params);
       const response = await apiService.get(apiService.endpoints.shows.list, { params });
-      console.log('✅ Shows loaded successfully:', response?.shows?.length || 0, 'shows');
+      console.log('✅ Shows loaded successfully:', Array.isArray(response) ? response.length : 0, 'shows');
 
       runInAction(() => {
-        this.shows = response.shows || [];
+        this.shows = Array.isArray(response) ? response : [];
         this.isUsingCityView = false;
         this.isLoading = false;
       });
@@ -159,7 +164,7 @@ export class ShowStore {
       return { success: true, shows: this.shows };
     } catch (error: any) {
       console.error('❌ Failed to fetch shows:', error);
-      
+
       runInAction(() => {
         this.isLoading = false;
       });
@@ -195,7 +200,7 @@ export class ShowStore {
       const response = await apiService.get(apiService.endpoints.shows.list, { params });
 
       runInAction(() => {
-        this.shows = response.shows || [];
+        this.shows = Array.isArray(response) ? response : [];
         this.isUsingCityView = false;
         this.isLoading = false;
       });

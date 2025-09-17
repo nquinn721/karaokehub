@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🗄️ Setting up KaraokePal database..."
+echo "🗄️ Setting up KaraokeHub database..."
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then

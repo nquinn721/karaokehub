@@ -172,7 +172,7 @@ const ShowsPage: React.FC = observer(() => {
   return (
     <>
       <SEO
-        title="Shows | KaraokePal"
+        title="Shows | KaraokeHub"
         description="Find karaoke shows near you with our interactive map and advanced filtering options."
       />
 

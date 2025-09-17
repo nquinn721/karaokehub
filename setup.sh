@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🎤 Setting up KaraokePal development environment..."
+echo "🎤 Setting up KaraokeHub development environment..."
 
 # Check if Node.js is installed
 if ! command -v node &> /dev/null; then

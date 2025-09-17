@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "45f06ba1-968b-4e20-b23b-82449b282b7d"
+      }
+    },
+    "android": {
+      "package": "com.nquinn721.karaokehubserver"
+    }
+  }
+}

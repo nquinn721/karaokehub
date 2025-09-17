@@ -152,18 +152,17 @@ FACEBOOK_APP_SECRET=your-facebook-app-secret
 1. Start the backend server:
 
    ```bash
-   cd /d/Projects/KaraokePal
+   cd /d/Projects/KaraokeHub
    npm run dev
    ```
 
 2. Start the frontend:
 
-   ```bash
-   cd /d/Projects/KaraokePal/client
-   npm run dev
-   ```
-
-3. Navigate to `http://localhost:5173` and test OAuth login
+   ````bash
+   cd /d/Projects/KaraokeHub/client
+   npm start
+   ```3. Navigate to `http://localhost:5173` and test OAuth login
+   ````
 
 ### Production Testing
 
@@ -224,7 +223,7 @@ This ensures consistent URL handling across the application.
 ### Check Current OAuth URLs:
 
 ```bash
-cd /d/Projects/KaraokePal
+cd /d/Projects/KaraokeHub
 node -e "console.log('Local Google:', 'http://localhost:8000/api/auth/google/callback'); console.log('Prod Google:', 'https://karaoke-hub.com/api/auth/google/callback');"
 ```
 
@@ -242,6 +241,6 @@ curl http://localhost:8000/api/auth/facebook
 
 ```bash
 # Local development
-cd /d/Projects/KaraokePal
+cd /d/Projects/KaraokeHub
 node -e "require('dotenv').config(); console.log('GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'SET' : 'NOT_SET'); console.log('FACEBOOK_APP_ID:', process.env.FACEBOOK_APP_ID ? 'SET' : 'NOT_SET');"
 ```

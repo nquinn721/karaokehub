@@ -3,7 +3,7 @@ import { baseApiService } from './BaseApiService';
 /**
  * Legacy ApiService - now just re-exports the BaseApiService
  * This maintains backward compatibility while using the new centralized service
- * 
+ *
  * @deprecated Use baseApiService directly instead
  */
 class ApiService {

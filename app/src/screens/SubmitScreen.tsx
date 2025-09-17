@@ -1,8 +1,7 @@
-import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { authStore } from '../stores';
 
 const SubmitScreen = observer(() => {
@@ -12,26 +11,27 @@ const SubmitScreen = observer(() => {
         <View style={styles.iconContainer}>
           <Ionicons name="add-circle" size={80} color="#007AFF" />
         </View>
-        
+
         <Text style={styles.title}>Submit Show</Text>
         <Text style={styles.subtitle}>
           Upload images or manually add karaoke shows to help the community find great venues
         </Text>
-        
+
         {!authStore.isAuthenticated && (
           <View style={styles.authNotice}>
             <Ionicons name="information-circle" size={20} color="#FFA500" />
             <Text style={styles.authNoticeText}>
-              You can browse shows without an account, but you'll need to sign in to submit new venues
+              You can browse shows without an account, but you'll need to sign in to submit new
+              venues
             </Text>
           </View>
         )}
-        
+
         <TouchableOpacity style={styles.submitButton}>
           <Ionicons name="camera" size={24} color="white" />
           <Text style={styles.submitButtonText}>Upload Photos</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={[styles.submitButton, styles.manualButton]}>
           <Ionicons name="create" size={24} color="#007AFF" />
           <Text style={[styles.submitButtonText, styles.manualButtonText]}>Manual Entry</Text>

@@ -1,6 +1,6 @@
 # Stripe Payment Integration Setup
 
-This document outlines the complete Stripe payment integration setup for KaraokePal.
+This document outlines the complete Stripe payment integration setup for KaraokeHub.
 
 ## Environment Variables
 

@@ -1,4 +1,4 @@
-# KaraokePal
+# KaraokeHub
 
 A full-stack karaoke application built with React, NestJS, and real-time WebSocket communication.
 
@@ -30,7 +30,7 @@ A full-stack karaoke application built with React, NestJS, and real-time WebSock
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd KaraokePal
+cd KaraokeHub
 
 # Install backend dependencies
 npm install
@@ -100,7 +100,7 @@ npm run deploy
 ## 🏗️ Project Structure
 
 ```
-KaraokePal/
+KaraokeHub/
 ├── client/                 # React frontend
 │   ├── src/
 │   │   ├── components/     # Reusable UI components
@@ -150,7 +150,7 @@ KaraokePal/
 
 ### 🖼️ Image Parsing & AI Features
 
-KaraokePal includes advanced AI-powered parsing capabilities for extracting karaoke event details from images, social media posts, and Facebook events with intelligent DJ name recognition.
+KaraokeHub includes advanced AI-powered parsing capabilities for extracting karaoke event details from images, social media posts, and Facebook events with intelligent DJ name recognition.
 
 #### **Capabilities**
 
@@ -233,8 +233,8 @@ See [docs/IMAGE-PARSING-SETUP.md](docs/IMAGE-PARSING-SETUP.md) and [docs/FACEBOO
 ### Docker Build
 
 ```bash
-docker build -t karaokepal .
-docker run -p 3001:3001 karaokepal
+docker build -t karaokehub .
+docker run -p 3001:3001 karaokehub
 ```
 
 ### Google Cloud Run

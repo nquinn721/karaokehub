@@ -10,6 +10,7 @@ interface AdsterraAdProps {
   className?: string;
   debug?: boolean;
   showPlaceholder?: boolean;
+  disabled?: boolean; // Add option to completely disable ads
 }
 
 // Base Adsterra Ad Component (internal use)
@@ -20,6 +21,7 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
   className,
   debug = false,
   showPlaceholder = true,
+  disabled = false,
 }) => {
   const adRef = useRef<HTMLDivElement>(null);
   const scriptLoadedRef = useRef<boolean>(false);
@@ -35,7 +37,7 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!adRef.current || !mountedRef.current) return;
+    if (!adRef.current || !mountedRef.current || disabled) return;
 
     if (debug) {
       console.log('Loading Adsterra ad with key:', adKey);
@@ -46,6 +48,21 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
     scriptLoadedRef.current = false;
     setIsAdLoaded(false);
     setHasError(false);
+
+    // Add global error handler for advertising script errors
+    const handleGlobalError = (event: ErrorEvent) => {
+      if (event.error && event.error.message && 
+          (event.error.message.includes('Js is not a function') || 
+           event.error.message.includes('invoke.js'))) {
+        if (debug) {
+          console.warn('Caught advertising script error:', event.error.message);
+        }
+        setHasError(true);
+        event.preventDefault(); // Prevent the error from propagating
+        return true;
+      }
+      return false;
+    };
 
     // Add CSP violation event listener for debugging
     const handleCSPViolation = (e: SecurityPolicyViolationEvent) => {
@@ -59,6 +76,7 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
       setHasError(true);
     };
 
+    window.addEventListener('error', handleGlobalError);
     document.addEventListener('securitypolicyviolation', handleCSPViolation);
 
     // Add a small delay to ensure DOM is ready
@@ -66,6 +84,17 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
       if (!adRef.current || !mountedRef.current) return;
 
       try {
+        // Define missing Js function if not present to prevent "Js is not a function" errors
+        if (typeof (window as any).Js === 'undefined') {
+          (window as any).Js = function(...args: any[]) {
+            if (debug) {
+              console.warn('Fallback Js function called - advertising script may have failed to load properly. Args:', args);
+            }
+            // Fallback function - does nothing but prevents errors
+            return null;
+          };
+        }
+
         // Special handling for native banner format
         if (adKey === '54560d75c04fd0479493b4cb2cef087d') {
           // Native banner uses different loading mechanism
@@ -179,6 +208,7 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
 
     return () => {
       clearTimeout(timeoutId);
+      window.removeEventListener('error', handleGlobalError);
       document.removeEventListener('securitypolicyviolation', handleCSPViolation);
       // Cleanup on unmount
       scriptLoadedRef.current = false;
@@ -186,7 +216,30 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
         adRef.current.innerHTML = '';
       }
     };
-  }, [adKey, width, height, debug]);
+  }, [adKey, width, height, debug, disabled]);
+
+  // If ads are disabled, return an empty placeholder
+  if (disabled) {
+    return showPlaceholder ? (
+      <Box
+        className={className}
+        sx={{
+          width: `${width}px`,
+          height: `${height}px`,
+          minWidth: `${width}px`,
+          minHeight: `${height}px`,
+          backgroundColor: 'rgba(200, 200, 200, 0.05)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '12px',
+          color: 'text.disabled',
+        }}
+      >
+        {debug ? 'Ad Disabled' : ''}
+      </Box>
+    ) : null;
+  }
 
   return (
     <Box
@@ -281,7 +334,11 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = observer((props) => {
     return null;
   }
 
-  return <BaseAdsterraAd {...props} />;
+  // Automatically disable ads in development if they cause script errors
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const shouldDisableInDev = isDevelopment && process.env.REACT_APP_DISABLE_ADS === 'true';
+
+  return <BaseAdsterraAd {...props} disabled={props.disabled || shouldDisableInDev} />;
 });
 
 // Banner 468x60 - Small horizontal ad for content sections

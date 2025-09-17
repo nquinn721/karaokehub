@@ -124,7 +124,7 @@ stripe listen --forward-to localhost:8000/api/subscription/webhook --print-json
 1. **Terminal 1:** Start your app
 
    ```bash
-   cd /d/Projects/KaraokePal
+   cd /d/Projects/KaraokeHub
    npm run start:dev
    ```
 

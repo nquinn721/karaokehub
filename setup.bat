@@ -1,6 +1,6 @@
 @echo off
 
-echo 🎤 Setting up KaraokePal development environment...
+echo 🎤 Setting up KaraokeHub development environment...
 
 REM Check if Node.js is installed
 where node >nul 2>&1

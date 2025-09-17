@@ -8,9 +8,11 @@ import * as SecureStore from 'expo-secure-store';
 class BaseApiService {
   private api: AxiosInstance;
 
-  // Environment detection
+  // Environment detection - use production in Expo Go
   private get isDevelopment(): boolean {
-    return __DEV__;
+    // In Expo Go, always use production API even in dev mode
+    // since localhost won't be accessible
+    return false; // Force production API for now
   }
 
   // Dynamic base URL based on environment

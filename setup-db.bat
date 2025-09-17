@@ -1,5 +1,5 @@
 @echo off
-echo 🗄️ Setting up KaraokePal database...
+echo 🗄️ Setting up KaraokeHub database...
 
 REM Check if Docker is installed
 docker --version >nul 2>&1

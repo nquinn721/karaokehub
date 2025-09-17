@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { observer } from 'mobx-react-lite';
-import React from 'react';
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -14,7 +13,7 @@ import ShowsScreen from '../screens/ShowsScreen';
 import SubmitScreen from '../screens/SubmitScreen';
 
 // Import stores
-import { authStore, uiStore } from '../stores';
+import { authStore } from '../stores';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -102,17 +101,17 @@ const MainTabs = () => (
     {/* Public pages - no auth required */}
     <Tab.Screen name="Shows" component={ShowsScreen} options={{ title: 'Shows' }} />
     <Tab.Screen name="Submit" component={SubmitScreen} options={{ title: 'Submit' }} />
-    
+
     {/* Auth-required pages */}
-    <Tab.Screen 
-      name="Music" 
+    <Tab.Screen
+      name="Music"
       component={(props: any) => <AuthRequired component={MusicScreen} {...props} />}
-      options={{ title: 'Music' }} 
+      options={{ title: 'Music' }}
     />
-    <Tab.Screen 
-      name="Profile" 
+    <Tab.Screen
+      name="Profile"
       component={(props: any) => <AuthRequired component={ProfileScreen} {...props} />}
-      options={{ title: 'Profile' }} 
+      options={{ title: 'Profile' }}
     />
   </Tab.Navigator>
 );

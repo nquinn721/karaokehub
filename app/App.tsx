@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { observer } from 'mobx-react-lite';
-import React, { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import RootNavigator from './src/navigation/RootNavigator';
 import { rootStore } from './src/stores';
@@ -12,12 +12,12 @@ const App = observer(() => {
   useEffect(() => {
     // Any additional app-level initialization can go here
     console.log('KaraokeHub Mobile App Started');
-    
+
     // HMR debug logging
     if (__DEV__) {
       console.log('🔥 Development mode - HMR enabled');
       console.log('📱 Fast Refresh should work for component changes');
-      
+
       // Test production API connection in development
       setTimeout(() => {
         testProductionAPI().then((result) => {

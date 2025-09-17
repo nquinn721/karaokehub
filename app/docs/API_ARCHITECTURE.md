@@ -11,6 +11,7 @@ The mobile app now uses a centralized API service pattern that mirrors the web a
 ### BaseApiService (`src/services/BaseApiService.ts`)
 
 The main API service that handles:
+
 - **Environment Detection**: Automatically switches between development and production URLs
 - **Centralized Endpoints**: All API endpoints defined in one place
 - **Authentication**: JWT token management with automatic refresh
@@ -40,13 +41,13 @@ const shows = await baseApiService.get(baseApiService.endpoints.shows.list);
 
 // Search shows with location
 const nearbyShows = await baseApiService.get(
-  baseApiService.endpoints.shows.nearby(lat, lng, radius)
+  baseApiService.endpoints.shows.nearby(lat, lng, radius),
 );
 
 // Authenticate
 const response = await baseApiService.post(baseApiService.endpoints.auth.login, {
   email,
-  password
+  password,
 });
 ```
 
@@ -89,6 +90,7 @@ import { baseApiService } from '../services/BaseApiService';
 ## Authentication
 
 The service automatically:
+
 - Adds JWT tokens to requests
 - Handles token refresh on 401 responses
 - Stores tokens securely using Expo SecureStore

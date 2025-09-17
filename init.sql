@@ -1,4 +1,4 @@
--- KaraokePal Database Initialization
+-- KaraokeHub Database Initialization
 -- This file is automatically loaded when the MySQL container starts
 
 USE `karaoke-hub`;

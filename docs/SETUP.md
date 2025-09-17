@@ -1,6 +1,6 @@
-# 🎤 KaraokePal - Complete Setup Guide
+# 🎤 KaraokeHub - Complete Setup Guide
 
-Welcome to KaraokePal! This guide will walk you through setting up your full-stack karaoke application from scratch.
+Welcome to KaraokeHub! This guide will walk you through setting up your full-stack karaoke application from scratch.
 
 ## 📋 Prerequisites
 
@@ -26,7 +26,7 @@ git --version     # Any recent version
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd KaraokePal
+cd KaraokeHub
 
 # Install all dependencies (frontend + backend)
 npm run setup
