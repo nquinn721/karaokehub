@@ -50,7 +50,7 @@ export class StripeService {
 
       const sessionConfig: Stripe.Checkout.SessionCreateParams = {
         customer: customerId,
-        payment_method_types: ['card', 'paypal'],
+        payment_method_types: ['card'], // Only use card payments for now
         line_items: [
           {
             price: priceId,
