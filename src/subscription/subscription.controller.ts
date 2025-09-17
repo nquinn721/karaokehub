@@ -131,12 +131,14 @@ export class SubscriptionController {
           name: 'Free',
           price: 0,
           features: ['Basic music search', 'View karaoke shows', 'Ads included'],
+          priceId: null, // Free plan has no Stripe price ID
         },
         {
           id: SubscriptionPlan.AD_FREE,
           name: 'Ad-Free',
           price: 0.99,
           features: ['All free features', 'No advertisements', 'Clean browsing experience'],
+          priceId: process.env.STRIPE_AD_FREE_PRICE_ID || 'price_1S08ls2lgQyeTycPCNCNAdxD',
         },
         {
           id: SubscriptionPlan.PREMIUM,
@@ -149,8 +151,16 @@ export class SubscriptionController {
             'Priority support',
             'Advanced features',
           ],
+          priceId: process.env.STRIPE_PREMIUM_PRICE_ID || 'price_1S08lu2lgQyeTycPfKtS3gAp',
         },
       ],
+      // Include environment info for debugging
+      environment: {
+        nodeEnv: process.env.NODE_ENV,
+        stripeAdFreePriceId: process.env.STRIPE_AD_FREE_PRICE_ID,
+        stripePremiumPriceId: process.env.STRIPE_PREMIUM_PRICE_ID,
+        timestamp: new Date().toISOString(),
+      },
     };
   }
 

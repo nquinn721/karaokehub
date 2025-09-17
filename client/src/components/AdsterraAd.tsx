@@ -51,9 +51,12 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
 
     // Add global error handler for advertising script errors
     const handleGlobalError = (event: ErrorEvent) => {
-      if (event.error && event.error.message && 
-          (event.error.message.includes('Js is not a function') || 
-           event.error.message.includes('invoke.js'))) {
+      if (
+        event.error &&
+        event.error.message &&
+        (event.error.message.includes('Js is not a function') ||
+          event.error.message.includes('invoke.js'))
+      ) {
         if (debug) {
           console.warn('Caught advertising script error:', event.error.message);
         }
@@ -86,9 +89,12 @@ const BaseAdsterraAd: React.FC<AdsterraAdProps> = ({
       try {
         // Define missing Js function if not present to prevent "Js is not a function" errors
         if (typeof (window as any).Js === 'undefined') {
-          (window as any).Js = function(...args: any[]) {
+          (window as any).Js = function (...args: any[]) {
             if (debug) {
-              console.warn('Fallback Js function called - advertising script may have failed to load properly. Args:', args);
+              console.warn(
+                'Fallback Js function called - advertising script may have failed to load properly. Args:',
+                args,
+              );
             }
             // Fallback function - does nothing but prevents errors
             return null;
