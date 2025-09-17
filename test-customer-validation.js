@@ -2,7 +2,7 @@
 
 /**
  * Test Customer Validation Fix
- * 
+ *
  * This script tests the new customer validation functionality
  */
 
@@ -20,8 +20,8 @@ const testCustomer = async (customerId) => {
       method: 'GET',
       headers: {
         'User-Agent': 'Customer-Validation-Test/1.0',
-        'Accept': 'application/json'
-      }
+        Accept: 'application/json',
+      },
     };
 
     console.log(`🔍 Testing customer: ${customerId}`);
@@ -35,11 +35,11 @@ const testCustomer = async (customerId) => {
 
       res.on('end', () => {
         console.log(`   Status: ${res.statusCode}`);
-        
+
         try {
           const jsonData = JSON.parse(data);
           console.log(`   Valid: ${jsonData.valid}`);
-          
+
           if (jsonData.valid) {
             console.log(`   ✅ Customer exists in Stripe`);
             console.log(`   Email: ${jsonData.customer.email}`);
@@ -47,7 +47,7 @@ const testCustomer = async (customerId) => {
           } else {
             console.log(`   ❌ Customer not found: ${jsonData.error}`);
           }
-          
+
           resolve(jsonData);
         } catch (error) {
           console.log(`   ❌ Invalid response: ${data}`);
@@ -73,17 +73,17 @@ const testCustomer = async (customerId) => {
 async function runTests() {
   console.log('🎯 Customer Validation Tests:');
   console.log('');
-  
+
   // Test the problematic customer ID from the error
   const problematicCustomerId = 'cus_SWpXGEBMRswyfc';
-  
+
   console.log('1️⃣ Testing Problematic Customer ID:');
   try {
     await testCustomer(problematicCustomerId);
   } catch (error) {
     console.log('   ❌ Test failed:', error.message);
   }
-  
+
   console.log('');
   console.log('2️⃣ Testing Invalid Customer ID:');
   try {
@@ -91,7 +91,7 @@ async function runTests() {
   } catch (error) {
     console.log('   ❌ Test failed:', error.message);
   }
-  
+
   console.log('');
   console.log('📋 Expected Behavior After Fix:');
   console.log('   ✅ System should detect invalid customer IDs during checkout');
@@ -99,7 +99,7 @@ async function runTests() {
   console.log('   ✅ Update user record with new valid customer ID');
   console.log('   ✅ Complete checkout process without errors');
   console.log('');
-  
+
   console.log('🔄 Next Steps:');
   console.log('   1. Wait for deployment to complete (~10-15 minutes)');
   console.log('   2. Test upgrade process with affected user');
@@ -107,6 +107,6 @@ async function runTests() {
   console.log('   4. User should be able to complete subscription upgrade');
 }
 
-runTests().catch(error => {
+runTests().catch((error) => {
   console.error('❌ Test suite failed:', error.message);
 });

@@ -62,13 +62,16 @@ export class SubscriptionService {
             error: error.message,
           });
           console.log('🔄 [SUBSCRIPTION_SERVICE] Creating new customer to replace invalid one...');
-          
+
           // Create new customer and update database
           const customer = await this.stripeService.createCustomer(user.email, user.name);
           stripeCustomerId = customer.id;
           await this.userRepository.update(userId, { stripeCustomerId });
-          
-          console.log('✅ [SUBSCRIPTION_SERVICE] Replaced invalid customer with new one:', stripeCustomerId);
+
+          console.log(
+            '✅ [SUBSCRIPTION_SERVICE] Replaced invalid customer with new one:',
+            stripeCustomerId,
+          );
         }
       }
 

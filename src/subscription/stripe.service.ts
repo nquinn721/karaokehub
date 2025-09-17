@@ -50,7 +50,12 @@ export class StripeService {
 
       const sessionConfig: Stripe.Checkout.SessionCreateParams = {
         customer: customerId,
-        payment_method_types: ['card'], // Only use card payments for now
+        payment_method_types: [
+          'card',           // Credit/debit cards
+          'link',           // Stripe Link (1-click payments)
+          // Note: Apple Pay and Google Pay are automatically enabled for 'card' 
+          // when the browser/device supports them
+        ],
         line_items: [
           {
             price: priceId,
