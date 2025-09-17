@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, RawBodyRequest, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, RawBodyRequest, Req, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -162,6 +162,27 @@ export class SubscriptionController {
         timestamp: new Date().toISOString(),
       },
     };
+  }
+
+  @Get('validate-customer/:customerId')
+  async validateCustomer(@Param('customerId') customerId: string) {
+    try {
+      const customer = await this.stripeService.getCustomer(customerId);
+      return {
+        valid: true,
+        customer: {
+          id: customer.id,
+          email: customer.email,
+          created: customer.created,
+        },
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        error: error.message,
+        customerId,
+      };
+    }
   }
 
   @Post('change-plan')

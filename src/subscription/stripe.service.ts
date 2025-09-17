@@ -30,6 +30,10 @@ export class StripeService {
     });
   }
 
+  async getCustomer(customerId: string): Promise<Stripe.Customer> {
+    return this.stripe.customers.retrieve(customerId) as Promise<Stripe.Customer>;
+  }
+
   async createCheckoutSession(
     customerId: string,
     priceId: string,

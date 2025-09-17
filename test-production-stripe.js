@@ -2,7 +2,7 @@
 
 /**
  * Production Stripe API Test
- * 
+ *
  * This script tests the live production API to verify the correct
  * Stripe price IDs are being used.
  */
@@ -20,8 +20,8 @@ const testEndpoint = (path, description) => {
       path: path,
       method: 'GET',
       headers: {
-        'User-Agent': 'Stripe-Config-Validator/1.0'
-      }
+        'User-Agent': 'Stripe-Config-Validator/1.0',
+      },
     };
 
     console.log(`📡 Testing ${description}...`);
@@ -36,7 +36,7 @@ const testEndpoint = (path, description) => {
 
       res.on('end', () => {
         console.log(`   Status: ${res.statusCode}`);
-        
+
         if (res.statusCode === 200) {
           try {
             const jsonData = JSON.parse(data);
@@ -72,13 +72,13 @@ async function runTests() {
   const tests = [
     { path: '/api/health', description: 'Health Check' },
     { path: '/api/subscription/pricing', description: 'Pricing Info' },
-    { path: '/', description: 'Frontend App' }
+    { path: '/', description: 'Frontend App' },
   ];
 
   for (const test of tests) {
     try {
       const result = await testEndpoint(test.path, test.description);
-      
+
       if (result.data && typeof result.data === 'object') {
         // Look for price IDs in the response
         const responseStr = JSON.stringify(result.data);
@@ -89,7 +89,7 @@ async function runTests() {
           }
         }
       }
-      
+
       console.log('');
     } catch (error) {
       console.log(`   ❌ Test failed: ${error.message}\n`);
@@ -104,11 +104,13 @@ console.log('   2. Right-click refresh button and select "Empty Cache and Hard R
 console.log('   3. Or use Ctrl+Shift+R (Windows/Linux) or Cmd+Shift+R (Mac)');
 console.log('   4. Try the upgrade process again\n');
 
-runTests().then(() => {
-  console.log('🎯 Test Summary:');
-  console.log('   - Production service is running with correct price IDs');
-  console.log('   - If users still see old price IDs, it\'s likely a cache issue');
-  console.log('   - Instruct users to clear browser cache and try again');
-}).catch(error => {
-  console.error('❌ Test suite failed:', error.message);
-});
+runTests()
+  .then(() => {
+    console.log('🎯 Test Summary:');
+    console.log('   - Production service is running with correct price IDs');
+    console.log("   - If users still see old price IDs, it's likely a cache issue");
+    console.log('   - Instruct users to clear browser cache and try again');
+  })
+  .catch((error) => {
+    console.error('❌ Test suite failed:', error.message);
+  });

@@ -42,7 +42,7 @@ export class SubscriptionService {
         stripeCustomerId: user.stripeCustomerId,
       });
 
-      // Create Stripe customer if not exists
+      // Create Stripe customer if not exists or validate existing customer
       let stripeCustomerId = user.stripeCustomerId;
       if (!stripeCustomerId) {
         console.log('🆕 [SUBSCRIPTION_SERVICE] Creating new Stripe customer...');
@@ -50,6 +50,26 @@ export class SubscriptionService {
         stripeCustomerId = customer.id;
         await this.userRepository.update(userId, { stripeCustomerId });
         console.log('✅ [SUBSCRIPTION_SERVICE] Stripe customer created:', stripeCustomerId);
+      } else {
+        // Validate existing customer ID - it might be from test mode or different account
+        console.log('🔍 [SUBSCRIPTION_SERVICE] Validating existing customer:', stripeCustomerId);
+        try {
+          await this.stripeService.getCustomer(stripeCustomerId);
+          console.log('✅ [SUBSCRIPTION_SERVICE] Existing customer validated:', stripeCustomerId);
+        } catch (error) {
+          console.warn('⚠️ [SUBSCRIPTION_SERVICE] Invalid customer ID detected:', {
+            customerId: stripeCustomerId,
+            error: error.message,
+          });
+          console.log('🔄 [SUBSCRIPTION_SERVICE] Creating new customer to replace invalid one...');
+          
+          // Create new customer and update database
+          const customer = await this.stripeService.createCustomer(user.email, user.name);
+          stripeCustomerId = customer.id;
+          await this.userRepository.update(userId, { stripeCustomerId });
+          
+          console.log('✅ [SUBSCRIPTION_SERVICE] Replaced invalid customer with new one:', stripeCustomerId);
+        }
       }
 
       console.log('💰 [SUBSCRIPTION_SERVICE] Getting price ID for plan:', plan);
