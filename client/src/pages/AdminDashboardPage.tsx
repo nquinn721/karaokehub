@@ -1,5 +1,6 @@
 import AdminBreadcrumb from '@components/AdminBreadcrumb';
 import AdminDataTables from '@components/AdminDataTables';
+import ApiLogsMonitor from '@components/ApiLogsMonitor';
 import DataUploadModal from '@components/DataUploadModal';
 import LocationTrackingModal from '@components/modals/LocationTrackingModal';
 import ShowAnalytics from '@components/ShowAnalytics';
@@ -13,6 +14,7 @@ import {
   faHome,
   faLocationArrow,
   faPlus,
+  faRobot,
   faSync,
   faTimes,
   faUpload,
@@ -139,6 +141,13 @@ const AdminDashboardPageTabbed = observer(() => {
       icon: faGlobe,
       description: 'Review and approve submitted URLs',
       component: <UrlApprovalComponent onCountChange={setUrlApprovalCount} />,
+    },
+    {
+      id: 3,
+      title: 'API Monitoring',
+      icon: faRobot,
+      description: 'Monitor iTunes API usage and rate limiting',
+      component: <ApiLogsMonitor />,
     },
   ];
 
@@ -732,6 +741,12 @@ const AdminDashboardPageTabbed = observer(() => {
                     iconPosition="start"
                     sx={{ gap: 1 }}
                   />
+                  <Tab
+                    icon={<FontAwesomeIcon icon={faRobot} />}
+                    label="API Monitoring"
+                    iconPosition="start"
+                    sx={{ gap: 1 }}
+                  />
                 </Tabs>
               </Box>
             </Box>
@@ -747,6 +762,10 @@ const AdminDashboardPageTabbed = observer(() => {
 
             <TabPanel value={tabValue} index={2}>
               <UrlApprovalComponent onCountChange={setUrlApprovalCount} />
+            </TabPanel>
+
+            <TabPanel value={tabValue} index={3}>
+              <ApiLogsMonitor />
             </TabPanel>
           </Paper>
         </Box>

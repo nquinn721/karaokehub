@@ -602,6 +602,18 @@ class ApiStore {
       webhook: '/subscription/webhook',
       pricing: '/subscription/pricing',
     },
+
+    // Admin endpoints
+    admin: {
+      base: '/admin',
+      stats: '/admin/stats',
+      apiLogs: {
+        base: '/admin/api-logs',
+        stats: '/admin/api-logs/stats',
+        recent: '/admin/api-logs/recent',
+        cleanup: '/admin/api-logs/cleanup',
+      },
+    },
   };
 
   // Utility methods
