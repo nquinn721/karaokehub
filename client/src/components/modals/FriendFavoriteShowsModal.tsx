@@ -2,6 +2,7 @@ import { faCalendarAlt, faClock, faHeart, faMapMarkerAlt } from '@fortawesome/fr
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Alert,
+  Avatar,
   Box,
   Chip,
   CircularProgress,
@@ -47,6 +48,7 @@ interface FriendUser {
   stageName?: string;
   name?: string;
   email?: string;
+  avatar?: string; // Add avatar field for our avatar system
 }
 
 interface FriendFavoriteShowsModalProps {
@@ -148,6 +150,32 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
       fullWidth
     >
       <Box sx={{ mt: 2 }}>
+        {/* Friend Avatar Display */}
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          mb: 3,
+          p: 2,
+          borderRadius: 2,
+          backgroundColor: 'background.paper'
+        }}>
+          <Avatar
+            src={friend.avatar ? `/avatar/${friend.avatar}.png` : '/avatar/1.png'}
+            alt={friendDisplayName}
+            sx={{ 
+              width: 64, 
+              height: 64, 
+              mr: 2,
+              border: '3px solid',
+              borderColor: 'primary.main'
+            }}
+          />
+          <Typography variant="h6" color="primary">
+            {friendDisplayName}
+          </Typography>
+        </Box>
+
         {loading ? (
           <Box display="flex" justifyContent="center" alignItems="center" py={4}>
             <CircularProgress size={40} />
