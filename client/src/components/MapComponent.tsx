@@ -4,6 +4,7 @@ import {
   faMapMarkerAlt,
   faMicrophone,
   faPhone,
+  faRoute,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { MyLocationRounded } from '@mui/icons-material';
@@ -47,6 +48,63 @@ const PopupContent: React.FC<{
       });
     } catch {
       return time;
+    }
+  };
+
+  const openDirections = () => {
+    // Get the venue address and coordinates
+    const address = show.address || 
+      (show.venue && typeof show.venue === 'object' && show.venue.address);
+    
+    const lat = show.latitude || show.lat;
+    const lng = show.longitude || show.lng;
+    
+    // Build the destination for maps
+    let destination = '';
+    if (lat && lng) {
+      destination = `${lat},${lng}`;
+    } else if (address) {
+      destination = encodeURIComponent(address);
+    } else {
+      // Fallback to venue name
+      const venueName = showStore.getVenueName(show);
+      destination = encodeURIComponent(venueName);
+    }
+    
+    // Detect device and open appropriate maps app
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    
+    let mapsUrl = '';
+    
+    if (isIOS) {
+      // Open Apple Maps on iOS
+      mapsUrl = `maps://?daddr=${destination}`;
+    } else if (isAndroid) {
+      // Open Google Maps on Android
+      mapsUrl = `google.navigation:q=${destination}`;
+    } else {
+      // Fallback to Google Maps web on desktop
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+    }
+    
+    // Try to open native app, fallback to Google Maps web
+    const link = document.createElement('a');
+    link.href = mapsUrl;
+    link.target = '_blank';
+    
+    // For mobile devices, try to open native app
+    if (isIOS || isAndroid) {
+      link.click();
+      
+      // Fallback to Google Maps web if native app doesn't open
+      setTimeout(() => {
+        const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+        window.open(fallbackUrl, '_blank');
+      }, 1000);
+    } else {
+      // Desktop - open Google Maps web directly
+      link.click();
     }
   };
 
@@ -324,17 +382,35 @@ const PopupContent: React.FC<{
         </Typography>
       )}
 
-      {/* Schedule Button */}
-      {onScheduleModalOpen && (
-        <Box
+      {/* Action Buttons */}
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 1,
+          mt: 1,
+          pt: 1,
+          borderTop: `1px solid ${theme.palette.divider}`,
+        }}
+      >
+        {/* Directions Button */}
+        <IconButton
+          size="small"
+          onClick={openDirections}
           sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            mt: 1,
-            pt: 1,
-            borderTop: `1px solid ${theme.palette.divider}`,
+            color: theme.palette.success.main,
+            backgroundColor: theme.palette.success.main + '10',
+            '&:hover': {
+              backgroundColor: theme.palette.success.main + '20',
+            },
           }}
+          title="Get Directions"
         >
+          <FontAwesomeIcon icon={faRoute} style={{ fontSize: '14px' }} />
+        </IconButton>
+
+        {/* Schedule Button */}
+        {onScheduleModalOpen && (
           <IconButton
             size="small"
             onClick={() => onScheduleModalOpen(show)}
@@ -345,11 +421,12 @@ const PopupContent: React.FC<{
                 backgroundColor: theme.palette.primary.main + '20',
               },
             }}
+            title="View Schedule"
           >
             <FontAwesomeIcon icon={faClock} style={{ fontSize: '14px' }} />
           </IconButton>
-        </Box>
-      )}
+        )}
+      </Box>
     </Box>
   );
 };
