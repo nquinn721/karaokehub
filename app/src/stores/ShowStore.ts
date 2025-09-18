@@ -23,6 +23,8 @@ export class ShowStore {
   private _lastFetchTime = 0;
   private _fetchDebounceTime = 500; // 500ms minimum between fetches
   private _isInitialized = false;
+  private _lastFetchLocation: { lat: number; lng: number } | null = null;
+  private _locationThreshold = 0.001; // ~100 meters in degrees
 
   constructor() {
     makeAutoObservable(this);
@@ -46,7 +48,7 @@ export class ShowStore {
   }
 
   // Check if we should fetch (prevent rapid successive calls)
-  private shouldFetch(): boolean {
+  private shouldFetch(location?: MapBounds): boolean {
     // Always allow first fetch
     if (!this._isInitialized) {
       return true;
@@ -54,13 +56,38 @@ export class ShowStore {
 
     const now = Date.now();
     const timeSinceLastFetch = now - this._lastFetchTime;
-    return timeSinceLastFetch >= this._fetchDebounceTime;
+
+    // Check time debouncing
+    if (timeSinceLastFetch < this._fetchDebounceTime) {
+      return false;
+    }
+
+    // Check location debouncing if location is provided
+    if (location && this._lastFetchLocation) {
+      const latDiff = Math.abs(location.lat - this._lastFetchLocation.lat);
+      const lngDiff = Math.abs(location.lng - this._lastFetchLocation.lng);
+
+      // If location hasn't changed significantly, skip fetch
+      if (latDiff < this._locationThreshold && lngDiff < this._locationThreshold) {
+        console.log('🚫 Skipping fetch - location change too small:', {
+          latDiff: latDiff.toFixed(6),
+          lngDiff: lngDiff.toFixed(6),
+          threshold: this._locationThreshold,
+        });
+        return false;
+      }
+    }
+
+    return true;
   }
 
   // Mark fetch as completed
-  private markFetchCompleted() {
+  private markFetchCompleted(location?: MapBounds) {
     this._lastFetchTime = Date.now();
     this._isInitialized = true;
+    if (location) {
+      this._lastFetchLocation = { lat: location.lat, lng: location.lng };
+    }
   }
 
   get filteredShows(): Show[] {
@@ -119,7 +146,7 @@ export class ShowStore {
   // Fetch shows with optional filters
   async fetchShows(day?: DayOfWeek, location?: MapBounds, force = false) {
     // Prevent fetch loops
-    if (!force && !this.shouldFetch()) {
+    if (!force && !this.shouldFetch(location)) {
       console.log('🚫 Skipping fetch - too soon since last fetch');
       return { success: true, cached: true };
     }
@@ -152,7 +179,11 @@ export class ShowStore {
 
       console.log('📡 API request params:', params);
       const response = await apiService.get(apiService.endpoints.shows.list, { params });
-      console.log('✅ Shows loaded successfully:', Array.isArray(response) ? response.length : 0, 'shows');
+      console.log(
+        '✅ Shows loaded successfully:',
+        Array.isArray(response) ? response.length : 0,
+        'shows',
+      );
 
       runInAction(() => {
         this.shows = Array.isArray(response) ? response : [];
@@ -160,7 +191,7 @@ export class ShowStore {
         this.isLoading = false;
       });
 
-      this.markFetchCompleted();
+      this.markFetchCompleted(location);
       return { success: true, shows: this.shows };
     } catch (error: any) {
       console.error('❌ Failed to fetch shows:', error);
@@ -170,7 +201,7 @@ export class ShowStore {
       });
 
       // Still mark as completed to prevent immediate retries
-      this.markFetchCompleted();
+      this.markFetchCompleted(location);
 
       return {
         success: false,
@@ -417,8 +448,13 @@ export class ShowStore {
       return { success: true, cached: true };
     }
 
-    console.log('🚀 Initializing ShowStore with production data...');
-    return await this.fetchShows(undefined, undefined, true);
+    console.log('🚀 Initializing ShowStore (no initial fetch - waiting for map position)...');
+
+    runInAction(() => {
+      this._isInitialized = true;
+    });
+
+    return { success: true, initialized: true };
   }
 
   // Force refresh (ignores debounce)

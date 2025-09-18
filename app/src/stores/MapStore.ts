@@ -77,8 +77,8 @@ export class MapStore {
       this.currentZoom = Math.max(1, Math.min(20, zoom));
     });
 
-    // Fetch data based on new region
-    this.fetchDataForCurrentView();
+    // Use debounced fetch to avoid too many API calls when user is dragging map
+    this.debouncedFetchData();
   };
 
   // Debounced data fetching to avoid too many API calls
@@ -221,6 +221,9 @@ export class MapStore {
       // Animate to current location
       const region = this.animateToLocation(latitude, longitude, 12);
 
+      // Trigger initial data fetch for current location
+      this.fetchDataForCurrentView();
+
       console.log('✅ Successfully got current location:', { latitude, longitude });
       return { success: true, region };
     } catch (error) {
@@ -232,6 +235,9 @@ export class MapStore {
 
       // Default to center of US if location fails
       const defaultRegion = this.animateToLocation(39.8283, -98.5795, 4);
+
+      // Trigger initial data fetch for default location
+      this.fetchDataForCurrentView();
 
       return {
         success: false,

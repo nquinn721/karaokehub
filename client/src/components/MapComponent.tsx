@@ -53,12 +53,12 @@ const PopupContent: React.FC<{
 
   const openDirections = () => {
     // Get the venue address and coordinates
-    const address = show.address || 
-      (show.venue && typeof show.venue === 'object' && show.venue.address);
-    
+    const address =
+      show.address || (show.venue && typeof show.venue === 'object' && show.venue.address);
+
     const lat = show.latitude || show.lat;
     const lng = show.longitude || show.lng;
-    
+
     // Build the destination for maps
     let destination = '';
     if (lat && lng) {
@@ -70,13 +70,13 @@ const PopupContent: React.FC<{
       const venueName = showStore.getVenueName(show);
       destination = encodeURIComponent(venueName);
     }
-    
+
     // Detect device and open appropriate maps app
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isAndroid = /Android/.test(navigator.userAgent);
-    
+
     let mapsUrl = '';
-    
+
     if (isIOS) {
       // Open Apple Maps on iOS
       mapsUrl = `maps://?daddr=${destination}`;
@@ -87,16 +87,16 @@ const PopupContent: React.FC<{
       // Fallback to Google Maps web on desktop
       mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
     }
-    
+
     // Try to open native app, fallback to Google Maps web
     const link = document.createElement('a');
     link.href = mapsUrl;
     link.target = '_blank';
-    
+
     // For mobile devices, try to open native app
     if (isIOS || isAndroid) {
       link.click();
-      
+
       // Fallback to Google Maps web if native app doesn't open
       setTimeout(() => {
         const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
