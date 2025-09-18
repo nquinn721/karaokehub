@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { oauthService } from '../services/OAuthService';
 import { authStore } from '../stores';
 
 interface Props {
@@ -30,15 +31,16 @@ const RegisterScreen = observer(({ navigation }: Props) => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<string | null>(null);
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const validateForm = () => {
-    const { name, email, password, confirmPassword } = formData;
+    const { name, email, password, confirmPassword, stageName } = formData;
 
-    if (!name.trim() || !email.trim() || !password.trim()) {
+    if (!name.trim() || !email.trim() || !password.trim() || !stageName.trim()) {
       Alert.alert('Error', 'Please fill in all required fields');
       return false;
     }
@@ -71,7 +73,7 @@ const RegisterScreen = observer(({ navigation }: Props) => {
       name: name.trim(),
       email: email.trim(),
       password,
-      stageName: stageName.trim() || undefined,
+      stageName: stageName.trim(),
     });
 
     if (!result.success) {
@@ -82,6 +84,44 @@ const RegisterScreen = observer(({ navigation }: Props) => {
 
   const navigateToLogin = () => {
     navigation.navigate('Login');
+  };
+
+  const handleGoogleSignup = async () => {
+    setOauthLoading('google');
+    try {
+      const result = await oauthService.signInWithGoogle();
+      if (result.success && result.user) {
+        // Update auth store with OAuth user
+        authStore.user = result.user;
+        authStore.isAuthenticated = true;
+        authStore.token = result.token || null;
+      } else {
+        Alert.alert('Google Sign-Up Failed', result.error || 'Please try again');
+      }
+    } catch (error: any) {
+      Alert.alert('Google Sign-Up Error', error.message || 'Please try again');
+    } finally {
+      setOauthLoading(null);
+    }
+  };
+
+  const handleFacebookSignup = async () => {
+    setOauthLoading('facebook');
+    try {
+      const result = await oauthService.signInWithFacebook();
+      if (result.success && result.user) {
+        // Update auth store with OAuth user
+        authStore.user = result.user;
+        authStore.isAuthenticated = true;
+        authStore.token = result.token || null;
+      } else {
+        Alert.alert('Facebook Sign-Up Failed', result.error || 'Please try again');
+      }
+    } catch (error: any) {
+      Alert.alert('Facebook Sign-Up Error', error.message || 'Please try again');
+    } finally {
+      setOauthLoading(null);
+    }
   };
 
   return (
@@ -112,6 +152,7 @@ const RegisterScreen = observer(({ navigation }: Props) => {
                 <TextInput
                   style={styles.textInput}
                   placeholder="Full Name *"
+                  placeholderTextColor="#666"
                   value={formData.name}
                   onChangeText={(value) => updateField('name', value)}
                   autoCapitalize="words"
@@ -129,7 +170,8 @@ const RegisterScreen = observer(({ navigation }: Props) => {
                 />
                 <TextInput
                   style={styles.textInput}
-                  placeholder="Stage Name (Optional)"
+                  placeholder="Stage Name *"
+                  placeholderTextColor="#666"
                   value={formData.stageName}
                   onChangeText={(value) => updateField('stageName', value)}
                   autoCapitalize="words"
@@ -143,6 +185,7 @@ const RegisterScreen = observer(({ navigation }: Props) => {
                 <TextInput
                   style={styles.textInput}
                   placeholder="Email *"
+                  placeholderTextColor="#666"
                   value={formData.email}
                   onChangeText={(value) => updateField('email', value)}
                   keyboardType="email-address"
@@ -162,6 +205,7 @@ const RegisterScreen = observer(({ navigation }: Props) => {
                 <TextInput
                   style={[styles.textInput, styles.passwordInput]}
                   placeholder="Password *"
+                  placeholderTextColor="#666"
                   value={formData.password}
                   onChangeText={(value) => updateField('password', value)}
                   secureTextEntry={!showPassword}
@@ -191,6 +235,7 @@ const RegisterScreen = observer(({ navigation }: Props) => {
                 <TextInput
                   style={[styles.textInput, styles.passwordInput]}
                   placeholder="Confirm Password *"
+                  placeholderTextColor="#666"
                   value={formData.confirmPassword}
                   onChangeText={(value) => updateField('confirmPassword', value)}
                   secureTextEntry={!showConfirmPassword}
@@ -221,6 +266,49 @@ const RegisterScreen = observer(({ navigation }: Props) => {
                   <Text style={styles.registerButtonText}>Create Account</Text>
                 )}
               </TouchableOpacity>
+
+              {/* OAuth Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* OAuth Buttons */}
+              <TouchableOpacity
+                style={[styles.oauthButton, styles.googleButton]}
+                onPress={handleGoogleSignup}
+                disabled={oauthLoading !== null || authStore.isLoading}
+              >
+                {oauthLoading === 'google' ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="logo-google" size={20} color="#fff" style={styles.oauthIcon} />
+                    <Text style={styles.oauthButtonText}>Sign up with Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.oauthButton, styles.facebookButton]}
+                onPress={handleFacebookSignup}
+                disabled={oauthLoading !== null || authStore.isLoading}
+              >
+                {oauthLoading === 'facebook' ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="logo-facebook"
+                      size={20}
+                      color="#fff"
+                      style={styles.oauthIcon}
+                    />
+                    <Text style={styles.oauthButtonText}>Sign up with Facebook</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
 
             {/* Terms */}
@@ -245,7 +333,7 @@ const RegisterScreen = observer(({ navigation }: Props) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#121212',
   },
   keyboardView: {
     flex: 1,
@@ -273,12 +361,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFFFFF',
     marginTop: 20,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#CCCCCC',
     marginTop: 8,
     textAlign: 'center',
   },
@@ -288,21 +376,22 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#1E1E1E',
     borderRadius: 12,
     marginBottom: 16,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#333333',
   },
   inputIcon: {
     marginRight: 12,
+    color: '#666666',
   },
   textInput: {
     flex: 1,
     height: 50,
     fontSize: 16,
-    color: '#333',
+    color: '#FFFFFF',
   },
   passwordInput: {
     paddingRight: 40,
@@ -330,7 +419,7 @@ const styles = StyleSheet.create({
   },
   termsText: {
     fontSize: 12,
-    color: '#666',
+    color: '#CCCCCC',
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 20,
@@ -342,11 +431,48 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: '#666',
+    color: '#CCCCCC',
   },
   loginLink: {
     fontSize: 14,
     color: '#007AFF',
+    fontWeight: '600',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 30,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#333333',
+  },
+  dividerText: {
+    marginHorizontal: 15,
+    fontSize: 14,
+    color: '#666',
+  },
+  oauthButton: {
+    flexDirection: 'row',
+    height: 50,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  googleButton: {
+    backgroundColor: '#4285F4',
+  },
+  facebookButton: {
+    backgroundColor: '#1877F2',
+  },
+  oauthIcon: {
+    marginRight: 10,
+  },
+  oauthButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
 });

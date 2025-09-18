@@ -1,6 +1,5 @@
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { makeRedirectUri, ResponseType, useAuthRequest } from 'expo-auth-session';
-import * as AuthSession from 'expo-auth-session';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import { apiService } from './ApiService';
@@ -33,11 +32,11 @@ class OAuthService {
     try {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
-      
+
       if (userInfo.type === 'success') {
         // Get tokens separately
         const tokens = await GoogleSignin.getTokens();
-        
+
         if (tokens.idToken) {
           // Send the ID token to your backend for verification
           const response = await apiService.post('/auth/google/verify', {
@@ -47,7 +46,7 @@ class OAuthService {
           if (response.user && response.token) {
             // Store tokens securely
             await apiService.setAuthTokens(response.token, response.refreshToken);
-            
+
             return {
               success: true,
               user: response.user,
@@ -74,7 +73,7 @@ class OAuthService {
     try {
       // Try to get current user if signed in
       const currentUser = await GoogleSignin.getCurrentUser();
-      if (currentUser?.data?.user) {
+      if (currentUser) {
         // Get tokens to check for idToken
         const tokens = await GoogleSignin.getTokens();
         if (tokens.idToken) {
@@ -84,7 +83,7 @@ class OAuthService {
 
           if (response.user && response.token) {
             await apiService.setAuthTokens(response.token, response.refreshToken);
-            
+
             return {
               success: true,
               user: response.user,
@@ -93,7 +92,7 @@ class OAuthService {
           }
         }
       }
-      
+
       // Try silent sign-in
       const userInfo = await GoogleSignin.signInSilently();
       if (userInfo.type === 'success') {
@@ -105,7 +104,7 @@ class OAuthService {
 
           if (response.user && response.token) {
             await apiService.setAuthTokens(response.token, response.refreshToken);
-            
+
             return {
               success: true,
               user: response.user,
@@ -114,7 +113,7 @@ class OAuthService {
           }
         }
       }
-      
+
       return { success: false, error: 'One Tap not available' };
     } catch (error: any) {
       console.error('Google One Tap error:', error);
@@ -135,7 +134,7 @@ class OAuthService {
       });
 
       const authUrl = `${this.baseURL}/auth/facebook`;
-      
+
       if (Platform.OS === 'web') {
         // For web, redirect directly
         window.location.href = authUrl;
@@ -143,7 +142,7 @@ class OAuthService {
       } else {
         // For mobile, use WebBrowser
         const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-        
+
         if (result.type === 'success' && result.url) {
           const url = new URL(result.url);
           const token = url.searchParams.get('token');
@@ -157,7 +156,7 @@ class OAuthService {
             // Fetch user profile with the token
             await apiService.setAuthTokens(token, undefined);
             const userResponse = await apiService.get('/auth/profile');
-            
+
             return {
               success: true,
               user: userResponse.user,

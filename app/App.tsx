@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import RootNavigator from './src/navigation/RootNavigator';
+import { oauthService } from './src/services/OAuthService';
 import { rootStore } from './src/stores';
 import { testProductionAPI } from './src/utils/apiTest';
 
@@ -12,6 +13,27 @@ const App = observer(() => {
   useEffect(() => {
     // Any additional app-level initialization can go here
     console.log('KaraokeHub Mobile App Started');
+
+    // Try Google One Tap authentication on app start
+    const attemptOneTap = async () => {
+      try {
+        const result = await oauthService.googleOneTap();
+        if (result.success && result.user) {
+          console.log('🎉 Google One Tap successful');
+          rootStore.authStore.user = result.user;
+          rootStore.authStore.isAuthenticated = true;
+          rootStore.authStore.token = result.token || null;
+        } else {
+          console.log('Google One Tap not available or failed silently');
+        }
+      } catch (error) {
+        // Silent failure for One Tap - don't show errors to user
+        console.log('Google One Tap failed silently:', error);
+      }
+    };
+
+    // Run One Tap attempt after a brief delay
+    setTimeout(attemptOneTap, 1000);
 
     // HMR debug logging
     if (__DEV__) {

@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { oauthService } from '../services/OAuthService';
 import { authStore } from '../stores';
 
 interface Props {
@@ -23,6 +24,7 @@ const LoginScreen = observer(({ navigation }: Props) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<string | null>(null);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -36,6 +38,44 @@ const LoginScreen = observer(({ navigation }: Props) => {
       Alert.alert('Login Failed', result.error || 'Please try again');
     }
     // Navigation is handled automatically by RootNavigator based on auth state
+  };
+
+  const handleGoogleLogin = async () => {
+    setOauthLoading('google');
+    try {
+      const result = await oauthService.signInWithGoogle();
+      if (result.success && result.user) {
+        // Update auth store with OAuth user (similar to regular login)
+        authStore.user = result.user;
+        authStore.isAuthenticated = true;
+        authStore.token = result.token || null;
+      } else {
+        Alert.alert('Google Sign-In Failed', result.error || 'Please try again');
+      }
+    } catch (error: any) {
+      Alert.alert('Google Sign-In Error', error.message || 'Please try again');
+    } finally {
+      setOauthLoading(null);
+    }
+  };
+
+  const handleFacebookLogin = async () => {
+    setOauthLoading('facebook');
+    try {
+      const result = await oauthService.signInWithFacebook();
+      if (result.success && result.user) {
+        // Update auth store with OAuth user (similar to regular login)
+        authStore.user = result.user;
+        authStore.isAuthenticated = true;
+        authStore.token = result.token || null;
+      } else {
+        Alert.alert('Facebook Sign-In Failed', result.error || 'Please try again');
+      }
+    } catch (error: any) {
+      Alert.alert('Facebook Sign-In Error', error.message || 'Please try again');
+    } finally {
+      setOauthLoading(null);
+    }
   };
 
   const navigateToRegister = () => {
@@ -116,6 +156,44 @@ const LoginScreen = observer(({ navigation }: Props) => {
             {/* Forgot Password */}
             <TouchableOpacity style={styles.forgotPasswordButton}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
+
+            {/* OAuth Divider */}
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* OAuth Buttons */}
+            <TouchableOpacity
+              style={[styles.oauthButton, styles.googleButton]}
+              onPress={handleGoogleLogin}
+              disabled={oauthLoading !== null || authStore.isLoading}
+            >
+              {oauthLoading === 'google' ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={20} color="#fff" style={styles.oauthIcon} />
+                  <Text style={styles.oauthButtonText}>Continue with Google</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.oauthButton, styles.facebookButton]}
+              onPress={handleFacebookLogin}
+              disabled={oauthLoading !== null || authStore.isLoading}
+            >
+              {oauthLoading === 'facebook' ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="logo-facebook" size={20} color="#fff" style={styles.oauthIcon} />
+                  <Text style={styles.oauthButtonText}>Continue with Facebook</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -214,6 +292,43 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     color: '#007AFF',
     fontSize: 14,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 30,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#333333',
+  },
+  dividerText: {
+    marginHorizontal: 15,
+    fontSize: 14,
+    color: '#666',
+  },
+  oauthButton: {
+    flexDirection: 'row',
+    height: 50,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  googleButton: {
+    backgroundColor: '#4285F4',
+  },
+  facebookButton: {
+    backgroundColor: '#1877F2',
+  },
+  oauthIcon: {
+    marginRight: 10,
+  },
+  oauthButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',

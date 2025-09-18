@@ -3,8 +3,9 @@ import { observer } from 'mobx-react-lite';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
+  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -12,7 +13,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { submissionService } from '../services/SubmissionService';
@@ -65,8 +65,22 @@ const sampleDJs = [
 ];
 
 const timeSlots = [
-  '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM', '9:30 PM',
-  '10:00 PM', '10:30 PM', '11:00 PM', '11:30 PM', '12:00 AM', '12:30 AM', '1:00 AM', '2:00 AM'
+  '6:00 PM',
+  '6:30 PM',
+  '7:00 PM',
+  '7:30 PM',
+  '8:00 PM',
+  '8:30 PM',
+  '9:00 PM',
+  '9:30 PM',
+  '10:00 PM',
+  '10:30 PM',
+  '11:00 PM',
+  '11:30 PM',
+  '12:00 AM',
+  '12:30 AM',
+  '1:00 AM',
+  '2:00 AM',
 ];
 
 const ManualEntryScreen = observer(() => {
@@ -96,7 +110,7 @@ const ManualEntryScreen = observer(() => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   // Autocomplete and picker states
   const [showVenuePicker, setShowVenuePicker] = useState(false);
   const [showDJPicker, setShowDJPicker] = useState(false);
@@ -239,7 +253,10 @@ const ManualEntryScreen = observer(() => {
               <Text style={styles.label}>
                 Venue Name <Text style={styles.required}>*</Text>
               </Text>
-              <TouchableOpacity style={styles.pickerButton} onPress={() => setShowVenuePicker(true)}>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => setShowVenuePicker(true)}
+              >
                 <Text style={[styles.pickerText, !formData.venue && styles.placeholderText]}>
                   {formData.venue || 'Select venue or type new name'}
                 </Text>
@@ -251,7 +268,10 @@ const ManualEntryScreen = observer(() => {
               <Text style={styles.label}>
                 Start Time <Text style={styles.required}>*</Text>
               </Text>
-              <TouchableOpacity style={styles.pickerButton} onPress={() => setShowStartTimePicker(true)}>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => setShowStartTimePicker(true)}
+              >
                 <Text style={[styles.pickerText, !formData.startTime && styles.placeholderText]}>
                   {formData.startTime || 'Select start time'}
                 </Text>
@@ -303,7 +323,10 @@ const ManualEntryScreen = observer(() => {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>End Time</Text>
-              <TouchableOpacity style={styles.pickerButton} onPress={() => setShowEndTimePicker(true)}>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => setShowEndTimePicker(true)}
+              >
                 <Text style={[styles.pickerText, !formData.endTime && styles.placeholderText]}>
                   {formData.endTime || 'Select end time (optional)'}
                 </Text>
@@ -441,8 +464,8 @@ const ManualEntryScreen = observer(() => {
               autoFocus
             />
             <FlatList
-              data={sampleVenues.filter(venue => 
-                venue.toLowerCase().includes(venueFilterText.toLowerCase())
+              data={sampleVenues.filter((venue) =>
+                venue.toLowerCase().includes(venueFilterText.toLowerCase()),
               )}
               keyExtractor={(item, index) => index.toString()}
               renderItem={({ item }) => (
@@ -501,9 +524,7 @@ const ManualEntryScreen = observer(() => {
               autoFocus
             />
             <FlatList
-              data={sampleDJs.filter(dj => 
-                dj.toLowerCase().includes(djFilterText.toLowerCase())
-              )}
+              data={sampleDJs.filter((dj) => dj.toLowerCase().includes(djFilterText.toLowerCase()))}
               keyExtractor={(item, index) => index.toString()}
               renderItem={({ item }) => (
                 <TouchableOpacity
