@@ -12,10 +12,12 @@ import { FavoriteShow } from './src/favorite/favorite.entity';
 import { Feedback } from './src/feedback/feedback.entity';
 import { FriendRequest } from './src/friends/friend-request.entity';
 import { Friendship } from './src/friends/friendship.entity';
+import { ApiLog } from './src/logs/api-log.entity';
 import { SongFavorite } from './src/music/song-favorite.entity';
 import { Song } from './src/music/song.entity';
 import { ParsedSchedule } from './src/parser/parsed-schedule.entity';
 import { UrlToParse } from './src/parser/url-to-parse.entity';
+import { ShowReview } from './src/show-review/show-review.entity';
 import { Show } from './src/show/show.entity';
 import { Subscription } from './src/subscription/subscription.entity';
 import { UserFeatureOverride } from './src/user-feature-override/user-feature-override.entity';
@@ -45,6 +47,8 @@ export default new DataSource({
     Friendship,
     Subscription,
     UserFeatureOverride,
+    ShowReview,
+    ApiLog,
     // Avatar system entities
     UserAvatar,
     Microphone,
