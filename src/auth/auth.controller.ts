@@ -292,7 +292,6 @@ export class AuthController {
         name: 'OAuth Test User',
         provider: 'google',
         providerId: 'google-123456',
-        avatar: 'https://example.com/avatar.jpg',
       });
 
       const token = this.authService.generateToken(oauthUser);

@@ -82,7 +82,7 @@ export class FriendsService {
           startQuery: startQuery,
         },
       )
-      .select(['user.id', 'user.email', 'user.name', 'user.stageName', 'user.avatar'])
+      .select(['user.id', 'user.email', 'user.name', 'user.stageName'])
       .orderBy(
         "CASE WHEN LOWER(COALESCE(user.stageName, '')) = :exactQuery THEN 0 " +
           "WHEN LOWER(COALESCE(user.name, '')) = :exactQuery THEN 1 " +
@@ -263,7 +263,7 @@ export class FriendsService {
   async getFriends(userId: string) {
     const friendships = await this.friendshipRepository.find({
       where: { userId },
-      relations: ['friend'],
+      relations: ['friend', 'friend.userAvatar', 'friend.userAvatar.microphone', 'friend.userAvatar.outfit', 'friend.userAvatar.shoes'],
     });
 
     return friendships.map((friendship) => ({
@@ -271,7 +271,12 @@ export class FriendsService {
       email: friendship.friend.email,
       name: friendship.friend.name,
       stageName: friendship.friend.stageName,
-      avatar: friendship.friend.avatar,
+      userAvatar: friendship.friend.userAvatar ? {
+        baseAvatarId: friendship.friend.userAvatar.baseAvatarId,
+        microphone: friendship.friend.userAvatar.microphone,
+        outfit: friendship.friend.userAvatar.outfit,
+        shoes: friendship.friend.userAvatar.shoes,
+      } : null,
       friendedAt: friendship.createdAt,
     }));
   }

@@ -6,7 +6,12 @@ export interface Friend {
   email: string;
   name: string;
   stageName?: string;
-  avatar?: string;
+  userAvatar?: {
+    baseAvatarId: string;
+    microphone?: any;
+    outfit?: any;
+    shoes?: any;
+  } | null;
   friendedAt: string;
 }
 
@@ -17,14 +22,24 @@ export interface FriendRequest {
     email: string;
     name: string;
     stageName?: string;
-    avatar?: string;
+    userAvatar?: {
+      baseAvatarId: string;
+      microphone?: any;
+      outfit?: any;
+      shoes?: any;
+    } | null;
   };
   recipient: {
     id: string;
     email: string;
     name: string;
     stageName?: string;
-    avatar?: string;
+    userAvatar?: {
+      baseAvatarId: string;
+      microphone?: any;
+      outfit?: any;
+      shoes?: any;
+    } | null;
   };
   message?: string;
   createdAt: string;
@@ -35,7 +50,12 @@ export interface UserSearchResult {
   email: string;
   name: string;
   stageName?: string;
-  avatar?: string;
+  userAvatar?: {
+    baseAvatarId: string;
+    microphone?: any;
+    outfit?: any;
+    shoes?: any;
+  } | null;
 }
 
 export interface FriendsStats {

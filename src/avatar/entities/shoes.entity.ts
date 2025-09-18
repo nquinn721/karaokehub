@@ -12,6 +12,7 @@ export enum ShoesType {
   BOOTS = 'boots',
   SANDALS = 'sandals',
   HEELS = 'heels',
+  PLATFORM = 'platform',
   ATHLETIC = 'athletic',
   VINTAGE = 'vintage',
   STAGE = 'stage',

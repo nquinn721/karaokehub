@@ -12,6 +12,7 @@ export enum OutfitType {
   STAGE = 'stage',
   VINTAGE = 'vintage',
   MODERN = 'modern',
+  FANTASY = 'fantasy',
   THEMED = 'themed',
   SEASONAL = 'seasonal',
 }

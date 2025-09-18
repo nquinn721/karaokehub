@@ -12,9 +12,10 @@ import { AvatarGender, AvatarRarity } from './user-avatar.entity';
 
 export enum ShoeType {
   SNEAKERS = 'sneakers',
-  DRESS_SHOES = 'dress_shoes',
+  DRESS = 'dress',
   BOOTS = 'boots',
   HEELS = 'heels',
+  PLATFORM = 'platform',
   SANDALS = 'sandals',
   PERFORMANCE = 'performance',
   DANCE = 'dance',

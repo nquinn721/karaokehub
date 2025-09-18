@@ -48,7 +48,12 @@ interface FriendUser {
   stageName?: string;
   name?: string;
   email?: string;
-  avatar?: string; // Add avatar field for our avatar system
+  userAvatar?: {
+    baseAvatarId: string;
+    microphone?: any;
+    outfit?: any;
+    shoes?: any;
+  } | null;
 }
 
 interface FriendFavoriteShowsModalProps {
@@ -161,7 +166,7 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
           backgroundColor: 'background.paper'
         }}>
           <Avatar
-            src={friend.avatar ? `/avatar/${friend.avatar}.png` : '/avatar/1.png'}
+            src={friend.userAvatar?.baseAvatarId ? `/avatar/${friend.userAvatar.baseAvatarId}.png` : '/avatar/avatar_1.png'}
             alt={friendDisplayName}
             sx={{ 
               width: 64, 

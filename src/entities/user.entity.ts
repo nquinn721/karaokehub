@@ -3,9 +3,11 @@ import {
   CreateDateColumn,
   Entity,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { UserAvatar } from '../avatar/entities/user-avatar.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
 import { FriendRequest } from '../friends/friend-request.entity';
 import { Friendship } from '../friends/friendship.entity';
@@ -30,9 +32,6 @@ export class User {
   password: string;
 
   @Column({ nullable: true })
-  avatar: string;
-
-  @Column({ nullable: true })
   provider: string;
 
   @Column({ nullable: true })
@@ -55,6 +54,9 @@ export class User {
   updatedAt: Date;
 
   // Relationships
+  @OneToOne(() => UserAvatar, (userAvatar) => userAvatar.user)
+  userAvatar: UserAvatar;
+
   @OneToMany(() => FavoriteShow, (favoriteShow) => favoriteShow.user)
   favoriteShows: FavoriteShow[];
 

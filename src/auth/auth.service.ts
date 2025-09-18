@@ -334,10 +334,9 @@ export class AuthService {
         console.log('🟢 [GOOGLE_ONE_TAP] Existing user found:', email);
 
         // Update user info if needed (in case profile changed)
-        if (existingUser.name !== name || existingUser.avatar !== picture) {
+        if (existingUser.name !== name) {
           existingUser = await this.userService.update(existingUser.id, {
             name: name || existingUser.name,
-            avatar: picture || existingUser.avatar,
           });
         }
       } else {
@@ -347,7 +346,6 @@ export class AuthService {
         existingUser = await this.userService.create({
           email,
           name: name || email.split('@')[0], // Use part before @ as fallback name
-          avatar: picture,
           provider: 'google',
           providerId: googleId,
           // No password for OAuth users

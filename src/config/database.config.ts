@@ -1,5 +1,12 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { Microphone } from '../avatar/entities/microphone.entity';
+import { Outfit } from '../avatar/entities/outfit.entity';
+import { Shoes } from '../avatar/entities/shoes.entity';
+import { UserAvatar } from '../avatar/entities/user-avatar.entity';
+import { UserMicrophone } from '../avatar/entities/user-microphone.entity';
+import { UserOutfit } from '../avatar/entities/user-outfit.entity';
+import { UserShoes } from '../avatar/entities/user-shoes.entity';
 import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
@@ -46,6 +53,14 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       Friendship,
       UserFeatureOverride,
       ApiLog,
+      // Avatar system entities
+      UserAvatar,
+      Microphone,
+      Outfit,
+      Shoes,
+      UserMicrophone,
+      UserOutfit,
+      UserShoes,
     ],
     synchronize: true, // Enable sync if explicitly set or in development
     logging: false, // Turn off SQL logging completely

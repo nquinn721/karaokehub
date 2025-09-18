@@ -8,7 +8,6 @@ export interface CreateUserDto {
   name: string;
   password?: string;
   stageName?: string;
-  avatar?: string;
   provider?: string;
   providerId?: string;
 }
@@ -36,13 +35,7 @@ export class UserService {
       stageName: createUserDto.stageName,
     });
 
-    // Set default avatar if none provided
-    const userDataWithDefaults = {
-      ...createUserDto,
-      avatar: createUserDto.avatar || 'avatar_1',
-    };
-
-    const user = this.userRepository.create(userDataWithDefaults);
+    const user = this.userRepository.create(createUserDto);
     try {
       return await this.userRepository.save(user);
     } catch (error) {
@@ -166,8 +159,10 @@ export class UserService {
     return await this.findOne(id);
   }
 
+  // This method is deprecated - avatar updates should go through the UserAvatar entity
   async updateAvatar(id: string, avatarId: string): Promise<User> {
-    await this.userRepository.update(id, { avatar: avatarId });
+    // This method is now deprecated since we use UserAvatar entities
+    // Returning the user as-is for backward compatibility
     return await this.findOne(id);
   }
 

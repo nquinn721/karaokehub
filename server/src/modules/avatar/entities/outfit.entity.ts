@@ -52,10 +52,10 @@ export class Outfit {
 
   @Column({
     type: 'enum',
-    enum: OutfitType,
-    default: OutfitType.FULL_OUTFIT,
+    enum: OutfitCategory,
+    default: OutfitCategory.CASUAL,
   })
-  type: OutfitType;
+  type: OutfitCategory;
 
   @Column({
     type: 'enum',

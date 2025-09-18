@@ -11,11 +11,12 @@ import { User } from '../../auth/entities/user.entity';
 import { AvatarRarity } from './user-avatar.entity';
 
 export enum MicrophoneType {
-  DYNAMIC = 'dynamic',
-  CONDENSER = 'condenser',
-  WIRELESS = 'wireless',
+  BASIC = 'basic',
   VINTAGE = 'vintage',
-  PROFESSIONAL = 'professional',
+  MODERN = 'modern',
+  WIRELESS = 'wireless',
+  PREMIUM = 'premium',
+  GOLDEN = 'golden',
 }
 
 @Entity('microphones')
@@ -35,7 +36,7 @@ export class Microphone {
   @Column({
     type: 'enum',
     enum: MicrophoneType,
-    default: MicrophoneType.DYNAMIC,
+    default: MicrophoneType.BASIC,
   })
   type: MicrophoneType;
 
