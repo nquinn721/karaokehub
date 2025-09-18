@@ -1,10 +1,11 @@
 import { LoadingButton } from '@components/LoadingButton';
-import { faUser, faUserTag } from '@fortawesome/free-solid-svg-icons';
+import { faPaintBrush, faUser, faUserTag } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Alert,
   Avatar,
   Box,
+  Button,
   Card,
   CardContent,
   Container,
@@ -16,10 +17,12 @@ import {
 import { authStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getUserDisplayName, getUserSecondaryName } from '../utils/userUtils';
 
 const ProfilePage: React.FC = observer(() => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const [name, setName] = useState(authStore.user?.name || '');
   const [stageName, setStageName] = useState(authStore.user?.stageName || '');
   const [error, setError] = useState('');
@@ -128,6 +131,16 @@ const ProfilePage: React.FC = observer(() => {
                     </Typography>
                   </Box>
                 )}
+                
+                <Button
+                  variant="outlined"
+                  startIcon={<FontAwesomeIcon icon={faPaintBrush} />}
+                  onClick={() => navigate('/avatar-customizer')}
+                  sx={{ mt: 3 }}
+                  fullWidth
+                >
+                  Customize Avatar
+                </Button>
               </CardContent>
             </Card>
           </Grid>

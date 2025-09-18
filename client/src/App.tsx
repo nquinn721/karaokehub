@@ -23,6 +23,7 @@ import AdminParserPage from './pages/AdminParserPage';
 import AdTestPage from './pages/AdTestPage';
 import AuthError from './pages/AuthError';
 import AuthSuccess from './pages/AuthSuccess';
+import AvatarCustomizationPage from './pages/AvatarCustomizationPage';
 import DashboardPage from './pages/DashboardPage';
 import FeedbackManagementPage from './pages/FeedbackManagementPage';
 import HomePage from './pages/HomePage';
@@ -284,6 +285,14 @@ const AppContent: React.FC = observer(() => {
               element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/avatar-customizer"
+              element={
+                <ProtectedRoute>
+                  <AvatarCustomizationPage />
                 </ProtectedRoute>
               }
             />

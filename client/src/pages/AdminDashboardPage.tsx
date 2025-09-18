@@ -1,6 +1,7 @@
 import AdminBreadcrumb from '@components/AdminBreadcrumb';
 import AdminDataTables from '@components/AdminDataTables';
 import ApiLogsMonitor from '@components/ApiLogsMonitor';
+import AvatarCustomizer from '@components/AvatarCustomizer';
 import DataUploadModal from '@components/DataUploadModal';
 import LocationTrackingModal from '@components/modals/LocationTrackingModal';
 import ShowAnalytics from '@components/ShowAnalytics';
@@ -13,6 +14,7 @@ import {
   faGlobe,
   faHome,
   faLocationArrow,
+  faPaintBrush,
   faPlus,
   faRobot,
   faSync,
@@ -148,6 +150,13 @@ const AdminDashboardPageTabbed = observer(() => {
       icon: faRobot,
       description: 'Monitor iTunes API usage and rate limiting',
       component: <ApiLogsMonitor />,
+    },
+    {
+      id: 4,
+      title: 'Avatar Customizer',
+      icon: faPaintBrush,
+      description: 'Customize user avatars and manage avatar store',
+      component: <AvatarCustomizer />,
     },
   ];
 
