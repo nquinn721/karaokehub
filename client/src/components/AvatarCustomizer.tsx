@@ -519,7 +519,10 @@ const AvatarCustomizer: React.FC = observer(() => {
     <Card sx={{ maxWidth: 800, mx: 'auto' }}>
       <CardContent sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-          <FontAwesomeIcon icon={faUser} style={{ fontSize: '24px', color: theme.palette.primary.main }} />
+          <FontAwesomeIcon
+            icon={faUser}
+            style={{ fontSize: '24px', color: theme.palette.primary.main }}
+          />
           <Typography variant="h5" fontWeight={600}>
             Avatar Customizer
           </Typography>
@@ -613,7 +616,8 @@ const AvatarCustomizer: React.FC = observer(() => {
             🏪 Avatar Store Coming Soon!
           </Typography>
           <Typography variant="body2">
-            Unlock new microphones, outfits, and accessories by earning coins through karaoke performances!
+            Unlock new microphones, outfits, and accessories by earning coins through karaoke
+            performances!
           </Typography>
         </Alert>
       </CardContent>

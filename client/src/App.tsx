@@ -24,6 +24,7 @@ import AdTestPage from './pages/AdTestPage';
 import AuthError from './pages/AuthError';
 import AuthSuccess from './pages/AuthSuccess';
 import AvatarCustomizationPage from './pages/AvatarCustomizationPage';
+import AvatarSelectionPage from './pages/AvatarSelectionPage';
 import DashboardPage from './pages/DashboardPage';
 import FeedbackManagementPage from './pages/FeedbackManagementPage';
 import HomePage from './pages/HomePage';
@@ -293,6 +294,14 @@ const AppContent: React.FC = observer(() => {
               element={
                 <ProtectedRoute>
                   <AvatarCustomizationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/avatar-selector"
+              element={
+                <ProtectedRoute>
+                  <AvatarSelectionPage />
                 </ProtectedRoute>
               }
             />

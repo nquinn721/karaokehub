@@ -1,4 +1,6 @@
 import { SquareAd } from '@components/AdsterraAd';
+import AvatarDisplay3D from '@components/AvatarDisplay3D';
+import AvatarSelectorModal from '@components/AvatarSelectorModal';
 import FriendsList from '@components/FriendsList';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
@@ -17,7 +19,6 @@ import {
   faPlus,
   faStar,
   faTrophy,
-  faUser,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -68,6 +69,8 @@ const DashboardPage: React.FC = observer(() => {
   });
   const [activeTab, setActiveTab] = useState(0);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
   const [paywallFeature, setPaywallFeature] = useState<
     'favorites' | 'ad_removal' | 'music_preview'
   >('music_preview');
@@ -965,8 +968,108 @@ const DashboardPage: React.FC = observer(() => {
             </Box>
 
             <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
-              {/* Main Content - Favorite Shows and Songs */}
+              {/* Main Content */}
               <Grid item xs={12} lg={8}>
+                {/* Avatar Section - Featured prominently */}
+                <Card
+                  sx={{
+                    mb: { xs: 2, sm: 3 },
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    color: 'white',
+                    borderRadius: '20px',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                  }}
+                >
+                  <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+                    <Grid container spacing={3} alignItems="center">
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
+                          <Typography variant="h4" fontWeight={700} gutterBottom>
+                            Your Karaoke Avatar
+                          </Typography>
+                          <Typography variant="body1" sx={{ mb: 3, opacity: 0.9 }}>
+                            Express your unique personality and style on stage!
+                          </Typography>
+                          <Button
+                            variant="contained"
+                            size="large"
+                            startIcon={<FontAwesomeIcon icon={faPaintBrush} />}
+                            onClick={() => setAvatarModalOpen(true)}
+                            sx={{
+                              backgroundColor: 'rgba(255,255,255,0.2)',
+                              color: 'white',
+                              fontWeight: 'bold',
+                              py: 1.5,
+                              px: 3,
+                              borderRadius: '12px',
+                              backdropFilter: 'blur(10px)',
+                              border: '1px solid rgba(255,255,255,0.3)',
+                              '&:hover': {
+                                backgroundColor: 'rgba(255,255,255,0.3)',
+                                transform: 'translateY(-2px)',
+                                boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                              },
+                              transition: 'all 0.3s ease',
+                            }}
+                          >
+                            Customize Avatar
+                          </Button>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            position: 'relative',
+                          }}
+                        >
+                          <AvatarDisplay3D
+                            key={`main-avatar-${avatarRefreshKey}`}
+                            width={220}
+                            height={280}
+                            show3D={true}
+                            sx={{
+                              background: 'rgba(255,255,255,0.1)',
+                              backdropFilter: 'blur(20px)',
+                              border: '2px solid rgba(255,255,255,0.2)',
+                            }}
+                          />
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+
+                  {/* Decorative Background Elements */}
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: -30,
+                      right: -30,
+                      width: 150,
+                      height: 150,
+                      borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.1)',
+                      filter: 'blur(40px)',
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      bottom: -20,
+                      left: -20,
+                      width: 100,
+                      height: 100,
+                      borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.05)',
+                      filter: 'blur(30px)',
+                    }}
+                  />
+                </Card>
+
+                {/* Favorite Shows and Songs */}
                 <Card
                   sx={{
                     mb: { xs: 2, sm: 3 },
@@ -1269,122 +1372,6 @@ const DashboardPage: React.FC = observer(() => {
                     </CardContent>
                   </Card>
 
-                  {/* Avatar Customizer */}
-                  <Card
-                    sx={{
-                      background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.primary.main, 0.05)})`,
-                      border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-                      mb: 3,
-                    }}
-                  >
-                    <CardContent sx={{ p: 3 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                        <Box
-                          sx={{
-                            backgroundColor: theme.palette.primary.main,
-                            borderRadius: '12px',
-                            p: 1.5,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <FontAwesomeIcon icon={faPaintBrush} color="white" size="lg" />
-                        </Box>
-                        <Box>
-                          <Typography variant="h6" fontWeight={600}>
-                            Customize Your Avatar
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Express your karaoke style
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                        <Box
-                          sx={{
-                            width: 60,
-                            height: 60,
-                            borderRadius: '50%',
-                            background: `linear-gradient(135deg, ${theme.palette.primary.light}, ${theme.palette.secondary.light})`,
-                            border: `2px solid ${theme.palette.primary.main}`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            position: 'relative',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          <img
-                            src="/avatar/base.982Z.png"
-                            alt="Your Avatar"
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                            }}
-                            onError={(e) => {
-                              // Fallback to icon if image fails
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
-                          <FontAwesomeIcon
-                            icon={faUser}
-                            style={{
-                              fontSize: '24px',
-                              color: theme.palette.primary.main,
-                              position: 'absolute',
-                            }}
-                          />
-                        </Box>
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            Personalize your karaoke avatar with different microphones, outfits, and accessories!
-                          </Typography>
-                          <Stack direction="row" spacing={1}>
-                            <Chip 
-                              label="🎤 Mics" 
-                              size="small" 
-                              variant="outlined"
-                              sx={{ fontSize: '0.7rem' }}
-                            />
-                            <Chip 
-                              label="👕 Outfits" 
-                              size="small" 
-                              variant="outlined"
-                              sx={{ fontSize: '0.7rem' }}
-                            />
-                            <Chip 
-                              label="👒 Accessories" 
-                              size="small" 
-                              variant="outlined"
-                              sx={{ fontSize: '0.7rem' }}
-                            />
-                          </Stack>
-                        </Box>
-                      </Box>
-
-                      <Button
-                        variant="outlined"
-                        fullWidth
-                        startIcon={<FontAwesomeIcon icon={faPaintBrush} />}
-                        onClick={() => navigate('/avatar-customizer')}
-                        sx={{
-                          borderRadius: '8px',
-                          borderColor: theme.palette.primary.main,
-                          color: theme.palette.primary.main,
-                          '&:hover': {
-                            backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                            borderColor: theme.palette.primary.dark,
-                          },
-                        }}
-                      >
-                        Customize Avatar
-                      </Button>
-                    </CardContent>
-                  </Card>
-
                   {/* Upcoming Features */}
                   <Card
                     sx={{
@@ -1426,6 +1413,17 @@ const DashboardPage: React.FC = observer(() => {
           </Box>
         </Box>
       </Box>
+
+      {/* Avatar Selector Modal */}
+      <AvatarSelectorModal
+        open={avatarModalOpen}
+        onClose={() => setAvatarModalOpen(false)}
+        onAvatarSelect={(avatarId) => {
+          console.log('Avatar selected:', avatarId);
+          // Force refresh of avatar displays
+          setAvatarRefreshKey((prev) => prev + 1);
+        }}
+      />
 
       {/* Paywall Modal */}
       <PaywallModal

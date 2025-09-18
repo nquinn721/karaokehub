@@ -36,7 +36,13 @@ export class UserService {
       stageName: createUserDto.stageName,
     });
 
-    const user = this.userRepository.create(createUserDto);
+    // Set default avatar if none provided
+    const userDataWithDefaults = {
+      ...createUserDto,
+      avatar: createUserDto.avatar || 'avatar_1',
+    };
+
+    const user = this.userRepository.create(userDataWithDefaults);
     try {
       return await this.userRepository.save(user);
     } catch (error) {

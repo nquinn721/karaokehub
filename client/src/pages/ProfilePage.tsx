@@ -131,7 +131,6 @@ const ProfilePage: React.FC = observer(() => {
                     </Typography>
                   </Box>
                 )}
-                
                 <Button
                   variant="outlined"
                   startIcon={<FontAwesomeIcon icon={faPaintBrush} />}

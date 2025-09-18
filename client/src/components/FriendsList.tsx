@@ -234,8 +234,8 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
                   <Avatar sx={{ width: 32, height: 32 }}>
                     {request.requester.avatar ? (
                       <img
-                        src={request.requester.avatar}
-                        style={{ width: '100%', height: '100%' }}
+                        src={`/avatar/${request.requester.avatar}.png`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         alt={getDisplayName(request.requester)}
                       />
                     ) : (
@@ -300,8 +300,8 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
                   <Avatar sx={{ width: 32, height: 32 }}>
                     {request.recipient.avatar ? (
                       <img
-                        src={request.recipient.avatar}
-                        style={{ width: '100%', height: '100%' }}
+                        src={`/avatar/${request.recipient.avatar}.png`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         alt={getDisplayName(request.recipient)}
                       />
                     ) : (
@@ -378,7 +378,11 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
                   <ListItemAvatar>
                     <Avatar sx={{ width: 36, height: 36 }}>
                       {friend.avatar ? (
-                        <img src={friend.avatar} alt={getDisplayName(friend)} />
+                        <img 
+                          src={`/avatar/${friend.avatar}.png`} 
+                          alt={getDisplayName(friend)}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
                       ) : (
                         getAvatarInitials(friend)
                       )}
