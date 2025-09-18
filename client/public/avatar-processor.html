@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avatar Sprite Sheet Processor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .upload-area {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 40px;
+        text-align: center;
+        margin-bottom: 20px;
+        cursor: pointer;
+      }
+      .upload-area:hover {
+        border-color: #007bff;
+        background: #f8f9fa;
+      }
+      .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+      .avatar-preview {
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        padding: 10px;
+        background: white;
+        text-align: center;
+      }
+      .avatar-preview canvas {
+        max-width: 100%;
+        border: 1px solid #eee;
+        border-radius: 4px;
+      }
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+      }
+      .control-group {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+      }
+      .control-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      .control-group input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 5px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .download-section {
+        margin-top: 20px;
+        padding: 20px;
+        background: #e9f7ef;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎭 Avatar Sprite Sheet Processor</h1>
+      <p>
+        Upload your sprite sheet PNG to automatically cut it into individual avatars with background
+        removal
+      </p>
+
+      <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        <input
+          type="file"
+          id="fileInput"
+          accept="image/png,image/jpg,image/jpeg"
+          style="display: none"
+        />
+        <p>📁 Click here to upload your sprite sheet (PNG/JPG)</p>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <label>Grid Columns:</label>
+          <input type="number" id="columns" value="5" min="1" max="20" />
+        </div>
+        <div class="control-group">
+          <label>Grid Rows:</label>
+          <input type="number" id="rows" value="5" min="1" max="20" />
+        </div>
+        <div class="control-group">
+          <label>Background Tolerance:</label>
+          <input type="range" id="tolerance" min="0" max="255" value="50" />
+          <span id="toleranceValue">50</span>
+        </div>
+        <div class="control-group">
+          <label>Output Size (px):</label>
+          <input type="number" id="outputSize" value="200" min="50" max="500" />
+        </div>
+      </div>
+
+      <button onclick="autoDetectGrid()">🔍 Auto-Detect Grid Size</button>
+      <button onclick="processSprite()">🔄 Process Sprite Sheet</button>
+      <button onclick="downloadAll()">💾 Download All Avatars</button>
+      <button onclick="downloadAsZip()">📦 Download as ZIP</button>
+      <button onclick="generateConfig()">⚙️ Generate Config</button>
+
+      <div id="originalPreview"></div>
+      <div id="previewGrid" class="preview-grid"></div>
+      <div id="downloadSection" class="download-section" style="display: none"></div>
+      <div id="configOutput" style="margin-top: 20px"></div>
+    </div>
+
+    <script>
+      let originalImage = null;
+      let processedAvatars = [];
+
+      document.getElementById('fileInput').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const img = new Image();
+            img.onload = function () {
+              originalImage = img;
+              showOriginalPreview();
+            };
+            img.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      document.getElementById('tolerance').addEventListener('input', function (e) {
+        document.getElementById('toleranceValue').textContent = e.target.value;
+      });
+
+      function autoDetectGrid() {
+        if (!originalImage) {
+          alert('Please upload an image first!');
+          return;
+        }
+
+        // Simple grid detection based on common sprite sheet patterns
+        const width = originalImage.width;
+        const height = originalImage.height;
+        const aspectRatio = width / height;
+
+        let suggestedCols, suggestedRows;
+
+        // For 25 avatars (5x5 is common)
+        if (aspectRatio >= 0.8 && aspectRatio <= 1.2) {
+          suggestedCols = 5;
+          suggestedRows = 5;
+        }
+        // For rectangular layouts
+        else if (aspectRatio > 1.5) {
+          // Wide format - more columns
+          suggestedCols = Math.ceil(Math.sqrt(25 * aspectRatio));
+          suggestedRows = Math.ceil(25 / suggestedCols);
+        } else if (aspectRatio < 0.7) {
+          // Tall format - more rows
+          suggestedRows = Math.ceil(Math.sqrt(25 / aspectRatio));
+          suggestedCols = Math.ceil(25 / suggestedRows);
+        } else {
+          // Default to 5x5
+          suggestedCols = 5;
+          suggestedRows = 5;
+        }
+
+        document.getElementById('columns').value = suggestedCols;
+        document.getElementById('rows').value = suggestedRows;
+
+        alert(
+          `Auto-detected grid: ${suggestedCols} columns × ${suggestedRows} rows\nImage dimensions: ${width} × ${height}px\nTotal avatars: ${suggestedCols * suggestedRows}`,
+        );
+      }
+
+      function showOriginalPreview() {
+        const container = document.getElementById('originalPreview');
+        container.innerHTML = '<h3>Original Sprite Sheet:</h3>';
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Scale down for preview
+        const scale = Math.min(600 / originalImage.width, 400 / originalImage.height);
+        canvas.width = originalImage.width * scale;
+        canvas.height = originalImage.height * scale;
+
+        ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
+        container.appendChild(canvas);
+
+        // Add dimensions info
+        const info = document.createElement('p');
+        info.textContent = `Dimensions: ${originalImage.width} x ${originalImage.height} pixels`;
+        container.appendChild(info);
+      }
+
+      function removeBackground(imageData, tolerance = 50) {
+        const data = imageData.data;
+
+        // Sample corner pixels to determine background color
+        const corners = [
+          [0, 0], // top-left
+          [imageData.width - 1, 0], // top-right
+          [0, imageData.height - 1], // bottom-left
+          [imageData.width - 1, imageData.height - 1], // bottom-right
+        ];
+
+        let bgColor = null;
+        for (let corner of corners) {
+          const index = (corner[1] * imageData.width + corner[0]) * 4;
+          const color = [data[index], data[index + 1], data[index + 2]];
+
+          if (!bgColor) {
+            bgColor = color;
+          } else {
+            // Use the most common corner color as background
+            const diff =
+              Math.abs(bgColor[0] - color[0]) +
+              Math.abs(bgColor[1] - color[1]) +
+              Math.abs(bgColor[2] - color[2]);
+            if (diff < tolerance) {
+              bgColor = color;
+              break;
+            }
+          }
+        }
+
+        if (!bgColor) bgColor = [255, 255, 255]; // Default to white
+
+        // Remove background
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          const diff =
+            Math.abs(r - bgColor[0]) + Math.abs(g - bgColor[1]) + Math.abs(b - bgColor[2]);
+
+          if (diff < tolerance) {
+            data[i + 3] = 0; // Make transparent
+          }
+        }
+
+        return imageData;
+      }
+
+      function processSprite() {
+        if (!originalImage) {
+          alert('Please upload an image first!');
+          return;
+        }
+
+        const columns = parseInt(document.getElementById('columns').value);
+        const rows = parseInt(document.getElementById('rows').value);
+        const tolerance = parseInt(document.getElementById('tolerance').value);
+        const outputSize = parseInt(document.getElementById('outputSize').value);
+
+        const cellWidth = originalImage.width / columns;
+        const cellHeight = originalImage.height / rows;
+
+        processedAvatars = [];
+        const previewGrid = document.getElementById('previewGrid');
+        previewGrid.innerHTML = '<h3>Processed Avatars:</h3>';
+
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < columns; col++) {
+            const avatarIndex = row * columns + col + 1;
+
+            // Extract sprite
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = cellWidth;
+            canvas.height = cellHeight;
+
+            const sourceX = col * cellWidth;
+            const sourceY = row * cellHeight;
+
+            ctx.drawImage(
+              originalImage,
+              sourceX,
+              sourceY,
+              cellWidth,
+              cellHeight,
+              0,
+              0,
+              cellWidth,
+              cellHeight,
+            );
+
+            // Remove background
+            const imageData = ctx.getImageData(0, 0, cellWidth, cellHeight);
+            const cleanedData = removeBackground(imageData, tolerance);
+            ctx.putImageData(cleanedData, 0, 0);
+
+            // Scale to output size
+            const outputCanvas = document.createElement('canvas');
+            const outputCtx = outputCanvas.getContext('2d');
+            outputCanvas.width = outputSize;
+            outputCanvas.height = outputSize;
+
+            outputCtx.drawImage(canvas, 0, 0, outputSize, outputSize);
+
+            // Store processed avatar
+            processedAvatars.push({
+              canvas: outputCanvas,
+              name: `avatar_${avatarIndex}`,
+              sourceX: sourceX,
+              sourceY: sourceY,
+              width: cellWidth,
+              height: cellHeight,
+            });
+
+            // Create preview
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'avatar-preview';
+
+            const previewCanvas = document.createElement('canvas');
+            const previewCtx = previewCanvas.getContext('2d');
+            previewCanvas.width = 100;
+            previewCanvas.height = 100;
+            previewCtx.drawImage(outputCanvas, 0, 0, 100, 100);
+
+            const label = document.createElement('p');
+            label.textContent = `Avatar ${avatarIndex}`;
+
+            previewDiv.appendChild(previewCanvas);
+            previewDiv.appendChild(label);
+            previewGrid.appendChild(previewDiv);
+          }
+        }
+
+        console.log(`Processing completed: ${processedAvatars.length} avatars processed`);
+        alert(
+          `Successfully processed ${processedAvatars.length} avatars from ${rows}x${columns} grid!`,
+        );
+        document.getElementById('downloadSection').style.display = 'block';
+      }
+
+      function downloadAll() {
+        if (processedAvatars.length === 0) {
+          alert('Please process the sprite sheet first!');
+          return;
+        }
+
+        console.log(`Starting download of ${processedAvatars.length} avatars...`);
+
+        // Download with delays to avoid browser blocking
+        processedAvatars.forEach((avatar, index) => {
+          setTimeout(() => {
+            const link = document.createElement('a');
+            link.download = `${avatar.name}.png`;
+            link.href = avatar.canvas.toDataURL();
+
+            // Force download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            console.log(`Downloaded: ${avatar.name} (${index + 1}/${processedAvatars.length})`);
+          }, index * 200); // 200ms delay between downloads
+        });
+
+        alert(
+          `Downloading ${processedAvatars.length} avatars with delays to avoid browser limits...`,
+        );
+      }
+
+      async function downloadAsZip() {
+        if (processedAvatars.length === 0) {
+          alert('Please process the sprite sheet first!');
+          return;
+        }
+
+        console.log(`Creating ZIP with ${processedAvatars.length} avatars...`);
+
+        const zip = new JSZip();
+
+        // Add all avatars to ZIP
+        processedAvatars.forEach((avatar) => {
+          const dataURL = avatar.canvas.toDataURL();
+          // Remove the data:image/png;base64, prefix
+          const base64Data = dataURL.split(',')[1];
+          zip.file(`${avatar.name}.png`, base64Data, { base64: true });
+        });
+
+        try {
+          // Generate ZIP file
+          const content = await zip.generateAsync({ type: 'blob' });
+
+          // Download ZIP
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(content);
+          link.download = 'avatars.zip';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          console.log(`ZIP download completed with ${processedAvatars.length} avatars`);
+          alert(`Successfully downloaded ${processedAvatars.length} avatars as ZIP file!`);
+        } catch (error) {
+          console.error('Error creating ZIP:', error);
+          alert('Error creating ZIP file. Please try individual downloads.');
+        }
+      }
+
+      function generateConfig() {
+        if (processedAvatars.length === 0) {
+          alert('Please process the sprite sheet first!');
+          return;
+        }
+
+        // Extended avatar names for up to 30 avatars
+        const avatarNames = [
+          'Marcus',
+          'Elena',
+          'Kai',
+          'Sophie',
+          'Diego',
+          'Amara',
+          'Jin',
+          'Isabella',
+          'Alex',
+          'Maya',
+          'Zion',
+          'Luna',
+          'Dante',
+          'Aria',
+          'Jaxon',
+          'Nyla',
+          'Phoenix',
+          'Sage',
+          'River',
+          'Nova',
+          'Atlas',
+          'Iris',
+          'Orion',
+          'Zara',
+          'Blaze',
+          'Skye',
+          'Storm',
+          'Jade',
+          'Neo',
+          'Raven',
+        ];
+
+        const descriptions = [
+          'Confident Male Singer',
+          'Dynamic Female Performer',
+          'Energetic Male Artist',
+          'Elegant Female Singer',
+          'Passionate Male Vocalist',
+          'Powerful Female Artist',
+          'Creative Male Performer',
+          'Charismatic Female Singer',
+          'Versatile Performer',
+          'Soulful Artist',
+          'Bold Male Star',
+          'Graceful Female Singer',
+          'Intense Male Performer',
+          'Melodic Female Artist',
+          'Rhythmic Male Singer',
+          'Harmonic Female Star',
+          'Fierce Male Artist',
+          'Serene Female Performer',
+          'Dynamic Male Singer',
+          'Cosmic Female Artist',
+          'Strong Male Performer',
+          'Colorful Female Singer',
+          'Stellar Male Artist',
+          'Exotic Female Star',
+          'Fiery Male Singer',
+          'Ethereal Female Performer',
+          'Electric Male Artist',
+          'Natural Female Singer',
+          'Modern Male Star',
+          'Mysterious Female Artist',
+        ];
+
+        const genders = [];
+        const ethnicities = [
+          'African American',
+          'Hispanic',
+          'Asian',
+          'Caucasian',
+          'Mixed Heritage',
+          'Middle Eastern',
+          'Native American',
+          'South Asian',
+          'Pacific Islander',
+          'African',
+          'European',
+          'Caribbean',
+        ];
+
+        // Generate alternating genders and cycling ethnicities
+        for (let i = 0; i < processedAvatars.length; i++) {
+          genders.push(i % 2 === 0 ? 'male' : 'female');
+        }
+
+        let config = 'const AVAILABLE_AVATARS = [\n';
+
+        processedAvatars.forEach((avatar, index) => {
+          const name = avatarNames[index] || `Avatar${index + 1}`;
+          const description = descriptions[index] || `Performer ${index + 1}`;
+          const gender = genders[index] || (index % 2 === 0 ? 'male' : 'female');
+          const ethnicity = ethnicities[index % ethnicities.length] || 'Mixed Heritage';
+
+          config += `  {\n`;
+          config += `    id: '${avatar.name}',\n`;
+          config += `    name: '${name}',\n`;
+          config += `    description: '${description}',\n`;
+          config += `    gender: '${gender}',\n`;
+          config += `    ethnicity: '${ethnicity}',\n`;
+          config += `    imagePath: '/avatar/${avatar.name}.png',\n`;
+          config += `  },\n`;
+        });
+
+        config += '];';
+
+        const configOutput = document.getElementById('configOutput');
+        configOutput.innerHTML = `
+                <h3>Generated Configuration:</h3>
+                <pre style="background: #f8f9fa; padding: 15px; border-radius: 6px; overflow-x: auto;">${config}</pre>
+                <button onclick="copyConfig()">📋 Copy Configuration</button>
+            `;
+
+        window.generatedConfig = config;
+      }
+
+      function copyConfig() {
+        navigator.clipboard.writeText(window.generatedConfig).then(() => {
+          alert('Configuration copied to clipboard!');
+        });
+      }
+    </script>
+  </body>
+</html>

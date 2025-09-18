@@ -8,6 +8,7 @@ import { AdminModule } from './admin/admin.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { AvatarModule } from './avatar/avatar.module';
 import { ConfigApiModule } from './config/config.module';
 import { getDatabaseConfig } from './config/database.config';
 import { DJModule } from './dj/dj.module';
@@ -63,6 +64,7 @@ import { WebSocketModule } from './websocket/websocket.module';
 
     // Feature modules
     AuthModule,
+    AvatarModule,
     AdminModule,
     ConfigApiModule,
     WebSocketModule,

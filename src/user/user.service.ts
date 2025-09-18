@@ -160,6 +160,11 @@ export class UserService {
     return await this.findOne(id);
   }
 
+  async updateAvatar(id: string, avatarId: string): Promise<User> {
+    await this.userRepository.update(id, { avatar: avatarId });
+    return await this.findOne(id);
+  }
+
   async remove(id: string): Promise<void> {
     await this.userRepository.update(id, { isActive: false });
   }
