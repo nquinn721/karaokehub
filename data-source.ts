@@ -1,4 +1,11 @@
 import { DataSource } from 'typeorm';
+import { Microphone } from './src/avatar/entities/microphone.entity';
+import { Outfit } from './src/avatar/entities/outfit.entity';
+import { Shoes } from './src/avatar/entities/shoes.entity';
+import { UserAvatar } from './src/avatar/entities/user-avatar.entity';
+import { UserMicrophone } from './src/avatar/entities/user-microphone.entity';
+import { UserOutfit } from './src/avatar/entities/user-outfit.entity';
+import { UserShoes } from './src/avatar/entities/user-shoes.entity';
 import { DJ } from './src/dj/dj.entity';
 import { User } from './src/entities/user.entity';
 import { FavoriteShow } from './src/favorite/favorite.entity';
@@ -38,6 +45,14 @@ export default new DataSource({
     Friendship,
     Subscription,
     UserFeatureOverride,
+    // Avatar system entities
+    UserAvatar,
+    Microphone,
+    Outfit,
+    Shoes,
+    UserMicrophone,
+    UserOutfit,
+    UserShoes,
   ],
   migrations: ['./src/migrations/*.ts'],
   synchronize: false,

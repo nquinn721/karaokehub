@@ -1,26 +1,25 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RemoveDJNicknames1756602000000 implements MigrationInterface {
+export class DropDjNicknamesTable1737450000000 implements MigrationInterface {
+  name = 'DropDjNicknamesTable1737450000000';
+
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Drop the dj_nicknames table if it exists
     await queryRunner.query(`DROP TABLE IF EXISTS \`dj_nicknames\``);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Recreate the dj_nicknames table if we need to rollback
+    // Recreate the table if we need to rollback
+    // Note: This is a destructive migration, data will be lost
     await queryRunner.query(`
       CREATE TABLE \`dj_nicknames\` (
-        \`id\` varchar(36) NOT NULL,
-        \`djId\` varchar(36) NOT NULL,
+        \`id\` int NOT NULL AUTO_INCREMENT,
         \`nickname\` varchar(255) NOT NULL,
-        \`type\` enum('stage_name','alias','social_handle','real_name') NOT NULL DEFAULT 'alias',
-        \`platform\` varchar(100) DEFAULT NULL,
-        \`isActive\` tinyint NOT NULL DEFAULT 1,
+        \`realName\` varchar(255) DEFAULT NULL,
         \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
         PRIMARY KEY (\`id\`),
-        KEY \`FK_dj_nicknames_djId\` (\`djId\`),
-        CONSTRAINT \`FK_dj_nicknames_djId\` FOREIGN KEY (\`djId\`) REFERENCES \`djs\` (\`id\`) ON DELETE CASCADE
+        UNIQUE KEY \`IDX_nickname\` (\`nickname\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     `);
   }
