@@ -15,6 +15,7 @@ import { FavoriteModule } from './favorite/favorite.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { FriendsModule } from './friends/friends.module';
 import { LocationModule } from './location/location.module';
+import { LogsModule } from './logs/logs.module';
 import { MusicModule } from './music/music.module';
 import { ParserModule } from './parser/parser.module';
 import { ProductionUploadModule } from './production-upload/production-upload.module';
@@ -28,6 +29,8 @@ import { UserModule } from './user/user.module';
 import { VendorModule } from './vendor/vendor.module';
 import { VenueModule } from './venue/venue.module';
 import { WebSocketModule } from './websocket/websocket.module';
+
+// Trigger restart by adding this comment
 
 @Module({
   imports: [
@@ -74,6 +77,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     FeedbackModule,
     FriendsModule,
     LocationModule,
+    LogsModule,
     ParserModule,
     MusicModule,
     SubscriptionModule,

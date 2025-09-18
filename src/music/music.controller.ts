@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Request } from '@nestjs/common';
 import { ArtistSearchResult, MusicSearchResult } from './music.interface';
 import { MusicService } from './music.service';
 
@@ -75,5 +75,22 @@ export class MusicController {
     const searchLimit = limit ? parseInt(limit, 10) : 50;
     const targetSongCount = targetCount ? parseInt(targetCount, 10) : 100;
     return this.musicService.getCategoryMusicById(categoryId, searchLimit, targetSongCount);
+  }
+
+  @Post('preview/log')
+  async logPreviewAccess(
+    @Body() body: { songId: string; title?: string; artist?: string; previewUrl?: string },
+    @Request() req?: any,
+  ): Promise<{ logged: boolean }> {
+    await this.musicService.logPreviewAccess(
+      body.songId,
+      body.title,
+      body.artist,
+      body.previewUrl,
+      req?.user?.id,
+      req?.ip,
+      req?.get('User-Agent'),
+    );
+    return { logged: true };
   }
 }

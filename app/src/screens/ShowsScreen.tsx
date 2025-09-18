@@ -12,13 +12,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-// Conditional map component
 import ConditionalMap from '../components/ConditionalMap';
+import { DayPicker } from '../components/DayPicker';
+
+// Components
 
 // Import stores
 import { mapStore, showStore, uiStore } from '../stores';
-import { Show } from '../types';
+import { DayOfWeek, Show } from '../types';
 
 const { width, height } = Dimensions.get('window');
 
@@ -61,6 +62,11 @@ const ShowsScreen = observer(() => {
 
     initializeScreen();
   }, []); // Empty dependency array - only run once
+
+  const handleDayChange = useCallback((day: DayOfWeek) => {
+    showStore.setSelectedDay(day);
+    // Map will automatically refresh due to day change via MapStore.fetchDataForCurrentView
+  }, []);
 
   const onRegionChange = useCallback((region: any) => {
     mapStore.setRegion(region);
@@ -114,7 +120,17 @@ const ShowsScreen = observer(() => {
             {show.day} {show.startTime}
           </Text>
         </View>
-        <Text style={styles.showAddress}>{show.venue?.address || 'No address'}</Text>
+
+        {/* Venue Address with City, State */}
+        <View style={styles.venueLocation}>
+          <Text style={styles.showAddress}>{show.venue?.address || 'No address'}</Text>
+          {(show.venue?.city || show.venue?.state) && (
+            <Text style={styles.cityState}>
+              {[show.venue?.city, show.venue?.state].filter(Boolean).join(', ')}
+            </Text>
+          )}
+        </View>
+
         {show.description && (
           <Text style={styles.showDescription} numberOfLines={2}>
             {show.description}
@@ -176,17 +192,6 @@ const ShowsScreen = observer(() => {
             <Ionicons name="location" size={24} color="white" />
           </TouchableOpacity>
         </View>
-
-        {/* Search/Filter Bar */}
-        <View style={styles.searchBar}>
-          <View style={styles.searchInput}>
-            <Ionicons name="search" size={20} color="#BBBBBB" />
-            <Text style={styles.searchPlaceholder}>Search venues...</Text>
-          </View>
-          <TouchableOpacity style={styles.filterButton}>
-            <Ionicons name="filter" size={20} color="#007AFF" />
-          </TouchableOpacity>
-        </View>
       </View>
 
       {/* Bottom Sheet with Show List */}
@@ -199,6 +204,9 @@ const ShowsScreen = observer(() => {
         handleIndicatorStyle={styles.bottomSheetIndicator}
       >
         <View style={styles.bottomSheetContent}>
+          {/* Day Picker */}
+          <DayPicker selectedDay={showStore.selectedDay} onDayChange={handleDayChange} />
+
           <View style={styles.bottomSheetHeader}>
             <Text style={styles.bottomSheetTitle}>Karaoke Shows ({showStore.shows.length})</Text>
             <TouchableOpacity onPress={() => bottomSheetRef.current?.collapse()}>
@@ -283,41 +291,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
-  searchBar: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  searchInput: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E1E1E',
-    borderRadius: 25,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#333333',
-    gap: 8,
-  },
-  searchPlaceholder: {
-    color: '#BBBBBB',
-    fontSize: 16,
-  },
-  filterButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#1E1E1E',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
   bottomSheetBackground: {
     backgroundColor: '#1E1E1E',
     borderTopLeftRadius: 20,
@@ -375,7 +348,15 @@ const styles = StyleSheet.create({
   showAddress: {
     fontSize: 14,
     color: '#BBBBBB',
+    marginBottom: 4,
+  },
+  venueLocation: {
     marginBottom: 8,
+  },
+  cityState: {
+    fontSize: 13,
+    color: '#888888',
+    fontWeight: '500',
   },
   showDescription: {
     fontSize: 14,

@@ -5,7 +5,9 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { observer } from 'mobx-react-lite';
 
 // Screens
+import ImageUploadScreen from '../screens/ImageUploadScreen';
 import LoginScreen from '../screens/LoginScreen';
+import ManualEntryScreen from '../screens/ManualEntryScreen';
 import MusicScreen from '../screens/MusicScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -31,6 +33,48 @@ const DarkTheme = {
     notification: '#007AFF',
   },
 };
+
+// Submit Stack for submission flow
+const SubmitStack = () => (
+  <Stack.Navigator
+    screenOptions={{
+      headerShown: true,
+      headerStyle: {
+        backgroundColor: '#1E1E1E',
+        borderBottomWidth: 1,
+        borderBottomColor: '#333333',
+      },
+      headerTintColor: '#FFFFFF',
+      headerTitleStyle: {
+        fontWeight: '600',
+      },
+      cardStyle: { backgroundColor: '#121212' },
+    }}
+  >
+    <Stack.Screen
+      name="SubmitHome"
+      component={SubmitScreen}
+      options={{
+        title: 'Submit Show',
+        headerShown: false, // Hide header for main submit screen
+      }}
+    />
+    <Stack.Screen
+      name="ImageUpload"
+      component={ImageUploadScreen}
+      options={{
+        title: 'Upload Images',
+      }}
+    />
+    <Stack.Screen
+      name="ManualEntry"
+      component={ManualEntryScreen}
+      options={{
+        title: 'Manual Entry',
+      }}
+    />
+  </Stack.Navigator>
+);
 
 // Auth Stack for login/register
 const AuthStack = () => (
@@ -100,7 +144,7 @@ const MainTabs = () => (
   >
     {/* Public pages - no auth required */}
     <Tab.Screen name="Shows" component={ShowsScreen} options={{ title: 'Shows' }} />
-    <Tab.Screen name="Submit" component={SubmitScreen} options={{ title: 'Submit' }} />
+    <Tab.Screen name="Submit" component={SubmitStack} options={{ title: 'Submit' }} />
 
     {/* Auth-required pages */}
     <Tab.Screen

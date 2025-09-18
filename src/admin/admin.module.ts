@@ -4,6 +4,7 @@ import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
 import { Feedback } from '../feedback/feedback.entity';
+import { LogsModule } from '../logs/logs.module';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { ShowReview } from '../show-review/show-review.entity';
 import { Show } from '../show/show.entity';
@@ -11,6 +12,7 @@ import { Vendor } from '../vendor/vendor.entity';
 import { Venue } from '../venue/venue.entity';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { ApiLogsController } from './api-logs.controller';
 import { DeduplicationService } from './deduplication.service';
 
 @Module({
@@ -26,8 +28,9 @@ import { DeduplicationService } from './deduplication.service';
       Feedback,
       ShowReview,
     ]),
+    LogsModule,
   ],
-  controllers: [AdminController],
+  controllers: [AdminController, ApiLogsController],
   providers: [AdminService, DeduplicationService],
   exports: [AdminService, DeduplicationService],
 })

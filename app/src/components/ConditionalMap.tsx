@@ -1,23 +1,8 @@
-import Constants from 'expo-constants';
 import { forwardRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
-// Conditional import for maps
-let MapView: any = null;
-let Marker: any = null;
-
-// Check if we're in a development build (has native modules) or Expo Go
-const isExpoGo = Constants.appOwnership === 'expo';
-
-try {
-  if (!isExpoGo) {
-    const maps = require('react-native-maps');
-    MapView = maps.default;
-    Marker = maps.Marker;
-  }
-} catch (error) {
-  console.log('react-native-maps not available in Expo Go');
-}
+// Import react-native-maps for native platforms only
+import MapView, { Marker } from 'react-native-maps';
 
 interface ConditionalMapProps {
   region: any;
@@ -29,49 +14,68 @@ interface ConditionalMapProps {
 
 const ConditionalMap = forwardRef<any, ConditionalMapProps>(
   ({ region, onRegionChangeComplete, shows, onMarkerPress, style }, ref) => {
-    // If MapView is available (development build), render the real map
-    if (MapView && Marker) {
-      return (
-        <MapView
-          ref={ref}
-          style={style}
-          region={region}
-          onRegionChangeComplete={onRegionChangeComplete}
-          showsUserLocation={true}
-          showsMyLocationButton={false}
-        >
-          {shows.map((show) => (
-            <Marker
-              key={`${show.id}-${show.venue?.id}`}
-              coordinate={{
-                latitude: show.venue?.latitude || 0,
-                longitude: show.venue?.longitude || 0,
-              }}
-              title={show.venue?.name}
-              description={`${show.day_of_week} ${show.start_time}`}
-              onPress={() => onMarkerPress(show)}
-            >
-              <View style={styles.markerContainer}>
-                <View style={styles.marker}>
-                  <Text style={styles.markerText}>🎤</Text>
-                </View>
-              </View>
-            </Marker>
-          ))}
-        </MapView>
-      );
+    // Filter shows that have valid coordinates
+    const validShows = shows.filter((show) => {
+      const hasValidCoords =
+        show.lat &&
+        show.lng &&
+        !isNaN(parseFloat(show.lat)) &&
+        !isNaN(parseFloat(show.lng)) &&
+        parseFloat(show.lat) !== 0 &&
+        parseFloat(show.lng) !== 0;
+
+      if (!hasValidCoords && show.venue) {
+        console.log(`🗺️ Skipping show "${show.venue}" - invalid coordinates:`, {
+          lat: show.lat,
+          lng: show.lng,
+        });
+      }
+
+      return hasValidCoords;
+    });
+
+    console.log(`🗺️ Map rendering with shows: ${shows.length}`);
+    console.log(`🗺️ Valid shows with coordinates: ${validShows.length}`);
+
+    if (validShows.length > 0) {
+      const sampleShow = validShows[0];
+      console.log(`🗺️ Sample coordinates: ${sampleShow.lat} ${sampleShow.lng}`);
     }
 
-    // Fallback for Expo Go - show a placeholder
     return (
-      <View style={[style, styles.mapPlaceholder]}>
-        <Text style={styles.placeholderTitle}>Map Preview</Text>
-        <Text style={styles.placeholderText}>📍 Maps are available in development builds</Text>
-        <Text style={styles.placeholderSubtext}>{shows.length} venues found</Text>
-        <Text style={styles.placeholderNote}>
-          Install the development build to see the interactive map with venue markers
-        </Text>
-      </View>
+      <MapView
+        ref={ref}
+        style={style}
+        region={region}
+        onRegionChangeComplete={onRegionChangeComplete}
+        showsUserLocation={true}
+        showsMyLocationButton={true}
+        followsUserLocation={false}
+        showsCompass={true}
+        scrollEnabled={true}
+        zoomEnabled={true}
+        pitchEnabled={true}
+        rotateEnabled={true}
+        mapType="standard"
+      >
+        {validShows.map((show, index) => {
+          const lat = parseFloat(show.lat);
+          const lng = parseFloat(show.lng);
+
+          return (
+            <Marker
+              key={`${show.id}-${index}`}
+              coordinate={{
+                latitude: lat,
+                longitude: lng,
+              }}
+              title={show.venue || 'Karaoke Show'}
+              description={`${show.djName ? `DJ: ${show.djName}` : ''} ${show.startTime ? `at ${show.startTime}` : ''}`}
+              onPress={() => onMarkerPress(show)}
+            />
+          );
+        })}
+      </MapView>
     );
   },
 );
@@ -100,37 +104,6 @@ const styles = StyleSheet.create({
   },
   markerText: {
     fontSize: 18,
-  },
-  mapPlaceholder: {
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  placeholderTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-  },
-  placeholderText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  placeholderSubtext: {
-    fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '600',
-    marginBottom: 15,
-  },
-  placeholderNote: {
-    fontSize: 12,
-    color: '#888',
-    textAlign: 'center',
-    fontStyle: 'italic',
-    maxWidth: 250,
   },
 });
 

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../entities/user.entity';
+import { LogsModule } from '../logs/logs.module';
 import { MusicController } from './music.controller';
 import { MusicService } from './music.service';
 import { SongFavoriteController } from './song-favorite.controller';
@@ -11,7 +12,7 @@ import { Song } from './song.entity';
 import { SongService } from './song.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Song, SongFavorite, User])],
+  imports: [TypeOrmModule.forFeature([Song, SongFavorite, User]), LogsModule],
   controllers: [MusicController, SongController, SongFavoriteController],
   providers: [MusicService, SongService, SongFavoriteService],
   exports: [MusicService, SongService, SongFavoriteService],

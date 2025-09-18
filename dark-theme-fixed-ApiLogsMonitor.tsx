@@ -1,4 +1,4 @@
-import {
+iimport {
   faCheckCircle,
   faCircleExclamation,
   faClock,
@@ -151,12 +151,7 @@ const ApiLogsMonitor = observer(() => {
   };
 
   const fetchData = async () => {
-    await Promise.all([
-      fetchStats(),
-      fetchRecentLogs(),
-      fetchItunesRateLimit(),
-      fetchItunesUsage(),
-    ]);
+    await Promise.all([fetchStats(), fetchRecentLogs(), fetchItunesRateLimit(), fetchItunesUsage()]);
   };
 
   useEffect(() => {
@@ -281,7 +276,10 @@ const ApiLogsMonitor = observer(() => {
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <FontAwesomeIcon icon={faClock} style={{ color: '#ff9800', fontSize: '24px' }} />
+                <FontAwesomeIcon
+                  icon={faClock}
+                  style={{ color: '#ff9800', fontSize: '24px' }}
+                />
                 <Box>
                   <Typography variant="h4">{stats.rateLimitedRequests}</Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -339,165 +337,116 @@ const ApiLogsMonitor = observer(() => {
       {itunesRateLimit && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Box
-              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}
-            >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Typography variant="h6" gutterBottom>
                 iTunes API Rate Limits & Quotas
               </Typography>
-              <Chip
-                label="iTunes Search API"
-                color="primary"
+              <Chip 
+                label="iTunes Search API" 
+                color="primary" 
                 variant="outlined"
                 sx={{ fontWeight: 'bold' }}
               />
             </Box>
-
+            
             {/* Current Plan Info */}
             <Alert severity="info" sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                Current Plan: iTunes Search API (Free Tier)
-              </Typography>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>Current Plan: iTunes Search API (Free Tier)</Typography>
               <Typography variant="body2">
-                Rate Limit: 300 requests per minute • Minimum delay: 50ms between requests • No
-                daily quota limit
+                Rate Limit: 300 requests per minute • Minimum delay: 50ms between requests • No daily quota limit
               </Typography>
             </Alert>
 
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6} md={3}>
                 <Paper
-                  elevation={3}
+                  elevation={2}
                   sx={{
                     textAlign: 'center',
                     p: 3,
-                    borderRadius: 3,
-                    background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
-                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                    transition: 'all 0.3s ease-in-out',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 8px 32px rgba(59, 130, 246, 0.3)',
-                    },
+                    borderRadius: 2,
+                    backgroundColor: 'success.dark',
+                    border: '1px solid',
+                    borderColor: 'success.main',
+                    opacity: 0.8,
                   }}
                 >
-                  <Typography
-                    variant="h4"
-                    sx={{
-                      fontWeight: 'bold',
-                      color: 'white',
-                      textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                    }}
-                  >
+                  <Typography variant="h4" color="primary" sx={{ fontWeight: 'bold' }}>
                     {itunesRateLimit?.maxRequestsPerMinute || 300}
                   </Typography>
-                  <Typography variant="body2" sx={{ mt: 1, color: 'rgba(255, 255, 255, 0.9)' }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     Max Requests/Minute
                   </Typography>
                 </Paper>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Paper
-                  elevation={3}
+                  elevation={2}
                   sx={{
                     textAlign: 'center',
                     p: 3,
-                    borderRadius: 3,
-                    background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
-                    border: '1px solid rgba(168, 85, 247, 0.3)',
-                    transition: 'all 0.3s ease-in-out',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 8px 32px rgba(168, 85, 247, 0.3)',
-                    },
+                    borderRadius: 2,
+                    backgroundColor: 'info.dark',
+                    border: '1px solid',
+                    borderColor: 'info.main',
+                    opacity: 0.8,
                   }}
                 >
-                  <Typography
-                    variant="h4"
-                    sx={{
-                      fontWeight: 'bold',
-                      color: 'white',
-                      textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                    }}
-                  >
+                  <Typography variant="h4" color="info.main" sx={{ fontWeight: 'bold' }}>
                     {itunesRateLimit?.requestsThisMinute || 0}
                   </Typography>
-                  <Typography variant="body2" sx={{ mt: 1, color: 'rgba(255, 255, 255, 0.9)' }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     Used This Minute
                   </Typography>
                 </Paper>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Paper
-                  elevation={3}
+                  elevation={2}
                   sx={{
                     textAlign: 'center',
                     p: 3,
-                    borderRadius: 3,
-                    background: 'linear-gradient(135deg, #166534 0%, #22c55e 100%)',
-                    border: '1px solid rgba(34, 197, 94, 0.3)',
-                    transition: 'all 0.3s ease-in-out',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 8px 32px rgba(34, 197, 94, 0.3)',
-                    },
+                    borderRadius: 2,
+                    backgroundColor: 'secondary.dark',
+                    border: '1px solid',
+                    borderColor: 'secondary.main',
+                    opacity: 0.8,
                   }}
                 >
-                  <Typography
-                    variant="h4"
-                    sx={{
-                      fontWeight: 'bold',
-                      color: 'white',
-                      textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                    }}
-                  >
-                    {(itunesRateLimit?.maxRequestsPerMinute || 300) -
-                      (itunesRateLimit?.requestsThisMinute || 0)}
+                  <Typography variant="h4" color="success.main" sx={{ fontWeight: 'bold' }}>
+                    {(itunesRateLimit?.maxRequestsPerMinute || 300) - (itunesRateLimit?.requestsThisMinute || 0)}
                   </Typography>
-                  <Typography variant="body2" sx={{ mt: 1, color: 'rgba(255, 255, 255, 0.9)' }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     Remaining Quota
                   </Typography>
                 </Paper>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Paper
-                  elevation={3}
+                  elevation={2}
                   sx={{
                     textAlign: 'center',
                     p: 3,
-                    borderRadius: 3,
-                    background:
-                      (itunesRateLimit?.projectedMinutelyUsage || 0) >
-                      (itunesRateLimit?.maxRequestsPerMinute || 0)
-                        ? 'linear-gradient(135deg, #991b1b 0%, #ef4444 100%)'
-                        : 'linear-gradient(135deg, #be185d 0%, #ec4899 100%)',
-                    border:
-                      (itunesRateLimit?.projectedMinutelyUsage || 0) >
-                      (itunesRateLimit?.maxRequestsPerMinute || 0)
-                        ? '1px solid rgba(239, 68, 68, 0.3)'
-                        : '1px solid rgba(236, 72, 153, 0.3)',
-                    transition: 'all 0.3s ease-in-out',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow:
-                        (itunesRateLimit?.projectedMinutelyUsage || 0) >
-                        (itunesRateLimit?.maxRequestsPerMinute || 0)
-                          ? '0 8px 32px rgba(239, 68, 68, 0.3)'
-                          : '0 8px 32px rgba(236, 72, 153, 0.3)',
-                    },
+                    borderRadius: 2,
+                    backgroundColor: 'warning.dark',
+                    border: '1px solid',
+                    borderColor: 'warning.main',
+                    opacity: 0.8,
                   }}
                 >
                   <Typography
                     variant="h4"
-                    sx={{
-                      fontWeight: 'bold',
-                      color: 'white',
-                      textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                    }}
+                    color={
+                      (itunesRateLimit?.projectedMinutelyUsage || 0) >
+                      (itunesRateLimit?.maxRequestsPerMinute || 0)
+                        ? 'error'
+                        : 'warning.main'
+                    }
+                    sx={{ fontWeight: 'bold' }}
                   >
                     {itunesRateLimit?.projectedMinutelyUsage || 0}
                   </Typography>
-                  <Typography variant="body2" sx={{ mt: 1, color: 'rgba(255, 255, 255, 0.9)' }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     Projected Usage
                   </Typography>
                 </Paper>
@@ -561,9 +510,7 @@ const ApiLogsMonitor = observer(() => {
                     borderRadius: 1,
                   }}
                 >
-                  <Typography variant="h5">
-                    {itunesRateLimit?.circuitBreakerStatus || 'Unknown'}
-                  </Typography>
+                  <Typography variant="h5">{itunesRateLimit?.circuitBreakerStatus || 'Unknown'}</Typography>
                   <Typography variant="body2" color="text.secondary">
                     Circuit Breaker
                   </Typography>
@@ -575,8 +522,8 @@ const ApiLogsMonitor = observer(() => {
             {(itunesRateLimit?.rateLimitReachedCount || 0) > 0 && (
               <Alert severity="warning" sx={{ mt: 2 }}>
                 <Typography variant="body2">
-                  Rate limit reached {itunesRateLimit?.rateLimitReachedCount} times. Consider
-                  implementing request throttling or increasing delays between requests.
+                  Rate limit reached {itunesRateLimit?.rateLimitReachedCount} times. Consider implementing
+                  request throttling or increasing delays between requests.
                 </Typography>
               </Alert>
             )}
@@ -588,11 +535,7 @@ const ApiLogsMonitor = observer(() => {
       {itunesUsage && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Typography
-              variant="h6"
-              gutterBottom
-              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-            >
+            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <FontAwesomeIcon icon={faSearch} style={{ fontSize: '20px', color: '#1976d2' }} />
               Usage Trends & Performance
             </Typography>
@@ -675,58 +618,29 @@ const ApiLogsMonitor = observer(() => {
                         },
                       }}
                     >
-                      <Typography
-                        variant="h6"
-                        fontWeight="bold"
-                        color="primary.main"
-                        sx={{ mb: 1 }}
-                      >
+                      <Typography variant="h6" fontWeight="bold" color="primary.main" sx={{ mb: 1 }}>
                         {trend.period}
                       </Typography>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                          }}
-                        >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Typography variant="body2" color="text.secondary">
                             Avg Response:
                           </Typography>
-                          <Chip
-                            label={`${trend.avgResponseTime}ms`}
-                            size="small"
-                            color={
-                              trend.avgResponseTime < 500
-                                ? 'success'
-                                : trend.avgResponseTime < 1000
-                                  ? 'warning'
-                                  : 'error'
-                            }
+                          <Chip 
+                            label={`${trend.avgResponseTime}ms`} 
+                            size="small" 
+                            color={trend.avgResponseTime < 500 ? 'success' : trend.avgResponseTime < 1000 ? 'warning' : 'error'}
                             variant="outlined"
                           />
                         </Box>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                          }}
-                        >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Typography variant="body2" color="text.secondary">
                             Success Rate:
                           </Typography>
-                          <Chip
-                            label={`${trend.successRate}%`}
-                            size="small"
-                            color={
-                              trend.successRate >= 95
-                                ? 'success'
-                                : trend.successRate >= 80
-                                  ? 'warning'
-                                  : 'error'
-                            }
+                          <Chip 
+                            label={`${trend.successRate}%`} 
+                            size="small" 
+                            color={trend.successRate >= 95 ? 'success' : trend.successRate >= 80 ? 'warning' : 'error'}
                             variant="outlined"
                           />
                         </Box>
@@ -841,7 +755,9 @@ const ApiLogsMonitor = observer(() => {
                 {recentLogs.map((log) => (
                   <TableRow key={log.id}>
                     <TableCell>
-                      <Typography variant="caption">{formatTimestamp(log.timestamp)}</Typography>
+                      <Typography variant="caption">
+                        {formatTimestamp(log.timestamp)}
+                      </Typography>
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -856,13 +772,7 @@ const ApiLogsMonitor = observer(() => {
                       <Chip
                         label={log.level.toUpperCase()}
                         size="small"
-                        color={
-                          log.level === 'error'
-                            ? 'error'
-                            : log.level === 'warn'
-                              ? 'warning'
-                              : 'default'
-                        }
+                        color={log.level === 'error' ? 'error' : log.level === 'warn' ? 'warning' : 'default'}
                       />
                     </TableCell>
                     <TableCell>

@@ -99,29 +99,24 @@ export class MapStore {
       return;
     }
 
-    // Only use day filtering if enabled
-    const day = this.showStore.useDayFilter ? this.showStore.selectedDay : undefined;
+    // Always use day filtering (mobile app always filters by day)
+    const day = this.showStore.selectedDay;
 
     runInAction(() => {
       this.isLoadingShows = true;
     });
 
     try {
-      // At zoom 8 or lower, load all shows nationwide without distance filtering
-      if (this.currentZoom <= 8) {
-        await this.showStore.fetchAllShows(day, this.showStore.vendorFilter);
-      } else {
-        // Use appropriate radius for higher zoom levels
-        const radius = this.currentZoom <= 11 ? 100 : 50; // 100 miles for medium zoom, 50 miles for detailed view
+      // Use a reasonable radius for mobile: 35 miles (backend default)
+      const radius = 35;
 
-        const mapCenter: MapBounds = {
-          lat: this.currentRegion.latitude,
-          lng: this.currentRegion.longitude,
-          radius,
-        };
+      const mapCenter: MapBounds = {
+        lat: this.currentRegion.latitude,
+        lng: this.currentRegion.longitude,
+        radius,
+      };
 
-        await this.showStore.fetchShows(day, mapCenter);
-      }
+      await this.showStore.fetchShows(day, mapCenter);
     } catch (error) {
       console.error('❌ MapStore: Failed to fetch data:', error);
     } finally {

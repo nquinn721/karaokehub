@@ -1,4 +1,6 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { ApiLogType, ApiProvider, LogLevel } from '../logs/api-log.entity';
+import { ApiLogService } from '../logs/api-log.service';
 import { ArtistSearchResult, MusicSearchResult } from './music.interface';
 
 // Rate limiter for iTunes API
@@ -19,9 +21,21 @@ class ApiRateLimiter {
     recoveryTime: 300000, // 5 minutes
   };
 
+  constructor(private readonly apiLogService?: ApiLogService) {}
+
   async waitForRateLimit(provider: string): Promise<void> {
     if (this.isCircuitOpen(provider)) {
-      throw new Error(`Circuit breaker open for ${provider} - too many recent failures`);
+      const error = new Error(`Circuit breaker open for ${provider} - too many recent failures`);
+
+      // Log circuit breaker trip
+      if (this.apiLogService) {
+        await this.apiLogService.logCircuitBreaker(
+          ApiProvider.ITUNES,
+          `Circuit breaker open for ${provider} - too many recent failures`,
+        );
+      }
+
+      throw error;
     }
 
     const config = this.limits[provider];
@@ -43,6 +57,16 @@ class ApiRateLimiter {
       const waitTime = requestData.resetTime - now;
       if (waitTime > 0) {
         console.warn(`Rate limit reached for ${provider}, waiting ${waitTime}ms`);
+
+        // Log rate limit hit
+        if (this.apiLogService) {
+          await this.apiLogService.logRateLimit(
+            ApiProvider.ITUNES,
+            undefined, // no specific query
+            new Date(requestData.resetTime),
+          );
+        }
+
         await this.sleep(waitTime);
       }
       requestData = { count: 0, resetTime: Math.floor(Date.now() / 60000) * 60000 + 60000 };
@@ -123,7 +147,11 @@ class ApiRateLimiter {
 export class MusicService {
   private readonly logger = new Logger(MusicService.name);
   private readonly userAgent = 'KaraokeRatingsApp/1.0.0';
-  private readonly rateLimiter = new ApiRateLimiter();
+  private readonly rateLimiter: ApiRateLimiter;
+
+  constructor(private readonly apiLogService: ApiLogService) {
+    this.rateLimiter = new ApiRateLimiter(this.apiLogService);
+  }
 
   // Helper method to create albumArt object from image arrays
   private createAlbumArtObject(
@@ -221,6 +249,8 @@ export class MusicService {
     entity: 'song' | 'musicArtist',
     limit: number = 20,
   ): Promise<any> {
+    const startTime = Date.now();
+
     try {
       await this.rateLimiter.waitForRateLimit('itunes');
 
@@ -235,8 +265,22 @@ export class MusicService {
         signal: AbortSignal.timeout(10000), // 10 second timeout
       });
 
+      const responseTime = Date.now() - startTime;
+
       if (!response.ok) {
         console.error(`iTunes API error: ${response.status} - ${response.statusText}`);
+
+        // Log API error
+        await this.apiLogService.logApiCall({
+          provider: ApiProvider.ITUNES,
+          logType: entity === 'song' ? ApiLogType.SEARCH_SONGS : ApiLogType.SEARCH_ARTISTS,
+          level: LogLevel.ERROR,
+          message: `iTunes API error: ${response.status} - ${response.statusText}`,
+          query,
+          statusCode: response.status,
+          responseTime,
+          userAgent: this.userAgent,
+        });
 
         // If iTunes API is down, return a mock response for development
         if (process.env.NODE_ENV === 'development') {
@@ -249,10 +293,36 @@ export class MusicService {
 
       const data = await response.json();
       this.rateLimiter.recordSuccess('itunes');
+
+      // Log successful API call
+      await this.apiLogService.logApiCall({
+        provider: ApiProvider.ITUNES,
+        logType: entity === 'song' ? ApiLogType.SEARCH_SONGS : ApiLogType.SEARCH_ARTISTS,
+        level: LogLevel.INFO,
+        message: `Successful iTunes API call`,
+        query,
+        statusCode: response.status,
+        responseTime,
+        userAgent: this.userAgent,
+        responseData: {
+          resultCount: data.resultCount,
+          hasResults: data.results && data.results.length > 0,
+        },
+      });
+
       return data;
     } catch (error) {
+      const responseTime = Date.now() - startTime;
       this.rateLimiter.recordFailure('itunes');
       console.error('iTunes fetch error:', error);
+
+      // Log API error
+      await this.apiLogService.logApiError(
+        ApiProvider.ITUNES,
+        entity === 'song' ? ApiLogType.SEARCH_SONGS : ApiLogType.SEARCH_ARTISTS,
+        error,
+        query,
+      );
 
       // Fallback to mock data in development
       if (process.env.NODE_ENV === 'development') {
@@ -1264,5 +1334,36 @@ export class MusicService {
     // Remove duplicates and sort by popularity
     const uniqueResults = this.deduplicateResults(allResults);
     return uniqueResults.slice(0, targetCount);
+  }
+
+  async logPreviewAccess(
+    songId: string,
+    title?: string,
+    artist?: string,
+    previewUrl?: string,
+    userId?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    try {
+      await this.apiLogService.logApiCall({
+        provider: ApiProvider.ITUNES,
+        logType: ApiLogType.SNIPPET_REQUEST,
+        level: LogLevel.INFO,
+        message: `30-second preview accessed for song: ${title} by ${artist}`,
+        query: `${title} ${artist}`.trim(),
+        requestData: {
+          songId,
+          title,
+          artist,
+          previewUrl,
+        },
+        userId,
+        ipAddress,
+        userAgent,
+      });
+    } catch (error) {
+      console.error('Failed to log preview access:', error);
+    }
   }
 }

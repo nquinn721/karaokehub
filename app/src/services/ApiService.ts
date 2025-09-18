@@ -54,6 +54,10 @@ class ApiService {
   async isAuthenticated(): Promise<boolean> {
     return baseApiService.isAuthenticated();
   }
+
+  async clearAuthTokens() {
+    return baseApiService['clearTokens']();
+  }
 }
 
 // Export singleton instance (maintains backward compatibility)
