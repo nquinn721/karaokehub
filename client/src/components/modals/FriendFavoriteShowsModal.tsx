@@ -12,6 +12,7 @@ import {
   ListItemIcon,
   ListItemText,
   Typography,
+  useTheme,
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { apiStore } from '../../stores/ApiStore';
@@ -68,6 +69,7 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
   onClose,
   friend,
 }) => {
+  const theme = useTheme();
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,6 +158,18 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
       fullWidth
     >
       <Box sx={{ mt: 2 }}>
+        {/* Friend's Name Header */}
+        <Box sx={{ mb: 3, textAlign: 'center' }}>
+          <Typography variant="h4" fontWeight={700} gutterBottom>
+            {friendDisplayName}
+          </Typography>
+          {favorites.length > 0 && (
+            <Typography variant="body1" color="text.secondary">
+              {favorites.length} favorite show{favorites.length !== 1 ? 's' : ''}
+            </Typography>
+          )}
+        </Box>
+
         <Grid container spacing={3}>
           {/* Left Column - Large Avatar */}
           <Grid item xs={12} md={4}>
@@ -164,56 +178,32 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
               flexDirection: 'column',
               alignItems: 'center',
               p: 3,
-              borderRadius: 2,
-              backgroundColor: 'background.paper',
-              border: '1px solid',
-              borderColor: 'divider',
+              borderRadius: '20px',
+              background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+              color: 'white',
               height: 'fit-content',
               position: 'sticky',
-              top: 0
+              top: 0,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
             }}>
               <Box sx={{
                 position: 'relative',
                 width: 180,
                 height: 180,
                 mb: 2,
-                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.8), rgba(236, 72, 153, 0.8), rgba(59, 130, 246, 0.8))',
-                borderRadius: '50%',
-                padding: '6px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 8px 32px rgba(99, 102, 241, 0.3)',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #6366f1, #ec4899, #3b82f6)',
-                  filter: 'blur(20px)',
-                  opacity: 0.5,
-                  zIndex: -1,
-                }
               }}>
                 <AvatarDisplay
                   userAvatar={friend.userAvatar}
                   size={168}
                   sx={{ 
-                    border: '3px solid rgba(255,255,255,0.9)',
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
-                    backdropFilter: 'blur(10px)',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+                    border: 'none',
+                    background: 'transparent',
                   }}
                 />
               </Box>
-              <Typography variant="h6" color="primary" textAlign="center" gutterBottom>
-                {friendDisplayName}
-              </Typography>
-              {favorites.length > 0 && (
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-                  {favorites.length} favorite show{favorites.length !== 1 ? 's' : ''}
-                </Typography>
-              )}
             </Box>
           </Grid>
 
