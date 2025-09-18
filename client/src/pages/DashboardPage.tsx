@@ -11,11 +11,13 @@ import {
   faMapMarkerAlt,
   faMicrophone,
   faMusic,
+  faPaintBrush,
   faPause,
   faPlay,
   faPlus,
   faStar,
   faTrophy,
+  faUser,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -1264,6 +1266,122 @@ const DashboardPage: React.FC = observer(() => {
                           Start attending shows to track your karaoke journey! 🎤
                         </Typography>
                       </Stack>
+                    </CardContent>
+                  </Card>
+
+                  {/* Avatar Customizer */}
+                  <Card
+                    sx={{
+                      background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.primary.main, 0.05)})`,
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                      mb: 3,
+                    }}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                        <Box
+                          sx={{
+                            backgroundColor: theme.palette.primary.main,
+                            borderRadius: '12px',
+                            p: 1.5,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faPaintBrush} color="white" size="lg" />
+                        </Box>
+                        <Box>
+                          <Typography variant="h6" fontWeight={600}>
+                            Customize Your Avatar
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Express your karaoke style
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Box
+                          sx={{
+                            width: 60,
+                            height: 60,
+                            borderRadius: '50%',
+                            background: `linear-gradient(135deg, ${theme.palette.primary.light}, ${theme.palette.secondary.light})`,
+                            border: `2px solid ${theme.palette.primary.main}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            position: 'relative',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <img
+                            src="/avatar/base.982Z.png"
+                            alt="Your Avatar"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                            onError={(e) => {
+                              // Fallback to icon if image fails
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                          <FontAwesomeIcon
+                            icon={faUser}
+                            style={{
+                              fontSize: '24px',
+                              color: theme.palette.primary.main,
+                              position: 'absolute',
+                            }}
+                          />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            Personalize your karaoke avatar with different microphones, outfits, and accessories!
+                          </Typography>
+                          <Stack direction="row" spacing={1}>
+                            <Chip 
+                              label="🎤 Mics" 
+                              size="small" 
+                              variant="outlined"
+                              sx={{ fontSize: '0.7rem' }}
+                            />
+                            <Chip 
+                              label="👕 Outfits" 
+                              size="small" 
+                              variant="outlined"
+                              sx={{ fontSize: '0.7rem' }}
+                            />
+                            <Chip 
+                              label="👒 Accessories" 
+                              size="small" 
+                              variant="outlined"
+                              sx={{ fontSize: '0.7rem' }}
+                            />
+                          </Stack>
+                        </Box>
+                      </Box>
+
+                      <Button
+                        variant="outlined"
+                        fullWidth
+                        startIcon={<FontAwesomeIcon icon={faPaintBrush} />}
+                        onClick={() => navigate('/avatar-customizer')}
+                        sx={{
+                          borderRadius: '8px',
+                          borderColor: theme.palette.primary.main,
+                          color: theme.palette.primary.main,
+                          '&:hover': {
+                            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                            borderColor: theme.palette.primary.dark,
+                          },
+                        }}
+                      >
+                        Customize Avatar
+                      </Button>
                     </CardContent>
                   </Card>
 
