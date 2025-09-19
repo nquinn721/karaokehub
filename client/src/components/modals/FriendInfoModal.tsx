@@ -99,6 +99,15 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
     }
   }, [open, friend?.id]);
 
+  // Debug logging for friend data
+  useEffect(() => {
+    if (friend) {
+      console.log('🔍 [FriendInfoModal] Friend data:', friend);
+      console.log('🔍 [FriendInfoModal] User avatar:', friend.userAvatar);
+      console.log('🔍 [FriendInfoModal] Microphone:', friend.userAvatar?.microphone);
+    }
+  }, [friend]);
+
   const formatTime = (time: string) => {
     if (!time) return '';
     try {
@@ -187,29 +196,29 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
                 }}
               />
               
-              {/* Friend's Microphone Display */}
-              {friend.userAvatar?.microphone && (
+              {/* Friend's Microphone Display - Always show for debugging */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
+              >
                 <Box
                   sx={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    border: '2px solid rgba(255,255,255,0.3)',
                     display: 'flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
-                    gap: 1,
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
                   }}
                 >
-                  <Box
-                    sx={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: '12px',
-                      overflow: 'hidden',
-                      border: '2px solid rgba(255,255,255,0.3)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: 'rgba(255,255,255,0.1)',
-                    }}
-                  >
+                  {friend.userAvatar?.microphone ? (
                     <img
                       src={`/images/avatar/parts/microphones/${friend.userAvatar.microphone.imagePath || 'mic_basic_1.png'}`}
                       alt={friend.userAvatar.microphone.name || 'Microphone'}
@@ -222,19 +231,29 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
                         (e.target as HTMLImageElement).src = '/images/avatar/parts/microphones/mic_basic_1.png';
                       }}
                     />
-                  </Box>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: 'rgba(255,255,255,0.9)',
-                      textAlign: 'center',
-                      fontSize: '0.75rem',
-                    }}
-                  >
-                    {friend.userAvatar.microphone.name || 'Basic Mic'}
-                  </Typography>
+                  ) : (
+                    <img
+                      src="/images/avatar/parts/microphones/mic_basic_1.png"
+                      alt="Default Microphone"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  )}
                 </Box>
-              )}
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: 'rgba(255,255,255,0.9)',
+                    textAlign: 'center',
+                    fontSize: '0.75rem',
+                  }}
+                >
+                  {friend.userAvatar?.microphone?.name || 'Basic Mic'}
+                </Typography>
+              </Box>
             </Box>
           </Grid>
 

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Alert,
   Box,
@@ -71,21 +71,15 @@ const StoreItemGenerator: React.FC = observer(() => {
     }
   }, [storeGenerationStore.success]);
 
-  // Dropzone for image upload
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
+  // File upload handler
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = () => setUploadedImage(reader.result as string);
       reader.readAsDataURL(file);
     }
-  }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: { 'image/*': [] },
-    multiple: false,
-  });
+  };
 
   const itemTypes = [
     { value: 'outfit', label: 'Outfits', icon: '👔' },
@@ -213,21 +207,25 @@ const StoreItemGenerator: React.FC = observer(() => {
               </Typography>
 
               <Paper
-                {...getRootProps()}
                 sx={{
                   border: `2px dashed ${theme.palette.primary.main}`,
-                  borderColor: isDragActive ? theme.palette.primary.dark : theme.palette.primary.main,
                   p: 3,
                   textAlign: 'center',
                   cursor: 'pointer',
-                  bgcolor: isDragActive ? theme.palette.primary.main + '10' : 'transparent',
                   transition: 'all 0.2s ease',
                   '&:hover': {
                     bgcolor: theme.palette.primary.main + '05',
                   },
                 }}
+                onClick={() => document.getElementById('file-upload')?.click()}
               >
-                <input {...getInputProps()} />
+                <input
+                  id="file-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
                 {uploadedImage ? (
                   <Box>
                     <img
@@ -240,14 +238,14 @@ const StoreItemGenerator: React.FC = observer(() => {
                       }}
                     />
                     <Typography variant="body2" sx={{ mt: 1 }}>
-                      Click or drag to replace
+                      Click to replace
                     </Typography>
                   </Box>
                 ) : (
                   <Box>
                     <FontAwesomeIcon icon={faImage} size="3x" color={theme.palette.primary.main} />
                     <Typography variant="body1" sx={{ mt: 2 }}>
-                      {isDragActive ? 'Drop the image here...' : 'Drag & drop an image here, or click to select'}
+                      Click here to select an image
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Supports JPG, PNG, GIF
