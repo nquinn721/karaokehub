@@ -37,7 +37,7 @@ import { authStore, friendsStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import SendFriendRequestModal from './SendFriendRequestModal';
-import { FriendFavoriteShowsModal } from './modals/FriendFavoriteShowsModal';
+import { FriendInfoModal } from './modals/FriendInfoModal';
 
 interface FriendsListProps {
   onUserSelect?: (userId: string) => void;
@@ -378,8 +378,8 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
                   <ListItemAvatar>
                     <Avatar sx={{ width: 36, height: 36 }}>
                       {friend.userAvatar?.baseAvatarId ? (
-                        <img 
-                          src={`/avatar/${friend.userAvatar.baseAvatarId}.png`} 
+                        <img
+                          src={`/avatar/${friend.userAvatar.baseAvatarId}.png`}
                           alt={getDisplayName(friend)}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
@@ -423,9 +423,9 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
         onClose={() => setShowSendRequestModal(false)}
       />
 
-      {/* Friend Favorite Shows Modal */}
+      {/* Friend Info Modal */}
       {selectedFriend && (
-        <FriendFavoriteShowsModal
+        <FriendInfoModal
           open={showFavoriteModal}
           onClose={() => {
             setShowFavoriteModal(false);

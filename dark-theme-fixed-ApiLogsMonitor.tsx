@@ -1,4 +1,4 @@
-iimport {
+import {
   faCheckCircle,
   faCircleExclamation,
   faClock,
@@ -151,7 +151,12 @@ const ApiLogsMonitor = observer(() => {
   };
 
   const fetchData = async () => {
-    await Promise.all([fetchStats(), fetchRecentLogs(), fetchItunesRateLimit(), fetchItunesUsage()]);
+    await Promise.all([
+      fetchStats(),
+      fetchRecentLogs(),
+      fetchItunesRateLimit(),
+      fetchItunesUsage(),
+    ]);
   };
 
   useEffect(() => {
@@ -276,10 +281,7 @@ const ApiLogsMonitor = observer(() => {
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <FontAwesomeIcon
-                  icon={faClock}
-                  style={{ color: '#ff9800', fontSize: '24px' }}
-                />
+                <FontAwesomeIcon icon={faClock} style={{ color: '#ff9800', fontSize: '24px' }} />
                 <Box>
                   <Typography variant="h4">{stats.rateLimitedRequests}</Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -337,23 +339,28 @@ const ApiLogsMonitor = observer(() => {
       {itunesRateLimit && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Box
+              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}
+            >
               <Typography variant="h6" gutterBottom>
                 iTunes API Rate Limits & Quotas
               </Typography>
-              <Chip 
-                label="iTunes Search API" 
-                color="primary" 
+              <Chip
+                label="iTunes Search API"
+                color="primary"
                 variant="outlined"
                 sx={{ fontWeight: 'bold' }}
               />
             </Box>
-            
+
             {/* Current Plan Info */}
             <Alert severity="info" sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>Current Plan: iTunes Search API (Free Tier)</Typography>
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                Current Plan: iTunes Search API (Free Tier)
+              </Typography>
               <Typography variant="body2">
-                Rate Limit: 300 requests per minute • Minimum delay: 50ms between requests • No daily quota limit
+                Rate Limit: 300 requests per minute • Minimum delay: 50ms between requests • No
+                daily quota limit
               </Typography>
             </Alert>
 
@@ -414,7 +421,8 @@ const ApiLogsMonitor = observer(() => {
                   }}
                 >
                   <Typography variant="h4" color="success.main" sx={{ fontWeight: 'bold' }}>
-                    {(itunesRateLimit?.maxRequestsPerMinute || 300) - (itunesRateLimit?.requestsThisMinute || 0)}
+                    {(itunesRateLimit?.maxRequestsPerMinute || 300) -
+                      (itunesRateLimit?.requestsThisMinute || 0)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     Remaining Quota
@@ -510,7 +518,9 @@ const ApiLogsMonitor = observer(() => {
                     borderRadius: 1,
                   }}
                 >
-                  <Typography variant="h5">{itunesRateLimit?.circuitBreakerStatus || 'Unknown'}</Typography>
+                  <Typography variant="h5">
+                    {itunesRateLimit?.circuitBreakerStatus || 'Unknown'}
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Circuit Breaker
                   </Typography>
@@ -522,8 +532,8 @@ const ApiLogsMonitor = observer(() => {
             {(itunesRateLimit?.rateLimitReachedCount || 0) > 0 && (
               <Alert severity="warning" sx={{ mt: 2 }}>
                 <Typography variant="body2">
-                  Rate limit reached {itunesRateLimit?.rateLimitReachedCount} times. Consider implementing
-                  request throttling or increasing delays between requests.
+                  Rate limit reached {itunesRateLimit?.rateLimitReachedCount} times. Consider
+                  implementing request throttling or increasing delays between requests.
                 </Typography>
               </Alert>
             )}
@@ -535,7 +545,11 @@ const ApiLogsMonitor = observer(() => {
       {itunesUsage && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+            >
               <FontAwesomeIcon icon={faSearch} style={{ fontSize: '20px', color: '#1976d2' }} />
               Usage Trends & Performance
             </Typography>
@@ -618,29 +632,58 @@ const ApiLogsMonitor = observer(() => {
                         },
                       }}
                     >
-                      <Typography variant="h6" fontWeight="bold" color="primary.main" sx={{ mb: 1 }}>
+                      <Typography
+                        variant="h6"
+                        fontWeight="bold"
+                        color="primary.main"
+                        sx={{ mb: 1 }}
+                      >
                         {trend.period}
                       </Typography>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
                           <Typography variant="body2" color="text.secondary">
                             Avg Response:
                           </Typography>
-                          <Chip 
-                            label={`${trend.avgResponseTime}ms`} 
-                            size="small" 
-                            color={trend.avgResponseTime < 500 ? 'success' : trend.avgResponseTime < 1000 ? 'warning' : 'error'}
+                          <Chip
+                            label={`${trend.avgResponseTime}ms`}
+                            size="small"
+                            color={
+                              trend.avgResponseTime < 500
+                                ? 'success'
+                                : trend.avgResponseTime < 1000
+                                  ? 'warning'
+                                  : 'error'
+                            }
                             variant="outlined"
                           />
                         </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
                           <Typography variant="body2" color="text.secondary">
                             Success Rate:
                           </Typography>
-                          <Chip 
-                            label={`${trend.successRate}%`} 
-                            size="small" 
-                            color={trend.successRate >= 95 ? 'success' : trend.successRate >= 80 ? 'warning' : 'error'}
+                          <Chip
+                            label={`${trend.successRate}%`}
+                            size="small"
+                            color={
+                              trend.successRate >= 95
+                                ? 'success'
+                                : trend.successRate >= 80
+                                  ? 'warning'
+                                  : 'error'
+                            }
                             variant="outlined"
                           />
                         </Box>
@@ -755,9 +798,7 @@ const ApiLogsMonitor = observer(() => {
                 {recentLogs.map((log) => (
                   <TableRow key={log.id}>
                     <TableCell>
-                      <Typography variant="caption">
-                        {formatTimestamp(log.timestamp)}
-                      </Typography>
+                      <Typography variant="caption">{formatTimestamp(log.timestamp)}</Typography>
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -772,7 +813,13 @@ const ApiLogsMonitor = observer(() => {
                       <Chip
                         label={log.level.toUpperCase()}
                         size="small"
-                        color={log.level === 'error' ? 'error' : log.level === 'warn' ? 'warning' : 'default'}
+                        color={
+                          log.level === 'error'
+                            ? 'error'
+                            : log.level === 'warn'
+                              ? 'warning'
+                              : 'default'
+                        }
                       />
                     </TableCell>
                     <TableCell>

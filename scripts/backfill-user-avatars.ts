@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 
-// Database configuration  
+// Database configuration
 const dataSource = new DataSource({
   type: 'mysql',
   host: process.env.DB_HOST || 'localhost',
@@ -35,7 +35,7 @@ async function backfillUserAvatars() {
     }
 
     console.log('🔄 Updating users with default avatar...');
-    
+
     // Update all users without avatars to have 'avatar_1' as default
     const updateResult = await queryRunner.query(`
       UPDATE users 
@@ -43,7 +43,9 @@ async function backfillUserAvatars() {
       WHERE avatar IS NULL OR avatar = '' OR avatar = ""
     `);
 
-    console.log(`✅ Successfully updated ${updateResult.affectedRows} users with default avatar 'avatar_1'`);
+    console.log(
+      `✅ Successfully updated ${updateResult.affectedRows} users with default avatar 'avatar_1'`,
+    );
 
     // Verify the update
     const updatedUsers = await queryRunner.query(`
@@ -63,7 +65,6 @@ async function backfillUserAvatars() {
     }
 
     await queryRunner.release();
-
   } catch (error) {
     console.error('❌ Error during avatar backfill:', error);
     throw error;

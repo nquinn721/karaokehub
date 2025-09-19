@@ -17,7 +17,7 @@ const AvatarDisplay: React.FC<AvatarDisplayProps> = ({
   userAvatar,
   size = 120,
   sx = {},
-  fallbackAvatarId = 'avatar_1'
+  fallbackAvatarId = 'avatar_1',
 }) => {
   const avatarId = userAvatar?.baseAvatarId || fallbackAvatarId;
 
@@ -33,7 +33,7 @@ const AvatarDisplay: React.FC<AvatarDisplayProps> = ({
         borderColor: 'primary.main',
         background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(236, 72, 153, 0.1))',
         flexShrink: 0,
-        ...sx
+        ...sx,
       }}
     >
       {/* Base Avatar */}

@@ -40,7 +40,7 @@
 
 #### Medium Priority (Potential usage):
 
-3. **FriendFavoriteShowsModal.tsx**
+3. **FriendInfoModal.tsx**
 4. **FlagShowDialog.tsx**
 
 ### 🚀 Migration Execution Plan

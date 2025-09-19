@@ -198,7 +198,11 @@ const SendFriendRequestModal: React.FC<SendFriendRequestModalProps> = observer(
                       >
                         <ListItemAvatar>
                           <Avatar
-                            src={user.userAvatar?.baseAvatarId ? `/avatar/${user.userAvatar.baseAvatarId}.png` : undefined}
+                            src={
+                              user.userAvatar?.baseAvatarId
+                                ? `/avatar/${user.userAvatar.baseAvatarId}.png`
+                                : undefined
+                            }
                             sx={{
                               width: 40,
                               height: 40,

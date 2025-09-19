@@ -263,7 +263,13 @@ export class FriendsService {
   async getFriends(userId: string) {
     const friendships = await this.friendshipRepository.find({
       where: { userId },
-      relations: ['friend', 'friend.userAvatar', 'friend.userAvatar.microphone', 'friend.userAvatar.outfit', 'friend.userAvatar.shoes'],
+      relations: [
+        'friend',
+        'friend.userAvatar',
+        'friend.userAvatar.microphone',
+        'friend.userAvatar.outfit',
+        'friend.userAvatar.shoes',
+      ],
     });
 
     return friendships.map((friendship) => ({
@@ -271,12 +277,14 @@ export class FriendsService {
       email: friendship.friend.email,
       name: friendship.friend.name,
       stageName: friendship.friend.stageName,
-      userAvatar: friendship.friend.userAvatar ? {
-        baseAvatarId: friendship.friend.userAvatar.baseAvatarId,
-        microphone: friendship.friend.userAvatar.microphone,
-        outfit: friendship.friend.userAvatar.outfit,
-        shoes: friendship.friend.userAvatar.shoes,
-      } : null,
+      userAvatar: friendship.friend.userAvatar
+        ? {
+            baseAvatarId: friendship.friend.userAvatar.baseAvatarId,
+            microphone: friendship.friend.userAvatar.microphone,
+            outfit: friendship.friend.userAvatar.outfit,
+            shoes: friendship.friend.userAvatar.shoes,
+          }
+        : null,
       friendedAt: friendship.createdAt,
     }));
   }

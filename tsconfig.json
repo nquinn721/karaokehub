@@ -24,5 +24,13 @@
       "@config/*": ["src/config/*"]
     }
   },
-  "exclude": ["scripts/**/*", "client/**/*", "node_modules", "dist"]
+  "exclude": [
+    "scripts/**/*",
+    "client/**/*",
+    "app/**/*",
+    "mobile/**/*",
+    "node_modules",
+    "dist",
+    "create-user-avatar-records.ts"
+  ]
 }

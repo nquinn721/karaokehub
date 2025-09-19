@@ -1,9 +1,9 @@
 import { DataSource } from 'typeorm';
-import { User } from './src/entities/user.entity';
-import { UserAvatar } from './src/avatar/entities/user-avatar.entity';
 import { Microphone } from './src/avatar/entities/microphone.entity';
 import { Outfit } from './src/avatar/entities/outfit.entity';
 import { Shoes } from './src/avatar/entities/shoes.entity';
+import { UserAvatar } from './src/avatar/entities/user-avatar.entity';
+import { User } from './src/entities/user.entity';
 
 const AppDataSource = new DataSource({
   type: 'mysql',
@@ -37,7 +37,9 @@ async function createUserAvatarRecords() {
       .andWhere('userAvatar.id IS NULL')
       .getMany();
 
-    console.log(`Found ${usersWithAvatars.length} users with avatar field but no UserAvatar record`);
+    console.log(
+      `Found ${usersWithAvatars.length} users with avatar field but no UserAvatar record`,
+    );
 
     // Get default items (first available of each type)
     const defaultMicrophone = await microphoneRepository.findOne({ order: { createdAt: 'ASC' } });
@@ -45,7 +47,9 @@ async function createUserAvatarRecords() {
     const defaultShoes = await shoesRepository.findOne({ order: { createdAt: 'ASC' } });
 
     if (!defaultMicrophone || !defaultOutfit || !defaultShoes) {
-      console.error('Could not find default avatar items. Make sure microphones, outfits, and shoes tables have data.');
+      console.error(
+        'Could not find default avatar items. Make sure microphones, outfits, and shoes tables have data.',
+      );
       return;
     }
 
@@ -65,8 +69,9 @@ async function createUserAvatarRecords() {
         userAvatar.isActive = true;
 
         await userAvatarRepository.save(userAvatar);
-        console.log(`Created UserAvatar record for user ${user.id} (${user.email}) with avatar ${user.avatar}`);
-
+        console.log(
+          `Created UserAvatar record for user ${user.id} (${user.email}) with avatar ${user.avatar}`,
+        );
       } catch (error) {
         console.error(`Error creating UserAvatar for user ${user.id}:`, error);
       }
@@ -77,7 +82,6 @@ async function createUserAvatarRecords() {
     // Verify the results
     const totalUserAvatars = await userAvatarRepository.count();
     console.log(`Total UserAvatar records now: ${totalUserAvatars}`);
-
   } catch (error) {
     console.error('Error in createUserAvatarRecords:', error);
   } finally {

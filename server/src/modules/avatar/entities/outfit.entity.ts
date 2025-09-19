@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../../auth/entities/user.entity';
+import { User } from '../../../../../../src/entities/user.entity';
 import { AvatarGender, AvatarRarity } from './user-avatar.entity';
 
 export enum OutfitCategory {
