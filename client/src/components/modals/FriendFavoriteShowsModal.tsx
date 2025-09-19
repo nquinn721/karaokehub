@@ -158,57 +158,65 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
       fullWidth
     >
       <Box sx={{ mt: 2 }}>
-        {/* Friend's Name Header */}
-        <Box sx={{ mb: 3, textAlign: 'center' }}>
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            {friendDisplayName}
-          </Typography>
-          {favorites.length > 0 && (
-            <Typography variant="body1" color="text.secondary">
-              {favorites.length} favorite show{favorites.length !== 1 ? 's' : ''}
-            </Typography>
-          )}
-        </Box>
-
-        <Grid container spacing={3}>
-          {/* Left Column - Large Avatar */}
-          <Grid item xs={12} md={4}>
+        <Grid container spacing={3} sx={{ height: '600px' }}>
+          {/* Left Column - Full Height Avatar */}
+          <Grid item xs={12} md={5}>
             <Box sx={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              p: 3,
+              justifyContent: 'center',
+              p: 4,
               borderRadius: '20px',
               background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
               color: 'white',
-              height: 'fit-content',
-              position: 'sticky',
-              top: 0,
+              height: '100%',
               boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
             }}>
-              <Box sx={{
-                position: 'relative',
-                width: 180,
-                height: 180,
-                mb: 2,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <AvatarDisplay
-                  userAvatar={friend.userAvatar}
-                  size={168}
-                  sx={{ 
-                    border: 'none',
-                    background: 'transparent',
-                  }}
-                />
-              </Box>
+              <AvatarDisplay
+                userAvatar={friend.userAvatar}
+                size={240}
+                sx={{ 
+                  border: 'none',
+                  background: 'transparent',
+                }}
+              />
             </Box>
           </Grid>
 
-          {/* Right Column - Favorite Shows */}
-          <Grid item xs={12} md={8}>
+          {/* Right Column - Friend Info and Favorite Shows */}
+          <Grid item xs={12} md={7}>
+            <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              {/* Friend Info Section */}
+              <Box sx={{ mb: 3 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {friend?.stageName && (
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
+                        StageName:
+                      </Box>
+                      {friend.stageName}
+                    </Typography>
+                  )}
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
+                      Name:
+                    </Box>
+                    {friend?.name || friendDisplayName}
+                  </Typography>
+                </Box>
+                {favorites.length > 0 && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                    {favorites.length} favorite show{favorites.length !== 1 ? 's' : ''}
+                  </Typography>
+                )}
+              </Box>
+
+              {/* Favorite Shows Section */}
+              <Box sx={{ flex: 1, overflow: 'auto' }}>
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+                  Favorite Shows
+                </Typography>
             {loading ? (
               <Box display="flex" justifyContent="center" alignItems="center" py={4}>
                 <CircularProgress size={40} />
@@ -332,6 +340,8 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
                 ))}
               </List>
             )}
+              </Box>
+            </Box>
           </Grid>
         </Grid>
       </Box>
