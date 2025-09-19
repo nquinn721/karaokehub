@@ -130,6 +130,27 @@ export class AuthService {
       avatar: photos?.[0]?.value,
     });
 
+    // Helper function to check if user has a custom (manually selected) avatar
+    const hasCustomAvatar = async (userId: string): Promise<boolean> => {
+      try {
+        const currentAvatar = await this.avatarService.getUserAvatar(userId);
+        if (!currentAvatar) return false;
+
+        // Consider it custom if:
+        // 1. It's not the default avatar_1
+        // 2. It's not an OAuth provider URL (starts with http)
+        // 3. It follows our avatar naming pattern (avatar_X where X > 1)
+        const isDefault = currentAvatar.baseAvatarId === 'avatar_1';
+        const isOAuthUrl = currentAvatar.baseAvatarId.startsWith('http');
+        const isCustomAvatarId = /^avatar_([2-9]|\d{2,})$/.test(currentAvatar.baseAvatarId);
+
+        return !isDefault && (isCustomAvatarId || !isOAuthUrl);
+      } catch (error) {
+        console.error('🔴 [AUTH_SERVICE] Error checking custom avatar:', error);
+        return false;
+      }
+    };
+
     // For non-Facebook providers, email is required
     if (!email && provider !== 'facebook') {
       console.error('🔴 [AUTH_SERVICE] OAuth validation error: No email provided', {
@@ -201,13 +222,12 @@ export class AuthService {
         const providerAvatar = photos?.[0]?.value;
         if (providerAvatar) {
           try {
-            // Get or create avatar for the user
+            // For new users, we can safely set avatar from OAuth provider
             const userAvatar = await this.avatarService.getUserAvatar(user.id);
-            // Update with provider avatar if we have one
             await this.avatarService.updateUserAvatar(user.id, {
               baseAvatarId: providerAvatar,
             });
-            console.log('🟢 [AUTH_SERVICE] Created user avatar from provider photo');
+            console.log('🟢 [AUTH_SERVICE] Set new user avatar from provider photo');
           } catch (avatarError) {
             console.error('🔴 [AUTH_SERVICE] Failed to create avatar:', avatarError);
             // Continue without avatar - the default one will be created later
@@ -240,19 +260,26 @@ export class AuthService {
 
         const updateData: any = {};
 
-        // Update avatar if Facebook has one and it's different/better
+        // Update avatar if Facebook has one and user doesn't have a custom avatar
         const providerAvatar = photos?.[0]?.value;
         if (providerAvatar) {
           try {
-            const currentAvatar = await this.avatarService.getUserAvatar(user.id);
-            if (!currentAvatar || currentAvatar.baseAvatarId !== providerAvatar) {
-              await this.avatarService.updateUserAvatar(user.id, {
-                baseAvatarId: providerAvatar,
-              });
-              console.log('🔍 [AUTH_SERVICE] Updated avatar from Facebook:', {
-                oldAvatar: currentAvatar?.baseAvatarId || 'none',
-                newAvatar: providerAvatar,
-              });
+            const userHasCustomAvatar = await hasCustomAvatar(user.id);
+            if (!userHasCustomAvatar) {
+              const currentAvatar = await this.avatarService.getUserAvatar(user.id);
+              if (!currentAvatar || currentAvatar.baseAvatarId !== providerAvatar) {
+                await this.avatarService.updateUserAvatar(user.id, {
+                  baseAvatarId: providerAvatar,
+                });
+                console.log('🔍 [AUTH_SERVICE] Updated avatar from Facebook (no custom avatar):', {
+                  oldAvatar: currentAvatar?.baseAvatarId || 'none',
+                  newAvatar: providerAvatar,
+                });
+              }
+            } else {
+              console.log(
+                '🔒 [AUTH_SERVICE] Preserving user custom avatar, skipping Facebook avatar update',
+              );
             }
           } catch (avatarError) {
             console.error('🔴 [AUTH_SERVICE] Failed to update avatar:', avatarError);
@@ -277,20 +304,30 @@ export class AuthService {
           '🟢 [AUTH_SERVICE] Facebook login successful for existing user - provider linking complete',
         );
       } else if (provider === user.provider) {
-        // Same provider login - update profile data as usual
+        // Same provider login - only update avatar if user doesn't have a custom one
         const providerAvatar = photos?.[0]?.value;
         if (providerAvatar) {
           try {
-            const currentAvatar = await this.avatarService.getUserAvatar(user.id);
-            if (!currentAvatar || currentAvatar.baseAvatarId !== providerAvatar) {
-              await this.avatarService.updateUserAvatar(user.id, {
-                baseAvatarId: providerAvatar,
-              });
-              console.log('🔍 [AUTH_SERVICE] Updated user avatar for same provider:', {
-                provider,
-                oldAvatar: currentAvatar?.baseAvatarId || 'none',
-                newAvatar: providerAvatar,
-              });
+            const userHasCustomAvatar = await hasCustomAvatar(user.id);
+            if (!userHasCustomAvatar) {
+              const currentAvatar = await this.avatarService.getUserAvatar(user.id);
+              if (!currentAvatar || currentAvatar.baseAvatarId !== providerAvatar) {
+                await this.avatarService.updateUserAvatar(user.id, {
+                  baseAvatarId: providerAvatar,
+                });
+                console.log(
+                  '🔍 [AUTH_SERVICE] Updated user avatar for same provider (no custom avatar):',
+                  {
+                    provider,
+                    oldAvatar: currentAvatar?.baseAvatarId || 'none',
+                    newAvatar: providerAvatar,
+                  },
+                );
+              }
+            } else {
+              console.log(
+                '🔒 [AUTH_SERVICE] Preserving user custom avatar, skipping provider avatar update',
+              );
             }
           } catch (avatarError) {
             console.error('🔴 [AUTH_SERVICE] Failed to update avatar:', avatarError);
@@ -304,16 +341,25 @@ export class AuthService {
         });
 
         // Handle case where user has different provider but same email
-        // For now, we'll just update the avatar and continue with existing provider
+        // Only update avatar if user doesn't have a custom one
         const providerAvatar = photos?.[0]?.value;
         if (providerAvatar) {
           try {
-            const currentAvatar = await this.avatarService.getUserAvatar(user.id);
-            if (!currentAvatar || currentAvatar.baseAvatarId !== providerAvatar) {
-              await this.avatarService.updateUserAvatar(user.id, {
-                baseAvatarId: providerAvatar,
-              });
-              console.log('🔍 [AUTH_SERVICE] Updated avatar for different provider login');
+            const userHasCustomAvatar = await hasCustomAvatar(user.id);
+            if (!userHasCustomAvatar) {
+              const currentAvatar = await this.avatarService.getUserAvatar(user.id);
+              if (!currentAvatar || currentAvatar.baseAvatarId !== providerAvatar) {
+                await this.avatarService.updateUserAvatar(user.id, {
+                  baseAvatarId: providerAvatar,
+                });
+                console.log(
+                  '🔍 [AUTH_SERVICE] Updated avatar for different provider login (no custom avatar)',
+                );
+              }
+            } else {
+              console.log(
+                '🔒 [AUTH_SERVICE] Preserving user custom avatar for different provider login',
+              );
             }
           } catch (avatarError) {
             console.error('🔴 [AUTH_SERVICE] Failed to update avatar:', avatarError);
@@ -384,6 +430,31 @@ export class AuthService {
           existingUser = await this.userService.update(existingUser.id, {
             name: name || existingUser.name,
           });
+        }
+
+        // Only update avatar if user doesn't have a custom avatar
+        if (picture) {
+          try {
+            // Check if user has a custom avatar (not from OAuth provider)
+            const userAvatar = await this.avatarService.getUserAvatar(existingUser.id);
+            const isCustomAvatar =
+              userAvatar &&
+              !userAvatar.baseAvatarId?.startsWith('http') &&
+              !userAvatar.baseAvatarId?.includes('googleusercontent') &&
+              !userAvatar.baseAvatarId?.includes('facebook') &&
+              !userAvatar.baseAvatarId?.includes('github');
+
+            if (!isCustomAvatar) {
+              await this.avatarService.updateUserAvatar(existingUser.id, {
+                baseAvatarId: picture,
+              });
+              console.log('🟢 [GOOGLE_ONE_TAP] Updated avatar for existing user');
+            } else {
+              console.log('🔒 [GOOGLE_ONE_TAP] Preserving custom avatar for existing user');
+            }
+          } catch (avatarError) {
+            console.error('🔴 [GOOGLE_ONE_TAP] Failed to update avatar:', avatarError);
+          }
         }
       } else {
         console.log('🟢 [GOOGLE_ONE_TAP] Creating new user:', email);

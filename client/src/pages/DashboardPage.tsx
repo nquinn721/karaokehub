@@ -31,6 +31,7 @@ import {
   CardActionArea,
   CardContent,
   Chip,
+  CircularProgress,
   Divider,
   Grid,
   IconButton,
@@ -48,6 +49,7 @@ import {
   useTheme,
 } from '@mui/material';
 import {
+  apiStore,
   audioStore,
   authStore,
   songFavoriteStore,
@@ -71,6 +73,8 @@ const DashboardPage: React.FC = observer(() => {
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
   const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
+  const [currentAvatarId, setCurrentAvatarId] = useState<string>('avatar_1');
+  const [avatarLoading, setAvatarLoading] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState<
     'favorites' | 'ad_removal' | 'music_preview'
   >('music_preview');
@@ -80,8 +84,49 @@ const DashboardPage: React.FC = observer(() => {
   useEffect(() => {
     if (authStore.isAuthenticated) {
       loadDashboardData();
+      loadCurrentAvatar();
     }
   }, [authStore.isAuthenticated]);
+
+  // Reload avatar when user changes (for account switching)
+  useEffect(() => {
+    if (authStore.user?.id) {
+      loadCurrentAvatar();
+    }
+  }, [authStore.user?.id]);
+
+  const loadCurrentAvatar = async () => {
+    if (!authStore.isAuthenticated || !authStore.user?.id) {
+      console.log('Cannot load avatar: user not authenticated');
+      return;
+    }
+
+    try {
+      setAvatarLoading(true);
+      // Fetch the current user's avatar from the API
+      const avatarData = await apiStore.get('/avatar/my-avatar');
+      console.log('Loaded avatar from API:', avatarData);
+
+      if (avatarData?.baseAvatarId) {
+        setCurrentAvatarId(avatarData.baseAvatarId);
+      } else {
+        // If no avatar data, use fallback
+        const fallbackAvatarId =
+          authStore.user?.userAvatar?.baseAvatarId || authStore.user?.avatar || 'avatar_1';
+        setCurrentAvatarId(fallbackAvatarId);
+        console.log('Using fallback avatar ID:', fallbackAvatarId);
+      }
+    } catch (error) {
+      console.error('Failed to load current avatar from API:', error);
+      // Fallback to user data from auth store if API fails
+      const fallbackAvatarId =
+        authStore.user?.userAvatar?.baseAvatarId || authStore.user?.avatar || 'avatar_1';
+      setCurrentAvatarId(fallbackAvatarId);
+      console.log('Using fallback avatar ID after API error:', fallbackAvatarId);
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -1026,17 +1071,36 @@ const DashboardPage: React.FC = observer(() => {
                             position: 'relative',
                           }}
                         >
-                          <AvatarDisplay3D
-                            key={`main-avatar-${avatarRefreshKey}`}
-                            width={220}
-                            height={280}
-                            show3D={true}
-                            sx={{
-                              background: 'rgba(255,255,255,0.1)',
-                              backdropFilter: 'blur(20px)',
-                              border: '2px solid rgba(255,255,255,0.2)',
-                            }}
-                          />
+                          {avatarLoading ? (
+                            <Box
+                              sx={{
+                                width: 220,
+                                height: 280,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: 'rgba(255,255,255,0.1)',
+                                backdropFilter: 'blur(20px)',
+                                border: '2px solid rgba(255,255,255,0.2)',
+                                borderRadius: '16px',
+                              }}
+                            >
+                              <CircularProgress color="inherit" />
+                            </Box>
+                          ) : (
+                            <AvatarDisplay3D
+                              key={`main-avatar-${avatarRefreshKey}`}
+                              width={220}
+                              height={280}
+                              avatarId={currentAvatarId}
+                              show3D={true}
+                              sx={{
+                                background: 'rgba(255,255,255,0.1)',
+                                backdropFilter: 'blur(20px)',
+                                border: '2px solid rgba(255,255,255,0.2)',
+                              }}
+                            />
+                          )}
                         </Box>
                       </Grid>
                     </Grid>
@@ -1418,10 +1482,16 @@ const DashboardPage: React.FC = observer(() => {
       <AvatarSelectorModal
         open={avatarModalOpen}
         onClose={() => setAvatarModalOpen(false)}
-        onAvatarSelect={(avatarId) => {
+        onAvatarSelect={async (avatarId) => {
           console.log('Avatar selected:', avatarId);
+          // Immediately update the avatar ID for responsive UI
+          setCurrentAvatarId(avatarId);
           // Force refresh of avatar displays
           setAvatarRefreshKey((prev) => prev + 1);
+          // Reload avatar data from API to ensure it's persisted
+          await loadCurrentAvatar();
+          // Also refresh auth profile to keep it in sync
+          authStore.refreshProfile();
         }}
       />
 
