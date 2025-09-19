@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiLog, ApiLogType, ApiProvider, LogLevel } from '../logs/api-log.entity';
-import { ApiLogService, ApiLogStats } from '../logs/api-log.service';
+import { ApiLog, ApiLogType, ApiProvider, LogLevel } from '../api-logging/api-log.entity';
+import { ApiLogService, ApiLogStats } from '../api-logging/api-log.service';
 
 @Controller('admin/api-logs')
 // @UseGuards(AuthGuard('jwt'), AdminGuard) // TODO: Add authentication when ready

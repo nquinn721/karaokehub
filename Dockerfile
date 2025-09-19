@@ -27,8 +27,8 @@ RUN npm ci
 
 # Copy source files more explicitly to ensure structure is preserved
 COPY src/ ./src/
-# Explicitly copy logs directory to ensure it's available
-COPY src/logs/ ./src/logs/
+# Explicitly copy api-logging directory to ensure it's available
+COPY src/api-logging/ ./src/api-logging/
 COPY data/ ./data/
 COPY nest-cli.json ./
 COPY tsconfig*.json ./

@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { ApiLogType, ApiProvider, LogLevel } from '../logs/api-log.entity';
-import { ApiLogService } from '../logs/api-log.service';
+import { ApiLogType, ApiProvider, LogLevel } from '../api-logging/api-log.entity';
+import { ApiLogService } from '../api-logging/api-log.service';
 import { ArtistSearchResult, MusicSearchResult } from './music.interface';
 
 // Rate limiter for iTunes API

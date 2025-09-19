@@ -12,7 +12,7 @@ import { FavoriteShow } from './src/favorite/favorite.entity';
 import { Feedback } from './src/feedback/feedback.entity';
 import { FriendRequest } from './src/friends/friend-request.entity';
 import { Friendship } from './src/friends/friendship.entity';
-import { ApiLog } from './src/logs/api-log.entity';
+import { ApiLog } from './src/api-logging/api-log.entity';
 import { SongFavorite } from './src/music/song-favorite.entity';
 import { Song } from './src/music/song.entity';
 import { ParsedSchedule } from './src/parser/parsed-schedule.entity';
