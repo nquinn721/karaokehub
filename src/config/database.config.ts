@@ -69,7 +69,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       CoinPackage,
       Transaction,
     ],
-    synchronize: true, // Enable sync if explicitly set or in development
+    synchronize: !isProduction, // Only synchronize in development, use migrations in production
     logging: false, // Turn off SQL logging completely
 
     // Connection pool options for TypeORM
@@ -77,10 +77,10 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       maxQueryExecutionTime: 5000,
     }),
 
-    // Migration configuration - disabled in development since we use synchronize
+    // Migration configuration - only run in production
     migrations: isProduction ? ['dist/migrations/*.js'] : [],
     migrationsTableName: 'migrations',
-    migrationsRun: false, // We'll run migrations manually
+    migrationsRun: isProduction, // Run migrations automatically in production
   };
 
   if (socketPath) {
@@ -90,14 +90,8 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       extra: {
         connectionLimit: 5,
         connectTimeout: 60000, // Increased timeout
-        acquireTimeout: 60000,
-        timeout: 60000,
         queueLimit: 0,
         socketPath,
-        retry: {
-          max: 3,
-          delay: 2000,
-        },
       },
     } as TypeOrmModuleOptions;
   } else {
@@ -109,13 +103,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       extra: {
         connectionLimit: 5,
         connectTimeout: 60000, // Increased timeout
-        acquireTimeout: 60000,
-        timeout: 60000,
         queueLimit: 0,
-        retry: {
-          max: 3,
-          delay: 2000,
-        },
         // Only add SSL in production
         ...(isProduction && {
           ssl: {
