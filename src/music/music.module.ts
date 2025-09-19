@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from '../entities/user.entity';
 import { ApiLoggingModule } from '../api-logging/api-logging.module';
+import { User } from '../entities/user.entity';
 import { MusicController } from './music.controller';
 import { MusicService } from './music.service';
 import { SongFavoriteController } from './song-favorite.controller';

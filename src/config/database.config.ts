@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { ApiLog } from '../api-logging/api-log.entity';
 import { Microphone } from '../avatar/entities/microphone.entity';
 import { Outfit } from '../avatar/entities/outfit.entity';
 import { Shoes } from '../avatar/entities/shoes.entity';
@@ -13,7 +14,6 @@ import { FavoriteShow } from '../favorite/favorite.entity';
 import { Feedback } from '../feedback/feedback.entity';
 import { FriendRequest } from '../friends/friend-request.entity';
 import { Friendship } from '../friends/friendship.entity';
-import { ApiLog } from '../api-logging/api-log.entity';
 import { SongFavorite } from '../music/song-favorite.entity';
 import { Song } from '../music/song.entity';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
