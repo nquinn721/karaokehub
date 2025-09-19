@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
-import { UserService } from '../user/user.service';
 import { AvatarService } from '../avatar/services/avatar.service';
+import { UserService } from '../user/user.service';
 import { CreateUserDto, LoginDto } from './dto/auth.dto';
 
 export interface User {

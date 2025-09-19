@@ -718,13 +718,7 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                         onClick={handleMenuOpen}
                         color="inherit"
                       >
-                        {authStore.user?.avatar ? (
-                          <Avatar src={authStore.user.avatar} sx={{ width: 32, height: 32 }} />
-                        ) : (
-                          <Avatar sx={{ width: 32, height: 32 }}>
-                            <FontAwesomeIcon icon={faUser} />
-                          </Avatar>
-                        )}
+                        <Avatar src={authStore.getAvatarUrl()} sx={{ width: 32, height: 32 }} />
                       </IconButton>
                     </Box>
 
@@ -1153,13 +1147,7 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                 {authStore.user && (
                   <ListItem>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                      {authStore.user.avatar ? (
-                        <Avatar src={authStore.user.avatar} sx={{ width: 40, height: 40 }} />
-                      ) : (
-                        <Avatar sx={{ width: 40, height: 40 }}>
-                          <FontAwesomeIcon icon={faUser} />
-                        </Avatar>
-                      )}
+                      <Avatar src={authStore.getAvatarUrl()} sx={{ width: 40, height: 40 }} />
                       <Box>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           {getUserDisplayName(authStore.user)}

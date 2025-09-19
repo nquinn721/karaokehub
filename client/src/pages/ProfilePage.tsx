@@ -93,7 +93,7 @@ const ProfilePage: React.FC = observer(() => {
             <Card>
               <CardContent sx={{ textAlign: 'center', p: 3 }}>
                 <Avatar
-                  src={authStore.user.avatar}
+                  src={authStore.getAvatarUrl()}
                   sx={{
                     width: 100,
                     height: 100,

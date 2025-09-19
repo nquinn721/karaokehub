@@ -34,11 +34,6 @@ export class UserController {
     return this.userService.updateAdminStatus(id, body.isAdmin);
   }
 
-  @Patch(':id/avatar')
-  updateAvatar(@Param('id') id: string, @Body() body: { avatarId: string }) {
-    return this.userService.updateAvatar(id, body.avatarId);
-  }
-
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.userService.remove(id);

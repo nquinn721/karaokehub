@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React, { useCallback, useEffect, useState } from 'react';
-import { userStore } from '../stores';
+import { authStore, userStore } from '../stores';
 import { AVAILABLE_AVATARS } from './AvatarDisplay3D';
 import CustomModal from './CustomModal';
 
@@ -45,7 +45,8 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = ({
         if (user) {
           setCurrentUserId(user.id);
 
-          const userAvatar = user.avatar || 'avatar_1';
+          // Get avatar from new userAvatar system, fallback to old avatar field
+          const userAvatar = user.userAvatar?.baseAvatarId || user.avatar || 'avatar_1';
           if (AVAILABLE_AVATARS.find((a) => a.id === userAvatar)) {
             setSelectedAvatar(userAvatar);
             setSavedAvatar(userAvatar);
@@ -82,8 +83,13 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = ({
 
     setIsSaving(true);
     try {
-      // Update avatar in database
-      await userStore.updateAvatar(currentUserId, selectedAvatar);
+      // Update avatar in database using new avatar system
+      await userStore.updateAvatar({
+        baseAvatarId: selectedAvatar,
+      });
+
+      // Refresh auth profile to get updated avatar data
+      await authStore.refreshProfile();
 
       // Update local state
       localStorage.setItem('selectedAvatar', selectedAvatar);

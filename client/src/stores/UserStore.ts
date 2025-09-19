@@ -1,18 +1,30 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { apiStore } from './ApiStore';
 
+export interface UserAvatar {
+  id: string;
+  baseAvatarId: string;
+  microphoneId?: string;
+  outfitId?: string;
+  shoesId?: string;
+}
+
 export interface User {
   id: string;
   email: string;
   name: string;
   stageName?: string;
-  avatar?: string;
+  avatar?: string; // Keep for backward compatibility
+  userAvatar?: UserAvatar; // New avatar system
   isActive: boolean;
   isAdmin: boolean;
 }
 
 export interface UpdateAvatarRequest {
-  avatarId: string;
+  baseAvatarId: string;
+  microphoneId?: string;
+  outfitId?: string;
+  shoesId?: string;
 }
 
 export class UserStore {
@@ -22,6 +34,24 @@ export class UserStore {
 
   constructor() {
     makeAutoObservable(this);
+  }
+
+  // Helper to get avatar URL from userAvatar data
+  getAvatarUrl(user: User | null): string {
+    if (!user) return '/images/avatars/avatar_1.png'; // Default avatar
+
+    // If user has new userAvatar system data, use it
+    if (user.userAvatar?.baseAvatarId) {
+      return `/images/avatars/${user.userAvatar.baseAvatarId}.png`;
+    }
+
+    // Fallback to old avatar field if it exists
+    if (user.avatar) {
+      return user.avatar;
+    }
+
+    // Default avatar
+    return '/images/avatars/avatar_1.png';
   }
 
   private clearError() {
@@ -97,25 +127,24 @@ export class UserStore {
     }
   }
 
-  // Update user avatar
-  async updateAvatar(userId: string, avatarId: string): Promise<User | null> {
+  // Update user avatar using the new avatar system
+  async updateAvatar(avatarData: {
+    baseAvatarId: string;
+    microphoneId?: string;
+    outfitId?: string;
+    shoesId?: string;
+  }): Promise<any> {
     this.clearError();
     this.setLoading(true);
 
     try {
-      const user = await apiStore.patch<User>(`/users/${userId}/avatar`, {
-        avatarId,
-      });
+      const result = await apiStore.put('/avatar/my-avatar', avatarData);
 
       runInAction(() => {
-        // Update current user if this is the current user
-        if (this.currentUser && this.currentUser.id === userId) {
-          this.currentUser = user;
-        }
         this.setLoading(false);
       });
 
-      return user;
+      return result;
     } catch (error: any) {
       console.error('Failed to update avatar:', error);
       runInAction(() => {

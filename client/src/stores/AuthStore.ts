@@ -2,12 +2,21 @@ import { makeAutoObservable, runInAction } from 'mobx';
 import { makePersistable } from 'mobx-persist-store';
 import { apiStore } from './ApiStore';
 
+export interface UserAvatar {
+  id: string;
+  baseAvatarId: string;
+  microphoneId?: string;
+  outfitId?: string;
+  shoesId?: string;
+}
+
 export interface User {
   id: string;
   email: string;
   name: string;
   stageName?: string;
-  avatar?: string;
+  avatar?: string; // Keep for backward compatibility
+  userAvatar?: UserAvatar; // New avatar system
   isAdmin?: boolean;
 }
 
@@ -280,6 +289,24 @@ export class AuthStore {
 
     // Set token in API store
     apiStore.setToken(token);
+  }
+
+  // Helper to get avatar URL from userAvatar data
+  getAvatarUrl(user: User | null = this.user): string {
+    if (!user) return '/images/avatars/avatar_1.png'; // Default avatar
+
+    // If user has new userAvatar system data, use it
+    if (user.userAvatar?.baseAvatarId) {
+      return `/images/avatars/${user.userAvatar.baseAvatarId}.png`;
+    }
+
+    // Fallback to old avatar field if it exists
+    if (user.avatar) {
+      return user.avatar;
+    }
+
+    // Default avatar
+    return '/images/avatars/avatar_1.png';
   }
 
   async fetchProfile() {
