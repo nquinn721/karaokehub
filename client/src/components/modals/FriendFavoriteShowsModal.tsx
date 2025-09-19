@@ -154,28 +154,28 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
       onClose={onClose}
       title={`${friendDisplayName}'s Info`}
       icon={<FontAwesomeIcon icon={faUser} color="#6366f1" />}
-      maxWidth="lg"
+      maxWidth="md"
       fullWidth
     >
-      <Box sx={{ mt: 2 }}>
-        <Grid container spacing={3} sx={{ height: '600px' }}>
+      <Box sx={{ mt: 1 }}>
+        <Grid container spacing={2} sx={{ height: '400px' }}>
           {/* Left Column - Full Height Avatar */}
-          <Grid item xs={12} md={5}>
+          <Grid item xs={12} md={4}>
             <Box sx={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              p: 4,
-              borderRadius: '20px',
+              p: 2,
+              borderRadius: '16px',
               background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
               color: 'white',
               height: '100%',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
             }}>
               <AvatarDisplay
                 userAvatar={friend.userAvatar}
-                size={240}
+                size={160}
                 sx={{ 
                   border: 'none',
                   background: 'transparent',
@@ -185,20 +185,20 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
           </Grid>
 
           {/* Right Column - Friend Info and Favorite Shows */}
-          <Grid item xs={12} md={7}>
+          <Grid item xs={12} md={8}>
             <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               {/* Friend Info Section */}
-              <Box sx={{ mb: 3 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                   {friend?.stageName && (
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
                       <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
                         StageName:
                       </Box>
                       {friend.stageName}
                     </Typography>
                   )}
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
                     <Box component="span" sx={{ color: 'text.secondary', mr: 1 }}>
                       Name:
                     </Box>
@@ -206,7 +206,7 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
                   </Typography>
                 </Box>
                 {favorites.length > 0 && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
                     {favorites.length} favorite show{favorites.length !== 1 ? 's' : ''}
                   </Typography>
                 )}
@@ -214,7 +214,7 @@ export const FriendFavoriteShowsModal: React.FC<FriendFavoriteShowsModalProps> =
 
               {/* Favorite Shows Section */}
               <Box sx={{ flex: 1, overflow: 'auto' }}>
-                <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
                   Favorite Shows
                 </Typography>
             {loading ? (
