@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigApiModule } from '../config/config.module';
 import { UserModule } from '../user/user.module';
+import { AvatarModule } from '../avatar/avatar.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 // import { GithubStrategy } from './strategies/github.strategy';
@@ -15,6 +16,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   imports: [
     PassportModule,
     UserModule,
+    AvatarModule,
     ConfigApiModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

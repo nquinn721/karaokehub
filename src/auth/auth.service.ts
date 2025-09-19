@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { UserService } from '../user/user.service';
+import { AvatarService } from '../avatar/services/avatar.service';
 import { CreateUserDto, LoginDto } from './dto/auth.dto';
 
 export interface User {
@@ -23,6 +24,7 @@ export class AuthService {
   constructor(
     private jwtService: JwtService,
     private userService: UserService,
+    private avatarService: AvatarService,
   ) {
     // Initialize Google OAuth2 client
     this.googleClient = new OAuth2Client(
@@ -175,7 +177,6 @@ export class AuthService {
       // Create new user
       const userData: any = {
         name: displayName || `${provider}_user_${id}`,
-        avatar: photos?.[0]?.value,
         provider,
         providerId: id,
       };
@@ -195,6 +196,23 @@ export class AuthService {
           id: user.id,
           email: user.email,
         });
+
+        // Create avatar from provider photo if available
+        const providerAvatar = photos?.[0]?.value;
+        if (providerAvatar) {
+          try {
+            // Get or create avatar for the user
+            const userAvatar = await this.avatarService.getUserAvatar(user.id);
+            // Update with provider avatar if we have one
+            await this.avatarService.updateUserAvatar(user.id, {
+              baseAvatarId: providerAvatar,
+            });
+            console.log('🟢 [AUTH_SERVICE] Created user avatar from provider photo');
+          } catch (avatarError) {
+            console.error('🔴 [AUTH_SERVICE] Failed to create avatar:', avatarError);
+            // Continue without avatar - the default one will be created later
+          }
+        }
       } catch (error) {
         console.error('🔴 [AUTH_SERVICE] Error creating user:', {
           error: error.message,
@@ -224,12 +242,21 @@ export class AuthService {
 
         // Update avatar if Facebook has one and it's different/better
         const providerAvatar = photos?.[0]?.value;
-        if (providerAvatar && providerAvatar !== user.avatar) {
-          updateData.avatar = providerAvatar;
-          console.log('🔍 [AUTH_SERVICE] Updating avatar from Facebook:', {
-            oldAvatar: user.avatar,
-            newAvatar: providerAvatar,
-          });
+        if (providerAvatar) {
+          try {
+            const currentAvatar = await this.avatarService.getUserAvatar(user.id);
+            if (!currentAvatar || currentAvatar.baseAvatarId !== providerAvatar) {
+              await this.avatarService.updateUserAvatar(user.id, {
+                baseAvatarId: providerAvatar,
+              });
+              console.log('🔍 [AUTH_SERVICE] Updated avatar from Facebook:', {
+                oldAvatar: currentAvatar?.baseAvatarId || 'none',
+                newAvatar: providerAvatar,
+              });
+            }
+          } catch (avatarError) {
+            console.error('🔴 [AUTH_SERVICE] Failed to update avatar:', avatarError);
+          }
         }
 
         // Update name if Facebook has a better one
@@ -252,13 +279,22 @@ export class AuthService {
       } else if (provider === user.provider) {
         // Same provider login - update profile data as usual
         const providerAvatar = photos?.[0]?.value;
-        if (providerAvatar && providerAvatar !== user.avatar) {
-          console.log('🔍 [AUTH_SERVICE] Updating user avatar for same provider:', {
-            provider,
-            oldAvatar: user.avatar,
-            newAvatar: providerAvatar,
-          });
-          user = await this.userService.update(user.id, { avatar: providerAvatar });
+        if (providerAvatar) {
+          try {
+            const currentAvatar = await this.avatarService.getUserAvatar(user.id);
+            if (!currentAvatar || currentAvatar.baseAvatarId !== providerAvatar) {
+              await this.avatarService.updateUserAvatar(user.id, {
+                baseAvatarId: providerAvatar,
+              });
+              console.log('🔍 [AUTH_SERVICE] Updated user avatar for same provider:', {
+                provider,
+                oldAvatar: currentAvatar?.baseAvatarId || 'none',
+                newAvatar: providerAvatar,
+              });
+            }
+          } catch (avatarError) {
+            console.error('🔴 [AUTH_SERVICE] Failed to update avatar:', avatarError);
+          }
         }
       } else {
         console.log('🔍 [AUTH_SERVICE] Different provider login - email match found:', {
@@ -270,8 +306,18 @@ export class AuthService {
         // Handle case where user has different provider but same email
         // For now, we'll just update the avatar and continue with existing provider
         const providerAvatar = photos?.[0]?.value;
-        if (providerAvatar && providerAvatar !== user.avatar) {
-          user = await this.userService.update(user.id, { avatar: providerAvatar });
+        if (providerAvatar) {
+          try {
+            const currentAvatar = await this.avatarService.getUserAvatar(user.id);
+            if (!currentAvatar || currentAvatar.baseAvatarId !== providerAvatar) {
+              await this.avatarService.updateUserAvatar(user.id, {
+                baseAvatarId: providerAvatar,
+              });
+              console.log('🔍 [AUTH_SERVICE] Updated avatar for different provider login');
+            }
+          } catch (avatarError) {
+            console.error('🔴 [AUTH_SERVICE] Failed to update avatar:', avatarError);
+          }
         }
       }
     }

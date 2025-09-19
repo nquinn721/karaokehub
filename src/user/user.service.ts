@@ -16,7 +16,6 @@ export interface UpdateUserDto {
   name?: string;
   stageName?: string;
   password?: string;
-  avatar?: string;
   isActive?: boolean;
   isAdmin?: boolean;
 }
