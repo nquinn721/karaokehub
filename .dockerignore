@@ -23,9 +23,9 @@ build
 .DS_Store
 Thumbs.db
 
-# Logs
-logs
+# Runtime log files (but keep src/logs directory)
 *.log
+/logs
 
 # Runtime data
 pids
