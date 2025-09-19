@@ -233,14 +233,10 @@ const AvatarDisplay: React.FC<AvatarDisplayProps> = ({
 
   // Load saved avatar if no specific avatarId is provided
   useEffect(() => {
-    if (!avatarId) {
-      const saved = localStorage.getItem('selectedAvatar');
-      if (saved && AVAILABLE_AVATARS.find((a) => a.id === saved)) {
-        setCurrentAvatarId(saved);
-      }
-    } else {
+    if (avatarId) {
       setCurrentAvatarId(avatarId);
     }
+    // Remove localStorage fallback to prevent cross-user contamination
   }, [avatarId]);
 
   const avatar = AVAILABLE_AVATARS.find((a) => a.id === currentAvatarId) || AVAILABLE_AVATARS[0];

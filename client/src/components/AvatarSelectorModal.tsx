@@ -50,13 +50,13 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = ({
           if (AVAILABLE_AVATARS.find((a) => a.id === userAvatar)) {
             setSelectedAvatar(userAvatar);
             setSavedAvatar(userAvatar);
-            localStorage.setItem('selectedAvatar', userAvatar);
+            localStorage.setItem(`selectedAvatar_${currentUserId}`, userAvatar);
           }
         }
       } catch (error) {
         console.error('Failed to load user data:', error);
         // Fallback to localStorage
-        const saved = localStorage.getItem('selectedAvatar');
+        const saved = localStorage.getItem(`selectedAvatar_${currentUserId}`);
         if (saved && AVAILABLE_AVATARS.find((a) => a.id === saved)) {
           setSelectedAvatar(saved);
           setSavedAvatar(saved);
@@ -74,7 +74,7 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = ({
   const handleSaveAvatar = useCallback(async () => {
     if (!currentUserId) {
       // Fallback to localStorage only
-      localStorage.setItem('selectedAvatar', selectedAvatar);
+      localStorage.setItem(`selectedAvatar_${currentUserId}`, selectedAvatar);
       setSavedAvatar(selectedAvatar);
       onAvatarSelect?.(selectedAvatar);
       onClose();
@@ -92,14 +92,14 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = ({
       await authStore.refreshProfile();
 
       // Update local state
-      localStorage.setItem('selectedAvatar', selectedAvatar);
+      localStorage.setItem(`selectedAvatar_${currentUserId}`, selectedAvatar);
       setSavedAvatar(selectedAvatar);
       onAvatarSelect?.(selectedAvatar);
       onClose();
     } catch (error) {
       console.error('Failed to update avatar:', error);
       // Still update localStorage as fallback
-      localStorage.setItem('selectedAvatar', selectedAvatar);
+      localStorage.setItem(`selectedAvatar_${currentUserId}`, selectedAvatar);
       setSavedAvatar(selectedAvatar);
       onAvatarSelect?.(selectedAvatar);
       onClose();
