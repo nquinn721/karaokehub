@@ -175,6 +175,7 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
                 color: 'white',
                 height: '100%',
                 boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                gap: 2,
               }}
             >
               <AvatarDisplay
@@ -185,6 +186,55 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
                   background: 'transparent',
                 }}
               />
+              
+              {/* Friend's Microphone Display */}
+              {friend.userAvatar?.microphone && (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 1,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 60,
+                      height: 60,
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      border: '2px solid rgba(255,255,255,0.3)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: 'rgba(255,255,255,0.1)',
+                    }}
+                  >
+                    <img
+                      src={`/images/avatar/parts/microphones/${friend.userAvatar.microphone.imagePath || 'mic_basic_1.png'}`}
+                      alt={friend.userAvatar.microphone.name || 'Microphone'}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/images/avatar/parts/microphones/mic_basic_1.png';
+                      }}
+                    />
+                  </Box>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'rgba(255,255,255,0.9)',
+                      textAlign: 'center',
+                      fontSize: '0.75rem',
+                    }}
+                  >
+                    {friend.userAvatar.microphone.name || 'Basic Mic'}
+                  </Typography>
+                </Box>
+              )}
             </Box>
           </Grid>
 

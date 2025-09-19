@@ -144,7 +144,9 @@ export class CreateAvatarSystem1737450300000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Remove foreign key constraints from users table
     await queryRunner.query(`ALTER TABLE \`users\` DROP FOREIGN KEY \`FK_users_equippedAvatarId\``);
-    await queryRunner.query(`ALTER TABLE \`users\` DROP FOREIGN KEY \`FK_users_equippedMicrophoneId\``);
+    await queryRunner.query(
+      `ALTER TABLE \`users\` DROP FOREIGN KEY \`FK_users_equippedMicrophoneId\``,
+    );
 
     // Drop user relationship tables
     await queryRunner.query(`DROP TABLE IF EXISTS \`user_shoes\``);
