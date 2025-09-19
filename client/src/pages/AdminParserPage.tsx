@@ -404,8 +404,24 @@ const AdminParserPage: React.FC = observer(() => {
   const handleApproval = async (approved: boolean) => {
     if (!pendingApprovalData) return;
 
+    console.log('🎯 [FRONTEND] Starting approval process...');
+    console.log('🎯 [FRONTEND] Approved:', approved);
+    console.log('🎯 [FRONTEND] Pending data exists:', !!pendingApprovalData);
+    console.log('🎯 [FRONTEND] Data structure:', {
+      vendor: pendingApprovalData.vendor ? 'exists' : 'missing',
+      vendors: pendingApprovalData.vendors
+        ? `${pendingApprovalData.vendors.length} items`
+        : 'missing',
+      venues: pendingApprovalData.venues ? `${pendingApprovalData.venues.length} items` : 'missing',
+      djs: pendingApprovalData.djs ? `${pendingApprovalData.djs.length} items` : 'missing',
+      shows: pendingApprovalData.shows ? `${pendingApprovalData.shows.length} items` : 'missing',
+    });
+
     try {
       if (approved) {
+        console.log('🎯 [FRONTEND] Making approval API call...');
+        console.log('🎯 [FRONTEND] Request payload:', { data: pendingApprovalData });
+
         // Call the admin approval endpoint with deduplication
         const response = await fetch(
           `${apiStore.environmentInfo.baseURL}/parser/approve-admin-analysis`,
@@ -421,9 +437,18 @@ const AdminParserPage: React.FC = observer(() => {
           },
         );
 
+        console.log('🎯 [FRONTEND] Response status:', response.status);
+        console.log('🎯 [FRONTEND] Response ok:', response.ok);
+
         const result = await response.json();
+        console.log('🎯 [FRONTEND] Response data:', result);
+
         if (result.success) {
           const { finalCount, duplicatesRemoved, saveResult } = result;
+          console.log('🎯 [FRONTEND] Processing successful result...');
+          console.log('🎯 [FRONTEND] Final count:', finalCount);
+          console.log('🎯 [FRONTEND] Duplicates removed:', duplicatesRemoved);
+          console.log('🎯 [FRONTEND] Save result:', saveResult);
 
           if (duplicatesRemoved > 0) {
             uiStore.addNotification(
@@ -444,21 +469,32 @@ const AdminParserPage: React.FC = observer(() => {
           setUploadFailed(false);
 
           // Log the save results for debugging
-          console.log('Save results:', saveResult);
+          console.log('🎯 [FRONTEND] Save results:', saveResult);
         } else {
+          console.log('🎯 [FRONTEND] API returned success: false');
+          console.log('🎯 [FRONTEND] Result error:', result.error);
           uiStore.addNotification('Failed to save analysis data', 'error');
         }
       } else {
+        console.log('🎯 [FRONTEND] Analysis rejected by user');
         uiStore.addNotification('Analysis rejected', 'info');
       }
     } catch (error) {
-      console.error('Approval error:', error);
+      console.error('🎯 [FRONTEND] Approval error:', error);
+      if (error instanceof Error) {
+        console.error('🎯 [FRONTEND] Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+        });
+      }
       uiStore.addNotification('Error processing approval', 'error');
     } finally {
       setApprovalModalOpen(false);
       setPendingApprovalData(null);
     }
   };
+
   const isCurrentUrlFacebook = currentUrl ? isFacebookUrl(currentUrl) : false;
   const isCurrentUrlInstagram = currentUrl ? isInstagramUrl(currentUrl) : false;
 

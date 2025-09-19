@@ -64,6 +64,7 @@ export interface ParsedKaraokeData {
     startTime?: string;
     endTime?: string;
     day?: string;
+    dayOfWeek?: string; // Alternative field for day of week
     djName?: string;
     vendor?: string; // Vendor/Company providing karaoke service
     description?: string;
@@ -2577,12 +2578,22 @@ ${htmlContent}`;
     approvedData: ParsedKaraokeData,
     userId?: string,
   ): Promise<any> {
+    console.log('🎯 [SAVE_PARSED] Starting approval process for schedule:', parsedScheduleId);
+    console.log('🎯 [SAVE_PARSED] User ID:', userId);
+    console.log('🎯 [SAVE_PARSED] Data summary:');
+    console.log('🎯 [SAVE_PARSED] - Shows:', approvedData.shows?.length || 0);
+    console.log('🎯 [SAVE_PARSED] - DJs:', approvedData.djs?.length || 0);
+    console.log('🎯 [SAVE_PARSED] - Venues:', approvedData.venues?.length || 0);
+    console.log('🎯 [SAVE_PARSED] - Vendors:', approvedData.vendors?.length || 0);
+
     this.logAndBroadcast(`Starting approval process for schedule ${parsedScheduleId}`, 'info');
 
     try {
       // Ensure venues array exists - extract from shows if missing
       if (!approvedData.venues || approvedData.venues.length === 0) {
+        console.log('🎯 [SAVE_PARSED] Extracting venues from shows...');
         approvedData.venues = this.extractVenuesFromShows(approvedData.shows || []);
+        console.log('🎯 [SAVE_PARSED] Extracted venues:', approvedData.venues.length);
         this.logAndBroadcast(
           `Extracted ${approvedData.venues.length} unique venues from show data`,
           'info',
@@ -2858,6 +2869,17 @@ ${htmlContent}`;
               'warning',
             );
           }
+        } else if (!showData.djName && djsData.length > 0) {
+          // If no DJ name specified in show but we have DJs in the data, assign the first DJ
+          const firstDj = Array.from(djMap.values())[0];
+          if (firstDj) {
+            djId = firstDj.id;
+            showData.djName = firstDj.name; // Update the show data for logging
+            this.logAndBroadcast(
+              `Auto-assigned DJ "${firstDj.name}" to show at ${showData.venue} (no DJ specified in show data)`,
+              'info',
+            );
+          }
         }
 
         // Convert day and time to proper format
@@ -2871,7 +2893,19 @@ ${htmlContent}`;
           sunday: 'sunday',
         };
 
-        const normalizedDay = dayMapping[showData.day?.toLowerCase()] || 'monday';
+        // Check both day and dayOfWeek fields for compatibility
+        const dayValue = showData.day || showData.dayOfWeek || '';
+        console.log('🎯 [DAY_MAPPING] Show data keys:', Object.keys(showData));
+        console.log('🎯 [DAY_MAPPING] showData.day:', showData.day);
+        console.log('🎯 [DAY_MAPPING] showData.dayOfWeek:', showData.dayOfWeek);
+        console.log('🎯 [DAY_MAPPING] Combined dayValue:', dayValue);
+        console.log('🎯 [DAY_MAPPING] dayValue.toLowerCase():', dayValue?.toLowerCase());
+
+        const normalizedDay = dayMapping[dayValue?.toLowerCase()] || 'monday';
+
+        console.log('🎯 [DAY_MAPPING] Raw day value:', dayValue);
+        console.log('🎯 [DAY_MAPPING] Normalized day:', normalizedDay);
+        console.log('🎯 [DAY_MAPPING] Day mapping object:', dayMapping);
 
         // Determine vendor for this show first
         let showVendor: Vendor | null = null;
@@ -3199,19 +3233,27 @@ ${htmlContent}`;
 
       // Wait for all show objects to be prepared
       const preparedShows = (await Promise.all(showPromises)).filter((show) => show !== null);
+      console.log('🎯 [SAVE_PARSED] Prepared shows count:', preparedShows.length);
+      console.log(
+        '🎯 [SAVE_PARSED] Sample prepared show:',
+        preparedShows[0] ? JSON.stringify(preparedShows[0], null, 2) : 'No shows prepared',
+      );
 
       // Bulk insert all shows for maximum performance
       this.logAndBroadcast(`Bulk inserting ${preparedShows.length} shows...`, 'info');
+      console.log('🎯 [SAVE_PARSED] Starting bulk insert...');
       const bulkStartTime = Date.now();
 
       const savedShows = await this.showRepository.save(preparedShows);
       showsCreated = savedShows.length;
+      console.log('🎯 [SAVE_PARSED] Bulk insert completed, saved shows:', showsCreated);
 
       const bulkTime = Date.now() - bulkStartTime;
       this.logAndBroadcast(
         `Bulk insert completed in ${bulkTime}ms (${savedShows.length} shows)`,
         'success',
       );
+      console.log('🎯 [SAVE_PARSED] Bulk insert timing:', bulkTime + 'ms');
 
       // 4. Update the schedule to approved status (but don't delete yet)
       await this.parsedScheduleRepository.update(parsedScheduleId, {
@@ -3239,8 +3281,14 @@ ${htmlContent}`;
         },
       };
 
+      console.log('🎯 [SAVE_PARSED] Final result stats:', result.stats);
+      console.log('🎯 [SAVE_PARSED] Shows created:', showsCreated);
+      console.log('🎯 [SAVE_PARSED] DJs created:', djsCreated);
+      console.log('🎯 [SAVE_PARSED] Success message:', successMessage);
+
       // 5. Only delete the schedule after everything is successfully saved
       try {
+        console.log('🎯 [SAVE_PARSED] Deleting temporary schedule:', parsedScheduleId);
         await this.parsedScheduleRepository.delete(parsedScheduleId);
         this.logAndBroadcast(
           `Successfully deleted approved schedule ${parsedScheduleId} from database`,
@@ -4554,12 +4602,22 @@ Return ONLY valid JSON:
    * Approve and save admin-uploaded analysis data with deduplication
    */
   async approveAndSaveAdminData(approvedData: ParsedKaraokeData, userId?: string): Promise<any> {
+    console.log('🎯 [SERVICE] Starting admin data approval and save process');
+    console.log('🎯 [SERVICE] User ID:', userId);
+    console.log('🎯 [SERVICE] Input data summary:');
+    console.log('🎯 [SERVICE] - Shows count:', approvedData.shows?.length || 0);
+    console.log('🎯 [SERVICE] - DJs count:', approvedData.djs?.length || 0);
+    console.log('🎯 [SERVICE] - Venues count:', approvedData.venues?.length || 0);
+    console.log('🎯 [SERVICE] - Vendors count:', approvedData.vendors?.length || 0);
+
     this.logAndBroadcast('Starting admin data approval and save process', 'info');
 
     try {
       // Ensure venues array exists - extract from shows if missing
       if (!approvedData.venues || approvedData.venues.length === 0) {
+        console.log('🎯 [SERVICE] No venues found, extracting from shows...');
         approvedData.venues = this.extractVenuesFromShows(approvedData.shows || []);
+        console.log('🎯 [SERVICE] Extracted venues count:', approvedData.venues.length);
         this.logAndBroadcast(
           `Extracted ${approvedData.venues.length} unique venues from show data`,
           'info',
@@ -4568,10 +4626,15 @@ Return ONLY valid JSON:
 
       // Remove duplicates from approved data before processing
       const originalShowCount = approvedData.shows.length;
+      console.log('🎯 [SERVICE] Original show count before deduplication:', originalShowCount);
+
       approvedData.shows = this.removeDuplicateShows(approvedData.shows);
       approvedData.djs = this.removeDuplicateDjs(approvedData.djs);
       const finalShowCount = approvedData.shows.length;
       const duplicatesRemoved = originalShowCount - finalShowCount;
+
+      console.log('🎯 [SERVICE] Final show count after deduplication:', finalShowCount);
+      console.log('🎯 [SERVICE] Duplicates removed:', duplicatesRemoved);
 
       this.logAndBroadcast(
         `Removed ${duplicatesRemoved} duplicate shows (${originalShowCount} → ${finalShowCount})`,
@@ -4579,6 +4642,7 @@ Return ONLY valid JSON:
       );
 
       // Create a temporary parsed schedule for admin data
+      console.log('🎯 [SERVICE] Creating temporary parsed schedule...');
       const tempParsedSchedule = await this.parsedScheduleRepository.save({
         url: 'Admin Upload',
         status: ParseStatus.APPROVED,
@@ -4588,20 +4652,23 @@ Return ONLY valid JSON:
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+      console.log('🎯 [SERVICE] Temp schedule created with ID:', tempParsedSchedule.id);
 
       // Use the existing method to save the data
+      console.log('🎯 [SERVICE] Calling approveAndSaveParsedData...');
       const result = await this.approveAndSaveParsedData(
         tempParsedSchedule.id,
         approvedData,
         userId,
       );
+      console.log('🎯 [SERVICE] approveAndSaveParsedData completed with result:', result);
 
       this.logAndBroadcast(
         `Admin data successfully saved via schedule ID: ${tempParsedSchedule.id}`,
         'success',
       );
 
-      return {
+      const finalResult = {
         success: true,
         duplicatesRemoved,
         originalCount: originalShowCount,
@@ -4609,6 +4676,9 @@ Return ONLY valid JSON:
         scheduleId: tempParsedSchedule.id,
         saveResult: result,
       };
+
+      console.log('🎯 [SERVICE] Final result being returned:', finalResult);
+      return finalResult;
     } catch (error) {
       this.logAndBroadcast(`Error saving admin data: ${error.message}`, 'error');
       throw new Error(`Failed to save admin data: ${error.message}`);

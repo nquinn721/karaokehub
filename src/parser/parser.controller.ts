@@ -1353,21 +1353,63 @@ export class ParserController {
     },
     @Req() req: any,
   ) {
+    console.log('🎯 [ADMIN APPROVAL] Starting approval process...');
+    console.log('🎯 [ADMIN APPROVAL] Request body exists:', !!body);
+    console.log('🎯 [ADMIN APPROVAL] Request data exists:', !!body?.data);
+
     try {
-      console.log('Admin analysis approval - received data keys:', Object.keys(body.data || {}));
+      console.log('🎯 [ADMIN APPROVAL] Received data keys:', Object.keys(body.data || {}));
+      console.log('🎯 [ADMIN APPROVAL] Data structure summary:');
+
+      if (body.data) {
+        console.log('🎯 [ADMIN APPROVAL] - Vendor:', body.data.vendor ? 'exists' : 'missing');
+        console.log(
+          '🎯 [ADMIN APPROVAL] - Vendors array:',
+          body.data.vendors ? `${body.data.vendors.length} items` : 'missing',
+        );
+        console.log(
+          '🎯 [ADMIN APPROVAL] - Venues array:',
+          body.data.venues ? `${body.data.venues.length} items` : 'missing',
+        );
+        console.log(
+          '🎯 [ADMIN APPROVAL] - DJs array:',
+          body.data.djs ? `${body.data.djs.length} items` : 'missing',
+        );
+        console.log(
+          '🎯 [ADMIN APPROVAL] - Shows array:',
+          body.data.shows ? `${body.data.shows.length} items` : 'missing',
+        );
+        console.log('🎯 [ADMIN APPROVAL] - Raw data:', body.data.rawData ? 'exists' : 'missing');
+
+        // Log first show for debugging
+        if (body.data.shows && body.data.shows.length > 0) {
+          console.log(
+            '🎯 [ADMIN APPROVAL] First show sample:',
+            JSON.stringify(body.data.shows[0], null, 2),
+          );
+        }
+      }
 
       if (!body.data) {
+        console.log('❌ [ADMIN APPROVAL] No data provided in request body');
         throw new HttpException('Analysis data is required', HttpStatus.BAD_REQUEST);
       }
 
       // Extract user ID from request if user is authenticated
       const userId = await this.extractUserIdFromRequest(req);
-      console.log('🔍 [IMAGE APPROVAL] User ID extracted:', userId);
+      console.log('🔍 [ADMIN APPROVAL] User ID extracted:', userId);
 
       // Call the service to save the approved admin data with user attribution
+      console.log('🎯 [ADMIN APPROVAL] Calling approveAndSaveAdminData service...');
       const result = await this.karaokeParserService.approveAndSaveAdminData(body.data, userId);
 
-      console.log('✅ Admin analysis approved and saved successfully');
+      console.log('✅ [ADMIN APPROVAL] Service call completed successfully');
+      console.log('✅ [ADMIN APPROVAL] Result summary:', {
+        success: result?.success,
+        finalCount: result?.finalCount,
+        duplicatesRemoved: result?.duplicatesRemoved,
+        scheduleId: result?.scheduleId,
+      });
 
       return {
         success: true,
@@ -1375,7 +1417,9 @@ export class ParserController {
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      console.error('❌ Admin analysis approval failed:', error.message);
+      console.error('❌ [ADMIN APPROVAL] Approval failed with error:', error);
+      console.error('❌ [ADMIN APPROVAL] Error message:', error.message);
+      console.error('❌ [ADMIN APPROVAL] Error stack:', error.stack);
       throw new HttpException(
         `Failed to approve admin analysis: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
