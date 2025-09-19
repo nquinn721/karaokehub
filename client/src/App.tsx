@@ -35,6 +35,7 @@ import ProfilePage from './pages/ProfilePage';
 import RegisterPage from './pages/RegisterPage';
 import SettingsPage from './pages/SettingsPage';
 import ShowsPage from './pages/ShowsPage';
+import StorePage from './pages/StorePage';
 import SubmitShowPage from './pages/SubmitShowPage';
 
 // Protected Route component
@@ -48,7 +49,17 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
   }
 
-  return authStore.isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+  // If user is authenticated, show the protected content
+  if (authStore.isAuthenticated) {
+    return <>{children}</>;
+  }
+
+  // If not authenticated, redirect to login with current path as redirect parameter
+  const currentPath = window.location.pathname;
+  const loginPath =
+    currentPath === '/login' ? '/login' : `/login?redirect=${encodeURIComponent(currentPath)}`;
+
+  return <Navigate to={loginPath} replace />;
 };
 
 // Public Route component (redirect to dashboard if authenticated)
@@ -62,7 +73,19 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
   }
 
-  return !authStore.isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" />;
+  // If user is not authenticated, show the public content
+  if (!authStore.isAuthenticated) {
+    return <>{children}</>;
+  }
+
+  // If authenticated, redirect to dashboard (but avoid infinite loops)
+  const currentPath = window.location.pathname;
+  if (currentPath === '/dashboard') {
+    // Prevent redirect loop - if we're already on dashboard, don't redirect again
+    return <>{children}</>;
+  }
+
+  return <Navigate to="/dashboard" replace />;
 }; // App content component that has access to location
 const AppContent: React.FC = observer(() => {
   const location = useLocation();
@@ -310,6 +333,14 @@ const AppContent: React.FC = observer(() => {
               element={
                 <ProtectedRoute>
                   <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/store"
+              element={
+                <ProtectedRoute>
+                  <StorePage />
                 </ProtectedRoute>
               }
             />

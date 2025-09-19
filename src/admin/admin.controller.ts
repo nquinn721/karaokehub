@@ -236,4 +236,10 @@ export class AdminController {
   ) {
     return await this.deduplicationService.executeDeletion(type, body.idsToDelete);
   }
+
+  // Venue geo verification endpoint
+  @Post('venues/:id/verify-location')
+  async verifyVenueLocation(@Param('id') id: string) {
+    return await this.adminService.verifyVenueLocation(id);
+  }
 }

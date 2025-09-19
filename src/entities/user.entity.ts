@@ -2,12 +2,16 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
-  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Avatar } from '../avatar/entities/avatar.entity';
+import { Microphone } from '../avatar/entities/microphone.entity';
 import { UserAvatar } from '../avatar/entities/user-avatar.entity';
+import { UserMicrophone } from '../avatar/entities/user-microphone.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
 import { FriendRequest } from '../friends/friend-request.entity';
 import { Friendship } from '../friends/friendship.entity';
@@ -47,6 +51,17 @@ export class User {
   @Column({ nullable: true })
   stripeCustomerId: string;
 
+  // Coin system
+  @Column({ type: 'int', default: 0 })
+  coins: number;
+
+  // Equipped items (can be free or owned)
+  @Column({ nullable: true })
+  equippedAvatarId: string;
+
+  @Column({ nullable: true })
+  equippedMicrophoneId: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -54,8 +69,20 @@ export class User {
   updatedAt: Date;
 
   // Relationships
-  @OneToOne(() => UserAvatar, (userAvatar) => userAvatar.user)
-  userAvatar: UserAvatar;
+  @OneToMany(() => UserAvatar, (userAvatar) => userAvatar.user)
+  userAvatars: UserAvatar[];
+
+  @OneToMany(() => UserMicrophone, (userMicrophone) => userMicrophone.user)
+  userMicrophones: UserMicrophone[];
+
+  // Equipped item relationships
+  @ManyToOne(() => Avatar, { nullable: true })
+  @JoinColumn({ name: 'equippedAvatarId' })
+  equippedAvatar: Avatar;
+
+  @ManyToOne(() => Microphone, { nullable: true })
+  @JoinColumn({ name: 'equippedMicrophoneId' })
+  equippedMicrophone: Microphone;
 
   @OneToMany(() => FavoriteShow, (favoriteShow) => favoriteShow.user)
   favoriteShows: FavoriteShow[];

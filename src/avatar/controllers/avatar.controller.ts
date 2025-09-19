@@ -14,7 +14,7 @@ export class AvatarController {
   }
 
   @Put('my-avatar')
-  async updateMyAvatar(@Request() req, @Body() updateDto: UpdateUserAvatarDto) {
+  async updateMyAvatarCustomization(@Request() req, @Body() updateDto: UpdateUserAvatarDto) {
     return this.avatarService.updateUserAvatar(req.user.id, updateDto);
   }
 
@@ -26,7 +26,7 @@ export class AvatarController {
   @Post('add-item/:itemType/:itemId')
   async addItemToInventory(
     @Request() req,
-    @Param('itemType') itemType: 'microphone' | 'outfit' | 'shoes',
+    @Param('itemType') itemType: 'avatar' | 'microphone',
     @Param('itemId') itemId: string,
   ) {
     return this.avatarService.addItemToInventory(req.user.id, itemType, itemId);
@@ -35,5 +35,35 @@ export class AvatarController {
   @Get('user/:userId')
   async getUserAvatar(@Param('userId') userId: string) {
     return this.avatarService.getUserAvatar(userId);
+  }
+
+  @Get('my-microphones')
+  async getMyMicrophones(@Request() req) {
+    return this.avatarService.getUserMicrophones(req.user.id);
+  }
+
+  @Put('my-microphone/:microphoneId')
+  async updateMyMicrophone(@Request() req, @Param('microphoneId') microphoneId: string) {
+    return this.avatarService.updateEquippedMicrophone(req.user.id, microphoneId);
+  }
+
+  @Get('my-avatars')
+  async getMyAvatars(@Request() req) {
+    return this.avatarService.getUserAvatars(req.user.id);
+  }
+
+  @Put('my-avatar-selection/:avatarId')
+  async updateMyAvatarSelection(@Request() req, @Param('avatarId') avatarId: string) {
+    return this.avatarService.updateEquippedAvatar(req.user.id, avatarId);
+  }
+
+  @Get('available-avatars')
+  async getAvailableAvatars(@Request() req) {
+    return this.avatarService.getAvailableAvatarsForUser(req.user.id);
+  }
+
+  @Get('available-microphones')
+  async getAvailableMicrophones(@Request() req) {
+    return this.avatarService.getAvailableMicrophonesForUser(req.user.id);
   }
 }

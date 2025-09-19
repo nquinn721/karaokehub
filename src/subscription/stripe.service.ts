@@ -182,6 +182,129 @@ export class StripeService {
     return this.PRICE_IDS[plan];
   }
 
+  async createPaymentIntent(
+    customerId: string,
+    amount: number,
+    currency: string = 'usd',
+    metadata: Record<string, string> = {},
+  ): Promise<Stripe.PaymentIntent> {
+    return this.stripe.paymentIntents.create({
+      customer: customerId,
+      amount,
+      currency,
+      metadata,
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    });
+  }
+
+  async createOneTimeCheckoutSession(
+    customerId: string,
+    amount: number,
+    currency: string = 'usd',
+    productName: string,
+    successUrl: string,
+    cancelUrl: string,
+    metadata: Record<string, string> = {},
+  ): Promise<Stripe.Checkout.Session> {
+    try {
+      console.log('🛒 [STRIPE_SERVICE] Creating one-time checkout session:', {
+        customerId,
+        amount,
+        currency,
+        productName,
+      });
+
+      // Check if customer has saved payment methods for simplified checkout
+      const customer = await this.stripe.customers.retrieve(customerId);
+      const paymentMethods = await this.stripe.paymentMethods.list({
+        customer: customerId,
+        type: 'card',
+      });
+
+      const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency,
+              unit_amount: amount,
+              product_data: {
+                name: productName,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        metadata,
+        billing_address_collection: 'auto',
+      };
+
+      // If customer has saved payment methods, enable faster checkout
+      if (paymentMethods.data.length > 0) {
+        console.log(
+          '💳 [STRIPE_SERVICE] Customer has saved payment methods, enabling simplified checkout',
+        );
+        sessionConfig.payment_intent_data = {
+          setup_future_usage: 'off_session', // Save for future use
+        };
+      } else {
+        console.log('💳 [STRIPE_SERVICE] New customer, will save payment method for future use');
+        sessionConfig.payment_intent_data = {
+          setup_future_usage: 'off_session', // Save for future use
+        };
+      }
+
+      const session = await this.stripe.checkout.sessions.create(sessionConfig);
+
+      console.log('✅ [STRIPE_SERVICE] One-time checkout session created:', {
+        sessionId: session.id,
+        url: session.url?.substring(0, 80) + '...',
+      });
+
+      return session;
+    } catch (error) {
+      console.error('❌ [STRIPE_SERVICE] Error creating one-time checkout session:', error);
+      throw error;
+    }
+  }
+
+  async getCustomerPaymentMethods(customerId: string): Promise<Stripe.PaymentMethod[]> {
+    const paymentMethods = await this.stripe.paymentMethods.list({
+      customer: customerId,
+      type: 'card',
+    });
+    return paymentMethods.data;
+  }
+
+  async createPaymentWithSavedMethod(
+    customerId: string,
+    paymentMethodId: string,
+    amount: number,
+    currency: string = 'usd',
+    metadata: Record<string, string> = {},
+  ): Promise<Stripe.PaymentIntent> {
+    return this.stripe.paymentIntents.create({
+      customer: customerId,
+      payment_method: paymentMethodId,
+      amount,
+      currency,
+      confirmation_method: 'manual',
+      confirm: true,
+      return_url: metadata.return_url || 'https://your-app.com/return',
+      metadata,
+    });
+  }
+
+  async getCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session> {
+    return this.stripe.checkout.sessions.retrieve(sessionId);
+  }
+
   constructWebhookEvent(payload: string | Buffer, signature: string): Stripe.Event {
     const endpointSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
     if (!endpointSecret) {

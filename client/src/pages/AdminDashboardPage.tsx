@@ -1,20 +1,20 @@
 import AdminBreadcrumb from '@components/AdminBreadcrumb';
 import AdminDataTables from '@components/AdminDataTables';
 import ApiLogsMonitor from '@components/ApiLogsMonitor';
-import AvatarCustomizer from '@components/AvatarCustomizer';
 import DataUploadModal from '@components/DataUploadModal';
 import LocationTrackingModal from '@components/modals/LocationTrackingModal';
 import ShowAnalytics from '@components/ShowAnalytics';
+import SpriteCutter from '@components/SpriteCutter';
 import UrlApprovalComponent from '@components/UrlApprovalComponent';
 import {
   faBars,
   faChartBar,
   faChevronRight,
+  faCut,
   faDatabase,
   faGlobe,
   faHome,
   faLocationArrow,
-  faPaintBrush,
   faPlus,
   faRobot,
   faSync,
@@ -153,10 +153,10 @@ const AdminDashboardPageTabbed = observer(() => {
     },
     {
       id: 4,
-      title: 'Avatar Customizer',
-      icon: faPaintBrush,
-      description: 'Customize user avatars and manage avatar store',
-      component: <AvatarCustomizer />,
+      title: 'Sprite Cutter',
+      icon: faCut,
+      description: 'Cut sprite sheets into individual avatars with background removal',
+      component: <SpriteCutter />,
     },
   ];
 
@@ -756,6 +756,12 @@ const AdminDashboardPageTabbed = observer(() => {
                     iconPosition="start"
                     sx={{ gap: 1 }}
                   />
+                  <Tab
+                    icon={<FontAwesomeIcon icon={faCut} />}
+                    label="Sprite Cutter"
+                    iconPosition="start"
+                    sx={{ gap: 1 }}
+                  />
                 </Tabs>
               </Box>
             </Box>
@@ -775,6 +781,10 @@ const AdminDashboardPageTabbed = observer(() => {
 
             <TabPanel value={tabValue} index={3}>
               <ApiLogsMonitor />
+            </TabPanel>
+
+            <TabPanel value={tabValue} index={4}>
+              <SpriteCutter />
             </TabPanel>
           </Paper>
         </Box>

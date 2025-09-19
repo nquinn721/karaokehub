@@ -52,10 +52,16 @@ export class Microphone {
   imageUrl: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  price: number;
+  price: number; // USD price for direct purchase
+
+  @Column({ type: 'int', default: 0 })
+  coinPrice: number; // Coin price for in-game purchase
 
   @Column({ default: true })
   isAvailable: boolean;
+
+  @Column({ default: false })
+  isFree: boolean;
 
   @Column({ default: false })
   isUnlockable: boolean; // Can be unlocked through achievements

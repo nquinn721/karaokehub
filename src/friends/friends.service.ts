@@ -263,30 +263,26 @@ export class FriendsService {
   async getFriends(userId: string) {
     const friendships = await this.friendshipRepository.find({
       where: { userId },
-      relations: [
-        'friend',
-        'friend.userAvatar',
-        'friend.userAvatar.microphone',
-        'friend.userAvatar.outfit',
-        'friend.userAvatar.shoes',
-      ],
+      relations: ['friend', 'friend.equippedAvatar', 'friend.equippedMicrophone'],
     });
 
-    return friendships.map((friendship) => ({
-      id: friendship.friend.id,
-      email: friendship.friend.email,
-      name: friendship.friend.name,
-      stageName: friendship.friend.stageName,
-      userAvatar: friendship.friend.userAvatar
-        ? {
-            baseAvatarId: friendship.friend.userAvatar.baseAvatarId,
-            microphone: friendship.friend.userAvatar.microphone,
-            outfit: friendship.friend.userAvatar.outfit,
-            shoes: friendship.friend.userAvatar.shoes,
-          }
-        : null,
-      friendedAt: friendship.createdAt,
-    }));
+    return friendships.map((friendship) => {
+      return {
+        id: friendship.friend.id,
+        email: friendship.friend.email,
+        name: friendship.friend.name,
+        stageName: friendship.friend.stageName,
+        userAvatar: friendship.friend.equippedAvatar
+          ? {
+              baseAvatarId: friendship.friend.equippedAvatarId,
+              microphone: friendship.friend.equippedMicrophone,
+              outfit: null, // These are legacy fields, set to null for now
+              shoes: null,
+            }
+          : null,
+        friendedAt: friendship.createdAt,
+      };
+    });
   }
 
   // Get friends count

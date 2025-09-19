@@ -132,6 +132,7 @@ export const {
 // Export individual stores
 export { adminStore } from './AdminStore';
 export { localSubscriptionStore } from './LocalSubscriptionStore';
+export { storeStore } from './StoreStore';
 export { themeStore } from './ThemeStore';
 export const apiStore = api;
 

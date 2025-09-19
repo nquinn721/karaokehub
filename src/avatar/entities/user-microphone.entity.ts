@@ -5,7 +5,6 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../entities/user.entity';
 import { Microphone } from './microphone.entity';
@@ -21,13 +20,8 @@ export class UserMicrophone {
   @Column()
   microphoneId: string;
 
-  @Column({ default: false })
-  isEquipped: boolean;
-
   @CreateDateColumn()
   acquiredAt: Date;
-
-  @UpdateDateColumn()
   updatedAt: Date;
 
   // Relationships

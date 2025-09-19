@@ -44,6 +44,10 @@ export class AuthStore {
   // Safeguard to prevent initialization loops
   isInitializing = false;
   private hasInitialized = false;
+  private initializationAttempts = 0;
+  private lastInitializationTime: number | null = null;
+  private readonly MAX_INITIALIZATION_ATTEMPTS = 3;
+  private readonly INITIALIZATION_COOLDOWN = 5000; // 5 seconds
 
   // Loop detection and prevention
   private authFailureCount = 0;
@@ -56,6 +60,9 @@ export class AuthStore {
 
     // Check for existing loop state on startup
     this.checkForExistingLoop();
+
+    // Detect rapid page loads which might indicate redirect loops
+    this.detectRapidPageLoads();
 
     // Make this store persistent with proper hydration handling
     makePersistable(this, {
@@ -75,13 +82,41 @@ export class AuthStore {
       return;
     }
 
+    // Check for too many rapid initialization attempts
+    const now = Date.now();
+    if (this.lastInitializationTime) {
+      const timeSinceLastAttempt = now - this.lastInitializationTime;
+      if (timeSinceLastAttempt < this.INITIALIZATION_COOLDOWN) {
+        this.initializationAttempts++;
+        if (this.initializationAttempts >= this.MAX_INITIALIZATION_ATTEMPTS) {
+          console.error(
+            '🚨 AuthStore: Too many rapid initialization attempts, triggering emergency recovery',
+          );
+          this.emergencyRecovery();
+          return;
+        }
+      } else {
+        // Reset attempts if enough time has passed
+        this.initializationAttempts = 0;
+      }
+    }
+
     this.isInitializing = true;
+    this.lastInitializationTime = now;
+    this.initializationAttempts++;
 
     try {
       await this.initialize();
       this.hasInitialized = true;
+      // Reset attempts on successful initialization
+      this.initializationAttempts = 0;
     } catch (error) {
       console.error('AuthStore initialization failed:', error);
+      // Don't trigger recovery on first attempt, but do on repeated failures
+      if (this.initializationAttempts >= this.MAX_INITIALIZATION_ATTEMPTS) {
+        console.error('🚨 AuthStore: Multiple initialization failures, triggering recovery');
+        this.automaticRecovery();
+      }
     } finally {
       this.isInitializing = false;
     }
@@ -89,6 +124,8 @@ export class AuthStore {
 
   // Initialize the store after hydration with comprehensive error handling
   private async initialize() {
+    console.log('🔄 AuthStore: Starting initialization...');
+
     // Check for URL-based recovery parameter
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
@@ -108,13 +145,43 @@ export class AuthStore {
       return;
     }
 
+    console.log('🔄 AuthStore: Token exists:', !!this.token);
+
     // Set token in API store if it exists after hydration
     if (this.token) {
       try {
+        console.log('🔄 AuthStore: Setting token in API store and fetching profile...');
         apiStore.setToken(this.token);
 
         // Always fetch fresh profile data from API to ensure it's up to date
-        await this.getProfile();
+        const profileResult = await this.getProfile();
+        console.log('🔄 AuthStore: Profile fetch result:', profileResult.success);
+
+        // If profile fetch failed, be more careful about clearing auth
+        if (!profileResult.success) {
+          console.warn('🚪 AuthStore: Profile fetch failed during initialization');
+
+          // Only clear auth state if we get a 401 (invalid token)
+          // For other errors (network, server), keep the auth state
+          const error = profileResult.error;
+          if (
+            error &&
+            (error.includes('401') ||
+              error.includes('unauthorized') ||
+              error.includes('Invalid credentials'))
+          ) {
+            console.warn('🚪 AuthStore: Token appears invalid - clearing auth state');
+            this.recordAuthFailure();
+            this.clearAuthStateSilently();
+          } else {
+            console.warn(
+              '🌐 AuthStore: Profile fetch failed but keeping auth state (might be network issue)',
+            );
+          }
+          return;
+        }
+
+        console.log('🔄 AuthStore: Profile fetch successful, user authenticated');
       } catch (error: any) {
         // Handle different error types safely without causing loops
         if (error?.response?.status === 401 || error?.status === 401) {
@@ -125,7 +192,7 @@ export class AuthStore {
           console.log('🌐 AuthStore: Network error - keeping auth state (user might be offline)');
           // Don't clear auth on network errors - user might be offline
         } else {
-          console.log('🚪 AuthStore: Other error - clearing auth state');
+          console.log('🚪 AuthStore: Other error during initialization - clearing auth state');
           this.recordAuthFailure();
           this.clearAuthStateSilently();
         }
@@ -159,6 +226,35 @@ export class AuthStore {
     }
 
     return this.authFailureCount >= this.MAX_AUTH_FAILURES;
+  }
+
+  // Detect rapid page loads that might indicate redirect loops
+  private detectRapidPageLoads() {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const pageLoadKey = 'authStore_pageLoads';
+      const now = Date.now();
+      const pageLoads = JSON.parse(localStorage.getItem(pageLoadKey) || '[]');
+
+      // Add current page load
+      pageLoads.push(now);
+
+      // Keep only loads from the last 30 seconds
+      const recentLoads = pageLoads.filter((time: number) => now - time < 30000);
+
+      // If more than 5 page loads in 30 seconds, likely a redirect loop
+      if (recentLoads.length > 5) {
+        console.error('🚨 AuthStore: Rapid page loads detected - likely redirect loop!');
+        this.emergencyRecovery();
+        return;
+      }
+
+      // Store filtered loads
+      localStorage.setItem(pageLoadKey, JSON.stringify(recentLoads));
+    } catch (error) {
+      console.warn('Failed to detect rapid page loads:', error);
+    }
   }
 
   // Record authentication failure for loop detection
@@ -309,10 +405,6 @@ export class AuthStore {
     return '/images/avatars/avatar_1.png';
   }
 
-  async fetchProfile() {
-    return await this.getProfile();
-  }
-
   // Force refresh profile data - useful after admin status changes
   async refreshProfile() {
     return await this.getProfile();
@@ -320,9 +412,11 @@ export class AuthStore {
 
   async login(credentials: LoginCredentials) {
     try {
+      console.log('🔐 AuthStore: Starting login process...');
       this.setLoading(true);
 
       const response = await apiStore.post(apiStore.endpoints.auth.login, credentials);
+      console.log('🔐 AuthStore: Login API response received:', !!response.user, !!response.token);
 
       runInAction(() => {
         this.user = response.user;
@@ -330,6 +424,8 @@ export class AuthStore {
         this.isAuthenticated = true;
         this.isLoading = false;
         this.isNewUser = false;
+
+        console.log('🔐 AuthStore: Auth state updated - isAuthenticated:', this.isAuthenticated);
 
         // Check if stage name modal should be shown
         this.checkStageNameRequired();
@@ -340,6 +436,11 @@ export class AuthStore {
 
       // Set token in API store
       apiStore.setToken(response.token);
+      console.log('🔐 AuthStore: Token set in API store');
+
+      // IMPORTANT: Store token in localStorage for persistence
+      localStorage.setItem('token', response.token);
+      console.log('🔐 AuthStore: Token stored in localStorage');
 
       // Fetch subscription status after successful login
       import('./index').then(({ subscriptionStore }) => {
@@ -348,8 +449,10 @@ export class AuthStore {
         });
       });
 
+      console.log('🔐 AuthStore: Login completed successfully');
       return { success: true };
     } catch (error: any) {
+      console.error('🔐 AuthStore: Login failed:', error);
       runInAction(() => {
         this.isLoading = false;
       });
@@ -617,8 +720,8 @@ export class AuthStore {
       localStorage.setItem('token', token);
       this.setToken(token);
 
-      // Fetch user profile with the new token
-      await this.fetchProfile();
+      // Fetch user profile with the new token - using correct method name
+      await this.getProfile();
 
       // Reset any previous auth failures on successful auth
       this.authFailureCount = 0;

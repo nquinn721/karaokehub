@@ -2,6 +2,7 @@ import { SquareAd } from '@components/AdsterraAd';
 import AvatarDisplay3D from '@components/AvatarDisplay3D';
 import AvatarSelectorModal from '@components/AvatarSelectorModal';
 import FriendsList from '@components/FriendsList';
+import MicrophoneSelectionModal from '@components/MicrophoneSelectionModal';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
 import {
@@ -49,12 +50,12 @@ import {
   useTheme,
 } from '@mui/material';
 import {
-  apiStore,
   audioStore,
   authStore,
   songFavoriteStore,
   subscriptionStore,
   uiStore,
+  userStore,
 } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
@@ -72,8 +73,10 @@ const DashboardPage: React.FC = observer(() => {
   const [activeTab, setActiveTab] = useState(0);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [microphoneModalOpen, setMicrophoneModalOpen] = useState(false);
   const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
   const [currentAvatarId, setCurrentAvatarId] = useState<string>('avatar_1');
+  const [currentMicrophoneId, setCurrentMicrophoneId] = useState<string>('mic_basic_1');
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState<
     'favorites' | 'ad_removal' | 'music_preview'
@@ -84,14 +87,20 @@ const DashboardPage: React.FC = observer(() => {
   useEffect(() => {
     if (authStore.isAuthenticated) {
       loadDashboardData();
-      loadCurrentAvatar();
+      // Load user data first, then equipped items
+      userStore.getCurrentUser().then(() => {
+        loadCurrentAvatar();
+        loadCurrentMicrophone();
+      });
     }
   }, [authStore.isAuthenticated]);
 
   // Reload avatar when user changes (for account switching)
   useEffect(() => {
     if (authStore.user?.id) {
-      loadCurrentAvatar();
+      userStore.getCurrentUser().then(() => {
+        loadCurrentAvatar();
+      });
     }
   }, [authStore.user?.id]);
 
@@ -103,28 +112,50 @@ const DashboardPage: React.FC = observer(() => {
 
     try {
       setAvatarLoading(true);
-      // Fetch the current user's avatar from the API
-      const avatarData = await apiStore.get('/avatar/my-avatar');
-      console.log('Loaded avatar from API:', avatarData);
 
-      if (avatarData?.baseAvatarId) {
-        setCurrentAvatarId(avatarData.baseAvatarId);
+      // Use UserStore to get equipped avatar
+      const equippedAvatar = userStore.getEquippedAvatar();
+      console.log('Loaded avatar from UserStore:', equippedAvatar);
+
+      if (equippedAvatar?.avatarId) {
+        setCurrentAvatarId(equippedAvatar.avatarId);
+        console.log('Set current avatar ID:', equippedAvatar.avatarId);
       } else {
-        // If no avatar data, use fallback
-        const fallbackAvatarId =
-          authStore.user?.userAvatar?.baseAvatarId || authStore.user?.avatar || 'avatar_1';
+        // If no equipped avatar, use fallback
+        const fallbackAvatarId = 'avatar_1';
         setCurrentAvatarId(fallbackAvatarId);
         console.log('Using fallback avatar ID:', fallbackAvatarId);
       }
     } catch (error) {
-      console.error('Failed to load current avatar from API:', error);
-      // Fallback to user data from auth store if API fails
-      const fallbackAvatarId =
-        authStore.user?.userAvatar?.baseAvatarId || authStore.user?.avatar || 'avatar_1';
-      setCurrentAvatarId(fallbackAvatarId);
-      console.log('Using fallback avatar ID after API error:', fallbackAvatarId);
+      console.error('Failed to load current avatar:', error);
+      // Fallback to default
+      setCurrentAvatarId('avatar_1');
     } finally {
       setAvatarLoading(false);
+    }
+  };
+
+  const loadCurrentMicrophone = async () => {
+    if (!authStore.isAuthenticated || !authStore.user?.id) {
+      console.log('Cannot load microphone: user not authenticated');
+      return;
+    }
+
+    try {
+      // Use UserStore to get equipped microphone
+      const equippedMic = userStore.getEquippedMicrophone();
+      console.log('Loaded microphone from UserStore:', equippedMic);
+
+      if (equippedMic?.microphoneId) {
+        setCurrentMicrophoneId(equippedMic.microphoneId);
+        console.log('Set current microphone ID:', equippedMic.microphoneId);
+      } else {
+        console.log('No equipped microphone found, using default');
+        setCurrentMicrophoneId('mic_basic_1');
+      }
+    } catch (error) {
+      console.error('Failed to load current microphone:', error);
+      setCurrentMicrophoneId('mic_basic_1');
     }
   };
 
@@ -1032,35 +1063,68 @@ const DashboardPage: React.FC = observer(() => {
                       <Grid item xs={12} md={6}>
                         <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
                           <Typography variant="h4" fontWeight={700} gutterBottom>
-                            Your Karaoke Avatar
+                            Your Karaoke Style
                           </Typography>
                           <Typography variant="body1" sx={{ mb: 3, opacity: 0.9 }}>
-                            Express your unique personality and style on stage!
+                            Express your unique personality with your avatar and microphone!
                           </Typography>
-                          <Button
-                            variant="contained"
-                            size="large"
-                            startIcon={<FontAwesomeIcon icon={faPaintBrush} />}
-                            onClick={() => setAvatarModalOpen(true)}
+                          <Box
                             sx={{
-                              backgroundColor: 'rgba(255,255,255,0.2)',
-                              color: 'white',
-                              fontWeight: 'bold',
-                              py: 1.5,
-                              px: 3,
-                              borderRadius: '12px',
-                              backdropFilter: 'blur(10px)',
-                              border: '1px solid rgba(255,255,255,0.3)',
-                              '&:hover': {
-                                backgroundColor: 'rgba(255,255,255,0.3)',
-                                transform: 'translateY(-2px)',
-                                boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
-                              },
-                              transition: 'all 0.3s ease',
+                              display: 'flex',
+                              gap: 2,
+                              flexWrap: 'wrap',
+                              justifyContent: { xs: 'center', md: 'flex-start' },
                             }}
                           >
-                            Customize Avatar
-                          </Button>
+                            <Button
+                              variant="contained"
+                              size="large"
+                              startIcon={<FontAwesomeIcon icon={faPaintBrush} />}
+                              onClick={() => setAvatarModalOpen(true)}
+                              sx={{
+                                backgroundColor: 'rgba(255,255,255,0.2)',
+                                color: 'white',
+                                fontWeight: 'bold',
+                                py: 1.5,
+                                px: 3,
+                                borderRadius: '12px',
+                                backdropFilter: 'blur(10px)',
+                                border: '1px solid rgba(255,255,255,0.3)',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255,255,255,0.3)',
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                                },
+                                transition: 'all 0.3s ease',
+                              }}
+                            >
+                              Customize Avatar
+                            </Button>
+                            <Button
+                              variant="contained"
+                              size="large"
+                              startIcon={<FontAwesomeIcon icon={faMicrophone} />}
+                              onClick={() => setMicrophoneModalOpen(true)}
+                              sx={{
+                                backgroundColor: 'rgba(255,255,255,0.2)',
+                                color: 'white',
+                                fontWeight: 'bold',
+                                py: 1.5,
+                                px: 3,
+                                borderRadius: '12px',
+                                backdropFilter: 'blur(10px)',
+                                border: '1px solid rgba(255,255,255,0.3)',
+                                '&:hover': {
+                                  backgroundColor: 'rgba(255,255,255,0.3)',
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: '0 8px 16px rgba(0,0,0,0.2)',
+                                },
+                                transition: 'all 0.3s ease',
+                              }}
+                            >
+                              Microphones
+                            </Button>
+                          </Box>
                         </Box>
                       </Grid>
                       <Grid item xs={12} md={6}>
@@ -1068,14 +1132,73 @@ const DashboardPage: React.FC = observer(() => {
                           sx={{
                             display: 'flex',
                             justifyContent: 'center',
+                            gap: 2,
                             position: 'relative',
                           }}
                         >
+                          {/* Microphone Display */}
+                          <Box
+                            onClick={() => setMicrophoneModalOpen(true)}
+                            sx={{
+                              cursor: 'pointer',
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                transform: 'scale(1.05)',
+                                boxShadow: '0 12px 24px rgba(0,0,0,0.3)',
+                              },
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 120,
+                                height: 160,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: 'rgba(255,255,255,0.1)',
+                                backdropFilter: 'blur(20px)',
+                                border: '2px solid rgba(255,255,255,0.2)',
+                                borderRadius: '16px',
+                                position: 'relative',
+                              }}
+                            >
+                              <Box
+                                component="img"
+                                src={`/images/avatar/parts/microphones/${currentMicrophoneId}.png`}
+                                alt="Current Microphone"
+                                sx={{
+                                  width: '80%',
+                                  height: '80%',
+                                  objectFit: 'contain',
+                                }}
+                              />
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  bottom: 8,
+                                  left: '50%',
+                                  transform: 'translateX(-50%)',
+                                  backgroundColor: 'rgba(255,255,255,0.9)',
+                                  color: theme.palette.primary.main,
+                                  fontSize: '0.7rem',
+                                  fontWeight: 'bold',
+                                  px: 1,
+                                  py: 0.5,
+                                  borderRadius: '8px',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                Microphone
+                              </Box>
+                            </Box>
+                          </Box>
+
+                          {/* Avatar Display */}
                           {avatarLoading ? (
                             <Box
                               sx={{
-                                width: 220,
-                                height: 280,
+                                width: 160,
+                                height: 200,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -1088,18 +1211,50 @@ const DashboardPage: React.FC = observer(() => {
                               <CircularProgress color="inherit" />
                             </Box>
                           ) : (
-                            <AvatarDisplay3D
-                              key={`main-avatar-${avatarRefreshKey}`}
-                              width={220}
-                              height={280}
-                              avatarId={currentAvatarId}
-                              show3D={true}
+                            <Box
+                              onClick={() => setAvatarModalOpen(true)}
                               sx={{
-                                background: 'rgba(255,255,255,0.1)',
-                                backdropFilter: 'blur(20px)',
-                                border: '2px solid rgba(255,255,255,0.2)',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease',
+                                position: 'relative',
+                                '&:hover': {
+                                  transform: 'scale(1.05)',
+                                  boxShadow: '0 12px 24px rgba(0,0,0,0.3)',
+                                },
                               }}
-                            />
+                            >
+                              <AvatarDisplay3D
+                                key={`main-avatar-${avatarRefreshKey}`}
+                                width={160}
+                                height={200}
+                                avatarId={currentAvatarId}
+                                show3D={true}
+                                sx={{
+                                  background: 'rgba(255,255,255,0.1)',
+                                  backdropFilter: 'blur(20px)',
+                                  border: '2px solid rgba(255,255,255,0.2)',
+                                  borderRadius: '16px',
+                                }}
+                              />
+                              <Box
+                                sx={{
+                                  position: 'absolute',
+                                  bottom: 8,
+                                  left: '50%',
+                                  transform: 'translateX(-50%)',
+                                  backgroundColor: 'rgba(255,255,255,0.9)',
+                                  color: theme.palette.primary.main,
+                                  fontSize: '0.7rem',
+                                  fontWeight: 'bold',
+                                  px: 1,
+                                  py: 0.5,
+                                  borderRadius: '8px',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                Avatar
+                              </Box>
+                            </Box>
                           )}
                         </Box>
                       </Grid>
@@ -1488,10 +1643,9 @@ const DashboardPage: React.FC = observer(() => {
           setCurrentAvatarId(avatarId);
           // Force refresh of avatar displays
           setAvatarRefreshKey((prev) => prev + 1);
-          // Reload avatar data from API to ensure it's persisted
+          // Refresh user data and reload avatar
+          await userStore.getCurrentUser();
           await loadCurrentAvatar();
-          // Also refresh auth profile to keep it in sync
-          authStore.refreshProfile();
         }}
       />
 
@@ -1505,6 +1659,18 @@ const DashboardPage: React.FC = observer(() => {
             ? 'Listen to 30-second song previews to help you prepare for karaoke night! Premium subscription required for unlimited previews.'
             : undefined
         }
+      />
+
+      {/* Microphone Selection Modal */}
+      <MicrophoneSelectionModal
+        open={microphoneModalOpen}
+        onClose={() => {
+          setMicrophoneModalOpen(false);
+          // Refresh user data and microphone after selection
+          userStore.getCurrentUser().then(() => {
+            loadCurrentMicrophone();
+          });
+        }}
       />
     </>
   );

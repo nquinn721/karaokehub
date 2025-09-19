@@ -39,6 +39,7 @@ import { observer } from 'mobx-react-lite';
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getUserDisplayName, getUserSecondaryName } from '../../utils/userUtils';
+import { CoinDisplay } from '../CoinDisplay';
 import FeedbackModal from '../FeedbackModal';
 import { SubscriptionUpgradeModal } from '../SubscriptionUpgradeModal';
 
@@ -660,6 +661,9 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
 
                 {authStore.isAuthenticated ? (
                   <>
+                    {/* Coin Display */}
+                    <CoinDisplay size="small" />
+
                     {/* User Avatar and Name Display */}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       {/* Display Name - Hidden on mobile, clickable to open menu */}

@@ -69,10 +69,12 @@ export class UserService {
       relations: [
         'favoriteShows',
         'favoriteShows.show',
-        'userAvatar',
-        'userAvatar.microphone',
-        'userAvatar.outfit',
-        'userAvatar.shoes',
+        'userAvatars',
+        'userAvatars.avatar',
+        'userMicrophones',
+        'userMicrophones.microphone',
+        'equippedAvatar',
+        'equippedMicrophone',
       ],
     });
   }
@@ -165,9 +167,32 @@ export class UserService {
     return await this.findOne(id);
   }
 
-  // This method is deprecated - avatar updates should go through the UserAvatar entity
+  // Equipment management methods
+  async equipAvatar(userId: string, avatarId: string): Promise<User> {
+    // TODO: Validate that user can equip this avatar (free or owned)
+    await this.userRepository.update(userId, { equippedAvatarId: avatarId });
+    return await this.findOne(userId);
+  }
+
+  async equipMicrophone(userId: string, microphoneId: string): Promise<User> {
+    // TODO: Validate that user can equip this microphone (free or owned)
+    await this.userRepository.update(userId, { equippedMicrophoneId: microphoneId });
+    return await this.findOne(userId);
+  }
+
+  async unequipAvatar(userId: string): Promise<User> {
+    await this.userRepository.update(userId, { equippedAvatarId: null });
+    return await this.findOne(userId);
+  }
+
+  async unequipMicrophone(userId: string): Promise<User> {
+    await this.userRepository.update(userId, { equippedMicrophoneId: null });
+    return await this.findOne(userId);
+  }
+
+  // This method is deprecated - avatar updates should go through the equipment methods
   async updateAvatar(id: string, avatarId: string): Promise<User> {
-    // This method is now deprecated since we use UserAvatar entities
+    // This method is now deprecated since we use direct equipment references
     // Returning the user as-is for backward compatibility
     return await this.findOne(id);
   }

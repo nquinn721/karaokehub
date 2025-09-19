@@ -902,6 +902,15 @@ export class AdminStore {
     }
   }
 
+  async verifyVenueLocation(venueId: string): Promise<any> {
+    try {
+      const response = await apiStore.post(`/admin/venues/${venueId}/verify-location`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to verify venue location');
+    }
+  }
+
   async updateShow(id: string, data: any): Promise<void> {
     try {
       await apiStore.put(`/shows/${id}`, data);

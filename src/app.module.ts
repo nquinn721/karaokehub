@@ -23,6 +23,7 @@ import { ProductionUploadModule } from './production-upload/production-upload.mo
 import { SecurityModule } from './security/security.module';
 import { ShowReviewModule } from './show-review/show-review.module';
 import { ShowModule } from './show/show.module';
+import { StoreModule } from './store/store.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { UploadModule } from './upload/upload.module';
 import { UserFeatureOverrideModule } from './user-feature-override/user-feature-override.module';
@@ -86,6 +87,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     UploadModule,
     ProductionUploadModule,
     SecurityModule,
+    StoreModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -25,6 +25,22 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
       description: '',
       comments: '',
     });
+
+    // Initialize form data when show changes
+    React.useEffect(() => {
+      if (show) {
+        setFormData({
+          djName: show.dj?.name || '',
+          vendorName: show.dj?.vendor?.name || '',
+          venueName:
+            show.venue && typeof show.venue === 'object' ? show.venue.name || '' : show.venue || '',
+          venuePhone: show.venue?.phone || '',
+          venueWebsite: show.venue?.website || '',
+          description: show.description || '',
+          comments: '',
+        });
+      }
+    }, [show]);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -58,12 +74,13 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
 
         setSuccess(true);
         setFormData({
-          djName: '',
-          vendorName: '',
-          venueName: '',
-          venuePhone: '',
-          venueWebsite: '',
-          description: '',
+          djName: show.dj?.name || '',
+          vendorName: show.dj?.vendor?.name || '',
+          venueName:
+            show.venue && typeof show.venue === 'object' ? show.venue.name || '' : show.venue || '',
+          venuePhone: show.venue?.phone || '',
+          venueWebsite: show.venue?.website || '',
+          description: show.description || '',
           comments: '',
         });
 
@@ -83,15 +100,20 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
       if (!loading) {
         onClose();
         setError(null);
-        setFormData({
-          djName: '',
-          vendorName: '',
-          venueName: '',
-          venuePhone: '',
-          venueWebsite: '',
-          description: '',
-          comments: '',
-        });
+        if (show) {
+          setFormData({
+            djName: show.dj?.name || '',
+            vendorName: show.dj?.vendor?.name || '',
+            venueName:
+              show.venue && typeof show.venue === 'object'
+                ? show.venue.name || ''
+                : show.venue || '',
+            venuePhone: show.venue?.phone || '',
+            venueWebsite: show.venue?.website || '',
+            description: show.description || '',
+            comments: '',
+          });
+        }
       }
     };
 
@@ -136,7 +158,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
               label="DJ/Host Name"
               value={formData.djName}
               onChange={handleInputChange('djName')}
-              placeholder={show.dj?.name ? `Currently: ${show.dj.name}` : 'Enter DJ/Host name'}
+              placeholder="Enter DJ/Host name"
               fullWidth
               disabled={loading}
               size="small"
@@ -146,11 +168,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
               label="Vendor/Company Name"
               value={formData.vendorName}
               onChange={handleInputChange('vendorName')}
-              placeholder={
-                show.dj?.vendor?.name
-                  ? `Currently: ${show.dj.vendor.name}`
-                  : 'Enter vendor/company name'
-              }
+              placeholder="Enter vendor/company name"
               fullWidth
               disabled={loading}
               size="small"
@@ -160,7 +178,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
               label="Venue Name"
               value={formData.venueName}
               onChange={handleInputChange('venueName')}
-              placeholder={show.venue ? `Currently: ${(show.venue && typeof show.venue === "object" ? show.venue.name : show.venue) || "Unknown Venue"}` : 'Enter venue name'}
+              placeholder="Enter venue name"
               fullWidth
               disabled={loading}
               size="small"
@@ -170,9 +188,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
               label="Venue Phone"
               value={formData.venuePhone}
               onChange={handleInputChange('venuePhone')}
-              placeholder={
-                show.venue?.phone ? `Currently: ${show.venue.phone}` : 'Enter venue phone number'
-              }
+              placeholder="Enter venue phone number"
               fullWidth
               disabled={loading}
               size="small"
@@ -182,9 +198,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
               label="Venue Website"
               value={formData.venueWebsite}
               onChange={handleInputChange('venueWebsite')}
-              placeholder={
-                show.venue?.website ? `Currently: ${show.venue.website}` : 'Enter venue website URL'
-              }
+              placeholder="Enter venue website URL"
               fullWidth
               disabled={loading}
               size="small"
@@ -194,9 +208,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
               label="Description"
               value={formData.description}
               onChange={handleInputChange('description')}
-              placeholder={
-                show.description ? `Currently: ${show.description}` : 'Enter show description'
-              }
+              placeholder="Enter show description"
               multiline
               rows={2}
               fullWidth

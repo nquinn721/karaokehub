@@ -5,11 +5,22 @@ import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
 import { Feedback } from '../feedback/feedback.entity';
+import { GeocodingService } from '../geocoding/geocoding.service';
 import { ParsedSchedule, ParseStatus } from '../parser/parsed-schedule.entity';
 import { ReviewStatus, ShowReview } from '../show-review/show-review.entity';
 import { Show } from '../show/show.entity';
 import { Vendor } from '../vendor/vendor.entity';
 import { Venue } from '../venue/venue.entity';
+
+interface VenueVerificationResult {
+  success: boolean;
+  message: string;
+  venue: Venue;
+  originalData?: any;
+  updatedFields?: string[];
+  geocodeResult?: any;
+  error?: string;
+}
 
 @Injectable()
 export class AdminService {
@@ -32,6 +43,7 @@ export class AdminService {
     private feedbackRepository: Repository<Feedback>,
     @InjectRepository(ShowReview)
     private showReviewRepository: Repository<ShowReview>,
+    private geocodingService: GeocodingService,
   ) {}
 
   async getStatistics() {
@@ -1069,5 +1081,100 @@ export class AdminService {
       removedCount: shows.length - uniqueShows.length,
       message: `Removed ${shows.length - uniqueShows.length} duplicate shows. ${uniqueShows.length} unique shows remain.`,
     };
+  }
+
+  /**
+   * Verify and update venue location data using Gemini AI
+   */
+  async verifyVenueLocation(venueId: string): Promise<VenueVerificationResult> {
+    const venue = await this.venueRepository.findOne({
+      where: { id: venueId },
+      relations: ['shows'],
+    });
+
+    if (!venue) {
+      throw new Error('Venue not found');
+    }
+
+    // Build address string for geocoding
+    const addressParts = [venue.name, venue.address, venue.city, venue.state, venue.zip]
+      .filter(Boolean)
+      .join(', ');
+
+    if (!addressParts.trim()) {
+      return {
+        success: false,
+        message: 'No address information available for geocoding',
+        venue: venue,
+      };
+    }
+
+    try {
+      // Use Gemini AI to verify and correct the location
+      const geocodeResult = await this.geocodingService.geocodeAddressHybrid(addressParts);
+
+      if (!geocodeResult) {
+        return {
+          success: false,
+          message: 'Unable to geocode venue address',
+          venue: venue,
+        };
+      }
+
+      const updatedFields = [];
+      const originalData = { ...venue };
+
+      // Update coordinates if they're missing or significantly different
+      if (
+        !venue.lat ||
+        !venue.lng ||
+        Math.abs(venue.lat - geocodeResult.lat) > 0.01 ||
+        Math.abs(venue.lng - geocodeResult.lng) > 0.01
+      ) {
+        venue.lat = geocodeResult.lat;
+        venue.lng = geocodeResult.lng;
+        updatedFields.push('coordinates');
+      }
+
+      // Update city, state, zip if they're missing or different
+      if (geocodeResult.city && (!venue.city || venue.city !== geocodeResult.city)) {
+        venue.city = geocodeResult.city;
+        updatedFields.push('city');
+      }
+
+      if (geocodeResult.state && (!venue.state || venue.state !== geocodeResult.state)) {
+        venue.state = geocodeResult.state;
+        updatedFields.push('state');
+      }
+
+      if (geocodeResult.zip && (!venue.zip || venue.zip !== geocodeResult.zip)) {
+        venue.zip = geocodeResult.zip;
+        updatedFields.push('zip');
+      }
+
+      // Save changes if any were made
+      if (updatedFields.length > 0) {
+        await this.venueRepository.save(venue);
+      }
+
+      return {
+        success: true,
+        message:
+          updatedFields.length > 0
+            ? `Updated venue location data: ${updatedFields.join(', ')}`
+            : 'Venue location data is already accurate',
+        venue: venue,
+        originalData: originalData,
+        updatedFields: updatedFields,
+        geocodeResult: geocodeResult,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Error verifying venue location: ${error.message}`,
+        venue: venue,
+        error: error.message,
+      };
+    }
   }
 }

@@ -7,6 +7,7 @@ import {
   faEdit,
   faExclamationTriangle,
   faEye,
+  faGlobe,
   faMapMarkerAlt,
   faMicrophone,
   faMusic,
@@ -294,6 +295,9 @@ const AdminDataTables: React.FC = observer(() => {
 
   // Show cleanup state
   const [showCleanupResults, setShowCleanupResults] = useState<any>(null);
+
+  // Geo verification state
+  const [geoVerifying, setGeoVerifying] = useState<string | null>(null);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -599,6 +603,38 @@ const AdminDataTables: React.FC = observer(() => {
       uiStore.addNotification('Show cleanup completed successfully!', 'success');
     } catch (error: any) {
       uiStore.addNotification('Error during show cleanup: ' + (error?.message || error), 'error');
+    }
+  };
+
+  const handleVerifyVenueLocation = async (show: AdminShow) => {
+    if (!show.venue || typeof show.venue !== 'object' || !show.venue.id) {
+      uiStore.addNotification('No venue ID available for geo verification', 'error');
+      return;
+    }
+
+    setGeoVerifying(show.venue.id);
+    try {
+      uiStore.addNotification('Verifying venue location with Gemini AI...', 'info');
+      const result = await adminStore.verifyVenueLocation(show.venue.id);
+
+      if (result.success) {
+        if (result.updatedFields && result.updatedFields.length > 0) {
+          uiStore.addNotification(`✅ ${result.message}. Refreshing data...`, 'success');
+          // Refresh the shows data to reflect the updates
+          await fetchData('shows', pages.shows || 0);
+        } else {
+          uiStore.addNotification(`✅ ${result.message}`, 'success');
+        }
+      } else {
+        uiStore.addNotification(`⚠️ ${result.message}`, 'warning');
+      }
+    } catch (error: any) {
+      uiStore.addNotification(
+        `❌ Failed to verify venue location: ${error?.message || error}`,
+        'error',
+      );
+    } finally {
+      setGeoVerifying(null);
     }
   };
 
@@ -1364,6 +1400,26 @@ const AdminDataTables: React.FC = observer(() => {
                     <TableCell>{new Date(show.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Tooltip title="Verify Location with AI">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleVerifyVenueLocation(show)}
+                            disabled={
+                              geoVerifying ===
+                              (show.venue && typeof show.venue === 'object' ? show.venue.id : null)
+                            }
+                            color="info"
+                          >
+                            {geoVerifying ===
+                            (show.venue && typeof show.venue === 'object'
+                              ? show.venue.id
+                              : null) ? (
+                              <CircularProgress size={16} />
+                            ) : (
+                              <FontAwesomeIcon icon={faGlobe} size="sm" />
+                            )}
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Edit">
                           <IconButton
                             size="small"

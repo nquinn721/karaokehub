@@ -80,6 +80,15 @@ export class AuthService {
       stageName,
     });
 
+    // Assign basic microphones to new user
+    try {
+      await this.avatarService.assignBasicMicrophones(user.id);
+      console.log(`✅ Assigned basic microphones to new user ${user.id}`);
+    } catch (error) {
+      console.error(`❌ Failed to assign basic microphones to user ${user.id}:`, error);
+      // Don't fail registration if microphone assignment fails
+    }
+
     // Generate JWT token
     const token = this.generateToken(user);
 
@@ -140,9 +149,9 @@ export class AuthService {
         // 1. It's not the default avatar_1
         // 2. It's not an OAuth provider URL (starts with http)
         // 3. It follows our avatar naming pattern (avatar_X where X > 1)
-        const isDefault = currentAvatar.baseAvatarId === 'avatar_1';
-        const isOAuthUrl = currentAvatar.baseAvatarId.startsWith('http');
-        const isCustomAvatarId = /^avatar_([2-9]|\d{2,})$/.test(currentAvatar.baseAvatarId);
+        const isDefault = currentAvatar.avatarId === 'avatar_1';
+        const isOAuthUrl = currentAvatar.avatarId.startsWith('http');
+        const isCustomAvatarId = /^avatar_([2-9]|\d{2,})$/.test(currentAvatar.avatarId);
 
         return !isDefault && (isCustomAvatarId || !isOAuthUrl);
       } catch (error) {
@@ -218,6 +227,18 @@ export class AuthService {
           email: user.email,
         });
 
+        // Assign basic microphones to new OAuth user
+        try {
+          await this.avatarService.assignBasicMicrophones(user.id);
+          console.log(`✅ Assigned basic microphones to new OAuth user ${user.id}`);
+        } catch (micError) {
+          console.error(
+            `❌ Failed to assign basic microphones to OAuth user ${user.id}:`,
+            micError,
+          );
+          // Don't fail OAuth registration if microphone assignment fails
+        }
+
         // Create avatar from provider photo if available
         const providerAvatar = photos?.[0]?.value;
         if (providerAvatar) {
@@ -267,12 +288,12 @@ export class AuthService {
             const userHasCustomAvatar = await hasCustomAvatar(user.id);
             if (!userHasCustomAvatar) {
               const currentAvatar = await this.avatarService.getUserAvatar(user.id);
-              if (!currentAvatar || currentAvatar.baseAvatarId !== providerAvatar) {
+              if (!currentAvatar || currentAvatar.avatarId !== providerAvatar) {
                 await this.avatarService.updateUserAvatar(user.id, {
                   baseAvatarId: providerAvatar,
                 });
                 console.log('🔍 [AUTH_SERVICE] Updated avatar from Facebook (no custom avatar):', {
-                  oldAvatar: currentAvatar?.baseAvatarId || 'none',
+                  oldAvatar: currentAvatar?.avatarId || 'none',
                   newAvatar: providerAvatar,
                 });
               }
@@ -311,7 +332,7 @@ export class AuthService {
             const userHasCustomAvatar = await hasCustomAvatar(user.id);
             if (!userHasCustomAvatar) {
               const currentAvatar = await this.avatarService.getUserAvatar(user.id);
-              if (!currentAvatar || currentAvatar.baseAvatarId !== providerAvatar) {
+              if (!currentAvatar || currentAvatar.avatarId !== providerAvatar) {
                 await this.avatarService.updateUserAvatar(user.id, {
                   baseAvatarId: providerAvatar,
                 });
@@ -319,7 +340,7 @@ export class AuthService {
                   '🔍 [AUTH_SERVICE] Updated user avatar for same provider (no custom avatar):',
                   {
                     provider,
-                    oldAvatar: currentAvatar?.baseAvatarId || 'none',
+                    oldAvatar: currentAvatar?.avatarId || 'none',
                     newAvatar: providerAvatar,
                   },
                 );
@@ -348,7 +369,7 @@ export class AuthService {
             const userHasCustomAvatar = await hasCustomAvatar(user.id);
             if (!userHasCustomAvatar) {
               const currentAvatar = await this.avatarService.getUserAvatar(user.id);
-              if (!currentAvatar || currentAvatar.baseAvatarId !== providerAvatar) {
+              if (!currentAvatar || currentAvatar.avatarId !== providerAvatar) {
                 await this.avatarService.updateUserAvatar(user.id, {
                   baseAvatarId: providerAvatar,
                 });
@@ -439,10 +460,10 @@ export class AuthService {
             const userAvatar = await this.avatarService.getUserAvatar(existingUser.id);
             const isCustomAvatar =
               userAvatar &&
-              !userAvatar.baseAvatarId?.startsWith('http') &&
-              !userAvatar.baseAvatarId?.includes('googleusercontent') &&
-              !userAvatar.baseAvatarId?.includes('facebook') &&
-              !userAvatar.baseAvatarId?.includes('github');
+              !userAvatar.avatarId?.startsWith('http') &&
+              !userAvatar.avatarId?.includes('googleusercontent') &&
+              !userAvatar.avatarId?.includes('facebook') &&
+              !userAvatar.avatarId?.includes('github');
 
             if (!isCustomAvatar) {
               await this.avatarService.updateUserAvatar(existingUser.id, {
@@ -467,6 +488,20 @@ export class AuthService {
           providerId: googleId,
           // No password for OAuth users
         });
+
+        // Assign basic microphones to new Google One-Tap user
+        try {
+          await this.avatarService.assignBasicMicrophones(existingUser.id);
+          console.log(
+            `✅ Assigned basic microphones to new Google One-Tap user ${existingUser.id}`,
+          );
+        } catch (micError) {
+          console.error(
+            `❌ Failed to assign basic microphones to Google One-Tap user ${existingUser.id}:`,
+            micError,
+          );
+          // Don't fail registration if microphone assignment fails
+        }
 
         isNewUser = true;
       }

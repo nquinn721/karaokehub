@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ApiLog } from '../api-logging/api-log.entity';
+import { Avatar } from '../avatar/entities/avatar.entity';
 import { Microphone } from '../avatar/entities/microphone.entity';
 import { Outfit } from '../avatar/entities/outfit.entity';
 import { Shoes } from '../avatar/entities/shoes.entity';
@@ -20,6 +21,8 @@ import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { UrlToParse } from '../parser/url-to-parse.entity';
 import { ShowReview } from '../show-review/show-review.entity';
 import { Show } from '../show/show.entity';
+import { CoinPackage } from '../store/entities/coin-package.entity';
+import { Transaction } from '../store/entities/transaction.entity';
 import { Subscription } from '../subscription/subscription.entity';
 import { UserFeatureOverride } from '../user-feature-override/user-feature-override.entity';
 import { Vendor } from '../vendor/vendor.entity';
@@ -54,6 +57,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       UserFeatureOverride,
       ApiLog,
       // Avatar system entities
+      Avatar,
       UserAvatar,
       Microphone,
       Outfit,
@@ -61,6 +65,9 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       UserMicrophone,
       UserOutfit,
       UserShoes,
+      // Store system entities
+      CoinPackage,
+      Transaction,
     ],
     synchronize: true, // Enable sync if explicitly set or in development
     logging: false, // Turn off SQL logging completely

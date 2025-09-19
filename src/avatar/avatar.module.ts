@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 // Entities
+import { User } from '../entities/user.entity';
+import { Avatar } from './entities/avatar.entity';
 import { Microphone } from './entities/microphone.entity';
 import { Outfit } from './entities/outfit.entity';
 import { Shoes } from './entities/shoes.entity';
@@ -25,6 +27,7 @@ import { ShoesController } from './controllers/shoes.controller';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
+      Avatar,
       UserAvatar,
       Microphone,
       Outfit,
@@ -32,6 +35,7 @@ import { ShoesController } from './controllers/shoes.controller';
       UserMicrophone,
       UserOutfit,
       UserShoes,
+      User,
     ]),
   ],
   controllers: [AvatarController, MicrophoneController, OutfitController, ShoesController],
