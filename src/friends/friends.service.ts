@@ -274,7 +274,7 @@ export class FriendsService {
         stageName: friendship.friend.stageName,
         userAvatar: friendship.friend.equippedAvatar
           ? {
-              baseAvatarId: friendship.friend.equippedAvatarId,
+              baseAvatarId: friendship.friend.equippedAvatar.id,
               microphone: friendship.friend.equippedMicrophone,
               outfit: null, // These are legacy fields, set to null for now
               shoes: null,

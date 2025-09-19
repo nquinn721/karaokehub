@@ -38,7 +38,7 @@ const AvatarDisplay: React.FC<AvatarDisplayProps> = ({
     >
       {/* Base Avatar */}
       <img
-        src={`/avatar/${avatarId}.png`}
+        src={`/images/avatar/${avatarId}.png`}
         alt="Avatar"
         style={{
           position: 'absolute',
@@ -51,14 +51,14 @@ const AvatarDisplay: React.FC<AvatarDisplayProps> = ({
         }}
         onError={(e) => {
           // Fallback to default avatar if image fails to load
-          (e.target as HTMLImageElement).src = `/avatar/${fallbackAvatarId}.png`;
+          (e.target as HTMLImageElement).src = `/images/avatar/${fallbackAvatarId}.png`;
         }}
       />
 
       {/* Additional avatar accessories could be layered here in the future */}
       {userAvatar?.microphone && (
         <img
-          src={`/avatar/microphones/${userAvatar.microphone.imagePath || 'mic_basic.png'}`}
+          src={`/images/avatar/parts/microphones/${userAvatar.microphone.imagePath || 'mic_basic_1.png'}`}
           alt="Microphone"
           style={{
             position: 'absolute',
@@ -77,7 +77,7 @@ const AvatarDisplay: React.FC<AvatarDisplayProps> = ({
 
       {userAvatar?.outfit && (
         <img
-          src={`/avatar/outfits/${userAvatar.outfit.imagePath || 'outfit_casual.png'}`}
+          src={`/images/avatar/parts/outfits/${userAvatar.outfit.imagePath || 'outfit_casual.png'}`}
           alt="Outfit"
           style={{
             position: 'absolute',
@@ -96,7 +96,7 @@ const AvatarDisplay: React.FC<AvatarDisplayProps> = ({
 
       {userAvatar?.shoes && (
         <img
-          src={`/avatar/shoes/${userAvatar.shoes.imagePath || 'shoes_sneakers.png'}`}
+          src={`/images/avatar/parts/shoes/${userAvatar.shoes.imagePath || 'shoes_sneakers.png'}`}
           alt="Shoes"
           style={{
             position: 'absolute',

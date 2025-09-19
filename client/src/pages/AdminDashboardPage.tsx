@@ -5,6 +5,7 @@ import DataUploadModal from '@components/DataUploadModal';
 import LocationTrackingModal from '@components/modals/LocationTrackingModal';
 import ShowAnalytics from '@components/ShowAnalytics';
 import SpriteCutter from '@components/SpriteCutter';
+import StoreItemGenerator from '@components/StoreItemGenerator';
 import UrlApprovalComponent from '@components/UrlApprovalComponent';
 import {
   faBars,
@@ -15,6 +16,7 @@ import {
   faGlobe,
   faHome,
   faLocationArrow,
+  faPalette,
   faPlus,
   faRobot,
   faSync,
@@ -129,6 +131,7 @@ const AdminDashboardPageTabbed = observer(() => {
       icon: faDatabase,
       description: 'Manage platform data and content',
       component: <AdminDataTables />,
+      category: 'data',
     },
     {
       id: 1,
@@ -136,6 +139,7 @@ const AdminDashboardPageTabbed = observer(() => {
       icon: faChartBar,
       description: 'Visualize show statistics and data insights',
       component: <ShowAnalytics />,
+      category: 'analytics',
     },
     {
       id: 2,
@@ -143,6 +147,7 @@ const AdminDashboardPageTabbed = observer(() => {
       icon: faGlobe,
       description: 'Review and approve submitted URLs',
       component: <UrlApprovalComponent onCountChange={setUrlApprovalCount} />,
+      category: 'content',
     },
     {
       id: 3,
@@ -150,13 +155,23 @@ const AdminDashboardPageTabbed = observer(() => {
       icon: faRobot,
       description: 'Monitor iTunes API usage and rate limiting',
       component: <ApiLogsMonitor />,
+      category: 'monitoring',
     },
     {
       id: 4,
-      title: 'Sprite Cutter',
+      title: 'Avatar Tools',
       icon: faCut,
-      description: 'Cut sprite sheets into individual avatars with background removal',
+      description: 'Avatar management and image processing tools',
       component: <SpriteCutter />,
+      category: 'avatars',
+    },
+    {
+      id: 5,
+      title: 'Store Generator',
+      icon: faPalette,
+      description: 'Generate avatar store items using AI image generation',
+      component: <StoreItemGenerator />,
+      category: 'avatars',
     },
   ];
 
@@ -317,72 +332,244 @@ const AdminDashboardPageTabbed = observer(() => {
             </Box>
 
             <List sx={{ px: 2, py: 1 }}>
-              {adminSections.map((section) => (
-                <ListItem key={section.id} disablePadding sx={{ mb: 1 }}>
-                  <ListItemButton
-                    selected={tabValue === section.id}
-                    onClick={() => handleTabChange({} as React.SyntheticEvent, section.id)}
-                    sx={{
-                      borderRadius: 2,
-                      py: 2,
-                      '&.Mui-selected': {
-                        bgcolor: alpha(theme.palette.primary.main, 0.2),
-                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.25) },
-                      },
-                      '&:hover': {
-                        bgcolor:
-                          theme.palette.mode === 'dark'
-                            ? alpha(theme.palette.common.white, 0.05)
-                            : alpha(theme.palette.common.white, 0.1),
-                      },
-                    }}
-                  >
-                    <ListItemIcon
+              {/* Data & Analytics Group */}
+              <Typography
+                variant="overline"
+                sx={{
+                  display: 'block',
+                  px: 2,
+                  py: 1,
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  color:
+                    theme.palette.mode === 'dark'
+                      ? theme.palette.text.secondary
+                      : alpha(theme.palette.common.white, 0.7),
+                }}
+              >
+                Data & Analytics
+              </Typography>
+              {adminSections
+                .filter((section) => ['data', 'analytics'].includes(section.category))
+                .map((section) => (
+                  <ListItem key={section.id} disablePadding sx={{ mb: 1 }}>
+                    <ListItemButton
+                      selected={tabValue === section.id}
+                      onClick={() => handleTabChange({} as React.SyntheticEvent, section.id)}
                       sx={{
-                        color:
-                          tabValue === section.id
-                            ? theme.palette.primary.main
-                            : theme.palette.mode === 'dark'
-                              ? theme.palette.text.secondary
-                              : alpha(theme.palette.common.white, 0.7),
-                        minWidth: 40,
+                        borderRadius: 2,
+                        py: 2,
+                        '&.Mui-selected': {
+                          bgcolor: alpha(theme.palette.primary.main, 0.2),
+                          '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.25) },
+                        },
+                        '&:hover': {
+                          bgcolor:
+                            theme.palette.mode === 'dark'
+                              ? alpha(theme.palette.common.white, 0.05)
+                              : alpha(theme.palette.common.white, 0.1),
+                        },
                       }}
                     >
-                      <FontAwesomeIcon icon={section.icon} />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={section.title}
-                      secondary={section.description}
-                      primaryTypographyProps={{
-                        fontWeight: tabValue === section.id ? 600 : 400,
-                        color:
-                          tabValue === section.id
-                            ? theme.palette.primary.main
-                            : theme.palette.mode === 'dark'
-                              ? theme.palette.text.primary
-                              : theme.palette.common.white,
-                      }}
-                      secondaryTypographyProps={{
-                        fontSize: '0.75rem',
-                        color:
-                          theme.palette.mode === 'dark'
-                            ? theme.palette.text.secondary
-                            : alpha(theme.palette.common.white, 0.6),
-                      }}
-                    />
-                    {tabValue === section.id && (
-                      <FontAwesomeIcon
-                        icon={faChevronRight}
-                        style={{
-                          fontSize: '12px',
-                          color: theme.palette.primary.main,
-                          marginLeft: '8px',
+                      <ListItemIcon
+                        sx={{
+                          color:
+                            tabValue === section.id
+                              ? theme.palette.primary.main
+                              : theme.palette.mode === 'dark'
+                                ? theme.palette.text.secondary
+                                : alpha(theme.palette.common.white, 0.7),
+                          minWidth: 40,
+                        }}
+                      >
+                        <FontAwesomeIcon icon={section.icon} />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={section.title}
+                        primaryTypographyProps={{
+                          fontWeight: tabValue === section.id ? 600 : 400,
+                          fontSize: '0.9rem',
+                          color:
+                            tabValue === section.id
+                              ? theme.palette.primary.main
+                              : theme.palette.mode === 'dark'
+                                ? theme.palette.text.primary
+                                : theme.palette.common.white,
                         }}
                       />
-                    )}
-                  </ListItemButton>
-                </ListItem>
-              ))}
+                      {tabValue === section.id && (
+                        <FontAwesomeIcon
+                          icon={faChevronRight}
+                          style={{
+                            fontSize: '12px',
+                            color: theme.palette.primary.main,
+                            marginLeft: '8px',
+                          }}
+                        />
+                      )}
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+
+              {/* Content & Monitoring Group */}
+              <Typography
+                variant="overline"
+                sx={{
+                  display: 'block',
+                  px: 2,
+                  py: 1,
+                  mt: 2,
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  color:
+                    theme.palette.mode === 'dark'
+                      ? theme.palette.text.secondary
+                      : alpha(theme.palette.common.white, 0.7),
+                }}
+              >
+                Content & Monitoring
+              </Typography>
+              {adminSections
+                .filter((section) => ['content', 'monitoring'].includes(section.category))
+                .map((section) => (
+                  <ListItem key={section.id} disablePadding sx={{ mb: 1 }}>
+                    <ListItemButton
+                      selected={tabValue === section.id}
+                      onClick={() => handleTabChange({} as React.SyntheticEvent, section.id)}
+                      sx={{
+                        borderRadius: 2,
+                        py: 2,
+                        '&.Mui-selected': {
+                          bgcolor: alpha(theme.palette.primary.main, 0.2),
+                          '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.25) },
+                        },
+                        '&:hover': {
+                          bgcolor:
+                            theme.palette.mode === 'dark'
+                              ? alpha(theme.palette.common.white, 0.05)
+                              : alpha(theme.palette.common.white, 0.1),
+                        },
+                      }}
+                    >
+                      <ListItemIcon
+                        sx={{
+                          color:
+                            tabValue === section.id
+                              ? theme.palette.primary.main
+                              : theme.palette.mode === 'dark'
+                                ? theme.palette.text.secondary
+                                : alpha(theme.palette.common.white, 0.7),
+                          minWidth: 40,
+                        }}
+                      >
+                        <FontAwesomeIcon icon={section.icon} />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={section.title}
+                        primaryTypographyProps={{
+                          fontWeight: tabValue === section.id ? 600 : 400,
+                          fontSize: '0.9rem',
+                          color:
+                            tabValue === section.id
+                              ? theme.palette.primary.main
+                              : theme.palette.mode === 'dark'
+                                ? theme.palette.text.primary
+                                : theme.palette.common.white,
+                        }}
+                      />
+                      {tabValue === section.id && (
+                        <FontAwesomeIcon
+                          icon={faChevronRight}
+                          style={{
+                            fontSize: '12px',
+                            color: theme.palette.primary.main,
+                            marginLeft: '8px',
+                          }}
+                        />
+                      )}
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+
+              {/* Avatar Tools Group */}
+              <Typography
+                variant="overline"
+                sx={{
+                  display: 'block',
+                  px: 2,
+                  py: 1,
+                  mt: 2,
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  color:
+                    theme.palette.mode === 'dark'
+                      ? theme.palette.text.secondary
+                      : alpha(theme.palette.common.white, 0.7),
+                }}
+              >
+                Avatar Tools
+              </Typography>
+              {adminSections
+                .filter((section) => section.category === 'avatars')
+                .map((section) => (
+                  <ListItem key={section.id} disablePadding sx={{ mb: 1 }}>
+                    <ListItemButton
+                      selected={tabValue === section.id}
+                      onClick={() => handleTabChange({} as React.SyntheticEvent, section.id)}
+                      sx={{
+                        borderRadius: 2,
+                        py: 2,
+                        '&.Mui-selected': {
+                          bgcolor: alpha(theme.palette.primary.main, 0.2),
+                          '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.25) },
+                        },
+                        '&:hover': {
+                          bgcolor:
+                            theme.palette.mode === 'dark'
+                              ? alpha(theme.palette.common.white, 0.05)
+                              : alpha(theme.palette.common.white, 0.1),
+                        },
+                      }}
+                    >
+                      <ListItemIcon
+                        sx={{
+                          color:
+                            tabValue === section.id
+                              ? theme.palette.primary.main
+                              : theme.palette.mode === 'dark'
+                                ? theme.palette.text.secondary
+                                : alpha(theme.palette.common.white, 0.7),
+                          minWidth: 40,
+                        }}
+                      >
+                        <FontAwesomeIcon icon={section.icon} />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={section.title}
+                        primaryTypographyProps={{
+                          fontWeight: tabValue === section.id ? 600 : 400,
+                          fontSize: '0.9rem',
+                          color:
+                            tabValue === section.id
+                              ? theme.palette.primary.main
+                              : theme.palette.mode === 'dark'
+                                ? theme.palette.text.primary
+                                : theme.palette.common.white,
+                        }}
+                      />
+                      {tabValue === section.id && (
+                        <FontAwesomeIcon
+                          icon={faChevronRight}
+                          style={{
+                            fontSize: '12px',
+                            color: theme.palette.primary.main,
+                            marginLeft: '8px',
+                          }}
+                        />
+                      )}
+                    </ListItemButton>
+                  </ListItem>
+                ))}
             </List>
 
             <Divider
@@ -698,14 +885,16 @@ const AdminDashboardPageTabbed = observer(() => {
                 <Tabs
                   value={tabValue}
                   onChange={handleTabChange}
-                  variant="fullWidth"
+                  variant="scrollable"
+                  scrollButtons="auto"
                   sx={{
                     '& .MuiTab-root': {
                       minHeight: 70,
                       fontWeight: 600,
                       textTransform: 'none',
-                      fontSize: '1rem',
+                      fontSize: '0.95rem',
                       py: 2,
+                      minWidth: 140,
                     },
                     '& .Mui-selected': {
                       color: theme.palette.primary.main,
@@ -746,7 +935,7 @@ const AdminDashboardPageTabbed = observer(() => {
                         <FontAwesomeIcon icon={faGlobe} />
                       </Badge>
                     }
-                    label="URL Approval Queue"
+                    label="URL Approval"
                     iconPosition="start"
                     sx={{ gap: 1 }}
                   />
@@ -758,7 +947,13 @@ const AdminDashboardPageTabbed = observer(() => {
                   />
                   <Tab
                     icon={<FontAwesomeIcon icon={faCut} />}
-                    label="Sprite Cutter"
+                    label="Avatar Tools"
+                    iconPosition="start"
+                    sx={{ gap: 1 }}
+                  />
+                  <Tab
+                    icon={<FontAwesomeIcon icon={faPalette} />}
+                    label="Store Generator"
                     iconPosition="start"
                     sx={{ gap: 1 }}
                   />
@@ -785,6 +980,10 @@ const AdminDashboardPageTabbed = observer(() => {
 
             <TabPanel value={tabValue} index={4}>
               <SpriteCutter />
+            </TabPanel>
+
+            <TabPanel value={tabValue} index={5}>
+              <StoreItemGenerator />
             </TabPanel>
           </Paper>
         </Box>
