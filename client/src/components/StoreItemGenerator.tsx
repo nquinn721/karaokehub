@@ -145,7 +145,9 @@ const StoreItemGenerator: React.FC = observer(() => {
 
     // Allow generation with just custom prompt (no base image required)
     if (!baseImage && (!settings.customPrompt || !settings.customPrompt.trim())) {
-      storeGenerationStore.setError('Please either select/upload a base image OR enter a custom prompt');
+      storeGenerationStore.setError(
+        'Please either select/upload a base image OR enter a custom prompt',
+      );
       return;
     }
 
@@ -654,7 +656,11 @@ const StoreItemGenerator: React.FC = observer(() => {
                 <Button
                   variant="contained"
                   onClick={handleGenerate}
-                  disabled={(!getCurrentBaseImage() && (!settings.customPrompt || !settings.customPrompt.trim())) || storeGenerationStore.isLoading}
+                  disabled={
+                    (!getCurrentBaseImage() &&
+                      (!settings.customPrompt || !settings.customPrompt.trim())) ||
+                    storeGenerationStore.isLoading
+                  }
                   sx={{ minWidth: 150 }}
                   startIcon={
                     storeGenerationStore.isLoading ? (

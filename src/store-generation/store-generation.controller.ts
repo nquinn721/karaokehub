@@ -44,7 +44,10 @@ export class StoreGenerationController {
     try {
       // Validate request - require either base image OR custom prompt
       if (!request.baseImage && (!request.customPrompt || !request.customPrompt.trim())) {
-        throw new HttpException('Either base image or custom prompt is required for generation', HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          'Either base image or custom prompt is required for generation',
+          HttpStatus.BAD_REQUEST,
+        );
       }
 
       if (!request.itemType) {

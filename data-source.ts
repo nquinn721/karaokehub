@@ -1,5 +1,6 @@
 import { DataSource } from 'typeorm';
 import { ApiLog } from './src/api-logging/api-log.entity';
+import { Avatar } from './src/avatar/entities/avatar.entity';
 import { Microphone } from './src/avatar/entities/microphone.entity';
 import { Outfit } from './src/avatar/entities/outfit.entity';
 import { Shoes } from './src/avatar/entities/shoes.entity';
@@ -50,6 +51,7 @@ export default new DataSource({
     ShowReview,
     ApiLog,
     // Avatar system entities
+    Avatar,
     UserAvatar,
     Microphone,
     Outfit,

@@ -1,11 +1,14 @@
 import {
   faCog,
   faDownload,
+  faEraser,
   faFileArchive,
   faFileImage,
   faMagic,
+  faSun,
   faTh,
   faTimes,
+  faUndo,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -46,6 +49,11 @@ const SpriteCutter: React.FC = observer(() => {
   const [processedAvatars, setProcessedAvatars] = useState<ProcessedAvatar[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isRemovingBackgrounds, setIsRemovingBackgrounds] = useState(false);
+  const [originalUnmodifiedImage, setOriginalUnmodifiedImage] = useState<HTMLImageElement | null>(
+    null,
+  );
+  const [originalFileName, setOriginalFileName] = useState<string>('');
 
   // Configuration
   const [columns, setColumns] = useState(5);
@@ -80,11 +88,15 @@ const SpriteCutter: React.FC = observer(() => {
       return;
     }
 
+    // Store original filename
+    setOriginalFileName(file.name.split('.')[0]);
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
         setOriginalImage(img);
+        setOriginalUnmodifiedImage(img); // Store unmodified copy
         setProcessedAvatars([]); // Clear previous results
       };
       img.src = e.target?.result as string;
@@ -330,6 +342,219 @@ const SpriteCutter: React.FC = observer(() => {
       alert('Error creating ZIP file. Please try individual downloads.');
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  // Function to save processed sprite (renamed from "Save Sprite" to "Save As")
+  const saveProcessedSprite = () => {
+    if (!originalImage) {
+      alert('Please upload a sprite sheet first!');
+      return;
+    }
+
+    // Prompt user for custom base name
+    const customBaseName = prompt('Enter base name for the file:', originalFileName || baseName);
+    if (!customBaseName) {
+      return; // User cancelled
+    }
+
+    // Create download link
+    const link = document.createElement('a');
+    link.download = `${customBaseName}.png`;
+    link.href = originalImage.src;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    alert(`✅ Saved original sprite as "${customBaseName}.png"!`);
+  };
+
+  // Function to undo changes to original image
+  const undoChanges = () => {
+    if (!originalUnmodifiedImage) {
+      alert('No original image to restore!');
+      return;
+    }
+
+    setOriginalImage(originalUnmodifiedImage);
+    alert('✅ Image restored to original state!');
+  };
+
+  // Function to remove background from the original sprite image
+  const removeBackgroundsFromAvatars = async () => {
+    if (!originalImage) {
+      alert('Please upload a sprite sheet first!');
+      return;
+    }
+
+    setIsRemovingBackgrounds(true);
+
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('Could not get canvas context');
+      }
+
+      canvas.width = originalImage.width;
+      canvas.height = originalImage.height;
+      ctx.drawImage(originalImage, 0, 0);
+
+      // Get image data
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      // Sample corner pixels to find background color
+      // const corners = [
+      //   [0, 0],
+      //   [canvas.width - 1, 0],
+      //   [0, canvas.height - 1],
+      //   [canvas.width - 1, canvas.height - 1],
+      // ];
+
+      let bgColor = [255, 255, 255]; // Default to white
+      const tolerance = 50;
+
+      // Use first corner as background color
+      const firstCornerIndex = 0;
+      bgColor = [data[firstCornerIndex], data[firstCornerIndex + 1], data[firstCornerIndex + 2]];
+
+      // Remove background
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        const colorDistance = Math.sqrt(
+          Math.pow(r - bgColor[0], 2) + Math.pow(g - bgColor[1], 2) + Math.pow(b - bgColor[2], 2),
+        );
+
+        if (colorDistance <= tolerance) {
+          data[i + 3] = 0; // Set alpha to 0 (transparent)
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+
+      // Create new image from canvas
+      const newImg = new Image();
+      newImg.onload = () => {
+        setOriginalImage(newImg);
+        alert('✅ Background removed from sprite sheet!');
+      };
+      newImg.src = canvas.toDataURL();
+    } catch (error) {
+      console.error('Error removing background:', error);
+      alert('❌ Failed to remove background. Please try again.');
+    } finally {
+      setIsRemovingBackgrounds(false);
+    }
+  };
+
+  // Function to remove shadows from the original sprite image
+  const removeShadowsFromAvatars = async () => {
+    if (!originalImage) {
+      alert('Please upload a sprite sheet first!');
+      return;
+    }
+
+    setIsRemovingBackgrounds(true);
+
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('Could not get canvas context');
+      }
+
+      canvas.width = originalImage.width;
+      canvas.height = originalImage.height;
+      ctx.drawImage(originalImage, 0, 0);
+
+      // Get image data
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      // Enhanced shadow detection algorithm
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const a = data[i + 3];
+
+        // Skip already transparent pixels
+        if (a === 0) continue;
+
+        // Calculate luminance
+        const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        // Calculate saturation to preserve colored clothing
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const saturation = max === 0 ? 0 : (max - min) / max;
+
+        // Enhanced shadow detection criteria
+        const isDarkEnough = luminance < 80; // Darker threshold
+        const hasLowSaturation = saturation < 0.3; // Low saturation indicates shadow
+        const hasLowVariance = Math.abs(r - g) < 20 && Math.abs(g - b) < 20 && Math.abs(r - b) < 20;
+
+        // Multi-layer validation for shadow detection
+        const isLikelyShadow = isDarkEnough && hasLowSaturation && hasLowVariance;
+
+        // Additional context check - examine surrounding pixels for validation
+        const x = (i / 4) % canvas.width;
+        const y = Math.floor(i / 4 / canvas.width);
+
+        let shadowConfidence = 0;
+
+        // Check nearby pixels to confirm shadow characteristics
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx;
+            const ny = y + dy;
+
+            if (nx >= 0 && nx < canvas.width && ny >= 0 && ny < canvas.height) {
+              const ni = (ny * canvas.width + nx) * 4;
+              const nr = data[ni];
+              const ng = data[ni + 1];
+              const nb = data[ni + 2];
+
+              const nLuminance = 0.299 * nr + 0.587 * ng + 0.114 * nb;
+              const nMax = Math.max(nr, ng, nb);
+              const nMin = Math.min(nr, ng, nb);
+              const nSaturation = nMax === 0 ? 0 : (nMax - nMin) / nMax;
+
+              if (nLuminance < 80 && nSaturation < 0.3) {
+                shadowConfidence++;
+              }
+            }
+          }
+        }
+
+        // Only remove if high confidence it's a shadow and in likely shadow areas
+        const isInShadowArea = y > canvas.height * 0.7; // Bottom portion more likely to have shadows
+        const hasHighShadowConfidence = shadowConfidence >= 5;
+
+        if (isLikelyShadow && (isInShadowArea || hasHighShadowConfidence)) {
+          data[i + 3] = 0; // Make transparent
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+
+      // Create new image from canvas
+      const newImg = new Image();
+      newImg.onload = () => {
+        setOriginalImage(newImg);
+        alert('✅ Shadows removed from sprite sheet!');
+      };
+      newImg.src = canvas.toDataURL();
+    } catch (error) {
+      console.error('Error removing shadows:', error);
+      alert('❌ Failed to remove shadows. Please try again.');
+    } finally {
+      setIsRemovingBackgrounds(false);
     }
   };
 
@@ -655,6 +880,35 @@ const SpriteCutter: React.FC = observer(() => {
                 >
                   {isProcessing ? <CircularProgress size={16} color="inherit" /> : 'Process'}
                 </Button>
+                {/* Enhanced Controls */}
+                <Button
+                  variant="outlined"
+                  startIcon={<FontAwesomeIcon icon={faEraser} />}
+                  onClick={removeBackgroundsFromAvatars}
+                  disabled={!originalImage || isRemovingBackgrounds}
+                  size="small"
+                  color="secondary"
+                >
+                  {isRemovingBackgrounds ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    'Remove Background'
+                  )}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<FontAwesomeIcon icon={faSun} />}
+                  onClick={removeShadowsFromAvatars}
+                  disabled={!originalImage || isRemovingBackgrounds}
+                  size="small"
+                  color="warning"
+                >
+                  {isRemovingBackgrounds ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    'Remove Shadow'
+                  )}
+                </Button>
               </Box>
             </CardContent>
           </Card>
@@ -665,9 +919,40 @@ const SpriteCutter: React.FC = observer(() => {
           <Grid item xs={12}>
             <Card>
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                  Original Sprite Sheet
-                </Typography>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 2,
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Original Sprite Sheet
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<FontAwesomeIcon icon={faUndo} />}
+                      onClick={undoChanges}
+                      disabled={!originalUnmodifiedImage}
+                      size="small"
+                      color="warning"
+                    >
+                      Undo
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<FontAwesomeIcon icon={faFileImage} />}
+                      onClick={saveProcessedSprite}
+                      disabled={!originalImage}
+                      size="small"
+                      color="info"
+                    >
+                      Save As
+                    </Button>
+                  </Box>
+                </Box>
                 <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
                   <img
                     src={originalImage.src}

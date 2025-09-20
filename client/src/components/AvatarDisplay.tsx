@@ -17,7 +17,7 @@ const AvatarDisplay: React.FC<AvatarDisplayProps> = ({
   userAvatar,
   size = 120,
   sx = {},
-  fallbackAvatarId = 'avatar_1',
+  fallbackAvatarId = 'alex',
 }) => {
   const avatarId = userAvatar?.baseAvatarId || fallbackAvatarId;
 

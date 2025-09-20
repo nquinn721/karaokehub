@@ -146,14 +146,16 @@ export class AuthService {
         if (!currentAvatar) return false;
 
         // Consider it custom if:
-        // 1. It's not the default avatar_1
+        // 1. It's not the default alex avatar
         // 2. It's not an OAuth provider URL (starts with http)
-        // 3. It follows our avatar naming pattern (avatar_X where X > 1)
-        const isDefault = currentAvatar.avatarId === 'avatar_1';
+        // 3. It's one of our named avatars (not alex, which is default)
+        const isDefault = currentAvatar.avatarId === 'alex';
         const isOAuthUrl = currentAvatar.avatarId.startsWith('http');
-        const isCustomAvatarId = /^avatar_([2-9]|\d{2,})$/.test(currentAvatar.avatarId);
+        const isNamedAvatar = ['blake', 'cameron', 'joe', 'juan', 'kai', 'onyx', 'tyler'].includes(
+          currentAvatar.avatarId,
+        );
 
-        return !isDefault && (isCustomAvatarId || !isOAuthUrl);
+        return !isDefault && (isNamedAvatar || !isOAuthUrl);
       } catch (error) {
         console.error('🔴 [AUTH_SERVICE] Error checking custom avatar:', error);
         return false;

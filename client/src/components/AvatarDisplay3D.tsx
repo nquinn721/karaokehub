@@ -18,207 +18,71 @@ interface Avatar {
   imagePath: string;
 }
 
-// Define avatars using individual image files
+// Define avatars using individual image files from the new location
 const AVAILABLE_AVATARS: Avatar[] = [
   {
-    id: 'avatar_1',
+    id: 'alex',
     name: 'Alex',
-    description: 'Cool Performer',
+    description: 'A friendly and versatile performer with a warm personality',
     gender: 'male',
-    ethnicity: 'Caucasian',
-    imagePath: '/images/avatar/avatar_1.png',
+    ethnicity: 'Mixed',
+    imagePath: '/images/avatar/avatars/alex.png',
   },
   {
-    id: 'avatar_2',
-    name: 'Sam',
-    description: 'Energetic Singer',
-    gender: 'female',
-    ethnicity: 'African American',
-    imagePath: '/images/avatar/avatar_2.png',
-  },
-  {
-    id: 'avatar_3',
-    name: 'Jordan',
-    description: 'Versatile Artist',
-    gender: 'male',
-    ethnicity: 'Asian',
-    imagePath: '/images/avatar/avatar_3.png',
-  },
-  {
-    id: 'avatar_4',
-    name: 'Taylor',
-    description: 'Dynamic Performer',
-    gender: 'female',
-    ethnicity: 'Hispanic',
-    imagePath: '/images/avatar/avatar_4.png',
-  },
-  {
-    id: 'avatar_5',
-    name: 'Casey',
-    description: 'Mysterious Vocalist',
-    gender: 'male',
-    ethnicity: 'Caucasian',
-    imagePath: '/images/avatar/avatar_5.png',
-  },
-  {
-    id: 'avatar_6',
-    name: 'Robin',
-    description: 'Charismatic Performer',
-    gender: 'female',
-    ethnicity: 'African American',
-    imagePath: '/images/avatar/avatar_6.png',
-  },
-  {
-    id: 'avatar_7',
-    name: 'Morgan',
-    description: 'Soulful Singer',
-    gender: 'male',
-    ethnicity: 'Asian',
-    imagePath: '/images/avatar/avatar_7.png',
-  },
-  {
-    id: 'avatar_8',
-    name: 'Riley',
-    description: 'Upbeat Artist',
-    gender: 'female',
-    ethnicity: 'Hispanic',
-    imagePath: '/images/avatar/avatar_8.png',
-  },
-  {
-    id: 'avatar_9',
-    name: 'Avery',
-    description: 'Melodic Voice',
-    gender: 'male',
-    ethnicity: 'Caucasian',
-    imagePath: '/images/avatar/avatar_9.png',
-  },
-  {
-    id: 'avatar_10',
+    id: 'blake',
     name: 'Blake',
-    description: 'Powerful Vocalist',
+    description: 'A confident artist with modern style and great stage presence',
     gender: 'female',
     ethnicity: 'African American',
-    imagePath: '/images/avatar/avatar_10.png',
+    imagePath: '/images/avatar/avatars/blake.png',
   },
   {
-    id: 'avatar_11',
+    id: 'cameron',
     name: 'Cameron',
-    description: 'Smooth Performer',
-    gender: 'male',
-    ethnicity: 'Asian',
-    imagePath: '/images/avatar/avatar_11.png',
-  },
-  {
-    id: 'avatar_12',
-    name: 'Drew',
-    description: 'Rhythmic Artist',
-    gender: 'female',
-    ethnicity: 'Hispanic',
-    imagePath: '/images/avatar/avatar_12.png',
-  },
-  {
-    id: 'avatar_13',
-    name: 'Emery',
-    description: 'Passionate Singer',
+    description: 'A dynamic performer with classic appeal and natural charisma',
     gender: 'male',
     ethnicity: 'Caucasian',
-    imagePath: '/images/avatar/avatar_13.png',
+    imagePath: '/images/avatar/avatars/cameron.png',
   },
   {
-    id: 'avatar_14',
-    name: 'Finley',
-    description: 'Versatile Performer',
-    gender: 'female',
-    ethnicity: 'African American',
-    imagePath: '/images/avatar/avatar_14.png',
-  },
-  {
-    id: 'avatar_15',
-    name: 'Gray',
-    description: 'Dynamic Artist',
-    gender: 'male',
-    ethnicity: 'Asian',
-    imagePath: '/images/avatar/avatar_15.png',
-  },
-  {
-    id: 'avatar_16',
-    name: 'Hayden',
-    description: 'Expressive Vocalist',
-    gender: 'female',
-    ethnicity: 'Hispanic',
-    imagePath: '/images/avatar/avatar_16.png',
-  },
-  {
-    id: 'avatar_17',
-    name: 'Indigo',
-    description: 'Unique Style',
+    id: 'joe',
+    name: 'Joe',
+    description: 'A reliable and steady performer with authentic charm',
     gender: 'male',
     ethnicity: 'Caucasian',
-    imagePath: '/images/avatar/avatar_17.png',
+    imagePath: '/images/avatar/avatars/joe.png',
   },
   {
-    id: 'avatar_18',
-    name: 'Jazz',
-    description: 'Smooth Operator',
-    gender: 'female',
-    ethnicity: 'African American',
-    imagePath: '/images/avatar/avatar_18.png',
+    id: 'juan',
+    name: 'Juan',
+    description: 'A passionate singer with vibrant energy and cultural flair',
+    gender: 'male',
+    ethnicity: 'Hispanic',
+    imagePath: '/images/avatar/avatars/juan.png',
   },
   {
-    id: 'avatar_19',
+    id: 'kai',
     name: 'Kai',
-    description: 'Ocean Voice',
+    description: 'A creative artist with unique style and artistic vision',
     gender: 'male',
     ethnicity: 'Asian',
-    imagePath: '/images/avatar/avatar_19.png',
+    imagePath: '/images/avatar/avatars/kai.png',
   },
   {
-    id: 'avatar_20',
-    name: 'Lyric',
-    description: 'Poetic Performer',
-    gender: 'female',
-    ethnicity: 'Hispanic',
-    imagePath: '/images/avatar/avatar_20.png',
-  },
-  {
-    id: 'avatar_21',
-    name: 'Melody',
-    description: 'Musical Genius',
-    gender: 'male',
-    ethnicity: 'Caucasian',
-    imagePath: '/images/avatar/avatar_21.png',
-  },
-  {
-    id: 'avatar_22',
-    name: 'Neo',
-    description: 'Futuristic Artist',
+    id: 'onyx',
+    name: 'Onyx',
+    description: 'A bold performer with striking features and commanding presence',
     gender: 'female',
     ethnicity: 'African American',
-    imagePath: '/images/avatar/avatar_22.png',
+    imagePath: '/images/avatar/avatars/onyx.png',
   },
   {
-    id: 'avatar_23',
-    name: 'Onyx',
-    description: 'Dark Mystique',
+    id: 'tyler',
+    name: 'Tyler',
+    description: 'A versatile entertainer with contemporary appeal and smooth vocals',
     gender: 'male',
-    ethnicity: 'Asian',
-    imagePath: '/images/avatar/avatar_23.png',
-  },
-  {
-    id: 'avatar_24',
-    name: 'Phoenix',
-    description: 'Rising Star',
-    gender: 'female',
-    ethnicity: 'Hispanic',
-    imagePath: '/images/avatar/avatar_24.png',
-  },
-  {
-    id: 'avatar_25',
-    name: 'Quest',
-    description: 'Legendary Performer',
-    gender: 'male',
-    ethnicity: 'Caucasian',
-    imagePath: '/images/avatar/avatar_25.png',
+    ethnicity: 'Mixed',
+    imagePath: '/images/avatar/avatars/tyler.png',
   },
 ];
 
@@ -229,7 +93,7 @@ const AvatarDisplay: React.FC<AvatarDisplayProps> = ({
   show3D = true,
   sx = {},
 }) => {
-  const [currentAvatarId, setCurrentAvatarId] = useState(avatarId || 'avatar_1');
+  const [currentAvatarId, setCurrentAvatarId] = useState(avatarId || 'alex');
 
   // Load saved avatar if no specific avatarId is provided
   useEffect(() => {
@@ -305,8 +169,8 @@ const AvatarDisplay: React.FC<AvatarDisplayProps> = ({
           onError={(e) => {
             // Fallback to first avatar if image fails to load
             const target = e.target as HTMLImageElement;
-            if (target.src !== '/avatar/avatar_1.png') {
-              target.src = '/avatar/avatar_1.png';
+            if (target.src !== '/images/avatar/avatars/alex.png') {
+              target.src = '/images/avatar/avatars/alex.png';
             }
           }}
         />

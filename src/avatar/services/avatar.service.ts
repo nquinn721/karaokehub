@@ -40,18 +40,18 @@ export class AvatarService {
     }
 
     if (!user.equippedAvatar) {
-      // If no avatar is equipped, equip the first free avatar (avatar_1)
+      // If no avatar is equipped, equip the first free avatar (alex)
       const defaultAvatar = await this.avatarRepository.findOne({
-        where: { id: 'avatar_1' },
+        where: { id: 'alex' },
       });
 
       if (defaultAvatar) {
-        await this.userRepository.update(userId, { equippedAvatarId: 'avatar_1' });
+        await this.userRepository.update(userId, { equippedAvatarId: 'alex' });
         return {
           avatar: defaultAvatar,
           microphone: user.equippedMicrophone,
           userId,
-          avatarId: 'avatar_1',
+          avatarId: 'alex',
           acquiredAt: new Date(),
         };
       }

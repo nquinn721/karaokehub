@@ -75,7 +75,7 @@ const DashboardPage: React.FC = observer(() => {
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
   const [microphoneModalOpen, setMicrophoneModalOpen] = useState(false);
   const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
-  const [currentAvatarId, setCurrentAvatarId] = useState<string>('avatar_1');
+  const [currentAvatarId, setCurrentAvatarId] = useState<string>('alex');
   const [currentMicrophoneId, setCurrentMicrophoneId] = useState<string>('mic_basic_1');
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState<
@@ -122,14 +122,14 @@ const DashboardPage: React.FC = observer(() => {
         console.log('Set current avatar ID:', equippedAvatar.avatarId);
       } else {
         // If no equipped avatar, use fallback
-        const fallbackAvatarId = 'avatar_1';
+        const fallbackAvatarId = 'alex';
         setCurrentAvatarId(fallbackAvatarId);
         console.log('Using fallback avatar ID:', fallbackAvatarId);
       }
     } catch (error) {
       console.error('Failed to load current avatar:', error);
       // Fallback to default
-      setCurrentAvatarId('avatar_1');
+      setCurrentAvatarId('alex');
     } finally {
       setAvatarLoading(false);
     }
@@ -1132,26 +1132,32 @@ const DashboardPage: React.FC = observer(() => {
                           sx={{
                             display: 'flex',
                             justifyContent: 'center',
-                            gap: 2,
+                            alignItems: 'center',
                             position: 'relative',
+                            minHeight: 280,
                           }}
                         >
-                          {/* Microphone Display */}
+                          {/* Microphone Display - Positioned to the left middle */}
                           <Box
                             onClick={() => setMicrophoneModalOpen(true)}
                             sx={{
                               cursor: 'pointer',
                               transition: 'all 0.3s ease',
+                              position: 'absolute',
+                              left: 0,
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              zIndex: 1,
                               '&:hover': {
-                                transform: 'scale(1.05)',
+                                transform: 'translateY(-50%) scale(1.05)',
                                 boxShadow: '0 12px 24px rgba(0,0,0,0.3)',
                               },
                             }}
                           >
                             <Box
                               sx={{
-                                width: 120,
-                                height: 160,
+                                width: 100,
+                                height: 140,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -1167,48 +1173,49 @@ const DashboardPage: React.FC = observer(() => {
                                 src={`/images/avatar/parts/microphones/${currentMicrophoneId}.png`}
                                 alt="Current Microphone"
                                 sx={{
-                                  width: '80%',
-                                  height: '80%',
+                                  width: '75%',
+                                  height: '75%',
                                   objectFit: 'contain',
                                 }}
                               />
                               <Box
                                 sx={{
                                   position: 'absolute',
-                                  bottom: 8,
+                                  bottom: 6,
                                   left: '50%',
                                   transform: 'translateX(-50%)',
                                   backgroundColor: 'rgba(255,255,255,0.9)',
                                   color: theme.palette.primary.main,
-                                  fontSize: '0.7rem',
+                                  fontSize: '0.6rem',
                                   fontWeight: 'bold',
-                                  px: 1,
-                                  py: 0.5,
-                                  borderRadius: '8px',
+                                  px: 0.8,
+                                  py: 0.3,
+                                  borderRadius: '6px',
                                   textAlign: 'center',
                                 }}
                               >
-                                Microphone
+                                Mic
                               </Box>
                             </Box>
                           </Box>
 
-                          {/* Avatar Display */}
+                          {/* Avatar Display - Centered and bigger */}
                           {avatarLoading ? (
                             <Box
                               sx={{
-                                width: 160,
-                                height: 200,
+                                width: 220,
+                                height: 280,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 background: 'rgba(255,255,255,0.1)',
                                 backdropFilter: 'blur(20px)',
                                 border: '2px solid rgba(255,255,255,0.2)',
-                                borderRadius: '16px',
+                                borderRadius: '20px',
+                                mx: 'auto',
                               }}
                             >
-                              <CircularProgress color="inherit" />
+                              <CircularProgress color="inherit" size={40} />
                             </Box>
                           ) : (
                             <Box
@@ -1217,38 +1224,39 @@ const DashboardPage: React.FC = observer(() => {
                                 cursor: 'pointer',
                                 transition: 'all 0.3s ease',
                                 position: 'relative',
+                                mx: 'auto',
                                 '&:hover': {
                                   transform: 'scale(1.05)',
-                                  boxShadow: '0 12px 24px rgba(0,0,0,0.3)',
+                                  boxShadow: '0 16px 32px rgba(0,0,0,0.3)',
                                 },
                               }}
                             >
                               <AvatarDisplay3D
                                 key={`main-avatar-${avatarRefreshKey}`}
-                                width={160}
-                                height={200}
+                                width={220}
+                                height={280}
                                 avatarId={currentAvatarId}
                                 show3D={true}
                                 sx={{
                                   background: 'rgba(255,255,255,0.1)',
                                   backdropFilter: 'blur(20px)',
                                   border: '2px solid rgba(255,255,255,0.2)',
-                                  borderRadius: '16px',
+                                  borderRadius: '20px',
                                 }}
                               />
                               <Box
                                 sx={{
                                   position: 'absolute',
-                                  bottom: 8,
+                                  bottom: 10,
                                   left: '50%',
                                   transform: 'translateX(-50%)',
                                   backgroundColor: 'rgba(255,255,255,0.9)',
                                   color: theme.palette.primary.main,
-                                  fontSize: '0.7rem',
+                                  fontSize: '0.8rem',
                                   fontWeight: 'bold',
-                                  px: 1,
-                                  py: 0.5,
-                                  borderRadius: '8px',
+                                  px: 1.5,
+                                  py: 0.7,
+                                  borderRadius: '10px',
                                   textAlign: 'center',
                                 }}
                               >

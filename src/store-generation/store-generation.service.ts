@@ -176,7 +176,8 @@ export class StoreGenerationService {
       const match = customPrompt.match(pattern);
       if (match && match[1]) {
         const num = parseInt(match[1], 10);
-        if (num > 0 && num <= 20) { // Reasonable limits
+        if (num > 0 && num <= 20) {
+          // Reasonable limits
           this.logger.log(`Detected ${num} variations from custom prompt`);
           return num;
         }
@@ -186,7 +187,11 @@ export class StoreGenerationService {
     return null;
   }
 
-  private modifyPromptForSingleItem(originalPrompt: string, currentIndex: number, totalItems: number): string {
+  private modifyPromptForSingleItem(
+    originalPrompt: string,
+    currentIndex: number,
+    totalItems: number,
+  ): string {
     // Convert prompts like "10 characters" to "1 character" and add uniqueness
     let modifiedPrompt = originalPrompt;
 
@@ -209,14 +214,14 @@ export class StoreGenerationService {
     // Add variation instruction to make each image unique
     const genderInstructions = [
       'male character',
-      'female character', 
+      'female character',
       'unique character design',
       'different character style',
-      'varied character appearance'
+      'varied character appearance',
     ];
-    
+
     const variationInstruction = genderInstructions[currentIndex % genderInstructions.length];
-    
+
     // Append uniqueness instruction
     modifiedPrompt += `, make it a ${variationInstruction}, unique and different from others`;
 
@@ -337,19 +342,27 @@ export class StoreGenerationService {
     return textPrompt;
   }
 
-  private buildAvatarBasedPrompt(request: GenerateStoreItemsRequest, variationIndex: number, totalVariations?: number): string {
+  private buildAvatarBasedPrompt(
+    request: GenerateStoreItemsRequest,
+    variationIndex: number,
+    totalVariations?: number,
+  ): string {
     // If user provided a custom prompt, modify it for individual image generation
     if (request.customPrompt && request.customPrompt.trim()) {
       const originalPrompt = request.customPrompt.trim();
       this.logger.log(`Using custom prompt: ${originalPrompt}`);
-      
+
       // If generating multiple items, modify prompt to create ONE item per image
       if (totalVariations && totalVariations > 1) {
-        const modifiedPrompt = this.modifyPromptForSingleItem(originalPrompt, variationIndex + 1, totalVariations);
+        const modifiedPrompt = this.modifyPromptForSingleItem(
+          originalPrompt,
+          variationIndex + 1,
+          totalVariations,
+        );
         this.logger.log(`Modified for individual generation: ${modifiedPrompt}`);
         return modifiedPrompt;
       }
-      
+
       return originalPrompt;
     }
 
@@ -358,7 +371,7 @@ export class StoreGenerationService {
     const selectedPrompt = basePrompts[variationIndex % basePrompts.length];
 
     // Create a prompt that generates items for the avatar character (like the successful example)
-    const avatarPrompt = request.baseImage 
+    const avatarPrompt = request.baseImage
       ? `Using this avatar character as reference, ${selectedPrompt}. Show the ${request.itemType} both as a separate item and worn by the character. Style: ${request.style}, Theme: ${request.theme}. Create clothing/items that would fit this character perfectly.`
       : `Create ${selectedPrompt} for a cartoon avatar character. Style: ${request.style}, Theme: ${request.theme}. Show the ${request.itemType} as it would appear on an avatar character.`;
 

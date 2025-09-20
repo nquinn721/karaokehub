@@ -389,11 +389,11 @@ export class AuthStore {
 
   // Helper to get avatar URL from userAvatar data
   getAvatarUrl(user: User | null = this.user): string {
-    if (!user) return '/images/avatars/avatar_1.png'; // Default avatar
+    if (!user) return '/images/avatar/avatars/alex.png'; // Default avatar
 
     // If user has new userAvatar system data, use it
     if (user.userAvatar?.baseAvatarId) {
-      return `/images/avatars/${user.userAvatar.baseAvatarId}.png`;
+      return `/images/avatar/avatars/${user.userAvatar.baseAvatarId}.png`;
     }
 
     // Fallback to old avatar field if it exists
@@ -402,7 +402,7 @@ export class AuthStore {
     }
 
     // Default avatar
-    return '/images/avatars/avatar_1.png';
+    return '/images/avatar/avatars/alex.png';
   }
 
   // Force refresh profile data - useful after admin status changes
