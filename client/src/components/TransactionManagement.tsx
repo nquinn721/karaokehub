@@ -1,4 +1,12 @@
-import { faCoins, faFilter, faPlus, faRefresh, faSearch, faGift } from '@fortawesome/free-solid-svg-icons';
+import CustomModal from '@components/CustomModal';
+import {
+  faCoins,
+  faFilter,
+  faGift,
+  faPlus,
+  faRefresh,
+  faSearch,
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Alert,
@@ -30,7 +38,6 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import CustomModal from '@components/CustomModal';
 import { transactionStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useState } from 'react';
@@ -38,53 +45,53 @@ import { useEffect, useState } from 'react';
 // Fuzzy search utility function
 const fuzzySearch = (query: string, text: string): { score: number; match: boolean } => {
   if (!query) return { score: 0, match: true };
-  
+
   const queryLower = query.toLowerCase();
   const textLower = text.toLowerCase();
-  
+
   // Exact match gets highest score
   if (textLower.includes(queryLower)) {
     const index = textLower.indexOf(queryLower);
     return { score: 100 - index, match: true };
   }
-  
+
   // Character-by-character fuzzy matching
   let queryIndex = 0;
   let matches = 0;
   const queryChars = queryLower.split('');
-  
+
   for (let i = 0; i < textLower.length && queryIndex < queryChars.length; i++) {
     if (textLower[i] === queryChars[queryIndex]) {
       matches++;
       queryIndex++;
     }
   }
-  
+
   if (queryIndex === queryChars.length) {
     // All query characters found in order
     const score = (matches / query.length) * 50; // Max 50 for fuzzy matches
     return { score, match: true };
   }
-  
+
   return { score: 0, match: false };
 };
 
 const fuzzySearchUsers = (users: any[], query: string) => {
   if (!query) return users;
-  
+
   return users
-    .map(user => {
+    .map((user) => {
       const nameResult = fuzzySearch(query, user.name);
       const emailResult = fuzzySearch(query, user.email);
       const bestScore = Math.max(nameResult.score, emailResult.score);
-      
+
       return {
         ...user,
         fuzzyScore: bestScore,
-        fuzzyMatch: nameResult.match || emailResult.match
+        fuzzyMatch: nameResult.match || emailResult.match,
       };
     })
-    .filter(user => user.fuzzyMatch)
+    .filter((user) => user.fuzzyMatch)
     .sort((a, b) => b.fuzzyScore - a.fuzzyScore);
 };
 
@@ -247,10 +254,10 @@ const AddRewardDialog = observer(({ open, onClose }: AddRewardDialogProps) => {
                 <Typography variant="body2" fontWeight="medium">
                   {option.name}
                   {option.fuzzyScore && (
-                    <Typography 
-                      component="span" 
-                      variant="caption" 
-                      color="primary" 
+                    <Typography
+                      component="span"
+                      variant="caption"
+                      color="primary"
                       sx={{ ml: 1, opacity: 0.7 }}
                     >
                       ({Math.round(option.fuzzyScore)}% match)
@@ -264,14 +271,14 @@ const AddRewardDialog = observer(({ open, onClose }: AddRewardDialogProps) => {
             </Box>
           )}
           noOptionsText={
-            userSearch.length === 0 
-              ? "Start typing to search users..." 
-              : allUsers.length === 0 
-                ? "Loading users..." 
-                : "No users found matching your search"
+            userSearch.length === 0
+              ? 'Start typing to search users...'
+              : allUsers.length === 0
+                ? 'Loading users...'
+                : 'No users found matching your search'
           }
         />
-        
+
         <TextField
           fullWidth
           label="Reward Amount (coins)"
@@ -280,9 +287,9 @@ const AddRewardDialog = observer(({ open, onClose }: AddRewardDialogProps) => {
           onChange={(e) => setAmount(e.target.value)}
           disabled={!selectedUser}
           inputProps={{ min: 1 }}
-          helperText={selectedUser ? "Enter the number of coins to award" : "Select a user first"}
+          helperText={selectedUser ? 'Enter the number of coins to award' : 'Select a user first'}
         />
-        
+
         <TextField
           fullWidth
           label="Reward Description"
@@ -292,7 +299,9 @@ const AddRewardDialog = observer(({ open, onClose }: AddRewardDialogProps) => {
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Reason for reward (e.g., contest winner, bug report, community contribution, etc.)"
           disabled={!selectedUser}
-          helperText={selectedUser ? "Explain why this user is receiving the reward" : "Select a user first"}
+          helperText={
+            selectedUser ? 'Explain why this user is receiving the reward' : 'Select a user first'
+          }
         />
 
         <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
@@ -670,10 +679,7 @@ const TransactionManagement = observer(() => {
       />
 
       {/* Add Reward Dialog */}
-      <AddRewardDialog
-        open={addRewardDialog}
-        onClose={() => setAddRewardDialog(false)}
-      />
+      <AddRewardDialog open={addRewardDialog} onClose={() => setAddRewardDialog(false)} />
     </Box>
   );
 });

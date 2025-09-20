@@ -25,7 +25,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { authStore } from '@stores/index';
+import { authStore, userStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useCallback, useState } from 'react';
 
@@ -298,15 +298,17 @@ const AvatarCustomizer: React.FC = observer(() => {
   const theme = useTheme();
   const [currentConfig, setCurrentConfig] = useState<AvatarConfiguration>({
     microphone: 'mic_basic',
-    shirt: 'shirt_casual',
+    shirt: 'shirt_karaoke_tee',
     pants: 'pants_jeans',
     shoes: 'shoes_sneakers',
-    hair: 'hair_default',
+    hair: 'hair_short',
     accessories: [],
   });
-  const [selectedTab, setSelectedTab] = useState(0);
-  const [loading, setSaving] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('microphone');
+  const [saving, setSaving] = useState<boolean>(false);
+  const [successMessage, setSuccessMessage] = useState<string>('');
+  const [selectedTab, setSelectedTab] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const categories = [
     { id: 'microphone', name: 'Microphones', icon: faMicrophone },
@@ -375,12 +377,36 @@ const AvatarCustomizer: React.FC = observer(() => {
   const saveConfiguration = async () => {
     setSaving(true);
     try {
-      // TODO: Save to backend
-      console.log('Saving avatar configuration:', currentConfig);
-      setSuccessMessage('Avatar configuration saved!');
-      setTimeout(() => setSuccessMessage(''), 3000);
+      // Get the current equipped avatar
+      const currentAvatar = authStore.user?.equippedAvatar?.id;
+      
+      if (currentAvatar) {
+        // Re-equip the same avatar to trigger a refresh of the header
+        const success = await userStore.updateEquippedAvatar(currentAvatar);
+        
+        if (success) {
+          console.log('Avatar configuration refreshed successfully');
+          setSuccessMessage('Avatar refreshed! The header should now show your current avatar.');
+          setTimeout(() => setSuccessMessage(''), 4000);
+        } else {
+          throw new Error('Failed to refresh avatar');
+        }
+      } else {
+        // If no avatar is equipped, equip a default one
+        const success = await userStore.updateEquippedAvatar('alex');
+        
+        if (success) {
+          console.log('Default avatar equipped successfully');
+          setSuccessMessage('Avatar updated! Check the header for the change.');
+          setTimeout(() => setSuccessMessage(''), 4000);
+        } else {
+          throw new Error('Failed to equip avatar');
+        }
+      }
     } catch (error) {
       console.error('Failed to save avatar configuration:', error);
+      setSuccessMessage('Failed to refresh avatar. Please try again.');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } finally {
       setSaving(false);
     }

@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class PopulateUserAvatars1737450300000 implements MigrationInterface {
+export class PopulateUserAvatars1737450310000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create default avatar records for all existing users who don't have them
     await queryRunner.query(`

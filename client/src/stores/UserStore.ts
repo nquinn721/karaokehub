@@ -1,6 +1,9 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { apiStore } from './ApiStore';
 
+// Import authStore for refreshing profile after avatar changes
+let authStore: any; // Lazy import to avoid circular dependency
+
 export interface UserAvatar {
   id: string;
   baseAvatarId: string;
@@ -337,6 +340,13 @@ export class UserStore {
 
       // Refresh current user to get updated equipped avatar data
       await this.getCurrentUser();
+
+      // Also refresh the auth store so the header avatar updates
+      if (!authStore) {
+        const { authStore: auth } = await import('./index');
+        authStore = auth;
+      }
+      await authStore.refreshProfile();
 
       // Update local state
       runInAction(() => {

@@ -196,10 +196,10 @@ export class TransactionStore {
   async searchUsers(searchTerm: string) {
     try {
       // If no search term, get all active users for client-side fuzzy search
-      const endpoint = searchTerm 
+      const endpoint = searchTerm
         ? `/admin/users/search?q=${encodeURIComponent(searchTerm)}`
         : '/admin/users/search?q=&all=true';
-        
+
       const response = await this.apiStore.get(endpoint);
       if (response.success && response.data) {
         return response.data;

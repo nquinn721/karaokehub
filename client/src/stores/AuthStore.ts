@@ -10,6 +10,13 @@ export interface UserAvatar {
   shoesId?: string;
 }
 
+export interface Avatar {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -17,6 +24,7 @@ export interface User {
   stageName?: string;
   avatar?: string; // Keep for backward compatibility
   userAvatar?: UserAvatar; // New avatar system
+  equippedAvatar?: Avatar; // Currently equipped avatar
   isAdmin?: boolean;
 }
 
@@ -391,12 +399,17 @@ export class AuthStore {
   getAvatarUrl(user: User | null = this.user): string {
     if (!user) return '/images/avatar/avatars/alex.png'; // Default avatar
 
-    // If user has new userAvatar system data, use it
+    // Priority 1: Check for equipped avatar (new system)
+    if (user.equippedAvatar?.id) {
+      return `/images/avatar/avatars/${user.equippedAvatar.id}.png`;
+    }
+
+    // Priority 2: Check for userAvatar.baseAvatarId (if using the new system)
     if (user.userAvatar?.baseAvatarId) {
       return `/images/avatar/avatars/${user.userAvatar.baseAvatarId}.png`;
     }
 
-    // Fallback to old avatar field if it exists
+    // Priority 3: Fallback to old avatar field if it exists
     if (user.avatar) {
       return user.avatar;
     }
