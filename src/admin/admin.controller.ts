@@ -263,7 +263,7 @@ export class AdminController {
       type as any,
       status as any,
       sortBy,
-      sortOrder
+      sortOrder,
     );
   }
 

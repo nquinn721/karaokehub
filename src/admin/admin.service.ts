@@ -9,8 +9,12 @@ import { GeocodingService } from '../geocoding/geocoding.service';
 import { ParsedSchedule, ParseStatus } from '../parser/parsed-schedule.entity';
 import { ReviewStatus, ShowReview } from '../show-review/show-review.entity';
 import { Show } from '../show/show.entity';
-import { Transaction, TransactionType, TransactionStatus } from '../store/entities/transaction.entity';
 import { CoinPackage } from '../store/entities/coin-package.entity';
+import {
+  Transaction,
+  TransactionStatus,
+  TransactionType,
+} from '../store/entities/transaction.entity';
 import { Vendor } from '../vendor/vendor.entity';
 import { Venue } from '../venue/venue.entity';
 
@@ -1204,7 +1208,7 @@ export class AdminService {
     if (search) {
       queryBuilder.andWhere(
         '(user.name ILIKE :search OR user.email ILIKE :search OR transaction.description ILIKE :search)',
-        { search: `%${search}%` }
+        { search: `%${search}%` },
       );
     }
 
@@ -1266,16 +1270,16 @@ export class AdminService {
 
       await queryRunner.commitTransaction();
 
-      return { 
-        success: true, 
-        newBalance: user.coins, 
+      return {
+        success: true,
+        newBalance: user.coins,
         transaction,
         user: {
           id: user.id,
           name: user.name,
           email: user.email,
           coins: user.coins,
-        }
+        },
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -1310,14 +1314,16 @@ export class AdminService {
         type: coinDifference >= 0 ? TransactionType.REWARD : TransactionType.REFUND,
         status: TransactionStatus.COMPLETED,
         coinAmount: coinDifference,
-        description: description || `Admin set balance to ${newCoinAmount} coins (${coinDifference >= 0 ? '+' : ''}${coinDifference})`,
+        description:
+          description ||
+          `Admin set balance to ${newCoinAmount} coins (${coinDifference >= 0 ? '+' : ''}${coinDifference})`,
       });
       await queryRunner.manager.save(transaction);
 
       await queryRunner.commitTransaction();
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         oldBalance,
         newBalance: user.coins,
         coinDifference,
@@ -1327,7 +1333,7 @@ export class AdminService {
           name: user.name,
           email: user.email,
           coins: user.coins,
-        }
+        },
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -1383,24 +1389,24 @@ export class AdminService {
         .select('SUM(CASE WHEN coinAmount > 0 THEN coinAmount ELSE 0 END)', 'total')
         .where('status = :status', { status: TransactionStatus.COMPLETED })
         .getRawOne()
-        .then(result => parseInt(result.total) || 0),
+        .then((result) => parseInt(result.total) || 0),
       this.transactionRepository
         .createQueryBuilder('transaction')
         .select('SUM(CASE WHEN coinAmount < 0 THEN ABS(coinAmount) ELSE 0 END)', 'total')
         .where('status = :status', { status: TransactionStatus.COMPLETED })
         .getRawOne()
-        .then(result => parseInt(result.total) || 0),
-      this.transactionRepository.count({ 
-        where: { 
-          type: TransactionType.COIN_PURCHASE, 
-          status: TransactionStatus.COMPLETED 
-        } 
+        .then((result) => parseInt(result.total) || 0),
+      this.transactionRepository.count({
+        where: {
+          type: TransactionType.COIN_PURCHASE,
+          status: TransactionStatus.COMPLETED,
+        },
       }),
-      this.transactionRepository.count({ 
-        where: { 
-          type: TransactionType.MICROPHONE_PURCHASE, 
-          status: TransactionStatus.COMPLETED 
-        } 
+      this.transactionRepository.count({
+        where: {
+          type: TransactionType.MICROPHONE_PURCHASE,
+          status: TransactionStatus.COMPLETED,
+        },
       }),
     ]);
 
