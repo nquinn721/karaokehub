@@ -20,6 +20,8 @@ import { ParsedSchedule } from './src/parser/parsed-schedule.entity';
 import { UrlToParse } from './src/parser/url-to-parse.entity';
 import { ShowReview } from './src/show-review/show-review.entity';
 import { Show } from './src/show/show.entity';
+import { CoinPackage } from './src/store/entities/coin-package.entity';
+import { Transaction } from './src/store/entities/transaction.entity';
 import { Subscription } from './src/subscription/subscription.entity';
 import { UserFeatureOverride } from './src/user-feature-override/user-feature-override.entity';
 import { Vendor } from './src/vendor/vendor.entity';
@@ -59,6 +61,9 @@ export default new DataSource({
     UserMicrophone,
     UserOutfit,
     UserShoes,
+    // Store system entities
+    CoinPackage,
+    Transaction,
   ],
   migrations: ['./src/migrations/*.ts'],
   synchronize: false,
