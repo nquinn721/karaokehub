@@ -1,53 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import {
+  faCamera,
+  faCog,
+  faDownload,
+  faEye,
+  faImage,
+  faMagicWandSparkles,
+  faPalette,
+  faSave,
+  faTimes,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
+  CircularProgress,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
-  DialogActions,
   FormControl,
+  FormHelperText,
   Grid,
   IconButton,
   InputLabel,
   MenuItem,
   Paper,
   Select,
+  Slider,
+  Tab,
+  Tabs,
   Typography,
   useTheme,
-  Checkbox,
-  CircularProgress,
-  Slider,
-  FormHelperText,
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
 import { storeGenerationStore } from '../stores/StoreGenerationStore';
-import {
-  faCamera,
-  faImage,
-  faMagicWandSparkles,
-  faPalette,
-  faSave,
-  faEye,
-  faTimes,
-  faDownload,
-  faCog,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const StoreItemGenerator: React.FC = observer(() => {
   const theme = useTheme();
-  
+
   // Local state for UI
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [selectedBaseImage, setSelectedBaseImage] = useState<string | null>(null);
+  const [baseImageSource, setBaseImageSource] = useState<'upload' | 'existing'>('upload');
+  const [selectedExistingItem, setSelectedExistingItem] = useState<any | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<any | null>(null);
-  
+  const [baseImageTabValue, setBaseImageTabValue] = useState(0);
+  const [existingItemsTabValue, setExistingItemsTabValue] = useState(0);
+
   const [settings, setSettings] = useState({
     itemType: 'outfit',
     style: 'modern',
@@ -55,6 +64,11 @@ const StoreItemGenerator: React.FC = observer(() => {
     quality: 'standard',
     theme: 'casual',
   });
+
+  // Load existing items when component mounts
+  useEffect(() => {
+    storeGenerationStore.loadExistingStoreItems();
+  }, []);
 
   // Clear messages after 5 seconds
   useEffect(() => {
@@ -71,15 +85,21 @@ const StoreItemGenerator: React.FC = observer(() => {
     }
   }, [storeGenerationStore.success]);
 
-  // File upload handler
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  // Dropzone for image upload
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = () => setUploadedImage(reader.result as string);
       reader.readAsDataURL(file);
     }
-  };
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'image/*': [] },
+    multiple: false,
+  });
 
   const itemTypes = [
     { value: 'outfit', label: 'Outfits', icon: '👔' },
@@ -119,12 +139,30 @@ const StoreItemGenerator: React.FC = observer(() => {
   ];
 
   const handleGenerate = async () => {
-    if (!uploadedImage) {
-      storeGenerationStore.setError('Please upload a base image first');
+    const baseImage = baseImageSource === 'upload' ? uploadedImage : selectedBaseImage;
+
+    if (!baseImage) {
+      storeGenerationStore.setError('Please select or upload a base image first');
       return;
     }
 
-    await storeGenerationStore.generateStoreItems(uploadedImage, settings);
+    await storeGenerationStore.generateStoreItems(baseImage, settings);
+  };
+
+  const handleExistingItemSelect = (item: any) => {
+    setSelectedExistingItem(item);
+    setSelectedBaseImage(item.imageUrl);
+    setBaseImageSource('existing');
+  };
+
+  const handleUploadedImageSelect = () => {
+    setBaseImageSource('upload');
+    setSelectedExistingItem(null);
+    setSelectedBaseImage(null);
+  };
+
+  const getCurrentBaseImage = () => {
+    return baseImageSource === 'upload' ? uploadedImage : selectedBaseImage;
   };
 
   const handleImageSelect = (imageId: string) => {
@@ -143,8 +181,8 @@ const StoreItemGenerator: React.FC = observer(() => {
       return;
     }
 
-    const itemDetails = Array.from(selectedImages).map(id => {
-      const item = storeGenerationStore.generatedItems.find(item => item.id === id);
+    const itemDetails = Array.from(selectedImages).map((id) => {
+      const item = storeGenerationStore.generatedItems.find((item) => item.id === id);
       return {
         id,
         name: `AI ${item?.itemType} - ${item?.style}`,
@@ -167,7 +205,7 @@ const StoreItemGenerator: React.FC = observer(() => {
     if (selectedImages.size === storeGenerationStore.generatedItems.length) {
       setSelectedImages(new Set());
     } else {
-      setSelectedImages(new Set(storeGenerationStore.generatedItems.map(item => item.id)));
+      setSelectedImages(new Set(storeGenerationStore.generatedItems.map((item) => item.id)));
     }
   };
 
@@ -180,7 +218,8 @@ const StoreItemGenerator: React.FC = observer(() => {
       </Typography>
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Create amazing avatar store items using Gemini's AI image generation. Upload a base image and let AI create variations for your store.
+        Create amazing avatar store items using Gemini's AI image generation. Upload a base image
+        and let AI create variations for your store.
       </Typography>
 
       {/* Error/Success Messages */}
@@ -191,7 +230,11 @@ const StoreItemGenerator: React.FC = observer(() => {
       )}
 
       {storeGenerationStore.success && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => storeGenerationStore.clearSuccess()}>
+        <Alert
+          severity="success"
+          sx={{ mb: 2 }}
+          onClose={() => storeGenerationStore.clearSuccess()}
+        >
           {storeGenerationStore.success}
         </Alert>
       )}
@@ -201,58 +244,285 @@ const StoreItemGenerator: React.FC = observer(() => {
         <Grid item xs={12} md={4}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              >
                 <FontAwesomeIcon icon={faCamera} />
-                Upload Base Image
+                Select Base Image
               </Typography>
 
-              <Paper
-                sx={{
-                  border: `2px dashed ${theme.palette.primary.main}`,
-                  p: 3,
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    bgcolor: theme.palette.primary.main + '05',
-                  },
-                }}
-                onClick={() => document.getElementById('file-upload')?.click()}
+              <Tabs
+                value={baseImageTabValue}
+                onChange={(_, newValue) => setBaseImageTabValue(newValue)}
+                sx={{ mb: 2 }}
               >
-                <input
-                  id="file-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  style={{ display: 'none' }}
+                <Tab label="Upload New" />
+                <Tab
+                  label={
+                    <Badge
+                      badgeContent={storeGenerationStore.getAllExistingItems()?.length || 0}
+                      color="primary"
+                    >
+                      Browse Store Items
+                    </Badge>
+                  }
                 />
-                {uploadedImage ? (
-                  <Box>
+              </Tabs>
+
+              {baseImageTabValue === 0 && (
+                <Paper
+                  {...getRootProps()}
+                  sx={{
+                    border: `2px dashed ${theme.palette.primary.main}`,
+                    borderColor: isDragActive
+                      ? theme.palette.primary.dark
+                      : theme.palette.primary.main,
+                    p: 3,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    bgcolor: isDragActive ? theme.palette.primary.main + '10' : 'transparent',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      bgcolor: theme.palette.primary.main + '05',
+                    },
+                  }}
+                  onClick={handleUploadedImageSelect}
+                >
+                  <input {...getInputProps()} />
+                  {uploadedImage ? (
+                    <Box>
+                      <img
+                        src={uploadedImage}
+                        alt="Uploaded"
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '200px',
+                          borderRadius: '8px',
+                          border:
+                            baseImageSource === 'upload'
+                              ? `3px solid ${theme.palette.primary.main}`
+                              : 'none',
+                        }}
+                      />
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        Click or drag to replace
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box>
+                      <FontAwesomeIcon
+                        icon={faImage}
+                        size="3x"
+                        color={theme.palette.primary.main}
+                      />
+                      <Typography variant="body1" sx={{ mt: 2 }}>
+                        {isDragActive
+                          ? 'Drop the image here...'
+                          : 'Drag & drop an image here, or click to select'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Supports JPG, PNG, GIF
+                      </Typography>
+                    </Box>
+                  )}
+                </Paper>
+              )}
+
+              {baseImageTabValue === 1 && (
+                <Box>
+                  <Tabs
+                    value={existingItemsTabValue}
+                    onChange={(_, newValue) => setExistingItemsTabValue(newValue)}
+                    variant="scrollable"
+                    scrollButtons="auto"
+                    sx={{ mb: 2 }}
+                  >
+                    <Tab
+                      label={
+                        <Badge
+                          badgeContent={storeGenerationStore.existingAvatars?.length || 0}
+                          color="secondary"
+                        >
+                          Avatars
+                        </Badge>
+                      }
+                    />
+                    <Tab
+                      label={
+                        <Badge
+                          badgeContent={storeGenerationStore.existingMicrophones?.length || 0}
+                          color="secondary"
+                        >
+                          Microphones
+                        </Badge>
+                      }
+                    />
+                  </Tabs>
+
+                  {storeGenerationStore.isLoadingExisting ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                      <CircularProgress />
+                    </Box>
+                  ) : (
+                    <Box sx={{ maxHeight: '400px', overflowY: 'auto' }}>
+                      <Grid container spacing={1}>
+                        {/* Avatars Tab */}
+                        {existingItemsTabValue === 0 && (
+                          <>
+                            {(storeGenerationStore.existingAvatars?.length || 0) === 0 ? (
+                              <Grid item xs={12}>
+                                <Box sx={{ textAlign: 'center', py: 4 }}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    No avatars found in database
+                                  </Typography>
+                                </Box>
+                              </Grid>
+                            ) : (
+                              storeGenerationStore.existingAvatars?.map((item) => (
+                                <Grid item xs={6} key={item.id}>
+                                  <Card
+                                    sx={{
+                                      cursor: 'pointer',
+                                      border:
+                                        selectedExistingItem?.id === item.id
+                                          ? `2px solid ${theme.palette.primary.main}`
+                                          : '1px solid transparent',
+                                      '&:hover': {
+                                        borderColor: theme.palette.primary.light,
+                                      },
+                                    }}
+                                    onClick={() => handleExistingItemSelect(item)}
+                                  >
+                                    <Box sx={{ position: 'relative' }}>
+                                      <img
+                                        src={item.imageUrl}
+                                        alt={item.name}
+                                        style={{
+                                          width: '100%',
+                                          height: '120px',
+                                          objectFit: 'contain',
+                                          backgroundColor: '#f5f5f5',
+                                        }}
+                                        onError={(e) => {
+                                          e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.id}`;
+                                        }}
+                                      />
+                                      <Chip
+                                        label={item.rarity}
+                                        size="small"
+                                        sx={{
+                                          position: 'absolute',
+                                          top: 4,
+                                          right: 4,
+                                          fontSize: '10px',
+                                        }}
+                                      />
+                                    </Box>
+                                    <CardContent sx={{ p: 1.5, pt: 1 }}>
+                                      <Typography variant="caption" noWrap sx={{ fontWeight: 500 }}>
+                                        {item.name}
+                                      </Typography>
+                                    </CardContent>
+                                  </Card>
+                                </Grid>
+                              ))
+                            )}
+                          </>
+                        )}
+
+                        {/* Microphones Tab */}
+                        {existingItemsTabValue === 1 && (
+                          <>
+                            {(storeGenerationStore.existingMicrophones?.length || 0) === 0 ? (
+                              <Grid item xs={12}>
+                                <Box sx={{ textAlign: 'center', py: 4 }}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    No microphones found in database
+                                  </Typography>
+                                </Box>
+                              </Grid>
+                            ) : (
+                              storeGenerationStore.existingMicrophones?.map((item) => (
+                                <Grid item xs={6} key={item.id}>
+                                  <Card
+                                    sx={{
+                                      cursor: 'pointer',
+                                      border:
+                                        selectedExistingItem?.id === item.id
+                                          ? `2px solid ${theme.palette.primary.main}`
+                                          : '1px solid transparent',
+                                      '&:hover': {
+                                        borderColor: theme.palette.primary.light,
+                                      },
+                                    }}
+                                    onClick={() => handleExistingItemSelect(item)}
+                                  >
+                                    <Box sx={{ position: 'relative' }}>
+                                      <img
+                                        src={item.imageUrl}
+                                        alt={item.name}
+                                        style={{
+                                          width: '100%',
+                                          height: '120px',
+                                          objectFit: 'contain',
+                                          backgroundColor: '#f5f5f5',
+                                        }}
+                                      />
+                                      <Chip
+                                        label={item.rarity}
+                                        size="small"
+                                        sx={{
+                                          position: 'absolute',
+                                          top: 4,
+                                          right: 4,
+                                          fontSize: '10px',
+                                        }}
+                                      />
+                                    </Box>
+                                    <CardContent sx={{ p: 1.5, pt: 1 }}>
+                                      <Typography variant="caption" noWrap sx={{ fontWeight: 500 }}>
+                                        {item.name}
+                                      </Typography>
+                                    </CardContent>
+                                  </Card>
+                                </Grid>
+                              ))
+                            )}
+                          </>
+                        )}
+                      </Grid>
+                    </Box>
+                  )}
+                </Box>
+              )}
+
+              {/* Selected base image preview */}
+              {getCurrentBaseImage() && (
+                <Box sx={{ mt: 2, p: 2, bgcolor: theme.palette.background.paper, borderRadius: 1 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Selected Base Image:
+                  </Typography>
+                  <Box sx={{ textAlign: 'center' }}>
                     <img
-                      src={uploadedImage}
-                      alt="Uploaded"
+                      src={getCurrentBaseImage() || ''}
+                      alt="Selected base"
                       style={{
                         maxWidth: '100%',
-                        maxHeight: '200px',
-                        borderRadius: '8px',
+                        maxHeight: '100px',
+                        borderRadius: '4px',
+                        border: `2px solid ${theme.palette.primary.main}`,
                       }}
                     />
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      Click to replace
-                    </Typography>
+                    {selectedExistingItem && (
+                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                        {selectedExistingItem.name}
+                      </Typography>
+                    )}
                   </Box>
-                ) : (
-                  <Box>
-                    <FontAwesomeIcon icon={faImage} size="3x" color={theme.palette.primary.main} />
-                    <Typography variant="body1" sx={{ mt: 2 }}>
-                      Click here to select an image
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Supports JPG, PNG, GIF
-                    </Typography>
-                  </Box>
-                )}
-              </Paper>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>
@@ -261,7 +531,11 @@ const StoreItemGenerator: React.FC = observer(() => {
         <Grid item xs={12} md={8}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              >
                 <FontAwesomeIcon icon={faCog} />
                 Generation Settings
               </Typography>
@@ -273,7 +547,9 @@ const StoreItemGenerator: React.FC = observer(() => {
                     <Select
                       value={settings.itemType}
                       label="Item Type"
-                      onChange={(e) => setSettings(prev => ({ ...prev, itemType: e.target.value }))}
+                      onChange={(e) =>
+                        setSettings((prev) => ({ ...prev, itemType: e.target.value }))
+                      }
                     >
                       {itemTypes.map((type) => (
                         <MenuItem key={type.value} value={type.value}>
@@ -293,7 +569,7 @@ const StoreItemGenerator: React.FC = observer(() => {
                     <Select
                       value={settings.style}
                       label="Style"
-                      onChange={(e) => setSettings(prev => ({ ...prev, style: e.target.value }))}
+                      onChange={(e) => setSettings((prev) => ({ ...prev, style: e.target.value }))}
                     >
                       {styles.map((style) => (
                         <MenuItem key={style.value} value={style.value}>
@@ -310,7 +586,7 @@ const StoreItemGenerator: React.FC = observer(() => {
                     <Select
                       value={settings.theme}
                       label="Theme"
-                      onChange={(e) => setSettings(prev => ({ ...prev, theme: e.target.value }))}
+                      onChange={(e) => setSettings((prev) => ({ ...prev, theme: e.target.value }))}
                     >
                       {themes.map((theme) => (
                         <MenuItem key={theme.value} value={theme.value}>
@@ -327,7 +603,9 @@ const StoreItemGenerator: React.FC = observer(() => {
                     <Select
                       value={settings.quality}
                       label="Quality"
-                      onChange={(e) => setSettings(prev => ({ ...prev, quality: e.target.value }))}
+                      onChange={(e) =>
+                        setSettings((prev) => ({ ...prev, quality: e.target.value }))
+                      }
                     >
                       {qualityOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
@@ -342,7 +620,9 @@ const StoreItemGenerator: React.FC = observer(() => {
                   <Typography gutterBottom>Variations: {settings.variations}</Typography>
                   <Slider
                     value={settings.variations}
-                    onChange={(_, value) => setSettings(prev => ({ ...prev, variations: value as number }))}
+                    onChange={(_, value) =>
+                      setSettings((prev) => ({ ...prev, variations: value as number }))
+                    }
                     min={1}
                     max={8}
                     marks
@@ -356,7 +636,7 @@ const StoreItemGenerator: React.FC = observer(() => {
                 <Button
                   variant="contained"
                   onClick={handleGenerate}
-                  disabled={!uploadedImage || storeGenerationStore.isLoading}
+                  disabled={!getCurrentBaseImage() || storeGenerationStore.isLoading}
                   sx={{ minWidth: 150 }}
                   startIcon={
                     storeGenerationStore.isLoading ? (
@@ -378,18 +658,23 @@ const StoreItemGenerator: React.FC = observer(() => {
           <Grid item xs={12}>
             <Card>
               <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 2,
+                  }}
+                >
                   <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <FontAwesomeIcon icon={faImage} />
                     Generated Items ({storeGenerationStore.generatedItems.length})
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      size="small"
-                      onClick={handleSelectAll}
-                      variant="outlined"
-                    >
-                      {selectedImages.size === storeGenerationStore.generatedItems.length ? 'Deselect All' : 'Select All'}
+                    <Button size="small" onClick={handleSelectAll} variant="outlined">
+                      {selectedImages.size === storeGenerationStore.generatedItems.length
+                        ? 'Deselect All'
+                        : 'Select All'}
                     </Button>
                     <Button
                       variant="contained"
@@ -451,7 +736,10 @@ const StoreItemGenerator: React.FC = observer(() => {
                           </IconButton>
                         </Box>
                         <CardContent sx={{ p: 1 }}>
-                          <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography
+                            variant="caption"
+                            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                          >
                             <FontAwesomeIcon icon={faPalette} />
                             {item.style} {item.itemType}
                           </Typography>
@@ -476,7 +764,9 @@ const StoreItemGenerator: React.FC = observer(() => {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <DialogTitle
+          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        >
           <Typography variant="h6">Preview</Typography>
           <IconButton onClick={() => setPreviewModalOpen(false)}>
             <FontAwesomeIcon icon={faTimes} />

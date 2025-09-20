@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
 import { Avatar } from '../entities/avatar.entity';
 import { Microphone } from '../entities/microphone.entity';
+import { Outfit } from '../entities/outfit.entity';
+import { Shoes } from '../entities/shoes.entity';
 import { UserAvatar } from '../entities/user-avatar.entity';
 import { UserMicrophone } from '../entities/user-microphone.entity';
 
@@ -16,6 +18,10 @@ export class AvatarService {
     private userAvatarRepository: Repository<UserAvatar>,
     @InjectRepository(Microphone)
     private microphoneRepository: Repository<Microphone>,
+    @InjectRepository(Outfit)
+    private outfitRepository: Repository<Outfit>,
+    @InjectRepository(Shoes)
+    private shoesRepository: Repository<Shoes>,
     @InjectRepository(UserMicrophone)
     private userMicrophoneRepository: Repository<UserMicrophone>,
     @InjectRepository(User)
@@ -147,6 +153,37 @@ export class AvatarService {
       where: { isAvailable: true },
       order: { id: 'ASC' },
     });
+  }
+
+  // Get all available outfits
+  async getAllOutfits() {
+    return this.outfitRepository.find({
+      where: { isAvailable: true },
+      order: { id: 'ASC' },
+    });
+  }
+
+  // Get all available shoes
+  async getAllShoes() {
+    return this.shoesRepository.find({
+      where: { isAvailable: true },
+      order: { id: 'ASC' },
+    });
+  }
+
+  // Get all accessories (combining outfits, shoes, and microphones)
+  async getAllAccessories() {
+    const [outfits, shoes, microphones] = await Promise.all([
+      this.getAllOutfits(),
+      this.getAllShoes(),
+      this.getAllMicrophones(),
+    ]);
+
+    return {
+      outfits,
+      shoes,
+      microphones,
+    };
   }
 
   // Get user's microphones
