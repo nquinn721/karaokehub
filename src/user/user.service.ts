@@ -69,10 +69,6 @@ export class UserService {
       relations: [
         'favoriteShows',
         'favoriteShows.show',
-        'userAvatars',
-        'userAvatars.avatar',
-        'userMicrophones',
-        'userMicrophones.microphone',
         'equippedAvatar',
         'equippedMicrophone',
       ],

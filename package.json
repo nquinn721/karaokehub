@@ -35,7 +35,10 @@
     "data:import-dry": "node scripts/safe-data-import-typeorm.js --dry-run",
     "data:backup": "node scripts/safe-data-export.js --output backups/production-backup.sql",
     "data:workflow": "./scripts/example-workflow.sh",
-    "data:help": "cat SAFE-DATA-MANAGEMENT.md"
+    "data:help": "cat SAFE-DATA-MANAGEMENT.md",
+    "avatars:export": "node scripts/export-avatar-store-data.js",
+    "avatars:import": "node scripts/import-avatar-store-data.js",
+    "avatars:import-direct": "node scripts/direct-sql-import.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

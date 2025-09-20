@@ -75,6 +75,9 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     // Connection pool options for TypeORM
     ...(isProduction && {
       maxQueryExecutionTime: 5000,
+      // Additional Cloud Run specific settings
+      acquireTimeout: 30000,
+      timeout: 30000,
     }),
 
     // Migration configuration - only run in production
@@ -89,9 +92,16 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       ...baseConfig,
       extra: {
         connectionLimit: 5,
-        connectTimeout: 60000, // Increased timeout
+        connectTimeout: 30000, // Reduced from 60000
+        acquireTimeout: 30000,
+        timeout: 30000,
         queueLimit: 0,
         socketPath,
+        // Additional MySQL settings for Cloud SQL
+        ...(isProduction && {
+          charset: 'utf8mb4',
+          timezone: '+00:00',
+        }),
       },
     } as TypeOrmModuleOptions;
   } else {
@@ -102,7 +112,9 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       port: parseInt(configService.get('DATABASE_PORT', '3306')),
       extra: {
         connectionLimit: 5,
-        connectTimeout: 60000, // Increased timeout
+        connectTimeout: 30000, // Reduced from 60000
+        acquireTimeout: 30000,
+        timeout: 30000,
         queueLimit: 0,
         // Only add SSL in production
         ...(isProduction && {
@@ -110,6 +122,8 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
             rejectUnauthorized: true,
             ca: configService.get('DATABASE_SSL_CA'),
           },
+          charset: 'utf8mb4',
+          timezone: '+00:00',
         }),
       },
     } as TypeOrmModuleOptions;

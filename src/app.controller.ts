@@ -19,6 +19,15 @@ export class AppController {
   }
 
   @Get('health')
+  getReadiness(): { status: string; timestamp: string } {
+    // Simple readiness check that doesn't require database
+    return {
+      status: 'ready',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('health/detailed')
   async getHealth(): Promise<{
     status: string;
     timestamp: string;

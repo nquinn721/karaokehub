@@ -15,11 +15,13 @@ This document provides instructions for updating the production database with th
 ### Option 1: Using Google Cloud Console
 
 1. **Create a backup first:**
+
    ```
    gcloud sql backups create --instance=YOUR_INSTANCE_ID --description="Backup before avatar system update"
    ```
 
 2. **Upload the SQL file to Cloud Storage:**
+
    ```
    gsutil cp production_update_complete.sql gs://your-bucket-name/
    ```
@@ -36,13 +38,15 @@ This document provides instructions for updating the production database with th
    - Set your actual `PROJECT_ID` and `INSTANCE_ID`
 
 2. **Run the script:**
-   
+
    **Windows:**
+
    ```powershell
    PowerShell -ExecutionPolicy Bypass -File deploy_production_db.ps1
    ```
-   
+
    **Linux/Mac:**
+
    ```bash
    chmod +x deploy_production_db.sh
    ./deploy_production_db.sh
@@ -51,16 +55,19 @@ This document provides instructions for updating the production database with th
 ## What the Update Does
 
 ### New Tables Created:
+
 - **avatars** - Stores available avatar options
 - **user_avatars** - Tracks which avatars users own and have equipped
 - **coin_packages** - Defines coin purchase packages
 - **transactions** - Records all store transactions
 
 ### Existing Tables Modified:
+
 - **users** - Adds `coins` column (default 100 coins for existing users)
 - **microphones** - Adds `coinPrice` and `isFree` columns
 
 ### Default Data Inserted:
+
 - **8 avatars** (alex, blake, cameron, joe, juan, kai, onyx, tyler)
 - **5 coin packages** (Starter, Small, Medium, Large, Mega)
 - **Microphone pricing** updated with coin costs
@@ -71,6 +78,7 @@ This document provides instructions for updating the production database with th
 After running the update, verify the changes:
 
 1. **Check new tables exist:**
+
    ```sql
    SHOW TABLES LIKE '%avatar%';
    SHOW TABLES LIKE '%coin%';
@@ -78,12 +86,14 @@ After running the update, verify the changes:
    ```
 
 2. **Verify avatar data:**
+
    ```sql
    SELECT COUNT(*) FROM avatars;  -- Should return 8
    SELECT COUNT(*) FROM user_avatars;  -- Should match user count
    ```
 
 3. **Check coin packages:**
+
    ```sql
    SELECT name, coinAmount, priceUSD FROM coin_packages ORDER BY sortOrder;
    ```

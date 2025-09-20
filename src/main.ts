@@ -12,22 +12,33 @@ import { UrlService } from './config/url.service';
 // import { CancellationService } from './services/cancellation.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    logger:
-      process.env.NODE_ENV === 'production'
-        ? ['error', 'warn']
-        : ['log', 'error', 'warn', 'debug', 'verbose'],
-  });
-  const configService = app.get(ConfigService);
-  const urlService = app.get(UrlService);
-  // const cancellationService = app.get(CancellationService);
+  try {
+    console.log('🚀 Starting KaraokeHub application...');
+    console.log('📊 Environment:', process.env.NODE_ENV);
+    console.log('🗄️  Database Socket Path:', process.env.DATABASE_SOCKET_PATH ? 'Using Cloud SQL socket' : 'Using TCP connection');
+    console.log('🔍 Database Name:', process.env.DATABASE_NAME);
+    
+    const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+      logger:
+        process.env.NODE_ENV === 'production'
+          ? ['error', 'warn', 'log']
+          : ['log', 'error', 'warn', 'debug', 'verbose'],
+    });
+    
+    console.log('✅ NestJS application created successfully');
+    
+    const configService = app.get(ConfigService);
+    const urlService = app.get(UrlService);
+    // const cancellationService = app.get(CancellationService);
 
-  // Configure global prefix BEFORE static assets
-  app.setGlobalPrefix('api');
-  // Serve static files (this should come AFTER setting global prefix)
-  app.useStaticAssets(join(__dirname, '..', 'public'), {
-    prefix: '/',
-  });
+    // Configure global prefix BEFORE static assets
+    app.setGlobalPrefix('api');
+    // Serve static files (this should come AFTER setting global prefix)
+    app.useStaticAssets(join(__dirname, '..', 'public'), {
+      prefix: '/',
+    });
+
+    console.log('✅ Static assets and global prefix configured');
 
   // Security
   app.use(
@@ -292,11 +303,27 @@ async function bootstrap() {
 
   // Port configuration: 8000 for local dev, 8080 for Cloud Run
   const port = configService.get<number>('PORT') || 8000;
+  console.log(`🔌 Attempting to start server on port ${port}...`);
+  
   await app.listen(port, '0.0.0.0');
 
   console.log(`🚀 KaraokeHub Server is running on http://localhost:${port}`);
   console.log(`📱 KaraokeHub Frontend: ${urlService.getFrontendUrl()}`);
   console.log(`🌐 WebSocket connection: ws://localhost:${port}`);
+  console.log(`🩺 Health check: http://localhost:${port}/health`);
+  
+  } catch (error) {
+    console.error('❌ Failed to start KaraokeHub application:', error);
+    console.error('📊 Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
+    process.exit(1);
+  }
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('❌ Bootstrap function failed:', error);
+  process.exit(1);
+});
