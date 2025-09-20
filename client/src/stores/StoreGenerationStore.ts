@@ -40,7 +40,7 @@ export class StoreGenerationStore {
 
   constructor() {
     makeAutoObservable(this);
-    
+
     // Initialize arrays to prevent undefined errors
     this.existingMicrophones = [];
     this.existingAvatars = [];
@@ -117,10 +117,7 @@ export class StoreGenerationStore {
   }
 
   getAllExistingItems(): ExistingStoreItem[] {
-    return [
-      ...(this.existingAvatars || []),
-      ...(this.existingMicrophones || []),
-    ];
+    return [...(this.existingAvatars || []), ...(this.existingMicrophones || [])];
   }
 
   async generateStoreItems(
@@ -142,15 +139,15 @@ export class StoreGenerationStore {
 
       const response = await apiStore.post('/store-generation/generate', requestBody);
 
-      if (response.data.success) {
-        this.generatedItems = [...this.generatedItems, ...response.data.data.items];
+      if (response.success) {
+        this.generatedItems = [...this.generatedItems, ...response.data.items];
         this.setSuccess(
-          `Generated ${response.data.data.count} new ${settings.itemType} variations!`,
+          `Generated ${response.data.count} new ${settings.itemType} variations!`,
         );
-        return { success: true, data: response.data.data };
+        return { success: true, data: response.data };
       } else {
-        this.setError(response.data.error || 'Failed to generate items');
-        return { success: false, error: response.data.error };
+        this.setError(response.error || 'Failed to generate items');
+        return { success: false, error: response.error };
       }
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to generate store items';
@@ -194,16 +191,16 @@ export class StoreGenerationStore {
 
       const response = await apiStore.post('/store-generation/save', { items: itemsToSave });
 
-      if (response.data.success) {
-        this.setSuccess(`Successfully saved ${response.data.data.count} items to the store!`);
+      if (response.success) {
+        this.setSuccess(`Successfully saved ${response.data.count} items to the store!`);
         // Remove saved items from the generated list
         this.generatedItems = this.generatedItems.filter(
           (item) => !selectedItemIds.includes(item.id),
         );
-        return { success: true, data: response.data.data };
+        return { success: true, data: response.data };
       } else {
-        this.setError(response.data.error || 'Failed to save items');
-        return { success: false, error: response.data.error };
+        this.setError(response.error || 'Failed to save items');
+        return { success: false, error: response.error };
       }
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to save store items';
@@ -218,11 +215,11 @@ export class StoreGenerationStore {
     try {
       const response = await apiStore.get('/store-generation/settings');
 
-      if (response.data.success) {
-        return { success: true, data: response.data.data };
+      if (response.success) {
+        return { success: true, data: response.data };
       } else {
-        this.setError(response.data.error || 'Failed to get settings');
-        return { success: false, error: response.data.error };
+        this.setError(response.error || 'Failed to get settings');
+        return { success: false, error: response.error };
       }
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to get generation settings';

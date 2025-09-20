@@ -1,10 +1,10 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './src/app.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { AppModule } from './src/app.module';
 import { Avatar } from './src/avatar/entities/avatar.entity';
+import { Microphone } from './src/avatar/entities/microphone.entity';
 import { Outfit } from './src/avatar/entities/outfit.entity';
 import { Shoes } from './src/avatar/entities/shoes.entity';
-import { Microphone } from './src/avatar/entities/microphone.entity';
 
 async function seedStoreItems() {
   const app = await NestFactory.createApplicationContext(AppModule);

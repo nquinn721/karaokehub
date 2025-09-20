@@ -232,71 +232,72 @@ export class StoreGenerationService {
     const basePrompts = this.getItemTypePrompts(request.itemType, request.style, request.theme);
     const selectedPrompt = basePrompts[variationIndex % basePrompts.length];
 
-    // Add editing instructions to modify the base image
-    const editingPrompt =
-      `Using the provided image as a reference, ${selectedPrompt}. ` +
-      `Maintain the overall composition and lighting of the original image, but focus on ` +
-      `creating a distinct ${request.itemType} that would be perfect for a karaoke avatar. ` +
-      `The result should be suitable for a virtual karaoke character store item. ` +
-      `Make sure the ${request.itemType} is the main focus and clearly visible.`;
+    // Create a prompt that generates a new item inspired by the reference image
+    const generationPrompt =
+      `Create a high-quality, detailed image of ${selectedPrompt}. ` +
+      `Use the provided reference image for inspiration on style and aesthetic, but generate a completely new ${request.itemType}. ` +
+      `The ${request.itemType} should be the main subject of the image, clearly visible and well-lit. ` +
+      `Style: ${request.style}, Theme: ${request.theme}. ` +
+      `Perfect for a virtual karaoke avatar store item. ` +
+      `Professional product photography style with clean background.`;
 
-    return editingPrompt;
+    return generationPrompt;
   }
 
   private getItemTypePrompts(itemType: string, style: string, theme: string): string[] {
     switch (itemType) {
       case 'outfit':
         return [
-          `transform this into a ${style} ${theme} outfit with intricate details, perfect for a karaoke performer`,
-          `create a ${style} stage outfit with ${theme} elements, featuring bold colors and performance-ready design`,
-          `design a ${theme} themed ${style} costume with sparkles, sequins, and eye-catching patterns`,
-          `craft a professional ${style} performance outfit suitable for ${theme} karaoke venues`,
-          `generate a ${theme} inspired ${style} ensemble with unique textures and stage-appropriate styling`,
+          `a ${style} ${theme} outfit including shirt, pants/skirt, and accessories - complete ensemble displayed on a mannequin or flat lay`,
+          `a ${style} stage outfit with ${theme} elements - full costume with jacket, bottoms, and styling details`,
+          `a ${theme} themed ${style} complete outfit - shirt, pants, belt, and coordinating accessories`,
+          `a professional ${style} performance outfit - blazer, trousers/dress, and complementary pieces`,
+          `a ${theme} inspired ${style} ensemble - coordinated top, bottom, and accessories in matching style`,
         ];
 
       case 'shoes':
         return [
-          `replace the footwear with ${style} ${theme} shoes featuring comfortable soles and stylish design`,
-          `create ${style} performance shoes perfect for ${theme} karaoke settings with non-slip soles`,
-          `design ${theme} themed ${style} footwear with sparkly accents and comfortable fit`,
-          `craft professional ${style} stage shoes suitable for ${theme} performances`,
-          `generate ${theme} inspired ${style} shoes with unique patterns and performance features`,
+          `a pair of ${style} ${theme} shoes - high-quality footwear product photography with clean background`,
+          `${style} performance shoes for ${theme} settings - professional product shot showing both shoes`,
+          `${theme} themed ${style} footwear - detailed shoe photography with clear view of design elements`,
+          `professional ${style} stage shoes - product image showing the footwear from multiple angles`,
+          `${theme} inspired ${style} shoes - clean product photography of stylish footwear`,
         ];
 
       case 'microphone':
         return [
-          `add a ${style} ${theme} microphone with unique design elements and professional appearance`,
-          `create a ${style} performance microphone featuring ${theme} decorative patterns and premium finish`,
-          `design a ${theme} themed ${style} microphone with custom colors and artistic details`,
-          `craft a professional ${style} stage microphone perfect for ${theme} karaoke venues`,
-          `generate a ${theme} inspired ${style} microphone with distinctive styling and high-end appearance`,
+          `a ${style} ${theme} microphone - professional product photography of a high-end vocal microphone`,
+          `a ${style} performance microphone with ${theme} design elements - clean product shot with premium finish`,
+          `a ${theme} themed ${style} microphone - detailed product image showing unique colors and artistic details`,
+          `a professional ${style} stage microphone - high-quality product photography suitable for ${theme} venues`,
+          `a ${theme} inspired ${style} microphone - premium product shot with distinctive styling and professional appearance`,
         ];
 
       case 'hair':
         return [
-          `modify the hairstyle to a ${style} ${theme} look with vibrant colors and unique styling`,
-          `create a ${style} performance hairstyle perfect for ${theme} karaoke settings`,
-          `design ${theme} themed ${style} hair accessories and styling with eye-catching elements`,
-          `craft a professional ${style} stage-ready hairstyle suitable for ${theme} performances`,
-          `generate ${theme} inspired ${style} hair design with distinctive colors and textures`,
+          `${style} ${theme} hair accessories - product photography of hair clips, bands, or decorative pieces`,
+          `${style} hair styling accessories with ${theme} elements - clean product shots of hair ornaments`,
+          `${theme} themed ${style} hair accessories - detailed product images of hair decorations and clips`,
+          `professional ${style} hair accessories suitable for ${theme} performances - premium hair ornaments`,
+          `${theme} inspired ${style} hair styling pieces - elegant hair accessories with distinctive design`,
         ];
 
       case 'hat':
         return [
-          `add a ${style} ${theme} hat or headwear with unique design and comfortable fit`,
-          `create ${style} performance headwear featuring ${theme} decorative elements`,
-          `design a ${theme} themed ${style} hat with custom patterns and stylish appearance`,
-          `craft professional ${style} stage headwear perfect for ${theme} karaoke venues`,
-          `generate ${theme} inspired ${style} headwear with distinctive styling and premium materials`,
+          `a ${style} ${theme} hat or headwear - professional product photography of stylish headwear`,
+          `${style} performance headwear with ${theme} decorative elements - clean product shot of premium hat`,
+          `a ${theme} themed ${style} hat - detailed product image showing custom patterns and design`,
+          `professional ${style} stage headwear - high-quality product photography of performance hat`,
+          `${theme} inspired ${style} headwear - premium product shot with distinctive styling and materials`,
         ];
 
       case 'jewelry':
         return [
-          `add ${style} ${theme} jewelry pieces with sparkling gems and elegant design`,
-          `create ${style} performance jewelry featuring ${theme} elements and stage-appropriate shine`,
-          `design ${theme} themed ${style} accessories with precious metals and unique patterns`,
-          `craft professional ${style} stage jewelry suitable for ${theme} performances`,
-          `generate ${theme} inspired ${style} jewelry with distinctive styling and premium appearance`,
+          `${style} ${theme} jewelry pieces - professional product photography of elegant accessories with gems`,
+          `${style} performance jewelry with ${theme} elements - clean product shots of stage-appropriate accessories`,
+          `${theme} themed ${style} jewelry - detailed product images of precious accessories with unique patterns`,
+          `professional ${style} stage jewelry - high-quality product photography suitable for ${theme} performances`,
+          `${theme} inspired ${style} jewelry - premium product shots with distinctive styling and precious appearance`,
         ];
 
       default:

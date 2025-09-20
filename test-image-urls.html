@@ -1,48 +1,60 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
+  <head>
     <title>Test Image URLs</title>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Testing Store Item Image URLs</h1>
-    
+
     <h2>Direct Backend URLs</h2>
     <p>Testing if the backend serves images correctly:</p>
-    
-    <div style="margin: 10px;">
-        <h3>Avatar 1 (Alex)</h3>
-        <img src="http://localhost:8000/images/avatar/avatar_1.png" alt="Avatar 1" style="width: 100px; height: 100px; border: 1px solid black;">
-        <p>URL: http://localhost:8000/images/avatar/avatar_1.png</p>
+
+    <div style="margin: 10px">
+      <h3>Avatar 1 (Alex)</h3>
+      <img
+        src="http://localhost:8000/images/avatar/avatar_1.png"
+        alt="Avatar 1"
+        style="width: 100px; height: 100px; border: 1px solid black"
+      />
+      <p>URL: http://localhost:8000/images/avatar/avatar_1.png</p>
     </div>
-    
-    <div style="margin: 10px;">
-        <h3>Avatar 2 (Sam)</h3>
-        <img src="http://localhost:8000/images/avatar/avatar_2.png" alt="Avatar 2" style="width: 100px; height: 100px; border: 1px solid black;">
-        <p>URL: http://localhost:8000/images/avatar/avatar_2.png</p>
+
+    <div style="margin: 10px">
+      <h3>Avatar 2 (Sam)</h3>
+      <img
+        src="http://localhost:8000/images/avatar/avatar_2.png"
+        alt="Avatar 2"
+        style="width: 100px; height: 100px; border: 1px solid black"
+      />
+      <p>URL: http://localhost:8000/images/avatar/avatar_2.png</p>
     </div>
-    
-    <div style="margin: 10px;">
-        <h3>Microphone 1</h3>
-        <img src="http://localhost:8000/images/microphone/microphone_1.png" alt="Microphone 1" style="width: 100px; height: 100px; border: 1px solid black;">
-        <p>URL: http://localhost:8000/images/microphone/microphone_1.png</p>
+
+    <div style="margin: 10px">
+      <h3>Microphone 1</h3>
+      <img
+        src="http://localhost:8000/images/microphone/microphone_1.png"
+        alt="Microphone 1"
+        style="width: 100px; height: 100px; border: 1px solid black"
+      />
+      <p>URL: http://localhost:8000/images/microphone/microphone_1.png</p>
     </div>
-    
+
     <h2>API Test</h2>
     <button onclick="testAPI()">Load Avatar Data from API</button>
     <div id="api-result"></div>
-    
+
     <script>
-        async function testAPI() {
-            try {
-                const response = await fetch('http://localhost:8000/api/avatar/all-avatars');
-                const data = await response.json();
-                
-                const resultDiv = document.getElementById('api-result');
-                resultDiv.innerHTML = '<h3>First 3 Avatars from API:</h3>';
-                
-                data.slice(0, 3).forEach(avatar => {
-                    const constructedUrl = `http://localhost:8000${avatar.imageUrl}`;
-                    resultDiv.innerHTML += `
+      async function testAPI() {
+        try {
+          const response = await fetch('http://localhost:8000/api/avatar/all-avatars');
+          const data = await response.json();
+
+          const resultDiv = document.getElementById('api-result');
+          resultDiv.innerHTML = '<h3>First 3 Avatars from API:</h3>';
+
+          data.slice(0, 3).forEach((avatar) => {
+            const constructedUrl = `http://localhost:8000${avatar.imageUrl}`;
+            resultDiv.innerHTML += `
                         <div style="margin: 10px; border: 1px solid gray; padding: 10px;">
                             <h4>${avatar.name}</h4>
                             <p>Original URL: ${avatar.imageUrl}</p>
@@ -50,11 +62,11 @@
                             <img src="${constructedUrl}" alt="${avatar.name}" style="width: 100px; height: 100px; border: 1px solid black;">
                         </div>
                     `;
-                });
-            } catch (error) {
-                document.getElementById('api-result').innerHTML = `<p>Error: ${error.message}</p>`;
-            }
+          });
+        } catch (error) {
+          document.getElementById('api-result').innerHTML = `<p>Error: ${error.message}</p>`;
         }
+      }
     </script>
-</body>
+  </body>
 </html>

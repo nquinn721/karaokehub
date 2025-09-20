@@ -8,11 +8,15 @@ export class CreateAvatarSystem1737450300000 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS \`avatars\` (
         \`id\` varchar(50) NOT NULL,
-        \`name\` varchar(255) NOT NULL,
+        \`name\` varchar(100) NOT NULL,
         \`description\` text,
-        \`rarity\` enum('common','uncommon','rare','epic','legendary') NOT NULL DEFAULT 'common',
-        \`cost\` int NOT NULL DEFAULT '0',
-        \`imagePath\` varchar(255) NOT NULL,
+        \`type\` varchar(50) NOT NULL DEFAULT 'basic',
+        \`rarity\` varchar(50) NOT NULL DEFAULT 'common',
+        \`imageUrl\` varchar(255) NOT NULL,
+        \`price\` decimal(10,2) NOT NULL DEFAULT '0.00',
+        \`coinPrice\` int NOT NULL DEFAULT '0',
+        \`isAvailable\` tinyint NOT NULL DEFAULT '1',
+        \`isFree\` tinyint NOT NULL DEFAULT '1',
         \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
         PRIMARY KEY (\`id\`)
@@ -22,12 +26,15 @@ export class CreateAvatarSystem1737450300000 implements MigrationInterface {
     // Create microphones table
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS \`microphones\` (
-        \`id\` varchar(50) NOT NULL,
+        \`id\` varchar(36) NOT NULL,
         \`name\` varchar(255) NOT NULL,
-        \`description\` text,
+        \`description\` varchar(255),
+        \`type\` enum('basic','vintage','modern','wireless','premium','golden') NOT NULL DEFAULT 'basic',
         \`rarity\` enum('common','uncommon','rare','epic','legendary') NOT NULL DEFAULT 'common',
-        \`cost\` int NOT NULL DEFAULT '0',
-        \`imagePath\` varchar(255) NOT NULL,
+        \`imageUrl\` varchar(255) NOT NULL,
+        \`price\` decimal(10,2) NOT NULL DEFAULT '0.00',
+        \`coinPrice\` int NOT NULL DEFAULT '0',
+        \`isAvailable\` tinyint NOT NULL DEFAULT '1',
         \`createdAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
         \`updatedAt\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
         PRIMARY KEY (\`id\`)
