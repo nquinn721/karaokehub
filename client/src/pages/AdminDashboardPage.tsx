@@ -929,6 +929,12 @@ const AdminDashboardPageTabbed = observer(() => {
                     sx={{ gap: 1 }}
                   />
                   <Tab
+                    icon={<FontAwesomeIcon icon={faCoins} />}
+                    label="Transaction Management"
+                    iconPosition="start"
+                    sx={{ gap: 1 }}
+                  />
+                  <Tab
                     icon={
                       <Badge
                         badgeContent={urlApprovalCount}

@@ -19,6 +19,7 @@ import {
   subscriptionStore as subscriptionStoreInstance,
 } from './SubscriptionStore';
 import { ThemeStore, themeStore as themeStoreInstance } from './ThemeStore';
+import { TransactionStore } from './TransactionStore';
 import { UIStore } from './UIStore';
 import { UserStore, userStore as userStoreInstance } from './UserStore';
 import { VendorStore } from './VendorStore';
@@ -40,6 +41,7 @@ export class RootStore {
   musicStore: MusicStore;
   subscriptionStore: SubscriptionStore;
   userStore: UserStore;
+  transactionStore: TransactionStore;
   apiStore: typeof apiStoreInstance;
   audioStore: typeof audioStoreInstance;
 
@@ -62,6 +64,7 @@ export class RootStore {
     this.musicStore = musicStoreInstance; // Use the singleton instance
     this.subscriptionStore = subscriptionStoreInstance; // Use the singleton instance
     this.userStore = userStoreInstance; // Use the singleton instance
+    this.transactionStore = new TransactionStore(apiStoreInstance);
     this.apiStore = apiStoreInstance;
     this.audioStore = audioStoreInstance; // Use the singleton instance
 
@@ -125,6 +128,7 @@ export const {
   musicStore,
   subscriptionStore,
   userStore,
+  transactionStore,
   audioStore,
   apiStore: api,
 } = rootStore;
