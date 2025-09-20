@@ -2,12 +2,13 @@ import { Body, Controller, Get, HttpException, HttpStatus, Post } from '@nestjs/
 import { StoreGenerationService } from './store-generation.service';
 
 export interface GenerateStoreItemsRequest {
-  baseImage: string; // base64 encoded image
+  baseImage?: string; // base64 encoded image (optional when using custom prompt)
   itemType: 'outfit' | 'shoes' | 'microphone' | 'hair' | 'hat' | 'jewelry';
   style: string;
   theme: string;
   variations: number;
   quality: 'standard' | 'high' | 'ultra';
+  customPrompt?: string; // Optional custom prompt to override automatic prompts
 }
 
 export interface GeneratedStoreItem {
@@ -41,9 +42,9 @@ export class StoreGenerationController {
   @Post('generate')
   async generateStoreItems(@Body() request: GenerateStoreItemsRequest) {
     try {
-      // Validate request
-      if (!request.baseImage) {
-        throw new HttpException('Base image is required', HttpStatus.BAD_REQUEST);
+      // Validate request - require either base image OR custom prompt
+      if (!request.baseImage && (!request.customPrompt || !request.customPrompt.trim())) {
+        throw new HttpException('Either base image or custom prompt is required for generation', HttpStatus.BAD_REQUEST);
       }
 
       if (!request.itemType) {
@@ -54,7 +55,7 @@ export class StoreGenerationController {
         throw new HttpException('Variations must be between 1 and 8', HttpStatus.BAD_REQUEST);
       }
 
-      // Generate items using AI
+      // Generate items using AI with avatar reference
       const generatedItems = await this.storeGenerationService.generateStoreItems(request);
 
       return {

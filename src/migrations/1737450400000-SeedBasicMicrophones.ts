@@ -3,7 +3,9 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 export class SeedBasicMicrophones1737450400000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     try {
-      console.log('⏭️ Skipping old microphone seeding - replaced by comprehensive avatar/microphone seeding');
+      console.log(
+        '⏭️ Skipping old microphone seeding - replaced by comprehensive avatar/microphone seeding',
+      );
       // This migration has been replaced by SeedAvatarsAndMicrophones1737450450000
       // Leaving empty to avoid conflicts
     } catch (error) {

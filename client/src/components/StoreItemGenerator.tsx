@@ -35,6 +35,7 @@ import {
   Slider,
   Tab,
   Tabs,
+  TextField,
   Typography,
   useTheme,
 } from '@mui/material';
@@ -63,6 +64,7 @@ const StoreItemGenerator: React.FC = observer(() => {
     variations: 4,
     quality: 'standard',
     theme: 'casual',
+    customPrompt: '',
   });
 
   // Load existing items when component mounts
@@ -141,12 +143,13 @@ const StoreItemGenerator: React.FC = observer(() => {
   const handleGenerate = async () => {
     const baseImage = baseImageSource === 'upload' ? uploadedImage : selectedBaseImage;
 
-    if (!baseImage) {
-      storeGenerationStore.setError('Please select or upload a base image first');
+    // Allow generation with just custom prompt (no base image required)
+    if (!baseImage && (!settings.customPrompt || !settings.customPrompt.trim())) {
+      storeGenerationStore.setError('Please either select/upload a base image OR enter a custom prompt');
       return;
     }
 
-    await storeGenerationStore.generateStoreItems(baseImage, settings);
+    await storeGenerationStore.generateStoreItems(baseImage || '', settings);
   };
 
   const handleExistingItemSelect = (item: any) => {
@@ -617,6 +620,21 @@ const StoreItemGenerator: React.FC = observer(() => {
                 </Grid>
 
                 <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="Custom Prompt (Optional)"
+                    placeholder="Enter your own generation prompt (e.g., 'create 5 yellow shirts and blue overalls outfits' or 'generate 3 red sneakers')"
+                    value={settings.customPrompt}
+                    onChange={(e) =>
+                      setSettings((prev) => ({ ...prev, customPrompt: e.target.value }))
+                    }
+                    helperText="Leave empty to use automatic prompts, or enter your own text to override ALL settings. You can specify quantity in your prompt."
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
                   <Typography gutterBottom>Variations: {settings.variations}</Typography>
                   <Slider
                     value={settings.variations}
@@ -636,7 +654,7 @@ const StoreItemGenerator: React.FC = observer(() => {
                 <Button
                   variant="contained"
                   onClick={handleGenerate}
-                  disabled={!getCurrentBaseImage() || storeGenerationStore.isLoading}
+                  disabled={(!getCurrentBaseImage() && (!settings.customPrompt || !settings.customPrompt.trim())) || storeGenerationStore.isLoading}
                   sx={{ minWidth: 150 }}
                   startIcon={
                     storeGenerationStore.isLoading ? (

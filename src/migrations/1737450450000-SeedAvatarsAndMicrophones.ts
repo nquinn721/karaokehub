@@ -112,12 +112,13 @@ export class SeedAvatarsAndMicrophones1737450450000 implements MigrationInterfac
         - 20 microphones (4 basic + 16 premium)
         - Assigned basic items to ${users.length} users
         - Set default equipped items for all users`);
-
     } catch (error) {
       console.error('❌ Error seeding avatars and microphones:', error.message);
       console.error('❌ Error stack:', error.stack);
       // Don't throw error to prevent deployment failure, but log it clearly
-      console.log('⚠️ Continuing deployment despite seeding error - manual database setup may be required');
+      console.log(
+        '⚠️ Continuing deployment despite seeding error - manual database setup may be required',
+      );
     }
   }
 
@@ -128,7 +129,9 @@ export class SeedAvatarsAndMicrophones1737450450000 implements MigrationInterfac
       await queryRunner.query(`DELETE FROM user_avatars`);
 
       // Reset user equipped items
-      await queryRunner.query(`UPDATE users SET equippedAvatarId = NULL, equippedMicrophoneId = NULL`);
+      await queryRunner.query(
+        `UPDATE users SET equippedAvatarId = NULL, equippedMicrophoneId = NULL`,
+      );
 
       // Remove all avatars and microphones
       await queryRunner.query(`DELETE FROM microphones`);

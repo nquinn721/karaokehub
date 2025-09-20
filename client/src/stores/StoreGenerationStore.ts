@@ -17,6 +17,7 @@ export interface GenerationSettings {
   theme: string;
   variations: number;
   quality: string;
+  customPrompt?: string;
 }
 
 export interface ExistingStoreItem {
@@ -128,22 +129,25 @@ export class StoreGenerationStore {
       this.setLoading(true);
       this.setError(null);
 
-      const requestBody = {
-        baseImage,
+      const requestBody: any = {
         itemType: settings.itemType,
         style: settings.style,
         theme: settings.theme,
         variations: settings.variations,
         quality: settings.quality,
+        customPrompt: settings.customPrompt,
       };
+
+      // Only include baseImage if it's provided
+      if (baseImage && baseImage.trim()) {
+        requestBody.baseImage = baseImage;
+      }
 
       const response = await apiStore.post('/store-generation/generate', requestBody);
 
       if (response.success) {
         this.generatedItems = [...this.generatedItems, ...response.data.items];
-        this.setSuccess(
-          `Generated ${response.data.count} new ${settings.itemType} variations!`,
-        );
+        this.setSuccess(`Generated ${response.data.count} new ${settings.itemType} variations!`);
         return { success: true, data: response.data };
       } else {
         this.setError(response.error || 'Failed to generate items');

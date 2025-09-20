@@ -28,20 +28,22 @@ export class StoreGenerationService {
   }
 
   async generateStoreItems(request: GenerateStoreItemsRequest): Promise<GeneratedStoreItem[]> {
+    // Extract number of items from custom prompt if specified
+    const detectedVariations = this.extractVariationsFromPrompt(request.customPrompt);
+    const actualVariations = detectedVariations || request.variations;
+
     this.logger.log(
-      `Generating ${request.variations} ${request.itemType} items with ${request.style} style`,
+      `Generating ${actualVariations} ${request.itemType} items with ${request.style} style${detectedVariations ? ' (detected from custom prompt)' : ''}`,
     );
 
     try {
-      // For now, we'll simulate the AI generation process
-      // In a real implementation, this would call the Gemini API
       const generatedItems: GeneratedStoreItem[] = [];
 
-      for (let i = 0; i < request.variations; i++) {
+      for (let i = 0; i < actualVariations; i++) {
         const item: GeneratedStoreItem = {
           id: `generated-${Date.now()}-${i}`,
-          imageUrl: await this.generateImageWithAI(request, i),
-          prompt: this.buildPrompt(request, i),
+          imageUrl: await this.generateImageWithAI(request, i, actualVariations),
+          prompt: this.buildAvatarBasedPrompt(request, i, actualVariations),
           itemType: request.itemType,
           style: request.style,
           theme: request.theme,
@@ -49,6 +51,7 @@ export class StoreGenerationService {
             quality: request.quality,
             generatedAt: new Date().toISOString(),
             variationIndex: i,
+            totalVariations: actualVariations,
           },
         };
 
@@ -152,9 +155,78 @@ export class StoreGenerationService {
     };
   }
 
+  private extractVariationsFromPrompt(customPrompt?: string): number | null {
+    if (!customPrompt || !customPrompt.trim()) {
+      return null;
+    }
+
+    // Look for patterns like "10 images", "5 characters", "3 items", etc.
+    const patterns = [
+      /(\d+)\s+(?:images?|pics?|pictures?)/i,
+      /(\d+)\s+(?:characters?|avatars?|people)/i,
+      /(\d+)\s+(?:items?|things?|objects?)/i,
+      /(\d+)\s+(?:outfits?|clothes?|clothing)/i,
+      /(\d+)\s+(?:shoes?|sneakers?|boots?)/i,
+      /(\d+)\s+(?:microphones?|mics?)/i,
+      /(?:create|make|generate)\s+(\d+)/i,
+      /i\s+want\s+(\d+)/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = customPrompt.match(pattern);
+      if (match && match[1]) {
+        const num = parseInt(match[1], 10);
+        if (num > 0 && num <= 20) { // Reasonable limits
+          this.logger.log(`Detected ${num} variations from custom prompt`);
+          return num;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private modifyPromptForSingleItem(originalPrompt: string, currentIndex: number, totalItems: number): string {
+    // Convert prompts like "10 characters" to "1 character" and add uniqueness
+    let modifiedPrompt = originalPrompt;
+
+    // Replace number patterns to generate ONE item
+    const numberPatterns = [
+      { pattern: /(\d+)\s+(images?|pics?|pictures?)/gi, replacement: '1 image' },
+      { pattern: /(\d+)\s+(characters?|avatars?|people)/gi, replacement: '1 character' },
+      { pattern: /(\d+)\s+(items?|things?|objects?)/gi, replacement: '1 item' },
+      { pattern: /(\d+)\s+(outfits?|clothes?|clothing)/gi, replacement: '1 outfit' },
+      { pattern: /(\d+)\s+(shoes?|sneakers?|boots?)/gi, replacement: '1 shoe' },
+      { pattern: /(\d+)\s+(microphones?|mics?)/gi, replacement: '1 microphone' },
+      { pattern: /(?:create|make|generate)\s+(\d+)/gi, replacement: 'create 1' },
+      { pattern: /i\s+want\s+(\d+)/gi, replacement: 'create 1' },
+    ];
+
+    for (const { pattern, replacement } of numberPatterns) {
+      modifiedPrompt = modifiedPrompt.replace(pattern, replacement);
+    }
+
+    // Add variation instruction to make each image unique
+    const genderInstructions = [
+      'male character',
+      'female character', 
+      'unique character design',
+      'different character style',
+      'varied character appearance'
+    ];
+    
+    const variationInstruction = genderInstructions[currentIndex % genderInstructions.length];
+    
+    // Append uniqueness instruction
+    modifiedPrompt += `, make it a ${variationInstruction}, unique and different from others`;
+
+    return modifiedPrompt;
+  }
+
   private async generateImageWithAI(
     request: GenerateStoreItemsRequest,
     variationIndex: number,
+    totalVariations?: number,
   ): Promise<string> {
     try {
       this.logger.log(
@@ -166,21 +238,25 @@ export class StoreGenerationService {
         model: 'gemini-2.5-flash-image-preview',
       });
 
-      // Build the prompt for this variation
-      const prompt = this.buildPrompt(request, variationIndex);
+      // Build the prompt for this variation - use reference image like in successful example
+      const prompt = this.buildAvatarBasedPrompt(request, variationIndex, totalVariations);
 
-      // Convert base64 image to proper format for Gemini
-      const imageData = {
-        inlineData: {
-          data: request.baseImage.split(',')[1], // Remove data:image/type;base64, prefix
-          mimeType: this.getMimeTypeFromBase64(request.baseImage),
-        },
-      };
+      // Convert base64 image to proper format for Gemini (if provided)
+      let contentParts: any[] = [prompt];
+      if (request.baseImage) {
+        const imageData = {
+          inlineData: {
+            data: request.baseImage.split(',')[1], // Remove data:image/type;base64, prefix
+            mimeType: this.getMimeTypeFromBase64(request.baseImage),
+          },
+        };
+        contentParts = [prompt, imageData];
+      }
 
-      this.logger.log(`Prompt: ${prompt}`);
+      this.logger.log(`Avatar-based prompt: ${prompt}`);
 
-      // Generate image with both base image and text prompt
-      const result = await model.generateContent([prompt, imageData]);
+      // Generate image with base image reference (like the successful example)
+      const result = await model.generateContent(contentParts);
       const response = await result.response;
 
       // Find the generated image in the response
@@ -242,6 +318,181 @@ export class StoreGenerationService {
       `Professional product photography style with clean background.`;
 
     return generationPrompt;
+  }
+
+  private buildTextOnlyPrompt(request: GenerateStoreItemsRequest, variationIndex: number): string {
+    // Create detailed prompts for different avatar store items without reference image
+    const basePrompts = this.getTextOnlyItemPrompts(request.itemType, request.style, request.theme);
+    const selectedPrompt = basePrompts[variationIndex % basePrompts.length];
+
+    // Create a pure text prompt for clean product generation
+    const textPrompt =
+      `Product photography: ${selectedPrompt}. ` +
+      `Requirements: Clean white background, professional studio lighting, e-commerce style. ` +
+      `Subject: ONLY the ${request.itemType} item, no people, no humans, no models. ` +
+      `Style: ${request.style}, Theme: ${request.theme}. ` +
+      `Format: High-quality product catalog image suitable for online store. ` +
+      `DO NOT include any people or human figures. Show only the clothing/item itself.`;
+
+    return textPrompt;
+  }
+
+  private buildAvatarBasedPrompt(request: GenerateStoreItemsRequest, variationIndex: number, totalVariations?: number): string {
+    // If user provided a custom prompt, modify it for individual image generation
+    if (request.customPrompt && request.customPrompt.trim()) {
+      const originalPrompt = request.customPrompt.trim();
+      this.logger.log(`Using custom prompt: ${originalPrompt}`);
+      
+      // If generating multiple items, modify prompt to create ONE item per image
+      if (totalVariations && totalVariations > 1) {
+        const modifiedPrompt = this.modifyPromptForSingleItem(originalPrompt, variationIndex + 1, totalVariations);
+        this.logger.log(`Modified for individual generation: ${modifiedPrompt}`);
+        return modifiedPrompt;
+      }
+      
+      return originalPrompt;
+    }
+
+    // Otherwise, create prompts that work like the successful Google AI Studio example
+    const basePrompts = this.getAvatarItemPrompts(request.itemType, request.style, request.theme);
+    const selectedPrompt = basePrompts[variationIndex % basePrompts.length];
+
+    // Create a prompt that generates items for the avatar character (like the successful example)
+    const avatarPrompt = request.baseImage 
+      ? `Using this avatar character as reference, ${selectedPrompt}. Show the ${request.itemType} both as a separate item and worn by the character. Style: ${request.style}, Theme: ${request.theme}. Create clothing/items that would fit this character perfectly.`
+      : `Create ${selectedPrompt} for a cartoon avatar character. Style: ${request.style}, Theme: ${request.theme}. Show the ${request.itemType} as it would appear on an avatar character.`;
+
+    return avatarPrompt;
+  }
+
+  private getAvatarItemPrompts(itemType: string, style: string, theme: string): string[] {
+    switch (itemType) {
+      case 'outfit':
+        return [
+          `create a ${style} ${theme} outfit for this character - design clothing that fits their style and personality`,
+          `design a ${style} ${theme} costume for this avatar - create wearable clothing items that suit the character`,
+          `make a ${style} ${theme} outfit for this character to wear - design clothes that match their appearance`,
+          `create ${style} ${theme} clothing for this avatar character - design an outfit that fits perfectly`,
+          `design a ${style} ${theme} ensemble for this character - create clothing items they can wear`,
+        ];
+
+      case 'shoes':
+        return [
+          `create ${style} ${theme} shoes for this character - design footwear that fits their style`,
+          `design ${style} ${theme} footwear for this avatar - create shoes that match the character`,
+          `make ${style} ${theme} shoes for this character to wear - design footwear that suits them`,
+          `create ${style} ${theme} boots/sneakers for this avatar character - design appropriate footwear`,
+          `design ${style} ${theme} footwear that this character would wear - create matching shoes`,
+        ];
+
+      case 'microphone':
+        return [
+          `create a ${style} ${theme} microphone for this character - design a mic that fits their personality`,
+          `design a ${style} ${theme} microphone that this avatar would use - create a custom mic`,
+          `make a ${style} ${theme} microphone for this character - design a personalized mic`,
+          `create a ${style} ${theme} karaoke microphone for this avatar - design a performance mic`,
+          `design a ${style} ${theme} microphone that matches this character's style`,
+        ];
+
+      case 'hair':
+        return [
+          `create ${style} ${theme} hair accessories for this character - design items that enhance their hairstyle`,
+          `design ${style} ${theme} hair ornaments for this avatar - create accessories that fit their look`,
+          `make ${style} ${theme} hair clips/bands for this character - design hair accessories`,
+          `create ${style} ${theme} hair decorations for this avatar character - design stylish accessories`,
+          `design ${style} ${theme} hair accessories that complement this character's appearance`,
+        ];
+
+      case 'hat':
+        return [
+          `create a ${style} ${theme} hat for this character - design headwear that suits their personality`,
+          `design a ${style} ${theme} hat that this avatar would wear - create matching headwear`,
+          `make a ${style} ${theme} cap/beanie for this character - design appropriate headwear`,
+          `create ${style} ${theme} headwear for this avatar character - design a fitting hat`,
+          `design a ${style} ${theme} hat that complements this character's style`,
+        ];
+
+      case 'jewelry':
+        return [
+          `create ${style} ${theme} jewelry for this character - design accessories that enhance their look`,
+          `design ${style} ${theme} jewelry that this avatar would wear - create matching accessories`,
+          `make ${style} ${theme} necklace/earrings for this character - design elegant jewelry`,
+          `create ${style} ${theme} jewelry accessories for this avatar character - design stylish pieces`,
+          `design ${style} ${theme} jewelry that fits this character's personality and style`,
+        ];
+
+      default:
+        return [
+          `create a ${style} ${theme} accessory for this character - design an item that suits their style`,
+          `design a ${style} ${theme} item that this avatar would use - create a matching accessory`,
+          `make a ${style} ${theme} accessory for this character - design something that fits their personality`,
+        ];
+    }
+  }
+
+  private getTextOnlyItemPrompts(itemType: string, style: string, theme: string): string[] {
+    switch (itemType) {
+      case 'outfit':
+        return [
+          `clothing items: ${style} ${theme} shirt and pants laid flat on surface - no people, just the clothes`,
+          `fashion flatlay: ${style} ${theme} top, bottom, and accessories arranged professionally - clothing only`,
+          `wardrobe items: ${style} ${theme} blazer, shirt, trousers displayed on hangers - no human models`,
+          `apparel collection: ${style} ${theme} casual wear pieces arranged for catalog photography - clothes only`,
+          `garment display: ${style} ${theme} performance clothing ensemble on display stand - no people`,
+        ];
+
+      case 'shoes':
+        return [
+          `a pair of ${style} ${theme} shoes on white background - both shoes positioned for optimal product photography`,
+          `${style} ${theme} footwear product shot - professional angle showing shoe design and details`,
+          `a pair of ${style} ${theme} sneakers/dress shoes - clean product photography with both shoes visible`,
+          `${style} ${theme} boots/heels/flats - high-quality product image showing craftsmanship and style`,
+          `premium ${style} ${theme} footwear - professional studio photography of elegant shoes`,
+        ];
+
+      case 'microphone':
+        return [
+          `a ${style} ${theme} handheld microphone on white background - professional vocal microphone product shot`,
+          `a ${style} ${theme} studio microphone - premium recording equipment with clean product photography`,
+          `a wireless ${style} ${theme} microphone - modern performance microphone with sleek design`,
+          `a ${style} ${theme} vintage-style microphone - classic design microphone for professional use`,
+          `a ${style} ${theme} colored microphone - unique design microphone with custom finish and details`,
+        ];
+
+      case 'hair':
+        return [
+          `${style} ${theme} hair accessories on white background - hair clips, bands, and decorative pieces`,
+          `a collection of ${style} ${theme} hair ornaments - elegant hair accessories product photography`,
+          `${style} ${theme} hair clips and barrettes - professional product shot of hair styling accessories`,
+          `a ${style} ${theme} headband or hair band - stylish hair accessory on clean background`,
+          `${style} ${theme} hair scrunchies and ties - colorful hair accessories arranged for product photography`,
+        ];
+
+      case 'hat':
+        return [
+          `a ${style} ${theme} hat on white background - professional headwear product photography`,
+          `a ${style} ${theme} cap/beanie/fedora - stylish headwear shot from optimal angle`,
+          `a ${style} ${theme} baseball cap or snapback - modern headwear with clean product photography`,
+          `a ${style} ${theme} winter hat or beanie - cozy headwear product shot with detailed texture`,
+          `a ${style} ${theme} formal hat - elegant headwear suitable for special occasions`,
+        ];
+
+      case 'jewelry':
+        return [
+          `${style} ${theme} jewelry pieces on white background - rings, necklaces, earrings arranged elegantly`,
+          `a ${style} ${theme} necklace or bracelet - fine jewelry product photography with proper lighting`,
+          `${style} ${theme} earrings or rings - precious jewelry items photographed professionally`,
+          `a ${style} ${theme} jewelry set - coordinated accessories displayed for premium product photography`,
+          `${style} ${theme} statement jewelry - bold accessories with detailed product photography`,
+        ];
+
+      default:
+        return [
+          `a ${style} ${theme} accessory on white background - professional product photography`,
+          `a ${style} ${theme} item suitable for avatars - clean product shot with studio lighting`,
+          `a ${style} ${theme} performance accessory - stage-appropriate item with professional photography`,
+        ];
+    }
   }
 
   private getItemTypePrompts(itemType: string, style: string, theme: string): string[] {

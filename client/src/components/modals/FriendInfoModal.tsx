@@ -195,7 +195,7 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
                   background: 'transparent',
                 }}
               />
-              
+
               {/* Friend's Microphone Display - Always show for debugging */}
               <Box
                 sx={{
@@ -228,7 +228,8 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
                         objectFit: 'cover',
                       }}
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/images/avatar/parts/microphones/mic_basic_1.png';
+                        (e.target as HTMLImageElement).src =
+                          '/images/avatar/parts/microphones/mic_basic_1.png';
                       }}
                     />
                   ) : (
