@@ -277,12 +277,25 @@ export class AdminController {
     return await this.adminService.getUserWithTransactions(userId);
   }
 
+  @Get('users/search')
+  async searchUsers(@Query('q') searchTerm: string, @Query('all') all?: string) {
+    return await this.adminService.searchUsers(searchTerm, all === 'true');
+  }
+
   @Post('users/:id/add-coins')
   async addCoinsToUser(
     @Param('id') userId: string,
     @Body() body: { amount: number; description?: string },
   ) {
     return await this.adminService.addCoinsToUser(userId, body.amount, body.description);
+  }
+
+  @Post('users/:id/add-reward')
+  async addRewardToUser(
+    @Param('id') userId: string,
+    @Body() body: { amount: number; description?: string },
+  ) {
+    return await this.adminService.addRewardToUser(userId, body.amount, body.description);
   }
 
   @Put('users/:id/coins')

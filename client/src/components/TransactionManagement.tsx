@@ -1,7 +1,8 @@
-import { faCoins, faFilter, faPlus, faRefresh, faSearch } from '@fortawesome/free-solid-svg-icons';
+import { faCoins, faFilter, faPlus, faRefresh, faSearch, faGift } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Card,
@@ -29,9 +30,63 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
+import CustomModal from '@components/CustomModal';
 import { transactionStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useState } from 'react';
+
+// Fuzzy search utility function
+const fuzzySearch = (query: string, text: string): { score: number; match: boolean } => {
+  if (!query) return { score: 0, match: true };
+  
+  const queryLower = query.toLowerCase();
+  const textLower = text.toLowerCase();
+  
+  // Exact match gets highest score
+  if (textLower.includes(queryLower)) {
+    const index = textLower.indexOf(queryLower);
+    return { score: 100 - index, match: true };
+  }
+  
+  // Character-by-character fuzzy matching
+  let queryIndex = 0;
+  let matches = 0;
+  const queryChars = queryLower.split('');
+  
+  for (let i = 0; i < textLower.length && queryIndex < queryChars.length; i++) {
+    if (textLower[i] === queryChars[queryIndex]) {
+      matches++;
+      queryIndex++;
+    }
+  }
+  
+  if (queryIndex === queryChars.length) {
+    // All query characters found in order
+    const score = (matches / query.length) * 50; // Max 50 for fuzzy matches
+    return { score, match: true };
+  }
+  
+  return { score: 0, match: false };
+};
+
+const fuzzySearchUsers = (users: any[], query: string) => {
+  if (!query) return users;
+  
+  return users
+    .map(user => {
+      const nameResult = fuzzySearch(query, user.name);
+      const emailResult = fuzzySearch(query, user.email);
+      const bestScore = Math.max(nameResult.score, emailResult.score);
+      
+      return {
+        ...user,
+        fuzzyScore: bestScore,
+        fuzzyMatch: nameResult.match || emailResult.match
+      };
+    })
+    .filter(user => user.fuzzyMatch)
+    .sort((a, b) => b.fuzzyScore - a.fuzzyScore);
+};
 
 interface AddCoinsDialogProps {
   open: boolean;
@@ -100,6 +155,164 @@ const AddCoinsDialog = observer(({ open, onClose, userId, userName }: AddCoinsDi
   );
 });
 
+interface AddRewardDialogProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+const AddRewardDialog = observer(({ open, onClose }: AddRewardDialogProps) => {
+  const [userSearch, setUserSearch] = useState('');
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // Get all users initially and use client-side fuzzy search
+  const loadUsers = async () => {
+    setSearchLoading(true);
+    try {
+      const users = await transactionStore.searchUsers(''); // Get all users
+      setAllUsers(users);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+      setAllUsers([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open && allUsers.length === 0) {
+      loadUsers();
+    }
+  }, [open]);
+
+  // Get filtered and sorted users using fuzzy search
+  const filteredUsers = fuzzySearchUsers(allUsers, userSearch);
+
+  const handleSubmit = async () => {
+    if (!selectedUser || !amount) return;
+
+    setLoading(true);
+    try {
+      await transactionStore.addRewardToUser(selectedUser.id, parseInt(amount), description);
+      onClose();
+      handleClose();
+    } catch (error) {
+      console.error('Failed to add reward:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    onClose();
+    setSelectedUser(null);
+    setAmount('');
+    setDescription('');
+    setUserSearch('');
+  };
+
+  return (
+    <CustomModal
+      open={open}
+      onClose={handleClose}
+      title="Add Reward Coins to User"
+      icon={<FontAwesomeIcon icon={faGift} />}
+      maxWidth="sm"
+    >
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Autocomplete
+          fullWidth
+          options={filteredUsers}
+          getOptionLabel={(option) => `${option.name} (${option.email})`}
+          value={selectedUser}
+          onChange={(_, newValue) => setSelectedUser(newValue)}
+          inputValue={userSearch}
+          onInputChange={(_, newInputValue) => setUserSearch(newInputValue)}
+          loading={searchLoading}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Search for user"
+              placeholder="Type name or email for fuzzy search..."
+              helperText="Supports fuzzy matching - try typing partial names or emails"
+            />
+          )}
+          renderOption={(props, option) => (
+            <Box component="li" {...props}>
+              <Box>
+                <Typography variant="body2" fontWeight="medium">
+                  {option.name}
+                  {option.fuzzyScore && (
+                    <Typography 
+                      component="span" 
+                      variant="caption" 
+                      color="primary" 
+                      sx={{ ml: 1, opacity: 0.7 }}
+                    >
+                      ({Math.round(option.fuzzyScore)}% match)
+                    </Typography>
+                  )}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {option.email} • Balance: {option.coinBalance || 0} coins
+                </Typography>
+              </Box>
+            </Box>
+          )}
+          noOptionsText={
+            userSearch.length === 0 
+              ? "Start typing to search users..." 
+              : allUsers.length === 0 
+                ? "Loading users..." 
+                : "No users found matching your search"
+          }
+        />
+        
+        <TextField
+          fullWidth
+          label="Reward Amount (coins)"
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          disabled={!selectedUser}
+          inputProps={{ min: 1 }}
+          helperText={selectedUser ? "Enter the number of coins to award" : "Select a user first"}
+        />
+        
+        <TextField
+          fullWidth
+          label="Reward Description"
+          multiline
+          rows={3}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Reason for reward (e.g., contest winner, bug report, community contribution, etc.)"
+          disabled={!selectedUser}
+          helperText={selectedUser ? "Explain why this user is receiving the reward" : "Select a user first"}
+        />
+
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 2 }}>
+          <Button onClick={handleClose} variant="outlined">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={!selectedUser || !amount || loading}
+            startIcon={<FontAwesomeIcon icon={faGift} />}
+          >
+            {loading ? 'Adding Reward...' : 'Add Reward'}
+          </Button>
+        </Box>
+      </Box>
+    </CustomModal>
+  );
+});
+
 const TransactionManagement = observer(() => {
   const theme = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
@@ -112,6 +325,7 @@ const TransactionManagement = observer(() => {
     userId?: string;
     userName?: string;
   }>({ open: false });
+  const [addRewardDialog, setAddRewardDialog] = useState(false);
 
   useEffect(() => {
     transactionStore.fetchTransactions();
@@ -316,6 +530,13 @@ const TransactionManagement = observer(() => {
               >
                 Refresh
               </Button>
+              <Button
+                variant="contained"
+                onClick={() => setAddRewardDialog(true)}
+                startIcon={<FontAwesomeIcon icon={faGift} />}
+              >
+                Add Reward
+              </Button>
             </Box>
           </Grid>
         </Grid>
@@ -446,6 +667,12 @@ const TransactionManagement = observer(() => {
         onClose={() => setAddCoinsDialog({ open: false })}
         userId={addCoinsDialog.userId}
         userName={addCoinsDialog.userName}
+      />
+
+      {/* Add Reward Dialog */}
+      <AddRewardDialog
+        open={addRewardDialog}
+        onClose={() => setAddRewardDialog(false)}
       />
     </Box>
   );

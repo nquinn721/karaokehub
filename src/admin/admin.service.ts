@@ -1421,4 +1421,111 @@ export class AdminService {
       microphonePurchases,
     };
   }
+
+  async searchUsers(searchTerm: string, all = false) {
+    // If all is true, return all users for client-side fuzzy search
+    if (all) {
+      const users = await this.userRepository
+        .createQueryBuilder('user')
+        .select(['user.id', 'user.name', 'user.email', 'user.coins', 'user.isActive'])
+        .where('user.isActive = :isActive', { isActive: true })
+        .orderBy('user.name', 'ASC')
+        .limit(100) // Reasonable limit for client-side fuzzy search
+        .getMany();
+
+      return {
+        success: true,
+        data: users.map((user) => ({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          coinBalance: user.coins || 0,
+        })),
+      };
+    }
+
+    if (!searchTerm || searchTerm.length < 2) {
+      return {
+        success: false,
+        message: 'Search term must be at least 2 characters',
+        data: [],
+      };
+    }
+
+    const users = await this.userRepository
+      .createQueryBuilder('user')
+      .select(['user.id', 'user.name', 'user.email', 'user.coins', 'user.isActive'])
+      .where('user.name ILIKE :search OR user.email ILIKE :search', {
+        search: `%${searchTerm}%`,
+      })
+      .andWhere('user.isActive = :isActive', { isActive: true })
+      .orderBy('user.name', 'ASC')
+      .limit(20)
+      .getMany();
+
+    return {
+      success: true,
+      data: users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        coinBalance: user.coins || 0,
+      })),
+    };
+  }
+
+  async addRewardToUser(userId: string, coinAmount: number, description?: string) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      return {
+        success: false,
+        message: 'User not found',
+      };
+    }
+
+    // Start transaction
+    const queryRunner = this.userRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Add coins to user
+      user.coins += coinAmount;
+      await queryRunner.manager.save(user);
+
+      // Record transaction as reward
+      const transaction = this.transactionRepository.create({
+        userId,
+        type: TransactionType.REWARD,
+        status: TransactionStatus.COMPLETED,
+        coinAmount,
+        description: description || `Admin reward: ${coinAmount} coins`,
+      });
+      await queryRunner.manager.save(transaction);
+
+      await queryRunner.commitTransaction();
+
+      return {
+        success: true,
+        message: `Successfully added ${coinAmount} reward coins to ${user.name}`,
+        newBalance: user.coins,
+        transaction,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          coins: user.coins,
+        },
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      return {
+        success: false,
+        message: 'Failed to add reward coins',
+        error: error.message,
+      };
+    } finally {
+      await queryRunner.release();
+    }
+  }
 }

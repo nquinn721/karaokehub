@@ -193,6 +193,52 @@ export class TransactionStore {
     }
   }
 
+  async searchUsers(searchTerm: string) {
+    try {
+      // If no search term, get all active users for client-side fuzzy search
+      const endpoint = searchTerm 
+        ? `/admin/users/search?q=${encodeURIComponent(searchTerm)}`
+        : '/admin/users/search?q=&all=true';
+        
+      const response = await this.apiStore.get(endpoint);
+      if (response.success && response.data) {
+        return response.data;
+      } else {
+        return [];
+      }
+    } catch (error) {
+      console.error('Failed to search users:', error);
+      return [];
+    }
+  }
+
+  async addRewardToUser(userId: string, amount: number, description?: string) {
+    this.loading = true;
+    this.error = null;
+
+    try {
+      const response = await this.apiStore.post(`/admin/users/${userId}/add-reward`, {
+        amount,
+        description,
+      });
+
+      if (response.success) {
+        // Refresh transactions after adding reward
+        await this.fetchTransactions();
+        await this.fetchStatistics();
+        return response;
+      } else {
+        this.error = response.message || 'Failed to add reward';
+        throw new Error(this.error || 'Failed to add reward');
+      }
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : 'Unknown error occurred';
+      throw error;
+    } finally {
+      this.loading = false;
+    }
+  }
+
   clearError() {
     this.error = null;
   }

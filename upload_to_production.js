@@ -11,13 +11,13 @@ const fs = require('fs');
 const CONFIG = {
   // PRODUCTION URL - UPDATE THIS
   baseUrl: 'https://your-production-url.com', // e.g., 'https://karaokehub.onrender.com'
-  
+
   // Admin authentication - you'll need valid JWT token
   authToken: 'your-jwt-token-here', // Get from logging into production
-  
+
   // Local data files (generated from your database)
   avatarsFile: './avatars_export.sql',
-  microphonesFile: './microphones_export.sql'
+  microphonesFile: './microphones_export.sql',
 };
 
 // Avatar data (8 new avatars with updated URLs)
@@ -29,10 +29,10 @@ const AVATARS = [
     type: 'basic',
     rarity: 'common',
     imageUrl: '/images/avatar/avatars/alex.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 0,
     isAvailable: true,
-    isFree: true
+    isFree: true,
   },
   {
     id: 'blake',
@@ -41,10 +41,10 @@ const AVATARS = [
     type: 'basic',
     rarity: 'common',
     imageUrl: '/images/avatar/avatars/blake.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 0,
     isAvailable: true,
-    isFree: true
+    isFree: true,
   },
   {
     id: 'cameron',
@@ -53,10 +53,10 @@ const AVATARS = [
     type: 'basic',
     rarity: 'common',
     imageUrl: '/images/avatar/avatars/cameron.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 0,
     isAvailable: true,
-    isFree: true
+    isFree: true,
   },
   {
     id: 'joe',
@@ -65,10 +65,10 @@ const AVATARS = [
     type: 'basic',
     rarity: 'common',
     imageUrl: '/images/avatar/avatars/joe.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 0,
     isAvailable: true,
-    isFree: true
+    isFree: true,
   },
   {
     id: 'juan',
@@ -77,10 +77,10 @@ const AVATARS = [
     type: 'basic',
     rarity: 'common',
     imageUrl: '/images/avatar/avatars/juan.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 0,
     isAvailable: true,
-    isFree: true
+    isFree: true,
   },
   {
     id: 'kai',
@@ -89,10 +89,10 @@ const AVATARS = [
     type: 'basic',
     rarity: 'common',
     imageUrl: '/images/avatar/avatars/kai.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 0,
     isAvailable: true,
-    isFree: true
+    isFree: true,
   },
   {
     id: 'onyx',
@@ -101,10 +101,10 @@ const AVATARS = [
     type: 'premium',
     rarity: 'uncommon',
     imageUrl: '/images/avatar/avatars/onyx.png',
-    price: 5.00,
+    price: 5.0,
     coinPrice: 100,
     isAvailable: true,
-    isFree: false
+    isFree: false,
   },
   {
     id: 'tyler',
@@ -113,11 +113,11 @@ const AVATARS = [
     type: 'premium',
     rarity: 'uncommon',
     imageUrl: '/images/avatar/avatars/tyler.png',
-    price: 5.00,
+    price: 5.0,
     coinPrice: 100,
     isAvailable: true,
-    isFree: false
-  }
+    isFree: false,
+  },
 ];
 
 // Microphone data (20 microphones across all rarities)
@@ -130,11 +130,11 @@ const MICROPHONES = [
     type: 'basic',
     rarity: 'common',
     imageUrl: '/images/avatar/parts/microphones/mic_basic_1.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 0,
     isAvailable: true,
     isFree: true,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_basic_2',
@@ -143,11 +143,11 @@ const MICROPHONES = [
     type: 'basic',
     rarity: 'common',
     imageUrl: '/images/avatar/parts/microphones/mic_basic_2.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 0,
     isAvailable: true,
     isFree: true,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_basic_3',
@@ -156,11 +156,11 @@ const MICROPHONES = [
     type: 'basic',
     rarity: 'common',
     imageUrl: '/images/avatar/parts/microphones/mic_basic_3.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 0,
     isAvailable: true,
     isFree: true,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_basic_4',
@@ -169,11 +169,11 @@ const MICROPHONES = [
     type: 'basic',
     rarity: 'common',
     imageUrl: '/images/avatar/parts/microphones/mic_basic_4.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 0,
     isAvailable: true,
     isFree: true,
-    isUnlockable: false
+    isUnlockable: false,
   },
 
   // Gold Microphones (100-180 coins)
@@ -184,11 +184,11 @@ const MICROPHONES = [
     type: 'golden',
     rarity: 'uncommon',
     imageUrl: '/images/avatar/parts/microphones/mic_gold_1.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 100,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_gold_2',
@@ -197,11 +197,11 @@ const MICROPHONES = [
     type: 'golden',
     rarity: 'uncommon',
     imageUrl: '/images/avatar/parts/microphones/mic_gold_2.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 120,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_gold_3',
@@ -210,11 +210,11 @@ const MICROPHONES = [
     type: 'golden',
     rarity: 'uncommon',
     imageUrl: '/images/avatar/parts/microphones/mic_gold_3.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 150,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_gold_4',
@@ -223,11 +223,11 @@ const MICROPHONES = [
     type: 'golden',
     rarity: 'uncommon',
     imageUrl: '/images/avatar/parts/microphones/mic_gold_4.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 180,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
 
   // Emerald Microphones (250-400 coins)
@@ -238,11 +238,11 @@ const MICROPHONES = [
     type: 'premium',
     rarity: 'rare',
     imageUrl: '/images/avatar/parts/microphones/mic_emerald_1.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 250,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_emerald_2',
@@ -251,11 +251,11 @@ const MICROPHONES = [
     type: 'premium',
     rarity: 'rare',
     imageUrl: '/images/avatar/parts/microphones/mic_emerald_2.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 300,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_emerald_3',
@@ -264,11 +264,11 @@ const MICROPHONES = [
     type: 'premium',
     rarity: 'rare',
     imageUrl: '/images/avatar/parts/microphones/mic_emerald_3.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 350,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_emerald_4',
@@ -277,11 +277,11 @@ const MICROPHONES = [
     type: 'premium',
     rarity: 'rare',
     imageUrl: '/images/avatar/parts/microphones/mic_emerald_4.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 400,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
 
   // Ruby Microphones (500-800 coins)
@@ -292,11 +292,11 @@ const MICROPHONES = [
     type: 'premium',
     rarity: 'epic',
     imageUrl: '/images/avatar/parts/microphones/mic_ruby_1.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 500,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_ruby_2',
@@ -305,11 +305,11 @@ const MICROPHONES = [
     type: 'premium',
     rarity: 'epic',
     imageUrl: '/images/avatar/parts/microphones/mic_ruby_2.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 600,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_ruby_3',
@@ -318,11 +318,11 @@ const MICROPHONES = [
     type: 'premium',
     rarity: 'epic',
     imageUrl: '/images/avatar/parts/microphones/mic_ruby_3.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 700,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_ruby_4',
@@ -331,11 +331,11 @@ const MICROPHONES = [
     type: 'premium',
     rarity: 'epic',
     imageUrl: '/images/avatar/parts/microphones/mic_ruby_4.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 800,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
 
   // Diamond Microphones (1000-2000 coins)
@@ -346,11 +346,11 @@ const MICROPHONES = [
     type: 'premium',
     rarity: 'legendary',
     imageUrl: '/images/avatar/parts/microphones/mic_diamond_1.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 1000,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_diamond_2',
@@ -359,11 +359,11 @@ const MICROPHONES = [
     type: 'premium',
     rarity: 'legendary',
     imageUrl: '/images/avatar/parts/microphones/mic_diamond_2.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 1200,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_diamond_3',
@@ -372,11 +372,11 @@ const MICROPHONES = [
     type: 'premium',
     rarity: 'legendary',
     imageUrl: '/images/avatar/parts/microphones/mic_diamond_3.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 1500,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
+    isUnlockable: false,
   },
   {
     id: 'mic_diamond_4',
@@ -385,19 +385,19 @@ const MICROPHONES = [
     type: 'premium',
     rarity: 'legendary',
     imageUrl: '/images/avatar/parts/microphones/mic_diamond_4.png',
-    price: 0.00,
+    price: 0.0,
     coinPrice: 2000,
     isAvailable: true,
     isFree: false,
-    isUnlockable: false
-  }
+    isUnlockable: false,
+  },
 ];
 
 // Helper function to make HTTP requests
 function makeRequest(method, path, data = null, headers = {}) {
   return new Promise((resolve, reject) => {
     const url = new URL(CONFIG.baseUrl + path);
-    
+
     const options = {
       hostname: url.hostname,
       port: url.port || (url.protocol === 'https:' ? 443 : 80),
@@ -405,14 +405,14 @@ function makeRequest(method, path, data = null, headers = {}) {
       method: method,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${CONFIG.authToken}`,
-        ...headers
-      }
+        Authorization: `Bearer ${CONFIG.authToken}`,
+        ...headers,
+      },
     };
 
     const req = (url.protocol === 'https:' ? https : require('http')).request(options, (res) => {
       let body = '';
-      res.on('data', (chunk) => body += chunk);
+      res.on('data', (chunk) => (body += chunk));
       res.on('end', () => {
         try {
           const responseData = body ? JSON.parse(body) : {};
@@ -444,10 +444,12 @@ function makeRequest(method, path, data = null, headers = {}) {
 // Clear existing data
 async function clearExistingData() {
   console.log('🧹 Clearing existing avatars and microphones...');
-  
+
   try {
     // Note: You might need to implement delete endpoints or do this manually
-    console.log('⚠️  Manual step required: Clear existing avatars and microphones in production admin panel');
+    console.log(
+      '⚠️  Manual step required: Clear existing avatars and microphones in production admin panel',
+    );
     console.log('   Or implement DELETE endpoints in your controllers');
   } catch (error) {
     console.log('⚠️  Could not clear existing data:', error.message);
@@ -457,29 +459,32 @@ async function clearExistingData() {
 // Upload avatars
 async function uploadAvatars() {
   console.log('✨ Uploading 8 new avatars...');
-  
+
   const results = {
     success: [],
-    failed: []
+    failed: [],
   };
 
   for (const avatar of AVATARS) {
     try {
       console.log(`   Uploading avatar: ${avatar.name} (${avatar.id})`);
-      
+
       // Try direct creation via avatars endpoint (you may need to adjust endpoint)
       const response = await makeRequest('POST', '/avatars', avatar);
-      
+
       results.success.push({ id: avatar.id, name: avatar.name });
       console.log(`   ✅ Created avatar: ${avatar.name}`);
-      
     } catch (error) {
       console.log(`   ❌ Failed to create avatar ${avatar.name}:`, error.error || error.message);
-      results.failed.push({ id: avatar.id, name: avatar.name, error: error.error || error.message });
+      results.failed.push({
+        id: avatar.id,
+        name: avatar.name,
+        error: error.error || error.message,
+      });
     }
-    
+
     // Add small delay to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
   return results;
@@ -488,33 +493,35 @@ async function uploadAvatars() {
 // Upload microphones
 async function uploadMicrophones() {
   console.log('🎤 Uploading 20 microphones...');
-  
+
   const results = {
     success: [],
-    failed: []
+    failed: [],
   };
 
   for (const microphone of MICROPHONES) {
     try {
       console.log(`   Uploading microphone: ${microphone.name} (${microphone.rarity})`);
-      
+
       const response = await makeRequest('POST', '/microphones', microphone);
-      
+
       results.success.push({ id: microphone.id, name: microphone.name, rarity: microphone.rarity });
       console.log(`   ✅ Created microphone: ${microphone.name}`);
-      
     } catch (error) {
-      console.log(`   ❌ Failed to create microphone ${microphone.name}:`, error.error || error.message);
-      results.failed.push({ 
-        id: microphone.id, 
-        name: microphone.name, 
+      console.log(
+        `   ❌ Failed to create microphone ${microphone.name}:`,
+        error.error || error.message,
+      );
+      results.failed.push({
+        id: microphone.id,
+        name: microphone.name,
         rarity: microphone.rarity,
-        error: error.error || error.message 
+        error: error.error || error.message,
       });
     }
-    
+
     // Add small delay to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
   return results;
@@ -523,33 +530,32 @@ async function uploadMicrophones() {
 // Verify upload
 async function verifyUpload() {
   console.log('🔍 Verifying upload...');
-  
+
   try {
     // Check avatars
     const avatarsResponse = await makeRequest('GET', '/avatar/all-avatars');
     console.log(`✅ Found ${avatarsResponse.data.length} avatars in production`);
-    
+
     // Check microphones
     const microphonesResponse = await makeRequest('GET', '/avatar/all-microphones');
     console.log(`✅ Found ${microphonesResponse.data.length} microphones in production`);
-    
+
     // Break down by rarity
     const micsByRarity = {};
-    microphonesResponse.data.forEach(mic => {
+    microphonesResponse.data.forEach((mic) => {
       micsByRarity[mic.rarity] = (micsByRarity[mic.rarity] || 0) + 1;
     });
-    
+
     console.log('📊 Microphones by rarity:');
     Object.entries(micsByRarity).forEach(([rarity, count]) => {
       console.log(`   ${rarity}: ${count}`);
     });
-    
+
     return {
       avatars: avatarsResponse.data.length,
       microphones: microphonesResponse.data.length,
-      microphonesByRarity: micsByRarity
+      microphonesByRarity: micsByRarity,
     };
-    
   } catch (error) {
     console.log('❌ Verification failed:', error.message);
     return null;
@@ -593,11 +599,17 @@ async function main() {
 
     // Summary
     console.log('📋 Upload Summary:');
-    console.log(`✨ Avatars: ${avatarResults.success.length} created, ${avatarResults.failed.length} failed`);
-    console.log(`🎤 Microphones: ${microphoneResults.success.length} created, ${microphoneResults.failed.length} failed`);
-    
+    console.log(
+      `✨ Avatars: ${avatarResults.success.length} created, ${avatarResults.failed.length} failed`,
+    );
+    console.log(
+      `🎤 Microphones: ${microphoneResults.success.length} created, ${microphoneResults.failed.length} failed`,
+    );
+
     if (verification) {
-      console.log(`📊 Production now has: ${verification.avatars} avatars, ${verification.microphones} microphones`);
+      console.log(
+        `📊 Production now has: ${verification.avatars} avatars, ${verification.microphones} microphones`,
+      );
     }
 
     if (avatarResults.failed.length > 0 || microphoneResults.failed.length > 0) {
@@ -608,7 +620,6 @@ async function main() {
       console.log('');
       console.log('🎉 All uploads completed successfully!');
     }
-
   } catch (error) {
     console.log('❌ Upload failed:', error.message);
     process.exit(1);
