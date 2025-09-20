@@ -4,9 +4,9 @@ export class CreateAvatarSystem1737450100000 implements MigrationInterface {
   name = 'CreateAvatarSystem1737450100000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Create microphones table
+    // Create microphones table if it doesn't exist
     await queryRunner.query(`
-      CREATE TABLE \`microphones\` (
+      CREATE TABLE IF NOT EXISTS \`microphones\` (
         \`id\` varchar(36) NOT NULL,
         \`name\` varchar(255) NOT NULL,
         \`description\` text,
@@ -23,9 +23,9 @@ export class CreateAvatarSystem1737450100000 implements MigrationInterface {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     `);
 
-    // Create outfits table
+    // Create outfits table if it doesn't exist
     await queryRunner.query(`
-      CREATE TABLE \`outfits\` (
+      CREATE TABLE IF NOT EXISTS \`outfits\` (
         \`id\` varchar(36) NOT NULL,
         \`name\` varchar(255) NOT NULL,
         \`description\` text,
@@ -42,9 +42,9 @@ export class CreateAvatarSystem1737450100000 implements MigrationInterface {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     `);
 
-    // Create shoes table
+    // Create shoes table if it doesn't exist
     await queryRunner.query(`
-      CREATE TABLE \`shoes\` (
+      CREATE TABLE IF NOT EXISTS \`shoes\` (
         \`id\` varchar(36) NOT NULL,
         \`name\` varchar(255) NOT NULL,
         \`description\` text,
@@ -61,9 +61,9 @@ export class CreateAvatarSystem1737450100000 implements MigrationInterface {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     `);
 
-    // Create user_avatars table
+    // Create user_avatars table if it doesn't exist
     await queryRunner.query(`
-      CREATE TABLE \`user_avatars\` (
+      CREATE TABLE IF NOT EXISTS \`user_avatars\` (
         \`id\` varchar(36) NOT NULL,
         \`userId\` varchar(36) NOT NULL,
         \`baseAvatarId\` varchar(255) NOT NULL,
@@ -77,17 +77,13 @@ export class CreateAvatarSystem1737450100000 implements MigrationInterface {
         UNIQUE KEY \`REL_user_avatar_userId\` (\`userId\`),
         KEY \`FK_user_avatar_microphone\` (\`microphoneId\`),
         KEY \`FK_user_avatar_outfit\` (\`outfitId\`),
-        KEY \`FK_user_avatar_shoes\` (\`shoesId\`),
-        CONSTRAINT \`FK_user_avatar_userId\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE,
-        CONSTRAINT \`FK_user_avatar_microphone\` FOREIGN KEY (\`microphoneId\`) REFERENCES \`microphones\` (\`id\`) ON DELETE SET NULL,
-        CONSTRAINT \`FK_user_avatar_outfit\` FOREIGN KEY (\`outfitId\`) REFERENCES \`outfits\` (\`id\`) ON DELETE SET NULL,
-        CONSTRAINT \`FK_user_avatar_shoes\` FOREIGN KEY (\`shoesId\`) REFERENCES \`shoes\` (\`id\`) ON DELETE SET NULL
+        KEY \`FK_user_avatar_shoes\` (\`shoesId\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     `);
 
-    // Create user_microphones table (user inventory)
+    // Create user_microphones table if it doesn't exist (user inventory)
     await queryRunner.query(`
-      CREATE TABLE \`user_microphones\` (
+      CREATE TABLE IF NOT EXISTS \`user_microphones\` (
         \`id\` varchar(36) NOT NULL,
         \`userId\` varchar(36) NOT NULL,
         \`microphoneId\` varchar(36) NOT NULL,
@@ -97,15 +93,13 @@ export class CreateAvatarSystem1737450100000 implements MigrationInterface {
         PRIMARY KEY (\`id\`),
         UNIQUE KEY \`UQ_user_microphone\` (\`userId\`, \`microphoneId\`),
         KEY \`FK_user_microphones_userId\` (\`userId\`),
-        KEY \`FK_user_microphones_microphoneId\` (\`microphoneId\`),
-        CONSTRAINT \`FK_user_microphones_userId\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE,
-        CONSTRAINT \`FK_user_microphones_microphoneId\` FOREIGN KEY (\`microphoneId\`) REFERENCES \`microphones\` (\`id\`) ON DELETE CASCADE
+        KEY \`FK_user_microphones_microphoneId\` (\`microphoneId\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     `);
 
-    // Create user_outfits table (user inventory)
+    // Create user_outfits table if it doesn't exist (user inventory)
     await queryRunner.query(`
-      CREATE TABLE \`user_outfits\` (
+      CREATE TABLE IF NOT EXISTS \`user_outfits\` (
         \`id\` varchar(36) NOT NULL,
         \`userId\` varchar(36) NOT NULL,
         \`outfitId\` varchar(36) NOT NULL,
@@ -115,15 +109,13 @@ export class CreateAvatarSystem1737450100000 implements MigrationInterface {
         PRIMARY KEY (\`id\`),
         UNIQUE KEY \`UQ_user_outfit\` (\`userId\`, \`outfitId\`),
         KEY \`FK_user_outfits_userId\` (\`userId\`),
-        KEY \`FK_user_outfits_outfitId\` (\`outfitId\`),
-        CONSTRAINT \`FK_user_outfits_userId\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE,
-        CONSTRAINT \`FK_user_outfits_outfitId\` FOREIGN KEY (\`outfitId\`) REFERENCES \`outfits\` (\`id\`) ON DELETE CASCADE
+        KEY \`FK_user_outfits_outfitId\` (\`outfitId\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     `);
 
-    // Create user_shoes table (user inventory)
+    // Create user_shoes table if it doesn't exist (user inventory)
     await queryRunner.query(`
-      CREATE TABLE \`user_shoes\` (
+      CREATE TABLE IF NOT EXISTS \`user_shoes\` (
         \`id\` varchar(36) NOT NULL,
         \`userId\` varchar(36) NOT NULL,
         \`shoesId\` varchar(36) NOT NULL,
@@ -133,17 +125,110 @@ export class CreateAvatarSystem1737450100000 implements MigrationInterface {
         PRIMARY KEY (\`id\`),
         UNIQUE KEY \`UQ_user_shoes\` (\`userId\`, \`shoesId\`),
         KEY \`FK_user_shoes_userId\` (\`userId\`),
-        KEY \`FK_user_shoes_shoesId\` (\`shoesId\`),
-        CONSTRAINT \`FK_user_shoes_userId\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE,
-        CONSTRAINT \`FK_user_shoes_shoesId\` FOREIGN KEY (\`shoesId\`) REFERENCES \`shoes\` (\`id\`) ON DELETE CASCADE
+        KEY \`FK_user_shoes_shoesId\` (\`shoesId\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
     `);
 
+    // Add foreign key constraints if they don't exist
+    try {
+      await queryRunner.query(`
+        ALTER TABLE \`user_avatars\` 
+        ADD CONSTRAINT \`FK_user_avatar_userId\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE
+      `);
+    } catch (error) {
+      // Constraint might already exist
+    }
+
+    try {
+      await queryRunner.query(`
+        ALTER TABLE \`user_avatars\` 
+        ADD CONSTRAINT \`FK_user_avatar_microphone\` FOREIGN KEY (\`microphoneId\`) REFERENCES \`microphones\` (\`id\`) ON DELETE SET NULL
+      `);
+    } catch (error) {
+      // Constraint might already exist
+    }
+
+    try {
+      await queryRunner.query(`
+        ALTER TABLE \`user_avatars\` 
+        ADD CONSTRAINT \`FK_user_avatar_outfit\` FOREIGN KEY (\`outfitId\`) REFERENCES \`outfits\` (\`id\`) ON DELETE SET NULL
+      `);
+    } catch (error) {
+      // Constraint might already exist
+    }
+
+    try {
+      await queryRunner.query(`
+        ALTER TABLE \`user_avatars\` 
+        ADD CONSTRAINT \`FK_user_avatar_shoes\` FOREIGN KEY (\`shoesId\`) REFERENCES \`shoes\` (\`id\`) ON DELETE SET NULL
+      `);
+    } catch (error) {
+      // Constraint might already exist
+    }
+
+    try {
+      await queryRunner.query(`
+        ALTER TABLE \`user_microphones\` 
+        ADD CONSTRAINT \`FK_user_microphones_userId\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE
+      `);
+    } catch (error) {
+      // Constraint might already exist
+    }
+
+    try {
+      await queryRunner.query(`
+        ALTER TABLE \`user_microphones\` 
+        ADD CONSTRAINT \`FK_user_microphones_microphoneId\` FOREIGN KEY (\`microphoneId\`) REFERENCES \`microphones\` (\`id\`) ON DELETE CASCADE
+      `);
+    } catch (error) {
+      // Constraint might already exist
+    }
+
+    try {
+      await queryRunner.query(`
+        ALTER TABLE \`user_outfits\` 
+        ADD CONSTRAINT \`FK_user_outfits_userId\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE
+      `);
+    } catch (error) {
+      // Constraint might already exist
+    }
+
+    try {
+      await queryRunner.query(`
+        ALTER TABLE \`user_outfits\` 
+        ADD CONSTRAINT \`FK_user_outfits_outfitId\` FOREIGN KEY (\`outfitId\`) REFERENCES \`outfits\` (\`id\`) ON DELETE CASCADE
+      `);
+    } catch (error) {
+      // Constraint might already exist
+    }
+
+    try {
+      await queryRunner.query(`
+        ALTER TABLE \`user_shoes\` 
+        ADD CONSTRAINT \`FK_user_shoes_userId\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE
+      `);
+    } catch (error) {
+      // Constraint might already exist
+    }
+
+    try {
+      await queryRunner.query(`
+        ALTER TABLE \`user_shoes\` 
+        ADD CONSTRAINT \`FK_user_shoes_shoesId\` FOREIGN KEY (\`shoesId\`) REFERENCES \`shoes\` (\`id\`) ON DELETE CASCADE
+      `);
+    } catch (error) {
+      // Constraint might already exist
+    }
+
     // Add avatar column to users table if it doesn't exist
-    await queryRunner.query(`
-      ALTER TABLE \`users\` 
-      ADD COLUMN \`avatar\` varchar(255) DEFAULT 'avatar_1'
-    `);
+    try {
+      await queryRunner.query(`
+        ALTER TABLE \`users\` 
+        ADD COLUMN \`avatar\` varchar(255) DEFAULT 'avatar_1'
+      `);
+    } catch (error) {
+      // Column might already exist
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
