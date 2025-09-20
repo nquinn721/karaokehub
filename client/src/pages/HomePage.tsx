@@ -8,8 +8,6 @@ import {
   faArrowUp,
   faLocationDot,
   faMicrophone,
-  faMobile,
-  faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Box, Button, Container, Grid, Typography, useTheme } from '@mui/material';
@@ -157,8 +155,10 @@ const HomePage: React.FC = observer(() => {
                 mx: 'auto',
               }}
             >
-              Discover Amazing Karaoke Venues, Browse Thousands of Songs & Connect with Fellow
-              Performers
+              {authStore.isAuthenticated 
+                ? "Create Your Avatar, Join Show Chatrooms & Connect with Fellow Singers"
+                : "Discover Amazing Karaoke Venues, Browse Thousands of Songs & Connect with Fellow Performers"
+              }
             </Typography>
 
             <Button
@@ -389,7 +389,7 @@ const HomePage: React.FC = observer(() => {
       {/* Strategic Ad Placement - Between Hero Sections */}
       <ContentSectionAd variant="prominent" spacing="large" />
 
-      {/* Community Hero Section */}
+      {/* Avatar & Social Features Hero Section */}
       <Box
         sx={{
           width: '100vw',
@@ -416,14 +416,24 @@ const HomePage: React.FC = observer(() => {
           <Grid container spacing={6} alignItems="center">
             <Grid item xs={12} md={6}>
               <Box sx={{ textAlign: 'center' }}>
-                <FontAwesomeIcon
-                  icon={faUsers}
-                  style={{
-                    fontSize: '8rem',
-                    color: 'rgba(255, 255, 255, 0.8)',
+                <Typography
+                  sx={{
+                    fontSize: '6rem',
+                    mb: 2,
                     filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
                   }}
-                />
+                >
+                  🎭
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: '2rem',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
+                  }}
+                >
+                  🎤 + 👥 + 🎁
+                </Typography>
               </Box>
             </Grid>
             <Grid item xs={12} md={6}>
@@ -437,7 +447,7 @@ const HomePage: React.FC = observer(() => {
                   textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
                 }}
               >
-                👥 Join the Community
+                🎭 Express Yourself with Style
               </Typography>
               <Typography
                 variant="h5"
@@ -448,31 +458,82 @@ const HomePage: React.FC = observer(() => {
                   fontSize: { xs: '1.1rem', md: '1.25rem' },
                 }}
               >
-                Connect with fellow karaoke enthusiasts, share your performances, and discover
-                singing partners. Build lasting friendships through the universal language of music.
+                Create your unique karaoke avatar with custom outfits, microphones, and accessories. 
+                Join show chatrooms, submit songs to DJ queues, connect with friends, and shower them 
+                with virtual gifts while they perform!
               </Typography>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={() => navigate('/register')}
-                sx={{
-                  background: 'linear-gradient(135deg, #264653 0%, #2a9d8f 50%, #e9c46a 100%)',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  px: 4,
-                  py: 1.5,
-                  borderRadius: 2,
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #1d3b47 0%, #238b7e 50%, #e76f51 100%)',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 8px 25px rgba(76, 149, 108, 0.4)',
-                  },
-                  transition: 'all 0.3s ease',
-                }}
-              >
-                Join Now - It's Free!
-              </Button>
+              
+              {authStore.isAuthenticated ? (
+                <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={() => navigate('/avatar')}
+                    sx={{
+                      background: 'linear-gradient(135deg, #264653 0%, #2a9d8f 50%, #e9c46a 100%)',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      px: 4,
+                      py: 1.5,
+                      borderRadius: 2,
+                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #1d3b47 0%, #238b7e 50%, #e76f51 100%)',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 8px 25px rgba(76, 149, 108, 0.4)',
+                      },
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
+                    Customize Your Avatar
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    onClick={() => navigate('/shows')}
+                    sx={{
+                      color: 'white',
+                      borderColor: 'rgba(255, 255, 255, 0.5)',
+                      fontWeight: 'bold',
+                      px: 4,
+                      py: 1.5,
+                      borderRadius: 2,
+                      backdropFilter: 'blur(10px)',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        borderColor: 'white',
+                        transform: 'translateY(-2px)',
+                      },
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
+                    Find Shows to Join
+                  </Button>
+                </Box>
+              ) : (
+                <Button
+                  variant="contained"
+                  size="large"
+                  onClick={() => navigate('/register')}
+                  sx={{
+                    background: 'linear-gradient(135deg, #264653 0%, #2a9d8f 50%, #e9c46a 100%)',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    px: 4,
+                    py: 1.5,
+                    borderRadius: 2,
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #1d3b47 0%, #238b7e 50%, #e76f51 100%)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 8px 25px rgba(76, 149, 108, 0.4)',
+                    },
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  Join the Community - It's Free!
+                </Button>
+              )}
             </Grid>
           </Grid>
         </Container>
@@ -583,7 +644,7 @@ const HomePage: React.FC = observer(() => {
         {/* Native Ad Integration - Before How It Works */}
         <ContentSectionAd variant="native" spacing="medium" />
 
-        {/* How KaraokeHub Works - Inspired by SingSpot's 3-step process */}
+        {/* How KaraokeHub Works - Focus on Avatar & Social Features */}
         <Box
           sx={{
             py: 6,
@@ -605,7 +666,7 @@ const HomePage: React.FC = observer(() => {
                 color: theme.palette.text.primary,
               }}
             >
-              How to Find Your Perfect Karaoke Experience
+              Your Complete Karaoke Social Experience
             </Typography>
 
             <Grid container spacing={4}>
@@ -624,18 +685,13 @@ const HomePage: React.FC = observer(() => {
                       mb: 3,
                     }}
                   >
-                    <FontAwesomeIcon
-                      icon={faLocationDot}
-                      style={{ fontSize: '2rem', color: 'white' }}
-                    />
+                    <Typography sx={{ fontSize: '2.5rem' }}>🎭</Typography>
                   </Box>
                   <Typography variant="h5" gutterBottom fontWeight={600}>
-                    Find Local Karaoke Venues
+                    Create Your Avatar
                   </Typography>
                   <Typography variant="body1" color="text.secondary">
-                    Discover karaoke bars, singing venues, and entertainment spots in your area
-                    using our intelligent venue finder. Filter by distance, ratings, and karaoke
-                    night schedules.
+                    Design your unique karaoke persona with custom avatars, stylish outfits, premium microphones, and accessories. Stand out and express your personality on stage and in chatrooms.
                   </Typography>
                 </Box>
               </Grid>
@@ -655,17 +711,13 @@ const HomePage: React.FC = observer(() => {
                       mb: 3,
                     }}
                   >
-                    <FontAwesomeIcon
-                      icon={faMicrophone}
-                      style={{ fontSize: '2rem', color: 'white' }}
-                    />
+                    <Typography sx={{ fontSize: '2.5rem' }}>💬</Typography>
                   </Box>
                   <Typography variant="h5" gutterBottom fontWeight={600}>
-                    Browse Songs & Connect
+                    Join Show Chatrooms
                   </Typography>
                   <Typography variant="body1" color="text.secondary">
-                    Explore thousands of karaoke songs from every genre, read venue reviews, and
-                    connect with fellow singers and performers in your area.
+                    Jump into live show chatrooms to connect with other singers, submit songs to DJ queues, cheer on performers, and be part of the karaoke community in real-time.
                   </Typography>
                 </Box>
               </Grid>
@@ -685,14 +737,13 @@ const HomePage: React.FC = observer(() => {
                       mb: 3,
                     }}
                   >
-                    <FontAwesomeIcon icon={faUsers} style={{ fontSize: '2rem', color: 'white' }} />
+                    <Typography sx={{ fontSize: '2.5rem' }}>🎁</Typography>
                   </Box>
                   <Typography variant="h5" gutterBottom fontWeight={600}>
-                    Perform & Share
+                    Connect & Gift Friends
                   </Typography>
                   <Typography variant="body1" color="text.secondary">
-                    Take the stage at your chosen venue, perform your favorite songs, and share your
-                    karaoke experiences with friends and the community.
+                    Make friends with fellow singers, see their custom avatars, shower them with virtual gifts during performances, and build a supportive karaoke community together.
                   </Typography>
                 </Box>
               </Grid>
@@ -717,17 +768,16 @@ const HomePage: React.FC = observer(() => {
             <CustomCard
               title={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <FontAwesomeIcon icon={faMicrophone} />
-                  Massive Karaoke Song Library
+                  🎭
+                  Avatar Customization System
                 </Box>
               }
               hover
               sx={{ height: '100%' }}
             >
               <Typography color="text.secondary">
-                Access over 100,000 karaoke tracks from every genre - classic rock hits, pop
-                anthems, country favorites, R&B classics, and the latest chart-toppers. Perfect for
-                every singing style and skill level.
+                Express your unique style with customizable avatars, premium microphones, stylish outfits, and accessories. 
+                Show off your personality in chatrooms and while performing on stage. Unlock new items as you participate in the community!
               </Typography>
             </CustomCard>
           </Grid>
@@ -735,17 +785,16 @@ const HomePage: React.FC = observer(() => {
             <CustomCard
               title={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <FontAwesomeIcon icon={faUsers} />
-                  Social Karaoke Community
+                  💬
+                  Live Show Chatrooms & DJ Queues
                 </Box>
               }
               hover
               sx={{ height: '100%' }}
             >
               <Typography color="text.secondary">
-                Connect with fellow singers, share your favorite performances, create karaoke
-                groups, and discover singing partners. Join a vibrant community of karaoke
-                enthusiasts near you.
+                Join live chatrooms during karaoke shows to connect with other singers in real-time. 
+                Submit your song requests directly to DJ queues, cheer on performers, and be part of the live karaoke action at venues.
               </Typography>
             </CustomCard>
           </Grid>
@@ -753,16 +802,16 @@ const HomePage: React.FC = observer(() => {
             <CustomCard
               title={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <FontAwesomeIcon icon={faMobile} />
-                  Live Venue Updates
+                  🎁
+                  Friends & Virtual Gifts
                 </Box>
               }
               hover
               sx={{ height: '100%' }}
             >
               <Typography color="text.secondary">
-                Get real-time updates on karaoke show schedules, venue availability, wait times, and
-                live announcements. Never miss karaoke night again with instant notifications.
+                Connect with fellow karaoke enthusiasts, add them as friends, and see their custom avatars. 
+                Shower friends with virtual gifts during their performances and build a supportive singing community together.
               </Typography>
             </CustomCard>
           </Grid>
