@@ -20,7 +20,7 @@ export class UpdateToNamedAvatars1737450500000 implements MigrationInterface {
       // 3. Insert new named avatars using images from /images/avatar/avatars/
       console.log('✨ Adding new named avatars...');
       await queryRunner.query(`
-        INSERT INTO avatars (id, name, description, type, rarity, imageUrl, price, coinPrice, isAvailable, isFree)
+        INSERT IGNORE INTO avatars (id, name, description, type, rarity, imageUrl, price, coinPrice, isAvailable, isFree)
         VALUES 
           ('alex', 'Alex', 'A friendly and versatile performer with a warm personality', 'basic', 'common', '/images/avatar/avatars/alex.png', 0.0, 0, 1, 1),
           ('blake', 'Blake', 'A confident artist with modern style and great stage presence', 'basic', 'common', '/images/avatar/avatars/blake.png', 0.0, 0, 1, 1),

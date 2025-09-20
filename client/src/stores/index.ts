@@ -134,6 +134,7 @@ export { adminStore } from './AdminStore';
 export { localSubscriptionStore } from './LocalSubscriptionStore';
 export { storeStore } from './StoreStore';
 export { themeStore } from './ThemeStore';
+export { transactionStore } from './TransactionStore';
 export const apiStore = api;
 
 // Make stores available globally for debugging

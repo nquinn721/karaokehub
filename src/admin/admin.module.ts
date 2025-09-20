@@ -9,6 +9,8 @@ import { GeocodingModule } from '../geocoding/geocoding.module';
 import { ParsedSchedule } from '../parser/parsed-schedule.entity';
 import { ShowReview } from '../show-review/show-review.entity';
 import { Show } from '../show/show.entity';
+import { CoinPackage } from '../store/entities/coin-package.entity';
+import { Transaction } from '../store/entities/transaction.entity';
 import { Vendor } from '../vendor/vendor.entity';
 import { Venue } from '../venue/venue.entity';
 import { AdminController } from './admin.controller';
@@ -28,6 +30,8 @@ import { DeduplicationService } from './deduplication.service';
       FavoriteShow,
       Feedback,
       ShowReview,
+      Transaction,
+      CoinPackage,
     ]),
     ApiLoggingModule,
     GeocodingModule,

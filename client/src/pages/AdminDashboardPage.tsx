@@ -6,11 +6,13 @@ import LocationTrackingModal from '@components/modals/LocationTrackingModal';
 import ShowAnalytics from '@components/ShowAnalytics';
 import SpriteCutter from '@components/SpriteCutter';
 import StoreItemGenerator from '@components/StoreItemGenerator';
+import TransactionManagement from '@components/TransactionManagement';
 import UrlApprovalComponent from '@components/UrlApprovalComponent';
 import {
   faBars,
   faChartBar,
   faChevronRight,
+  faCoins,
   faCut,
   faDatabase,
   faGlobe,
@@ -119,7 +121,7 @@ const AdminDashboardPageTabbed = observer(() => {
     }
 
     // Refresh URL count when switching to URL Approval Queue tab
-    if (newValue === 2) {
+    if (newValue === 3) {
       fetchUrlApprovalCount();
     }
   };
@@ -143,6 +145,14 @@ const AdminDashboardPageTabbed = observer(() => {
     },
     {
       id: 2,
+      title: 'Transaction Management',
+      icon: faCoins,
+      description: 'View transactions and manage user coins',
+      component: <TransactionManagement />,
+      category: 'finance',
+    },
+    {
+      id: 3,
       title: 'URL Approval Queue',
       icon: faGlobe,
       description: 'Review and approve submitted URLs',
@@ -150,7 +160,7 @@ const AdminDashboardPageTabbed = observer(() => {
       category: 'content',
     },
     {
-      id: 3,
+      id: 4,
       title: 'API Monitoring',
       icon: faRobot,
       description: 'Monitor iTunes API usage and rate limiting',
@@ -158,7 +168,7 @@ const AdminDashboardPageTabbed = observer(() => {
       category: 'monitoring',
     },
     {
-      id: 4,
+      id: 5,
       title: 'Avatar Tools',
       icon: faCut,
       description: 'Avatar management and image processing tools',
@@ -166,7 +176,7 @@ const AdminDashboardPageTabbed = observer(() => {
       category: 'avatars',
     },
     {
-      id: 5,
+      id: 6,
       title: 'Store Generator',
       icon: faPalette,
       description: 'Generate avatar store items using AI image generation',
@@ -350,7 +360,7 @@ const AdminDashboardPageTabbed = observer(() => {
                 Data & Analytics
               </Typography>
               {adminSections
-                .filter((section) => ['data', 'analytics'].includes(section.category))
+                .filter((section) => ['data', 'analytics', 'finance'].includes(section.category))
                 .map((section) => (
                   <ListItem key={section.id} disablePadding sx={{ mb: 1 }}>
                     <ListItemButton
@@ -971,18 +981,22 @@ const AdminDashboardPageTabbed = observer(() => {
             </TabPanel>
 
             <TabPanel value={tabValue} index={2}>
-              <UrlApprovalComponent onCountChange={setUrlApprovalCount} />
+              <TransactionManagement />
             </TabPanel>
 
             <TabPanel value={tabValue} index={3}>
-              <ApiLogsMonitor />
+              <UrlApprovalComponent onCountChange={setUrlApprovalCount} />
             </TabPanel>
 
             <TabPanel value={tabValue} index={4}>
-              <SpriteCutter />
+              <ApiLogsMonitor />
             </TabPanel>
 
             <TabPanel value={tabValue} index={5}>
+              <SpriteCutter />
+            </TabPanel>
+
+            <TabPanel value={tabValue} index={6}>
               <StoreItemGenerator />
             </TabPanel>
           </Paper>

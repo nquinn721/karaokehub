@@ -9,6 +9,8 @@ import { GeocodingService } from '../geocoding/geocoding.service';
 import { ParsedSchedule, ParseStatus } from '../parser/parsed-schedule.entity';
 import { ReviewStatus, ShowReview } from '../show-review/show-review.entity';
 import { Show } from '../show/show.entity';
+import { Transaction, TransactionType, TransactionStatus } from '../store/entities/transaction.entity';
+import { CoinPackage } from '../store/entities/coin-package.entity';
 import { Vendor } from '../vendor/vendor.entity';
 import { Venue } from '../venue/venue.entity';
 
@@ -43,6 +45,10 @@ export class AdminService {
     private feedbackRepository: Repository<Feedback>,
     @InjectRepository(ShowReview)
     private showReviewRepository: Repository<ShowReview>,
+    @InjectRepository(Transaction)
+    private transactionRepository: Repository<Transaction>,
+    @InjectRepository(CoinPackage)
+    private coinPackageRepository: Repository<CoinPackage>,
     private geocodingService: GeocodingService,
   ) {}
 
@@ -1176,5 +1182,237 @@ export class AdminService {
         error: error.message,
       };
     }
+  }
+
+  // Transaction Management Methods
+  async getTransactions(
+    page = 1,
+    limit = 25,
+    search?: string,
+    userId?: string,
+    type?: TransactionType,
+    status?: TransactionStatus,
+    sortBy = 'createdAt',
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
+  ) {
+    const queryBuilder = this.transactionRepository
+      .createQueryBuilder('transaction')
+      .leftJoinAndSelect('transaction.user', 'user')
+      .leftJoinAndSelect('transaction.coinPackage', 'coinPackage');
+
+    // Apply filters
+    if (search) {
+      queryBuilder.andWhere(
+        '(user.name ILIKE :search OR user.email ILIKE :search OR transaction.description ILIKE :search)',
+        { search: `%${search}%` }
+      );
+    }
+
+    if (userId) {
+      queryBuilder.andWhere('transaction.userId = :userId', { userId });
+    }
+
+    if (type) {
+      queryBuilder.andWhere('transaction.type = :type', { type });
+    }
+
+    if (status) {
+      queryBuilder.andWhere('transaction.status = :status', { status });
+    }
+
+    // Apply sorting
+    queryBuilder.orderBy(`transaction.${sortBy}`, sortOrder);
+
+    // Apply pagination
+    const skip = (page - 1) * limit;
+    queryBuilder.skip(skip).take(limit);
+
+    const [transactions, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      data: transactions,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async addCoinsToUser(userId: string, coinAmount: number, description?: string) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Start transaction
+    const queryRunner = this.userRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Add coins to user
+      user.coins += coinAmount;
+      await queryRunner.manager.save(user);
+
+      // Record transaction
+      const transaction = this.transactionRepository.create({
+        userId,
+        type: TransactionType.REWARD,
+        status: TransactionStatus.COMPLETED,
+        coinAmount,
+        description: description || `Admin granted ${coinAmount} coins`,
+      });
+      await queryRunner.manager.save(transaction);
+
+      await queryRunner.commitTransaction();
+
+      return { 
+        success: true, 
+        newBalance: user.coins, 
+        transaction,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          coins: user.coins,
+        }
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async updateUserCoins(userId: string, newCoinAmount: number, description?: string) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const oldBalance = user.coins;
+    const coinDifference = newCoinAmount - oldBalance;
+
+    // Start transaction
+    const queryRunner = this.userRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Update user coins
+      user.coins = newCoinAmount;
+      await queryRunner.manager.save(user);
+
+      // Record transaction
+      const transaction = this.transactionRepository.create({
+        userId,
+        type: coinDifference >= 0 ? TransactionType.REWARD : TransactionType.REFUND,
+        status: TransactionStatus.COMPLETED,
+        coinAmount: coinDifference,
+        description: description || `Admin set balance to ${newCoinAmount} coins (${coinDifference >= 0 ? '+' : ''}${coinDifference})`,
+      });
+      await queryRunner.manager.save(transaction);
+
+      await queryRunner.commitTransaction();
+
+      return { 
+        success: true, 
+        oldBalance,
+        newBalance: user.coins,
+        coinDifference,
+        transaction,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          coins: user.coins,
+        }
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async getUserWithTransactions(userId: string) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const transactions = await this.transactionRepository.find({
+      where: { userId },
+      relations: ['coinPackage'],
+      order: { createdAt: 'DESC' },
+      take: 20, // Recent transactions
+    });
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        coins: user.coins,
+        createdAt: user.createdAt,
+        isActive: user.isActive,
+      },
+      transactions,
+    };
+  }
+
+  async getTransactionStatistics() {
+    const [
+      totalTransactions,
+      completedTransactions,
+      pendingTransactions,
+      failedTransactions,
+      totalCoinsDistributed,
+      totalCoinsSpent,
+      coinPurchases,
+      microphonePurchases,
+    ] = await Promise.all([
+      this.transactionRepository.count(),
+      this.transactionRepository.count({ where: { status: TransactionStatus.COMPLETED } }),
+      this.transactionRepository.count({ where: { status: TransactionStatus.PENDING } }),
+      this.transactionRepository.count({ where: { status: TransactionStatus.FAILED } }),
+      this.transactionRepository
+        .createQueryBuilder('transaction')
+        .select('SUM(CASE WHEN coinAmount > 0 THEN coinAmount ELSE 0 END)', 'total')
+        .where('status = :status', { status: TransactionStatus.COMPLETED })
+        .getRawOne()
+        .then(result => parseInt(result.total) || 0),
+      this.transactionRepository
+        .createQueryBuilder('transaction')
+        .select('SUM(CASE WHEN coinAmount < 0 THEN ABS(coinAmount) ELSE 0 END)', 'total')
+        .where('status = :status', { status: TransactionStatus.COMPLETED })
+        .getRawOne()
+        .then(result => parseInt(result.total) || 0),
+      this.transactionRepository.count({ 
+        where: { 
+          type: TransactionType.COIN_PURCHASE, 
+          status: TransactionStatus.COMPLETED 
+        } 
+      }),
+      this.transactionRepository.count({ 
+        where: { 
+          type: TransactionType.MICROPHONE_PURCHASE, 
+          status: TransactionStatus.COMPLETED 
+        } 
+      }),
+    ]);
+
+    return {
+      totalTransactions,
+      completedTransactions,
+      pendingTransactions,
+      failedTransactions,
+      totalCoinsDistributed,
+      totalCoinsSpent,
+      coinPurchases,
+      microphonePurchases,
+    };
   }
 }

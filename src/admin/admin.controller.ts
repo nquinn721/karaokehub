@@ -242,4 +242,54 @@ export class AdminController {
   async verifyVenueLocation(@Param('id') id: string) {
     return await this.adminService.verifyVenueLocation(id);
   }
+
+  // Transaction Management Endpoints
+  @Get('transactions')
+  async getTransactions(
+    @Query('page') page = 1,
+    @Query('limit') limit = 25,
+    @Query('search') search?: string,
+    @Query('userId') userId?: string,
+    @Query('type') type?: string,
+    @Query('status') status?: string,
+    @Query('sortBy') sortBy = 'createdAt',
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC' = 'DESC',
+  ) {
+    return await this.adminService.getTransactions(
+      +page,
+      +limit,
+      search,
+      userId,
+      type as any,
+      status as any,
+      sortBy,
+      sortOrder
+    );
+  }
+
+  @Get('transactions/statistics')
+  async getTransactionStatistics() {
+    return await this.adminService.getTransactionStatistics();
+  }
+
+  @Get('users/:id/transactions')
+  async getUserWithTransactions(@Param('id') userId: string) {
+    return await this.adminService.getUserWithTransactions(userId);
+  }
+
+  @Post('users/:id/add-coins')
+  async addCoinsToUser(
+    @Param('id') userId: string,
+    @Body() body: { amount: number; description?: string },
+  ) {
+    return await this.adminService.addCoinsToUser(userId, body.amount, body.description);
+  }
+
+  @Put('users/:id/coins')
+  async updateUserCoins(
+    @Param('id') userId: string,
+    @Body() body: { coins: number; description?: string },
+  ) {
+    return await this.adminService.updateUserCoins(userId, body.coins, body.description);
+  }
 }
