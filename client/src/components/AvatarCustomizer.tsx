@@ -304,11 +304,11 @@ const AvatarCustomizer: React.FC = observer(() => {
     hair: 'hair_short',
     accessories: [],
   });
-  const [selectedCategory, setSelectedCategory] = useState<string>('microphone');
-  const [saving, setSaving] = useState<boolean>(false);
+  const [_selectedCategory, _setSelectedCategory] = useState<string>('microphone');
+  const [_saving, _setSaving] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [selectedTab, setSelectedTab] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, _setLoading] = useState<boolean>(false);
 
   const categories = [
     { id: 'microphone', name: 'Microphones', icon: faMicrophone },
@@ -375,7 +375,7 @@ const AvatarCustomizer: React.FC = observer(() => {
   }, []);
 
   const saveConfiguration = async () => {
-    setSaving(true);
+    _setSaving(true);
     try {
       // Get the current equipped avatar
       const currentAvatar = authStore.user?.equippedAvatar?.id;
@@ -408,7 +408,7 @@ const AvatarCustomizer: React.FC = observer(() => {
       setSuccessMessage('Failed to refresh avatar. Please try again.');
       setTimeout(() => setSuccessMessage(''), 3000);
     } finally {
-      setSaving(false);
+      _setSaving(false);
     }
   };
 
