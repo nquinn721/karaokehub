@@ -5,6 +5,7 @@ interface AvatarDisplayProps {
   width?: number;
   height?: number;
   avatarId?: string;
+  imageUrl?: string; // Add imageUrl prop for direct image path
   show3D?: boolean;
   sx?: any;
 }
@@ -90,20 +91,28 @@ const AvatarDisplay: React.FC<AvatarDisplayProps> = ({
   width = 200,
   height = 250,
   avatarId,
+  imageUrl,
   show3D = true,
   sx = {},
 }) => {
   const [currentAvatarId, setCurrentAvatarId] = useState(avatarId || 'alex');
+  const [currentImageUrl, setCurrentImageUrl] = useState(imageUrl || '/images/avatar/avatars/alex.png');
 
   // Load saved avatar if no specific avatarId is provided
   useEffect(() => {
     if (avatarId) {
       setCurrentAvatarId(avatarId);
     }
+    if (imageUrl) {
+      setCurrentImageUrl(imageUrl);
+    }
     // Remove localStorage fallback to prevent cross-user contamination
-  }, [avatarId]);
+  }, [avatarId, imageUrl]);
 
+  // Use direct imageUrl if provided, otherwise fall back to hardcoded avatars
   const avatar = AVAILABLE_AVATARS.find((a) => a.id === currentAvatarId) || AVAILABLE_AVATARS[0];
+  const displayImageUrl = imageUrl || currentImageUrl || avatar.imagePath;
+  const displayName = avatar.name; // Still use the name from the hardcoded array for fallback
 
   return (
     <Box
@@ -156,8 +165,8 @@ const AvatarDisplay: React.FC<AvatarDisplayProps> = ({
       >
         <Box
           component="img"
-          src={avatar.imagePath}
-          alt={avatar.name}
+          src={displayImageUrl}
+          alt={displayName}
           sx={{
             width: '100%',
             height: '100%',

@@ -78,7 +78,10 @@ const DashboardPage: React.FC = observer(() => {
   const [microphoneModalOpen, setMicrophoneModalOpen] = useState(false);
   const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
   const [currentAvatarId, setCurrentAvatarId] = useState<string>('alex');
+  const [currentAvatarImageUrl, setCurrentAvatarImageUrl] = useState<string>('/images/avatar/avatars/alex.png');
   const [currentMicrophoneId, setCurrentMicrophoneId] = useState<string>('mic_basic_1');
+  const [currentAvatarName, setCurrentAvatarName] = useState<string>('Alex');
+  const [currentMicrophoneName, setCurrentMicrophoneName] = useState<string>('Basic Mic');
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState<
     'favorites' | 'ad_removal' | 'music_preview'
@@ -106,6 +109,13 @@ const DashboardPage: React.FC = observer(() => {
     }
   }, [authStore.user?.id]);
 
+  // Reload avatar when equipped avatar changes
+  useEffect(() => {
+    if (authStore.user?.equippedAvatar) {
+      loadCurrentAvatar();
+    }
+  }, [authStore.user?.equippedAvatar?.id]);
+
   const loadCurrentAvatar = async () => {
     if (!authStore.isAuthenticated || !authStore.user?.id) {
       console.log('Cannot load avatar: user not authenticated');
@@ -115,23 +125,32 @@ const DashboardPage: React.FC = observer(() => {
     try {
       setAvatarLoading(true);
 
-      // Use UserStore to get equipped avatar
-      const equippedAvatar = userStore.getEquippedAvatar();
-      console.log('Loaded avatar from UserStore:', equippedAvatar);
+      // Use AuthStore user data directly since it gets refreshed when avatar changes
+      const user = authStore.user;
+      console.log('Loading avatar from AuthStore user:', user);
 
-      if (equippedAvatar?.avatarId) {
-        setCurrentAvatarId(equippedAvatar.avatarId);
-        console.log('Set current avatar ID:', equippedAvatar.avatarId);
+      if (user.equippedAvatar) {
+        setCurrentAvatarId(user.equippedAvatar.id);
+        setCurrentAvatarImageUrl(user.equippedAvatar.imageUrl);
+        setCurrentAvatarName(user.equippedAvatar.name || 'Avatar');
+        console.log('Set current avatar ID:', user.equippedAvatar.id);
+        console.log('Set current avatar imageUrl:', user.equippedAvatar.imageUrl);
+        console.log('Set current avatar name:', user.equippedAvatar.name);
       } else {
         // If no equipped avatar, use fallback
         const fallbackAvatarId = 'alex';
+        const fallbackImageUrl = '/images/avatar/avatars/alex.png';
         setCurrentAvatarId(fallbackAvatarId);
+        setCurrentAvatarImageUrl(fallbackImageUrl);
+        setCurrentAvatarName('Alex');
         console.log('Using fallback avatar ID:', fallbackAvatarId);
       }
     } catch (error) {
       console.error('Failed to load current avatar:', error);
       // Fallback to default
       setCurrentAvatarId('alex');
+      setCurrentAvatarImageUrl('/images/avatar/avatars/alex.png');
+      setCurrentAvatarName('Alex');
     } finally {
       setAvatarLoading(false);
     }
@@ -150,14 +169,18 @@ const DashboardPage: React.FC = observer(() => {
 
       if (equippedMic?.microphoneId) {
         setCurrentMicrophoneId(equippedMic.microphoneId);
+        setCurrentMicrophoneName(equippedMic.microphone?.name || 'Microphone');
         console.log('Set current microphone ID:', equippedMic.microphoneId);
+        console.log('Set current microphone name:', equippedMic.microphone?.name);
       } else {
         console.log('No equipped microphone found, using default');
         setCurrentMicrophoneId('mic_basic_1');
+        setCurrentMicrophoneName('Basic Mic');
       }
     } catch (error) {
       console.error('Failed to load current microphone:', error);
       setCurrentMicrophoneId('mic_basic_1');
+      setCurrentMicrophoneName('Basic Mic');
     }
   };
 
@@ -1161,133 +1184,151 @@ const DashboardPage: React.FC = observer(() => {
                             minHeight: 280,
                           }}
                         >
-                          {/* Microphone Display - Positioned to the left middle */}
+                          {/* Unified Container for Avatar and Microphone */}
                           <Box
-                            onClick={() => setMicrophoneModalOpen(true)}
                             sx={{
-                              cursor: 'pointer',
+                              position: 'relative',
+                              width: 450,
+                              height: 320,
+                              background: 'rgba(255,255,255,0.08)',
+                              backdropFilter: 'blur(20px)',
+                              border: '2px solid rgba(255,255,255,0.2)',
+                              borderRadius: '24px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              px: 3,
                               transition: 'all 0.3s ease',
-                              position: 'absolute',
-                              left: 0,
-                              top: '50%',
-                              transform: 'translateY(-50%)',
-                              zIndex: 1,
                               '&:hover': {
-                                transform: 'translateY(-50%) scale(1.05)',
-                                boxShadow: '0 12px 24px rgba(0,0,0,0.3)',
+                                border: '2px solid rgba(255,255,255,0.4)',
+                                background: 'rgba(255,255,255,0.12)',
+                                boxShadow: '0 16px 32px rgba(0,0,0,0.2)',
                               },
                             }}
                           >
+                            {/* Microphone Click Area - Left side */}
                             <Box
-                              sx={{
-                                width: 100,
-                                height: 140,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: 'rgba(255,255,255,0.1)',
-                                backdropFilter: 'blur(20px)',
-                                border: '2px solid rgba(255,255,255,0.2)',
-                                borderRadius: '16px',
-                                position: 'relative',
-                              }}
-                            >
-                              <Box
-                                component="img"
-                                src={`/images/avatar/parts/microphones/${currentMicrophoneId}.png`}
-                                alt="Current Microphone"
-                                sx={{
-                                  width: '75%',
-                                  height: '75%',
-                                  objectFit: 'contain',
-                                }}
-                              />
-                              <Box
-                                sx={{
-                                  position: 'absolute',
-                                  bottom: 6,
-                                  left: '50%',
-                                  transform: 'translateX(-50%)',
-                                  backgroundColor: 'rgba(255,255,255,0.9)',
-                                  color: theme.palette.primary.main,
-                                  fontSize: '0.6rem',
-                                  fontWeight: 'bold',
-                                  px: 0.8,
-                                  py: 0.3,
-                                  borderRadius: '6px',
-                                  textAlign: 'center',
-                                }}
-                              >
-                                Mic
-                              </Box>
-                            </Box>
-                          </Box>
-
-                          {/* Avatar Display - Centered and bigger */}
-                          {avatarLoading ? (
-                            <Box
-                              sx={{
-                                width: 220,
-                                height: 280,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: 'rgba(255,255,255,0.1)',
-                                backdropFilter: 'blur(20px)',
-                                border: '2px solid rgba(255,255,255,0.2)',
-                                borderRadius: '20px',
-                                mx: 'auto',
-                              }}
-                            >
-                              <CircularProgress color="inherit" size={40} />
-                            </Box>
-                          ) : (
-                            <Box
-                              onClick={() => setAvatarModalOpen(true)}
+                              onClick={() => setMicrophoneModalOpen(true)}
                               sx={{
                                 cursor: 'pointer',
                                 transition: 'all 0.3s ease',
-                                position: 'relative',
-                                mx: 'auto',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
                                 '&:hover': {
-                                  transform: 'scale(1.05)',
-                                  boxShadow: '0 16px 32px rgba(0,0,0,0.3)',
+                                  transform: 'scale(1.1)',
                                 },
                               }}
                             >
-                              <AvatarDisplay3D
-                                key={`main-avatar-${avatarRefreshKey}`}
-                                width={220}
-                                height={280}
-                                avatarId={currentAvatarId}
-                                show3D={true}
-                                sx={{
-                                  background: 'rgba(255,255,255,0.1)',
-                                  backdropFilter: 'blur(20px)',
-                                  border: '2px solid rgba(255,255,255,0.2)',
-                                  borderRadius: '20px',
-                                }}
-                              />
                               <Box
                                 sx={{
-                                  position: 'absolute',
-                                  bottom: 10,
-                                  left: '50%',
-                                  transform: 'translateX(-50%)',
-                                  backgroundColor: 'rgba(255,255,255,0.9)',
-                                  color: theme.palette.primary.main,
-                                  fontSize: '0.8rem',
-                                  fontWeight: 'bold',
-                                  px: 1.5,
-                                  py: 0.7,
-                                  borderRadius: '10px',
-                                  textAlign: 'center',
+                                  width: 100,
+                                  height: 140,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  background: 'rgba(255,255,255,0.1)',
+                                  backdropFilter: 'blur(10px)',
+                                  border: '1px solid rgba(255,255,255,0.3)',
+                                  borderRadius: '12px',
+                                  p: 1,
                                 }}
                               >
-                                Avatar
+                                <Box
+                                  component="img"
+                                  src={`/images/avatar/parts/microphones/${currentMicrophoneId}.png`}
+                                  alt="Current Microphone"
+                                  sx={{
+                                    width: '85%',
+                                    height: '75%',
+                                    objectFit: 'contain',
+                                    mb: 1,
+                                  }}
+                                />
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    color: 'white',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    textAlign: 'center',
+                                    textShadow: '0 2px 4px rgba(0,0,0,0.8)',
+                                    background: 'linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.4))',
+                                    px: 1,
+                                    py: 0.3,
+                                    borderRadius: '6px',
+                                    border: '1px solid rgba(255,255,255,0.2)',
+                                    backdropFilter: 'blur(10px)',
+                                  }}
+                                >
+                                  {currentMicrophoneName}
+                                </Typography>
                               </Box>
                             </Box>
-                          )}
+
+                            {/* Avatar Click Area - Right side */}
+                            {avatarLoading ? (
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: 250,
+                                  height: 300,
+                                }}
+                              >
+                                <CircularProgress color="inherit" size={40} />
+                              </Box>
+                            ) : (
+                              <Box
+                                onClick={() => setAvatarModalOpen(true)}
+                                sx={{
+                                  cursor: 'pointer',
+                                  transition: 'all 0.3s ease',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  '&:hover': {
+                                    transform: 'scale(1.05)',
+                                  },
+                                }}
+                              >
+                                <AvatarDisplay3D
+                                  key={`main-avatar-${avatarRefreshKey}`}
+                                  width={240}
+                                  height={260}
+                                  avatarId={currentAvatarId}
+                                  imageUrl={currentAvatarImageUrl}
+                                  show3D={true}
+                                  sx={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    borderRadius: '0',
+                                  }}
+                                />
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    color: 'white',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 700,
+                                    textAlign: 'center',
+                                    textShadow: '0 2px 4px rgba(0,0,0,0.8)',
+                                    background: 'linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.4))',
+                                    px: 2,
+                                    py: 0.5,
+                                    borderRadius: '8px',
+                                    border: '1px solid rgba(255,255,255,0.2)',
+                                    backdropFilter: 'blur(10px)',
+                                    mt: 1,
+                                  }}
+                                >
+                                  {currentAvatarName}
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
                         </Box>
                       </Grid>
                     </Grid>
@@ -1677,8 +1718,8 @@ const DashboardPage: React.FC = observer(() => {
           setCurrentAvatarId(avatarId);
           // Force refresh of avatar displays
           setAvatarRefreshKey((prev) => prev + 1);
-          // Refresh user data and reload avatar
-          await userStore.getCurrentUser();
+          // The authStore will be refreshed by the AvatarSelectorModal via userStore.updateEquippedAvatar
+          // which calls authStore.refreshProfile(), so we just need to reload our current avatar
           await loadCurrentAvatar();
         }}
       />

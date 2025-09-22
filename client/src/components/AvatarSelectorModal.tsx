@@ -194,7 +194,8 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = observer(
                             <AvatarDisplay3D
                               width={140}
                               height={180}
-                              avatarId={avatar.name.toLowerCase()}
+                              avatarId={avatar.id}
+                              imageUrl={avatar.imageUrl}
                               show3D={true}
                               sx={{
                                 borderRadius: '12px',

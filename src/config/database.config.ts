@@ -96,7 +96,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     // Migration configuration - environment specific
     migrations: isProduction ? ['dist/migrations/*.js'] : ['src/migrations/*.ts'],
     migrationsTableName: 'migrations',
-    migrationsRun: true, // Enable automatic migration execution on startup
+    migrationsRun: true, // Enabled for automatic database schema updates
 
     // Connection pool options for TypeORM
     ...(isProduction && {

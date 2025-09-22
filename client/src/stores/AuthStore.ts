@@ -14,6 +14,26 @@ export interface Avatar {
   id: string;
   name: string;
   description: string;
+  type: string;
+  rarity: string;
+  imageUrl: string;
+  price: number;
+  coinPrice: number;
+  isAvailable: boolean;
+}
+
+export interface User {
+  id: string;
+  baseAvatarId: string;
+  microphoneId?: string;
+  outfitId?: string;
+  shoesId?: string;
+}
+
+export interface Avatar {
+  id: string;
+  name: string;
+  description: string;
   imageUrl: string;
 }
 
@@ -399,12 +419,12 @@ export class AuthStore {
   getAvatarUrl(user: User | null = this.user): string {
     if (!user) return '/images/avatar/avatars/alex.png'; // Default avatar
 
-    // Priority 1: Check for equipped avatar (new system)
-    if (user.equippedAvatar?.id) {
-      return `/images/avatar/avatars/${user.equippedAvatar.id}.png`;
+    // Priority 1: Check for equipped avatar (new system) - use imageUrl from the avatar relation
+    if (user.equippedAvatar?.imageUrl) {
+      return user.equippedAvatar.imageUrl;
     }
 
-    // Priority 2: Check for userAvatar.baseAvatarId (if using the new system)
+    // Priority 2: Check for userAvatar.baseAvatarId (legacy system)
     if (user.userAvatar?.baseAvatarId) {
       return `/images/avatar/avatars/${user.userAvatar.baseAvatarId}.png`;
     }

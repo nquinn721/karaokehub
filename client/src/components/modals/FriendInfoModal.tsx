@@ -22,7 +22,6 @@ import {
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { apiStore } from '../../stores/ApiStore';
-import AvatarDisplay from '../AvatarDisplay';
 import CustomModal from '../CustomModal';
 
 interface Favorite {
@@ -56,6 +55,17 @@ interface FriendUser {
   stageName?: string;
   name?: string;
   email?: string;
+  equippedAvatar?: {
+    id: string;
+    name: string;
+    imageUrl: string;
+  } | null;
+  equippedMicrophone?: {
+    id: string;
+    name: string;
+    imageUrl: string;
+  } | null;
+  // Keep legacy userAvatar for backward compatibility
   userAvatar?: {
     baseAvatarId: string;
     microphone?: any;
@@ -103,8 +113,8 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
   useEffect(() => {
     if (friend) {
       console.log('🔍 [FriendInfoModal] Friend data:', friend);
-      console.log('🔍 [FriendInfoModal] User avatar:', friend.userAvatar);
-      console.log('🔍 [FriendInfoModal] Microphone:', friend.userAvatar?.microphone);
+      console.log('🔍 [FriendInfoModal] Equipped avatar:', friend.equippedAvatar);
+      console.log('🔍 [FriendInfoModal] Equipped microphone:', friend.equippedMicrophone);
     }
   }, [friend]);
 
@@ -170,7 +180,7 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
     >
       <Box sx={{ mt: 1 }}>
         <Grid container spacing={2} sx={{ height: '400px' }}>
-          {/* Left Column - Full Height Avatar */}
+          {/* Left Column - Avatar and Microphone Layout */}
           <Grid item xs={12} md={4}>
             <Box
               sx={{
@@ -187,73 +197,132 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
                 gap: 2,
               }}
             >
-              <AvatarDisplay
-                userAvatar={friend.userAvatar}
-                size={160}
-                sx={{
-                  border: 'none',
-                  background: 'transparent',
-                }}
-              />
-
-              {/* Friend's Microphone Display - Always show for debugging */}
+              {/* Unified container for microphone and avatar like dashboard */}
               <Box
                 sx={{
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
-                  gap: 1,
+                  justifyContent: 'center',
+                  width: '100%',
+                  maxWidth: 300,
+                  height: 200,
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  position: 'relative',
+                  gap: 2,
+                  p: 2,
                 }}
               >
+                {/* Microphone on the left */}
                 <Box
                   sx={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    border: '2px solid rgba(255,255,255,0.3)',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    gap: 1,
                   }}
                 >
-                  {friend.userAvatar?.microphone ? (
+                  <Box
+                    sx={{
+                      width: 60,
+                      height: 80,
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                    }}
+                  >
+                    {friend.equippedMicrophone ? (
+                      <img
+                        src={friend.equippedMicrophone.imageUrl}
+                        alt={friend.equippedMicrophone.name}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain',
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            '/images/avatar/microphones/mic_basic_1.png';
+                        }}
+                      />
+                    ) : (
+                      <img
+                        src="/images/avatar/microphones/mic_basic_1.png"
+                        alt="Default Microphone"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain',
+                        }}
+                      />
+                    )}
+                  </Box>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'rgba(255,255,255,0.9)',
+                      textAlign: 'center',
+                      fontSize: '0.6rem',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {friend.equippedMicrophone?.name || 'Basic Mic'}
+                  </Typography>
+                </Box>
+
+                {/* Avatar on the right */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 1,
+                    flex: 1,
+                  }}
+                >
+                  {friend.equippedAvatar ? (
                     <img
-                      src={`/images/avatar/parts/microphones/${friend.userAvatar.microphone.imagePath || 'mic_basic_1.png'}`}
-                      alt={friend.userAvatar.microphone.name || 'Microphone'}
+                      src={friend.equippedAvatar.imageUrl}
+                      alt={friend.equippedAvatar.name}
                       style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
+                        width: 120,
+                        height: 130,
+                        objectFit: 'contain',
                       }}
                       onError={(e) => {
                         (e.target as HTMLImageElement).src =
-                          '/images/avatar/parts/microphones/mic_basic_1.png';
+                          '/images/avatar/avatars/alex.png';
                       }}
                     />
                   ) : (
                     <img
-                      src="/images/avatar/parts/microphones/mic_basic_1.png"
-                      alt="Default Microphone"
+                      src="/images/avatar/avatars/alex.png"
+                      alt="Default Avatar"
                       style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
+                        width: 120,
+                        height: 130,
+                        objectFit: 'contain',
                       }}
                     />
                   )}
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'rgba(255,255,255,0.9)',
+                      textAlign: 'center',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {friend.equippedAvatar?.name || 'Default Avatar'}
+                  </Typography>
                 </Box>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: 'rgba(255,255,255,0.9)',
-                    textAlign: 'center',
-                    fontSize: '0.75rem',
-                  }}
-                >
-                  {friend.userAvatar?.microphone?.name || 'Basic Mic'}
-                </Typography>
               </Box>
             </Box>
           </Grid>
