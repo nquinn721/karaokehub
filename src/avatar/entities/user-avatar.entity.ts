@@ -22,25 +22,10 @@ export class UserAvatar {
   userId: string;
 
   @Column({ type: 'varchar', length: 255 })
-  baseAvatarId: string;
-
-  @Column({ type: 'varchar', length: 36, nullable: true })
-  microphoneId?: string;
-
-  @Column({ type: 'varchar', length: 36, nullable: true })
-  outfitId?: string;
-
-  @Column({ type: 'varchar', length: 36, nullable: true })
-  shoesId?: string;
-
-  @Column({ type: 'boolean', default: true })
-  isActive: boolean;
+  avatarId: string;
 
   @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
+  acquiredAt: Date;
 
   // Relationships
   @ManyToOne(() => User, (user) => user.userAvatars, { onDelete: 'CASCADE' })
@@ -48,18 +33,6 @@ export class UserAvatar {
   user: User;
 
   @ManyToOne(() => Avatar, (avatar) => avatar.userAvatars, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'baseAvatarId' })
-  baseAvatar: Avatar;
-
-  @ManyToOne(() => Microphone, { onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'microphoneId' })
-  microphone?: Microphone;
-
-  @ManyToOne(() => Outfit, { onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'outfitId' })
-  outfit?: Outfit;
-
-  @ManyToOne(() => Shoes, { onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'shoesId' })
-  shoes?: Shoes;
+  @JoinColumn({ name: 'avatarId' })
+  avatar: Avatar;
 }

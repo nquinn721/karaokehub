@@ -71,6 +71,7 @@ export class FriendsService {
 
     const queryBuilder = this.userRepository
       .createQueryBuilder('user')
+      .leftJoinAndSelect('user.equippedAvatar', 'equippedAvatar')
       .where('user.isActive = :isActive', { isActive: true })
       .andWhere(
         "(LOWER(COALESCE(user.stageName, '')) LIKE :query OR " +
@@ -82,7 +83,7 @@ export class FriendsService {
           startQuery: startQuery,
         },
       )
-      .select(['user.id', 'user.email', 'user.name', 'user.stageName'])
+      .select(['user.id', 'user.email', 'user.name', 'user.stageName', 'equippedAvatar.id', 'equippedAvatar.imageUrl'])
       .orderBy(
         "CASE WHEN LOWER(COALESCE(user.stageName, '')) = :exactQuery THEN 0 " +
           "WHEN LOWER(COALESCE(user.name, '')) = :exactQuery THEN 1 " +
@@ -119,7 +120,18 @@ export class FriendsService {
       })),
     );
 
-    return users;
+    return users.map((user) => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      stageName: user.stageName,
+      userAvatar: user.equippedAvatar
+        ? {
+            baseAvatarId: user.equippedAvatar.id,
+            imageUrl: user.equippedAvatar.imageUrl,
+          }
+        : null,
+    }));
   }
 
   // Send friend request
@@ -181,20 +193,46 @@ export class FriendsService {
 
   // Get pending friend requests (received)
   async getPendingFriendRequests(userId: string) {
-    return this.friendRequestRepository.find({
+    const requests = await this.friendRequestRepository.find({
       where: { recipientId: userId, status: FriendRequestStatus.PENDING },
-      relations: ['requester'],
+      relations: ['requester', 'requester.equippedAvatar'],
       order: { createdAt: 'DESC' },
     });
+
+    return requests.map((request) => ({
+      ...request,
+      requester: {
+        ...request.requester,
+        userAvatar: request.requester.equippedAvatar
+          ? {
+              baseAvatarId: request.requester.equippedAvatar.id,
+              imageUrl: request.requester.equippedAvatar.imageUrl,
+            }
+          : null,
+      },
+    }));
   }
 
   // Get sent friend requests
   async getSentFriendRequests(userId: string) {
-    return this.friendRequestRepository.find({
+    const requests = await this.friendRequestRepository.find({
       where: { requesterId: userId, status: FriendRequestStatus.PENDING },
-      relations: ['recipient'],
+      relations: ['recipient', 'recipient.equippedAvatar'],
       order: { createdAt: 'DESC' },
     });
+
+    return requests.map((request) => ({
+      ...request,
+      recipient: {
+        ...request.recipient,
+        userAvatar: request.recipient.equippedAvatar
+          ? {
+              baseAvatarId: request.recipient.equippedAvatar.id,
+              imageUrl: request.recipient.equippedAvatar.imageUrl,
+            }
+          : null,
+      },
+    }));
   }
 
   // Accept friend request
@@ -272,14 +310,8 @@ export class FriendsService {
         email: friendship.friend.email,
         name: friendship.friend.name,
         stageName: friendship.friend.stageName,
-        userAvatar: friendship.friend.equippedAvatar
-          ? {
-              baseAvatarId: friendship.friend.equippedAvatar.id,
-              microphone: friendship.friend.equippedMicrophone,
-              outfit: null, // These are legacy fields, set to null for now
-              shoes: null,
-            }
-          : null,
+        equippedAvatar: friendship.friend.equippedAvatar,
+        equippedMicrophone: friendship.friend.equippedMicrophone,
         friendedAt: friendship.createdAt,
       };
     });

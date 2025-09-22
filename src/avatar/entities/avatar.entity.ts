@@ -47,6 +47,6 @@ export class Avatar {
   updatedAt: Date;
 
   // Relationships
-  @OneToMany(() => UserAvatar, (userAvatar) => userAvatar.baseAvatar)
+  @OneToMany(() => UserAvatar, (userAvatar) => userAvatar.avatar)
   userAvatars: UserAvatar[];
 }

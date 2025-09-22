@@ -89,7 +89,7 @@ export class AvatarService {
     // Check if avatar is free or user owns it
     if (!avatar.isFree) {
       const userAvatar = await this.userAvatarRepository.findOne({
-        where: { userId, baseAvatarId: avatarId },
+        where: { userId, avatarId: avatarId },
       });
 
       if (!userAvatar) {
@@ -222,6 +222,7 @@ export class AvatarService {
     // Handle legacy baseAvatarId (for OAuth provider URLs)
     if (updateData.baseAvatarId) {
       updateData.avatarId = updateData.baseAvatarId;
+      delete updateData.baseAvatarId;
     }
 
     if (updateData.avatarId) {
@@ -266,7 +267,7 @@ export class AvatarService {
       const userAvatars = paidAvatars.map((avatar) =>
         this.userAvatarRepository.create({
           userId,
-          baseAvatarId: avatar.id,
+          avatarId: avatar.id,
         }),
       );
       await this.userAvatarRepository.save(userAvatars);
@@ -303,7 +304,7 @@ export class AvatarService {
     if (itemType === 'avatar') {
       const userAvatar = this.userAvatarRepository.create({
         userId,
-        baseAvatarId: itemId,
+        avatarId: itemId,
       });
       return this.userAvatarRepository.save(userAvatar);
     }

@@ -6,11 +6,15 @@ export interface Friend {
   email: string;
   name: string;
   stageName?: string;
-  userAvatar?: {
-    baseAvatarId: string;
-    microphone?: any;
-    outfit?: any;
-    shoes?: any;
+  equippedAvatar?: {
+    id: string;
+    name: string;
+    imageUrl: string;
+  } | null;
+  equippedMicrophone?: {
+    id: string;
+    name: string;
+    imageUrl: string;
   } | null;
   friendedAt: string;
 }
@@ -24,6 +28,7 @@ export interface FriendRequest {
     stageName?: string;
     userAvatar?: {
       baseAvatarId: string;
+      imageUrl?: string;
       microphone?: any;
       outfit?: any;
       shoes?: any;
@@ -36,6 +41,7 @@ export interface FriendRequest {
     stageName?: string;
     userAvatar?: {
       baseAvatarId: string;
+      imageUrl?: string;
       microphone?: any;
       outfit?: any;
       shoes?: any;
@@ -52,6 +58,7 @@ export interface UserSearchResult {
   stageName?: string;
   userAvatar?: {
     baseAvatarId: string;
+    imageUrl?: string;
     microphone?: any;
     outfit?: any;
     shoes?: any;

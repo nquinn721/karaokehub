@@ -137,8 +137,8 @@ export class StoreService {
   async getUserAvatars(userId: string) {
     return this.userAvatarRepository.find({
       where: { userId },
-      relations: ['baseAvatar'],
-      order: { createdAt: 'DESC' },
+      relations: ['avatar'],
+      order: { acquiredAt: 'DESC' },
     });
   }
 
@@ -157,7 +157,7 @@ export class StoreService {
 
     // Check if user already owns this avatar
     const existingOwnership = await this.userAvatarRepository.findOne({
-      where: { userId, baseAvatarId: avatarId },
+      where: { userId, avatarId: avatarId },
     });
     if (existingOwnership) {
       throw new BadRequestException('You already own this avatar');
@@ -181,7 +181,7 @@ export class StoreService {
       // Add avatar to user's collection
       const userAvatar = this.userAvatarRepository.create({
         userId,
-        baseAvatarId: avatarId,
+        avatarId: avatarId,
       });
       await queryRunner.manager.save(userAvatar);
 
@@ -219,8 +219,8 @@ export class StoreService {
 
     // Check if user owns this avatar
     const userAvatar = await this.userAvatarRepository.findOne({
-      where: { userId, baseAvatarId: avatarId },
-      relations: ['baseAvatar'],
+      where: { userId, avatarId: avatarId },
+      relations: ['avatar'],
     });
     if (!userAvatar) {
       throw new BadRequestException('You do not own this avatar');
@@ -232,7 +232,7 @@ export class StoreService {
 
     return {
       success: true,
-      equippedAvatar: userAvatar.baseAvatar,
+      equippedAvatar: userAvatar.avatar,
     };
   }
 

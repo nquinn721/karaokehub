@@ -361,14 +361,14 @@ export class AdminService {
     // Create user_avatar record if it doesn't exist (for non-free avatars)
     if (!avatar.isFree) {
       const existingUserAvatar = await this.userAvatarRepository.findOne({
-        where: { userId, baseAvatarId: avatarId },
+        where: { userId, avatarId: avatarId },
       });
 
       if (!existingUserAvatar) {
         await this.userAvatarRepository.save({
           id: require('crypto').randomUUID(),
           userId,
-          baseAvatarId: avatarId,
+          avatarId: avatarId,
           acquiredAt: new Date(),
         });
       }

@@ -232,9 +232,9 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
                   <Avatar sx={{ width: 32, height: 32 }}>
-                    {request.requester.userAvatar?.baseAvatarId ? (
+                    {request.requester.userAvatar?.imageUrl ? (
                       <img
-                        src={`/avatar/${request.requester.userAvatar.baseAvatarId}.png`}
+                        src={request.requester.userAvatar.imageUrl}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         alt={getDisplayName(request.requester)}
                       />
@@ -298,9 +298,9 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
                   <Avatar sx={{ width: 32, height: 32 }}>
-                    {request.recipient.userAvatar?.baseAvatarId ? (
+                    {request.recipient.userAvatar?.imageUrl ? (
                       <img
-                        src={`/avatar/${request.recipient.userAvatar.baseAvatarId}.png`}
+                        src={request.recipient.userAvatar.imageUrl}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         alt={getDisplayName(request.recipient)}
                       />
@@ -377,9 +377,9 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
                 >
                   <ListItemAvatar>
                     <Avatar sx={{ width: 36, height: 36 }}>
-                      {friend.userAvatar?.baseAvatarId ? (
+                      {friend.equippedAvatar?.imageUrl ? (
                         <img
-                          src={`/avatar/${friend.userAvatar.baseAvatarId}.png`}
+                          src={friend.equippedAvatar.imageUrl}
                           alt={getDisplayName(friend)}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
