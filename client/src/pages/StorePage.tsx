@@ -70,6 +70,8 @@ const StorePage: React.FC = observer(() => {
           storeStore.fetchCoinPackages(),
           storeStore.fetchStoreMicrophones(),
           storeStore.fetchUserMicrophones(),
+          storeStore.fetchStoreAvatars(),
+          storeStore.fetchUserAvatars(),
           storeStore.fetchUserCoins(),
         ]);
       } catch (error) {
@@ -209,6 +211,40 @@ const StorePage: React.FC = observer(() => {
     setSelectedMicrophone(null);
   };
 
+  const handleAvatarPurchase = async (avatarId: string) => {
+    setLoading(true);
+    try {
+      const success = await storeStore.purchaseAvatar(avatarId);
+      if (success) {
+        console.log('Avatar purchased successfully');
+      } else {
+        console.error('Failed to purchase avatar');
+      }
+    } catch (error) {
+      console.error('Error purchasing avatar:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEquipAvatar = async (avatarId: string) => {
+    setLoading(true);
+    try {
+      const success = await storeStore.equipAvatar(avatarId);
+      if (success) {
+        console.log('Avatar equipped successfully');
+        // Refresh user data to update the UI
+        await userStore.getCurrentUser();
+      } else {
+        console.error('Failed to equip avatar');
+      }
+    } catch (error) {
+      console.error('Error equipping avatar:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -285,6 +321,13 @@ const StorePage: React.FC = observer(() => {
                 label="Microphones"
                 id="store-tab-1"
                 aria-controls="store-tabpanel-1"
+                iconPosition="start"
+              />
+              <Tab
+                icon={<FontAwesomeIcon icon={faCrown} />}
+                label="Avatars"
+                id="store-tab-2"
+                aria-controls="store-tabpanel-2"
                 iconPosition="start"
               />
             </Tabs>
@@ -551,6 +594,177 @@ const StorePage: React.FC = observer(() => {
               <Alert severity="info" sx={{ textAlign: 'center' }}>
                 <Typography variant="body1">
                   No microphones available at the moment. Check back soon!
+                </Typography>
+              </Alert>
+            )}
+          </TabPanel>
+
+          {/* Avatars Tab */}
+          <TabPanel value={tabValue} index={2}>
+            <Typography variant="h5" gutterBottom sx={{ textAlign: 'center', mb: 3 }}>
+              Avatar Collection
+            </Typography>
+            {storeStore.isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Grid container spacing={3} justifyContent="center">
+                {storeStore.storeAvatars.map((avatar) => {
+                  const isOwned = storeStore.userAvatars.some(
+                    (userAvatar) => userAvatar.avatarId === avatar.id,
+                  );
+                  const isEquipped = userStore.currentUser?.equippedAvatarId === avatar.id;
+                  const canAfford = storeStore.coins >= avatar.coinPrice;
+
+                  return (
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={avatar.id}>
+                      <Card
+                        sx={{
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          border: isEquipped
+                            ? `2px solid ${theme.palette.primary.main}`
+                            : '1px solid',
+                          borderColor: isEquipped ? 'primary.main' : 'divider',
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            transform: 'translateY(-4px)',
+                            boxShadow: theme.shadows[8],
+                          },
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            height: 200,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.1)})`,
+                            position: 'relative',
+                          }}
+                        >
+                          <Box
+                            component="img"
+                            src={avatar.imageUrl}
+                            alt={avatar.name}
+                            sx={{
+                              width: '80%',
+                              height: '80%',
+                              objectFit: 'contain',
+                            }}
+                          />
+                          {isEquipped && (
+                            <Chip
+                              label="EQUIPPED"
+                              color="primary"
+                              size="small"
+                              sx={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                fontWeight: 600,
+                              }}
+                            />
+                          )}
+                          {isOwned && !isEquipped && (
+                            <Chip
+                              label="OWNED"
+                              color="success"
+                              size="small"
+                              sx={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                fontWeight: 600,
+                              }}
+                            />
+                          )}
+                        </Box>
+                        <CardContent sx={{ flexGrow: 1, textAlign: 'center' }}>
+                          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                            {avatar.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            {avatar.description || `A ${avatar.rarity} avatar`}
+                          </Typography>
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              gap: 1,
+                              mb: 2,
+                            }}
+                          >
+                            <Chip
+                              label={avatar.rarity.toUpperCase()}
+                              size="small"
+                              color="default"
+                              sx={{ textTransform: 'uppercase', fontWeight: 600 }}
+                            />
+                          </Box>
+                          {avatar.isFree ? (
+                            <Typography variant="h6" color="success.main" sx={{ fontWeight: 600 }}>
+                              FREE
+                            </Typography>
+                          ) : (
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                gap: 1,
+                              }}
+                            >
+                              <FontAwesomeIcon icon={faCoins} color={theme.palette.warning.main} />
+                              <Typography
+                                variant="h6"
+                                color="warning.main"
+                                sx={{ fontWeight: 600 }}
+                              >
+                                {formatNumber(avatar.coinPrice)}
+                              </Typography>
+                            </Box>
+                          )}
+                        </CardContent>
+                        <CardActions sx={{ p: 2, pt: 0 }}>
+                          {isOwned ? (
+                            <Button
+                              fullWidth
+                              variant={isEquipped ? 'contained' : 'outlined'}
+                              color="primary"
+                              disabled={isEquipped}
+                              onClick={() => handleEquipAvatar(avatar.id)}
+                            >
+                              {isEquipped ? 'EQUIPPED' : 'EQUIP'}
+                            </Button>
+                          ) : (
+                            <Button
+                              fullWidth
+                              variant="contained"
+                              color="primary"
+                              disabled={!canAfford || loading}
+                              onClick={() => handleAvatarPurchase(avatar.id)}
+                              startIcon={loading ? <CircularProgress size={16} /> : undefined}
+                            >
+                              {avatar.isFree
+                                ? 'GET FREE'
+                                : `BUY FOR ${formatNumber(avatar.coinPrice)} COINS`}
+                            </Button>
+                          )}
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            )}
+            {storeStore.storeAvatars.length === 0 && !storeStore.isLoading && (
+              <Alert severity="info" sx={{ textAlign: 'center' }}>
+                <Typography variant="body1">
+                  No avatars available at the moment. Check back soon!
                 </Typography>
               </Alert>
             )}
