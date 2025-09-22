@@ -136,6 +136,19 @@ class BaseApiService {
       cancelSubscription: '/subscription/cancel',
     },
 
+    // Store endpoints
+    store: {
+      myCoins: '/store/my-coins',
+      coinPackages: '/store/coin-packages',
+      microphones: '/store/microphones',
+      myMicrophones: '/store/my-microphones',
+      avatars: '/store/avatars',
+      myAvatars: '/store/my-avatars',
+      purchaseCoinPackage: '/store/purchase-coin-package',
+      purchaseMicrophone: '/store/purchase-microphone',
+      purchaseAvatar: '/store/purchase-avatar',
+    },
+
     // Venue endpoints
     venues: {
       base: '/venues',

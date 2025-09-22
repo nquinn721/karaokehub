@@ -11,8 +11,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import ConditionalMap from '../components/ConditionalMap';
+import CustomHeader from '../components/CustomHeader';
 import { DayPicker } from '../components/DayPicker';
 
 // Components
@@ -153,7 +153,8 @@ const ShowsScreen = observer(() => {
 
   if (uiStore.isAppLoading || (showStore.isLoading && !isInitialized)) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
+        <CustomHeader title="Shows" showMenu={false} />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#007AFF" />
           <Text style={styles.loadingText}>
@@ -163,12 +164,13 @@ const ShowsScreen = observer(() => {
             <Text style={styles.emptySubtext}>{showStore.shows.length} shows loaded</Text>
           )}
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <CustomHeader title="Shows" showMenu={false} />
       {/* Map View */}
       <View style={styles.mapContainer}>
         <ConditionalMap
@@ -230,7 +232,7 @@ const ShowsScreen = observer(() => {
           />
         </View>
       </BottomSheet>
-    </SafeAreaView>
+    </View>
   );
 });
 

@@ -3,6 +3,7 @@ import { authStore } from './AuthStore';
 import { createMapStore } from './MapStore';
 import { musicStore } from './MusicStore';
 import { showStore } from './ShowStore';
+import { storeStore } from './StoreStore';
 import { subscriptionStore } from './SubscriptionStore';
 import { uiStore } from './UIStore';
 
@@ -10,7 +11,16 @@ import { uiStore } from './UIStore';
 const mapStore = createMapStore(showStore);
 
 // Export all stores
-export { audioStore, authStore, mapStore, musicStore, showStore, subscriptionStore, uiStore };
+export {
+  audioStore,
+  authStore,
+  mapStore,
+  musicStore,
+  showStore,
+  storeStore,
+  subscriptionStore,
+  uiStore,
+};
 
 // Root store class for dependency injection if needed
 export class RootStore {
@@ -21,6 +31,7 @@ export class RootStore {
   audioStore = audioStore;
   mapStore = mapStore;
   uiStore = uiStore;
+  storeStore = storeStore;
 
   constructor() {
     console.log('🏪 RootStore initialized for mobile app');

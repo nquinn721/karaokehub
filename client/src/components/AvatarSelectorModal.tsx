@@ -161,17 +161,6 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = observer(
             <>
               {/* Avatar Grid */}
               <Grid container spacing={2} sx={{ mb: 3 }}>
-                {availableAvatars.length === 0 && (
-                  <Grid item xs={12}>
-                    <Typography
-                      variant="body1"
-                      sx={{ textAlign: 'center', p: 4, color: 'error.main' }}
-                    >
-                      🚫 No avatars available. Check console for errors.
-                    </Typography>
-                  </Grid>
-                )}
-
                 {availableAvatars.map((avatar) => {
                   const equippedAvatar = userStore.getEquippedAvatar();
                   const isEquipped = equippedAvatar?.avatarId === avatar.id;

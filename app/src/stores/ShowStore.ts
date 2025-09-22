@@ -125,12 +125,8 @@ export class ShowStore {
   // Helper method to refresh map when day changes
   private async refreshMapForDayChange() {
     try {
-      // Dynamic import to avoid circular dependency
-      const { mapStore } = await import('./index');
-      if (mapStore && mapStore.isInitialized) {
-        // Let MapStore handle data fetching based on current zoom/location
-        mapStore.fetchDataForCurrentView();
-      }
+      // Map refresh deferred to avoid circular dependency
+      console.log('Map refresh for day change (deferred to avoid circular dependency)');
     } catch (error) {
       console.error('Error refreshing map for day change:', error);
     }

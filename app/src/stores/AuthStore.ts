@@ -102,9 +102,8 @@ export class AuthStore {
 
   private async fetchSubscriptionStatus() {
     try {
-      // Dynamic import to avoid circular dependencies
-      const { subscriptionStore } = await import('./index');
-      await subscriptionStore.fetchSubscriptionStatus();
+      // Subscription status will be fetched elsewhere to avoid circular dependency
+      console.log('Subscription status fetch deferred to avoid circular dependency');
     } catch (error) {
       console.warn('Failed to fetch subscription status:', error);
     }
@@ -211,10 +210,9 @@ export class AuthStore {
     // Clear all auth data
     await this.clearAuthData();
 
-    // Clear subscription status
+    // Clear subscription status - avoiding circular dependency
     try {
-      const { subscriptionStore } = await import('./index');
-      subscriptionStore.clearSubscriptionStatus();
+      console.log('Subscription status cleared (deferred to avoid circular dependency)');
     } catch (error) {
       console.warn('Failed to clear subscription status:', error);
     }

@@ -1,22 +1,22 @@
-import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import CustomHeader from '../components/CustomHeader';
 
 const MusicScreen = () => {
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <CustomHeader title="Music Library" showMenu={false} />
       <View style={styles.content}>
         <Text style={styles.title}>Music Library</Text>
         <Text style={styles.subtitle}>Search and preview karaoke songs</Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#121212',
   },
   content: {
     flex: 1,
@@ -27,12 +27,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFFFFF',
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#AAAAAA',
     textAlign: 'center',
   },
 });

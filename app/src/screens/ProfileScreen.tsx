@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
-import React from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import CustomHeader from '../components/CustomHeader';
 import { authStore, uiStore } from '../stores';
 
 const ProfileScreen = observer(() => {
@@ -20,7 +19,8 @@ const ProfileScreen = observer(() => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <CustomHeader title="Profile" showMenu={false} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
         <View style={styles.header}>
@@ -35,27 +35,27 @@ const ProfileScreen = observer(() => {
         {/* Menu Items */}
         <View style={styles.menuSection}>
           <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="person-outline" size={24} color="#333" />
+            <Ionicons name="person-outline" size={24} color="#FFFFFF" />
             <Text style={styles.menuText}>Edit Profile</Text>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
+            <Ionicons name="chevron-forward" size={20} color="#AAAAAA" />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="heart-outline" size={24} color="#333" />
+            <Ionicons name="heart-outline" size={24} color="#FFFFFF" />
             <Text style={styles.menuText}>Favorites</Text>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
+            <Ionicons name="chevron-forward" size={20} color="#AAAAAA" />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem} onPress={() => uiStore.openSubscriptionModal()}>
-            <Ionicons name="card-outline" size={24} color="#333" />
+            <Ionicons name="card-outline" size={24} color="#FFFFFF" />
             <Text style={styles.menuText}>Subscription</Text>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
+            <Ionicons name="chevron-forward" size={20} color="#AAAAAA" />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="settings-outline" size={24} color="#333" />
+            <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
             <Text style={styles.menuText}>Settings</Text>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
+            <Ionicons name="chevron-forward" size={20} color="#AAAAAA" />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem}>
@@ -84,20 +84,20 @@ const ProfileScreen = observer(() => {
           <Text style={styles.versionText}>Version 1.0.0</Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#121212',
   },
   scrollView: {
     flex: 1,
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1E1E1E',
     alignItems: 'center',
     padding: 30,
     marginBottom: 20,
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#333333',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FFFFFF',
     marginBottom: 5,
   },
   stageName: {
@@ -124,10 +124,10 @@ const styles = StyleSheet.create({
   },
   email: {
     fontSize: 14,
-    color: '#666',
+    color: '#AAAAAA',
   },
   menuSection: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1E1E1E',
     marginBottom: 20,
   },
   menuItem: {
@@ -135,16 +135,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#333333',
   },
   menuText: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: '#FFFFFF',
     marginLeft: 15,
   },
   logoutSection: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1E1E1E',
     marginBottom: 20,
   },
   logoutButton: {
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 12,
-    color: '#999',
+    color: '#666666',
   },
 });
 

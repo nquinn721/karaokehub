@@ -5,6 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { observer } from 'mobx-react-lite';
 
 // Screens
+import DashboardScreen from '../screens/DashboardScreen';
 import ImageUploadScreen from '../screens/ImageUploadScreen';
 import LoginScreen from '../screens/LoginScreen';
 import ManualEntryScreen from '../screens/ManualEntryScreen';
@@ -12,6 +13,7 @@ import MusicScreen from '../screens/MusicScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ShowsScreen from '../screens/ShowsScreen';
+import StoreScreen from '../screens/StoreScreen';
 import SubmitScreen from '../screens/SubmitScreen';
 
 // Import stores
@@ -100,7 +102,7 @@ const AuthRequired = ({ component: Component, ...props }: any) => {
 // Main Tab Navigator with mixed auth requirements
 const MainTabs = () => (
   <Tab.Navigator
-    initialRouteName="Shows"
+    initialRouteName="Dashboard"
     screenOptions={({ route }) => ({
       tabBarIcon: ({ focused, color, size }) => {
         let iconName: keyof typeof Ionicons.glyphMap;
@@ -113,8 +115,13 @@ const MainTabs = () => (
             iconName = focused ? 'musical-notes' : 'musical-notes-outline';
             break;
           case 'Submit':
-          case 'Submit':
             iconName = focused ? 'add-circle' : 'add-circle-outline';
+            break;
+          case 'Dashboard':
+            iconName = focused ? 'speedometer' : 'speedometer-outline';
+            break;
+          case 'Store':
+            iconName = focused ? 'storefront' : 'storefront-outline';
             break;
           case 'Profile':
             iconName = focused ? 'person' : 'person-outline';
@@ -148,9 +155,19 @@ const MainTabs = () => (
 
     {/* Auth-required pages */}
     <Tab.Screen
+      name="Dashboard"
+      component={(props: any) => <AuthRequired component={DashboardScreen} {...props} />}
+      options={{ title: 'Dashboard' }}
+    />
+    <Tab.Screen
       name="Music"
       component={(props: any) => <AuthRequired component={MusicScreen} {...props} />}
       options={{ title: 'Music' }}
+    />
+    <Tab.Screen
+      name="Store"
+      component={(props: any) => <AuthRequired component={StoreScreen} {...props} />}
+      options={{ title: 'Store' }}
     />
     <Tab.Screen
       name="Profile"

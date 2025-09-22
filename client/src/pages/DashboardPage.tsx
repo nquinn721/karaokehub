@@ -1554,16 +1554,18 @@ const DashboardPage: React.FC = observer(() => {
               {/* Right Sidebar */}
               <Grid item xs={12} lg={4}>
                 <Stack
-                  spacing={3}
+                  spacing={{ xs: 2, sm: 2.5, lg: 3 }}
                   sx={{
-                    position: 'sticky',
-                    top: 20,
-                    maxHeight: 'calc(100vh - 40px)',
-                    overflowY: 'auto',
+                    // Only use sticky positioning on larger screens
+                    position: { xs: 'static', lg: 'sticky' },
+                    top: { lg: 20 },
+                    // Remove height constraints on mobile to prevent cutoff
+                    maxHeight: { lg: 'calc(100vh - 40px)' },
+                    overflowY: { lg: 'auto' },
                   }}
                 >
                   {/* Square Ad above Friends */}
-                  <Box sx={{ mb: 3 }}>
+                  <Box sx={{ mb: { xs: 2, sm: 3 } }}>
                     <SquareAd />
                   </Box>
 
@@ -1630,7 +1632,7 @@ const DashboardPage: React.FC = observer(() => {
                       border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
                     }}
                   >
-                    <CardContent sx={{ p: 3 }}>
+                    <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <FontAwesomeIcon icon={faStar} color={theme.palette.secondary.main} />
                         <Typography variant="h6" fontWeight={600}>
@@ -1655,7 +1657,7 @@ const DashboardPage: React.FC = observer(() => {
                   </Card>
 
                   {/* Square Ad below Coming Soon */}
-                  <Box sx={{ mt: 3 }}>
+                  <Box sx={{ mt: { xs: 2, sm: 3 } }}>
                     <SquareAd />
                   </Box>
                 </Stack>

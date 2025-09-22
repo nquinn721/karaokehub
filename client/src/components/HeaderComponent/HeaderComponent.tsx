@@ -620,6 +620,13 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
             </Box>{' '}
             {/* Right Section: User Controls and Mobile Menu */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {/* Mobile Coin Display - Only visible on small screens when authenticated */}
+              {authStore.isAuthenticated && (
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                  <CoinDisplay size="small" />
+                </Box>
+              )}
+
               {/* Mobile Hamburger Menu - Only visible on small screens */}
               <IconButton
                 color="inherit"
