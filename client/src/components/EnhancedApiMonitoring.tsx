@@ -215,19 +215,35 @@ const EnhancedApiMonitoring: React.FC = () => {
     try {
       const [callsRes, responseTimeRes, successRateRes, providerRes, errorTypesRes] =
         await Promise.all([
-          fetch(`/api-monitoring/charts/calls-over-time?days=${daysFilter}&provider=itunes`).catch(() => null),
-          fetch(`/api-monitoring/charts/response-times?days=${daysFilter}&provider=itunes`).catch(() => null),
-          fetch(`/api-monitoring/charts/success-rate?days=${daysFilter}&provider=itunes`).catch(() => null),
+          fetch(`/api-monitoring/charts/calls-over-time?days=${daysFilter}&provider=itunes`).catch(
+            () => null,
+          ),
+          fetch(`/api-monitoring/charts/response-times?days=${daysFilter}&provider=itunes`).catch(
+            () => null,
+          ),
+          fetch(`/api-monitoring/charts/success-rate?days=${daysFilter}&provider=itunes`).catch(
+            () => null,
+          ),
           fetch(`/api-monitoring/charts/provider-breakdown?days=${daysFilter}`).catch(() => null),
           fetch(`/api-monitoring/charts/error-types?days=${daysFilter}`).catch(() => null),
         ]);
 
       const charts = {
-        calls: callsRes ? await callsRes.json().catch(() => getPlaceholderChartData('calls')) : getPlaceholderChartData('calls'),
-        responseTimes: responseTimeRes ? await responseTimeRes.json().catch(() => getPlaceholderChartData('responseTimes')) : getPlaceholderChartData('responseTimes'),
-        successRate: successRateRes ? await successRateRes.json().catch(() => getPlaceholderChartData('successRate')) : getPlaceholderChartData('successRate'),
-        providers: providerRes ? await providerRes.json().catch(() => getPlaceholderChartData('providers')) : getPlaceholderChartData('providers'),
-        errorTypes: errorTypesRes ? await errorTypesRes.json().catch(() => getPlaceholderChartData('errorTypes')) : getPlaceholderChartData('errorTypes'),
+        calls: callsRes
+          ? await callsRes.json().catch(() => getPlaceholderChartData('calls'))
+          : getPlaceholderChartData('calls'),
+        responseTimes: responseTimeRes
+          ? await responseTimeRes.json().catch(() => getPlaceholderChartData('responseTimes'))
+          : getPlaceholderChartData('responseTimes'),
+        successRate: successRateRes
+          ? await successRateRes.json().catch(() => getPlaceholderChartData('successRate'))
+          : getPlaceholderChartData('successRate'),
+        providers: providerRes
+          ? await providerRes.json().catch(() => getPlaceholderChartData('providers'))
+          : getPlaceholderChartData('providers'),
+        errorTypes: errorTypesRes
+          ? await errorTypesRes.json().catch(() => getPlaceholderChartData('errorTypes'))
+          : getPlaceholderChartData('errorTypes'),
       };
 
       setChartData(charts);
@@ -244,54 +260,72 @@ const EnhancedApiMonitoring: React.FC = () => {
   };
 
   const getPlaceholderChartData = (type: string) => {
-    const labels = ['6 days ago', '5 days ago', '4 days ago', '3 days ago', '2 days ago', 'Yesterday', 'Today'];
-    
+    const labels = [
+      '6 days ago',
+      '5 days ago',
+      '4 days ago',
+      '3 days ago',
+      '2 days ago',
+      'Yesterday',
+      'Today',
+    ];
+
     switch (type) {
       case 'calls':
         return {
           labels,
-          datasets: [{
-            label: 'iTunes API Calls (No data yet)',
-            data: [0, 0, 0, 0, 0, 0, 0],
-            borderColor: 'rgb(75, 192, 192)',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          }]
+          datasets: [
+            {
+              label: 'iTunes API Calls (No data yet)',
+              data: [0, 0, 0, 0, 0, 0, 0],
+              borderColor: 'rgb(75, 192, 192)',
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            },
+          ],
         };
       case 'responseTimes':
         return {
           labels,
-          datasets: [{
-            label: 'Response Time (ms) (No data yet)',
-            data: [0, 0, 0, 0, 0, 0, 0],
-            borderColor: 'rgb(255, 99, 132)',
-            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-          }]
+          datasets: [
+            {
+              label: 'Response Time (ms) (No data yet)',
+              data: [0, 0, 0, 0, 0, 0, 0],
+              borderColor: 'rgb(255, 99, 132)',
+              backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            },
+          ],
         };
       case 'successRate':
         return {
           labels,
-          datasets: [{
-            label: 'Success Rate (%) (No data yet)',
-            data: [100, 100, 100, 100, 100, 100, 100],
-            borderColor: 'rgb(54, 162, 235)',
-            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-          }]
+          datasets: [
+            {
+              label: 'Success Rate (%) (No data yet)',
+              data: [100, 100, 100, 100, 100, 100, 100],
+              borderColor: 'rgb(54, 162, 235)',
+              backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            },
+          ],
         };
       case 'providers':
         return {
           labels: ['iTunes (No data yet)'],
-          datasets: [{
-            data: [1],
-            backgroundColor: ['#FF6384'],
-          }]
+          datasets: [
+            {
+              data: [1],
+              backgroundColor: ['#FF6384'],
+            },
+          ],
         };
       case 'errorTypes':
         return {
           labels: ['No Errors Recorded'],
-          datasets: [{
-            data: [1],
-            backgroundColor: ['#36A2EB'],
-          }]
+          datasets: [
+            {
+              data: [1],
+              backgroundColor: ['#36A2EB'],
+            },
+          ],
         };
       default:
         return { labels: [], datasets: [] };
@@ -376,44 +410,77 @@ const EnhancedApiMonitoring: React.FC = () => {
       {/* Current iTunes API Status - Prominent Section */}
       <Card sx={{ mb: 3, background: 'linear-gradient(45deg, #1e3c72 30%, #2a5298 90%)' }}>
         <CardContent>
-          <Typography variant="h5" gutterBottom sx={{ color: 'white', display: 'flex', alignItems: 'center' }}>
+          <Typography
+            variant="h5"
+            gutterBottom
+            sx={{ color: 'white', display: 'flex', alignItems: 'center' }}
+          >
             <FontAwesomeIcon icon={faRobot} style={{ marginRight: 12 }} />
             Live iTunes API Status
           </Typography>
-          
+
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Card variant="outlined" sx={{ height: '100%' }}>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>Rate Limiting</Typography>
+                  <Typography variant="h6" gutterBottom>
+                    Rate Limiting
+                  </Typography>
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
-                      <Typography variant="body2" color="textSecondary">Max/Minute</Typography>
-                      <Typography variant="h6">{itunesStats?.maxRequestsPerMinute || 300}</Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Max/Minute
+                      </Typography>
+                      <Typography variant="h6">
+                        {itunesStats?.maxRequestsPerMinute || 300}
+                      </Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography variant="body2" color="textSecondary">Used This Minute</Typography>
-                      <Typography variant="h6" color={
-                        (itunesStats?.requestsThisMinute || 0) > 240 ? 'error.main' : 
-                        (itunesStats?.requestsThisMinute || 0) > 150 ? 'warning.main' : 'success.main'
-                      }>
+                      <Typography variant="body2" color="textSecondary">
+                        Used This Minute
+                      </Typography>
+                      <Typography
+                        variant="h6"
+                        color={
+                          (itunesStats?.requestsThisMinute || 0) > 240
+                            ? 'error.main'
+                            : (itunesStats?.requestsThisMinute || 0) > 150
+                              ? 'warning.main'
+                              : 'success.main'
+                        }
+                      >
                         {itunesStats?.requestsThisMinute || 0}
                       </Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography variant="body2" color="textSecondary">Remaining</Typography>
-                      <Typography variant="h6" color={
-                        (itunesStats?.remainingQuotaThisMinute || 300) < 50 ? 'error.main' : 
-                        (itunesStats?.remainingQuotaThisMinute || 300) < 100 ? 'warning.main' : 'success.main'
-                      }>
+                      <Typography variant="body2" color="textSecondary">
+                        Remaining
+                      </Typography>
+                      <Typography
+                        variant="h6"
+                        color={
+                          (itunesStats?.remainingQuotaThisMinute || 300) < 50
+                            ? 'error.main'
+                            : (itunesStats?.remainingQuotaThisMinute || 300) < 100
+                              ? 'warning.main'
+                              : 'success.main'
+                        }
+                      >
                         {itunesStats?.remainingQuotaThisMinute || 300}
                       </Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography variant="body2" color="textSecondary">Rate Limits Hit Today</Typography>
-                      <Typography variant="h6" color={
-                        (itunesStats?.rateLimitReachedCount || 0) > 0 ? 'error.main' : 'success.main'
-                      }>
+                      <Typography variant="body2" color="textSecondary">
+                        Rate Limits Hit Today
+                      </Typography>
+                      <Typography
+                        variant="h6"
+                        color={
+                          (itunesStats?.rateLimitReachedCount || 0) > 0
+                            ? 'error.main'
+                            : 'success.main'
+                        }
+                      >
                         {itunesStats?.rateLimitReachedCount || 0}
                       </Typography>
                     </Grid>
@@ -421,29 +488,45 @@ const EnhancedApiMonitoring: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
-            
+
             <Grid item xs={12} md={6}>
               <Card variant="outlined" sx={{ height: '100%' }}>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>Usage Statistics</Typography>
+                  <Typography variant="h6" gutterBottom>
+                    Usage Statistics
+                  </Typography>
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
-                      <Typography variant="body2" color="textSecondary">Requests This Hour</Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Requests This Hour
+                      </Typography>
                       <Typography variant="h6">{itunesStats?.requestsThisHour || 0}</Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography variant="body2" color="textSecondary">Requests Today</Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Requests Today
+                      </Typography>
                       <Typography variant="h6">{itunesStats?.requestsToday || 0}</Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography variant="body2" color="textSecondary">Avg/Min (Last Hour)</Typography>
-                      <Typography variant="h6">{itunesStats?.averageRequestsPerMinute || 0}</Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Avg/Min (Last Hour)
+                      </Typography>
+                      <Typography variant="h6">
+                        {itunesStats?.averageRequestsPerMinute || 0}
+                      </Typography>
                     </Grid>
                     <Grid item xs={6}>
-                      <Typography variant="body2" color="textSecondary">Circuit Breaker</Typography>
-                      <Chip 
+                      <Typography variant="body2" color="textSecondary">
+                        Circuit Breaker
+                      </Typography>
+                      <Chip
                         label={itunesStats?.circuitBreakerStatus || 'closed'}
-                        color={(itunesStats?.circuitBreakerStatus || 'closed') === 'closed' ? 'success' : 'error'}
+                        color={
+                          (itunesStats?.circuitBreakerStatus || 'closed') === 'closed'
+                            ? 'success'
+                            : 'error'
+                        }
                         size="small"
                       />
                     </Grid>
@@ -697,15 +780,17 @@ const EnhancedApiMonitoring: React.FC = () => {
           {/* Info Message for No Data */}
           {summary?.totalCallsToday === 0 && (
             <Alert severity="info" sx={{ mb: 3 }}>
-              <Typography variant="h6" gutterBottom>No API Data Yet</Typography>
+              <Typography variant="h6" gutterBottom>
+                No API Data Yet
+              </Typography>
               <Typography>
-                The charts below will populate automatically as iTunes API calls are made. 
-                To generate data, use the music search feature on your website. 
-                The monitoring system will capture all iTunes API calls, response times, and any errors.
+                The charts below will populate automatically as iTunes API calls are made. To
+                generate data, use the music search feature on your website. The monitoring system
+                will capture all iTunes API calls, response times, and any errors.
               </Typography>
             </Alert>
           )}
-          
+
           {chartData && (
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
@@ -717,114 +802,114 @@ const EnhancedApiMonitoring: React.FC = () => {
                     <Box sx={{ height: 300, width: '100%' }}>
                       <Line
                         data={chartData.calls}
-                        options={{ 
-                          responsive: true, 
+                        options={{
+                          responsive: true,
                           maintainAspectRatio: false,
                           scales: {
                             y: {
-                              beginAtZero: true
-                            }
-                          }
+                              beginAtZero: true,
+                            },
+                          },
                         }}
                       />
                     </Box>
                   </CardContent>
                 </Card>
               </Grid>
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Response Times
-                </Typography>
-                <Box sx={{ height: 300, width: '100%' }}>
-                  <Line
-                    data={chartData.responseTimes}
-                    options={{ 
-                      responsive: true, 
-                      maintainAspectRatio: false,
-                      scales: {
-                        y: {
-                          beginAtZero: true
-                        }
-                      }
-                    }}
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Success Rate
-                </Typography>
-                <Box sx={{ height: 300, width: '100%' }}>
-                  <Line
-                    data={chartData.successRate}
-                    options={{ 
-                      responsive: true, 
-                      maintainAspectRatio: false,
-                      scales: {
-                        y: {
-                          beginAtZero: true,
-                          max: 100
-                        }
-                      }
-                    }}
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Provider Breakdown
-                </Typography>
-                <Box sx={{ height: 300, width: '100%' }}>
-                  <Pie
-                    data={chartData.providers}
-                    options={{ 
-                      responsive: true, 
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
-                          position: 'bottom'
-                        }
-                      }
-                    }}
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Error Types Distribution
-                </Typography>
-                <Box sx={{ height: 250, width: '100%' }}>
-                  <Bar
-                    data={chartData.errorTypes}
-                    options={{ 
-                      responsive: true, 
-                      maintainAspectRatio: false,
-                      scales: {
-                        y: {
-                          beginAtZero: true
-                        }
-                      }
-                    }}
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+              <Grid item xs={12} md={6}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Response Times
+                    </Typography>
+                    <Box sx={{ height: 300, width: '100%' }}>
+                      <Line
+                        data={chartData.responseTimes}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                            },
+                          },
+                        }}
+                      />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Success Rate
+                    </Typography>
+                    <Box sx={{ height: 300, width: '100%' }}>
+                      <Line
+                        data={chartData.successRate}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              max: 100,
+                            },
+                          },
+                        }}
+                      />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Provider Breakdown
+                    </Typography>
+                    <Box sx={{ height: 300, width: '100%' }}>
+                      <Pie
+                        data={chartData.providers}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              position: 'bottom',
+                            },
+                          },
+                        }}
+                      />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Error Types Distribution
+                    </Typography>
+                    <Box sx={{ height: 250, width: '100%' }}>
+                      <Bar
+                        data={chartData.errorTypes}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                            },
+                          },
+                        }}
+                      />
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
           )}
         </Box>
       )}

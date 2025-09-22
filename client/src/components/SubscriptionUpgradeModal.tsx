@@ -7,10 +7,6 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   List,
   ListItem,
   ListItemIcon,
@@ -20,6 +16,7 @@ import {
 } from '@mui/material';
 import { apiStore, uiStore } from '@stores/index';
 import React, { useState } from 'react';
+import CustomModal from './CustomModal';
 
 interface SubscriptionUpgradeModalProps {
   open: boolean;
@@ -55,7 +52,7 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
       price: 0.99,
       features: [
         'Remove all advertisements',
-        'Clean browsing experience',
+        'Clean browsing experience', 
         'Support development',
         'All free features included',
       ],
@@ -68,7 +65,7 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
       features: [
         'All Ad-Free features',
         'Unlimited song favorites',
-        'Unlimited show favorites',
+        'Unlimited show favorites', 
         'Unlimited song previews',
         'Priority customer support',
         'Advanced features access',
@@ -111,162 +108,223 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
 
   if (availablePlans.length === 0) {
     return (
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <FontAwesomeIcon
-              icon={faCrown}
-              style={{ fontSize: '24px', color: theme.palette.secondary.main }}
-            />
-            <Typography variant="h5" component="div" fontWeight={600}>
-              Premium Member
-            </Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" color="text.secondary">
-            You're already on the highest tier! Thank you for being a premium member.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
+      <CustomModal
+        open={open}
+        onClose={onClose}
+        title="Premium Member"
+        icon={<FontAwesomeIcon icon={faCrown} />}
+        maxWidth="sm"
+      >
+        <Typography variant="body1" color="text.secondary">
+          You're already on the highest tier! Thank you for being a premium member.
+        </Typography>
+        
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
           <Button onClick={onClose}>Close</Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </CustomModal>
     );
   }
 
   return (
-    <Dialog
+    <CustomModal
       open={open}
       onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      sx={{
-        '& .MuiDialog-paper': {
-          margin: { xs: 1, sm: 2 },
-          maxHeight: { xs: 'calc(100vh - 16px)', sm: 'calc(100vh - 64px)' },
-          width: { xs: 'calc(100vw - 16px)', sm: 'auto' },
-        },
-      }}
+      title={title}
+      icon={<FontAwesomeIcon icon={faCrown} />}
+      maxWidth="lg"
     >
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <FontAwesomeIcon
-            icon={faCrown}
-            style={{ fontSize: '24px', color: theme.palette.secondary.main }}
-          />
-          <Typography variant="h5" component="div" fontWeight={600}>
-            {title}
-          </Typography>
-        </Box>
-      </DialogTitle>
-
-      <DialogContent>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+      {/* Welcome Message */}
+      <Box
+        sx={{
+          background: `linear-gradient(135deg, ${theme.palette.success.main}15 0%, ${theme.palette.primary.main}10 100%)`,
+          borderRadius: 2,
+          p: 2,
+          mb: 3,
+          border: `1px solid ${theme.palette.success.main}30`,
+        }}
+      >
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
           {description}
         </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Ready to rock the stage? Here's what's happening in your karaoke world.
+        </Typography>
+      </Box>
 
-        <Box
-          sx={{
-            display: 'flex',
-            gap: 2,
-            flexDirection: { xs: 'column', md: 'row' },
-          }}
-        >
-          {availablePlans.map((plan) => (
-            <Card
-              key={plan.id}
-              sx={{
-                flex: 1,
-                position: 'relative',
-                border: plan.popular
-                  ? `2px solid ${theme.palette.secondary.main}`
-                  : '1px solid #e0e0e0',
-                '&:hover': {
-                  boxShadow: 4,
-                },
-              }}
-            >
-              {plan.popular && (
-                <Chip
-                  label="Most Popular"
-                  color="secondary"
-                  size="small"
-                  sx={{
-                    position: 'absolute',
-                    top: -8,
-                    right: 16,
-                    zIndex: 1,
-                  }}
-                />
-              )}
-              <CardContent>
-                <Box sx={{ textAlign: 'center', mb: 2 }}>
-                  <Typography variant="h5" fontWeight={700}>
-                    {plan.name}
-                  </Typography>
-                  <Typography variant="h3" color="primary" fontWeight={700}>
-                    ${plan.price.toFixed(2)}
-                    <Typography component="span" variant="body2" color="text.secondary">
-                      /month
-                    </Typography>
-                  </Typography>
-                  {plan.originalPrice && (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ textDecoration: 'line-through' }}
-                    >
-                      ${plan.originalPrice.toFixed(2)}/month
-                    </Typography>
-                  )}
-                </Box>
-
-                <List dense>
-                  {plan.features.map((feature, index) => (
-                    <ListItem key={index} sx={{ px: 0 }}>
-                      <ListItemIcon sx={{ minWidth: 32 }}>
-                        <FontAwesomeIcon
-                          icon={faCheck}
-                          style={{ color: '#4caf50', fontSize: '14px' }}
-                        />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={feature}
-                        primaryTypographyProps={{ variant: 'body2' }}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-
-                <Button
-                  fullWidth
-                  variant={plan.popular ? 'contained' : 'outlined'}
-                  color={plan.popular ? 'secondary' : 'primary'}
-                  size="large"
-                  disabled={loading}
-                  onClick={() => handleUpgrade(plan.id)}
-                  sx={{ mt: 2, py: 1.5 }}
-                >
-                  {loading ? <CircularProgress size={24} /> : `Upgrade to ${plan.name}`}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </Box>
-
-        <Box sx={{ mt: 3, textAlign: 'center' }}>
-          <Typography variant="caption" color="text.secondary">
-            Cancel anytime. No long-term commitments. 30-day money-back guarantee.
+      {/* Current Plan Display */}
+      {currentPlan === 'free' && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography component="span" sx={{ fontSize: '0.9rem', color: 'text.secondary' }}>
+              SUBSCRIPTION
+            </Typography>
           </Typography>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              p: 2,
+              border: `1px solid ${theme.palette.divider}`,
+              borderRadius: 2,
+              background: theme.palette.background.paper,
+            }}
+          >
+            <Box>
+              <Typography variant="h6" sx={{ color: theme.palette.warning.main, fontWeight: 600 }}>
+                Free
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Upgrade available
+              </Typography>
+            </Box>
+          </Box>
         </Box>
-      </DialogContent>
+      )}
 
-      <DialogActions>
-        <Button onClick={onClose} startIcon={<FontAwesomeIcon icon={faTimes} />}>
+      {/* Upgrade Plans */}
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 3,
+          flexDirection: { xs: 'column', md: 'row' },
+          mb: 3,
+        }}
+      >
+        {availablePlans.map((plan) => (
+          <Card
+            key={plan.id}
+            sx={{
+              flex: 1,
+              position: 'relative',
+              border: plan.popular
+                ? `2px solid ${theme.palette.secondary.main}`
+                : `1px solid ${theme.palette.divider}`,
+              borderRadius: 3,
+              '&:hover': {
+                boxShadow: `0 8px 25px ${plan.popular ? theme.palette.secondary.main : theme.palette.primary.main}20`,
+                transform: 'translateY(-2px)',
+              },
+              transition: 'all 0.3s ease-in-out',
+            }}
+          >
+            {plan.popular && (
+              <Chip
+                label="Most Popular"
+                color="secondary"
+                size="small"
+                sx={{
+                  position: 'absolute',
+                  top: -10,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  zIndex: 1,
+                  fontWeight: 600,
+                }}
+              />
+            )}
+            
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ textAlign: 'center', mb: 3 }}>
+                <Typography 
+                  variant="h4" 
+                  fontWeight={700}
+                  sx={{ 
+                    color: plan.popular ? theme.palette.secondary.main : theme.palette.primary.main,
+                    mb: 1 
+                  }}
+                >
+                  {plan.name}
+                </Typography>
+                <Typography variant="h2" color="primary" fontWeight={700} sx={{ mb: 1 }}>
+                  ${plan.price.toFixed(2)}
+                  <Typography component="span" variant="h6" color="text.secondary" sx={{ fontWeight: 400 }}>
+                    /month
+                  </Typography>
+                </Typography>
+                {plan.originalPrice && (
+                  <Typography
+                    variant="body1"
+                    color="text.secondary"
+                    sx={{ textDecoration: 'line-through' }}
+                  >
+                    ${plan.originalPrice.toFixed(2)}/month
+                  </Typography>
+                )}
+              </Box>
+
+              <List dense sx={{ mb: 3 }}>
+                {plan.features.map((feature, index) => (
+                  <ListItem key={index} sx={{ px: 0, py: 0.5 }}>
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <FontAwesomeIcon
+                        icon={faCheck}
+                        style={{ 
+                          color: plan.popular ? theme.palette.secondary.main : theme.palette.success.main, 
+                          fontSize: '16px' 
+                        }}
+                      />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={feature}
+                      primaryTypographyProps={{ 
+                        variant: 'body1',
+                        fontWeight: 500,
+                      }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+
+              <Button
+                fullWidth
+                variant={plan.popular ? 'contained' : 'outlined'}
+                color={plan.popular ? 'secondary' : 'primary'}
+                size="large"
+                disabled={loading}
+                onClick={() => handleUpgrade(plan.id)}
+                sx={{ 
+                  py: 1.5,
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                }}
+              >
+                {loading ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : (
+                  `Upgrade to ${plan.name}`
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
+
+      {/* Footer */}
+      <Box 
+        sx={{ 
+          textAlign: 'center',
+          p: 2,
+          background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+          borderRadius: 2,
+          border: `1px solid ${theme.palette.divider}`,
+        }}
+      >
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Cancel anytime. No long-term commitments. 30-day money-back guarantee.
+        </Typography>
+        <Button 
+          onClick={onClose} 
+          startIcon={<FontAwesomeIcon icon={faTimes} />}
+          variant="text"
+          sx={{ mt: 1 }}
+        >
           Maybe Later
         </Button>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </CustomModal>
   );
 };
