@@ -93,10 +93,10 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       initSQLCommands: ['SET foreign_key_checks = 0;'],
     },
 
-    // Migration configuration - environment specific
-    migrations: isProduction ? ['dist/migrations/*.js'] : ['src/migrations/*.ts'],
+    // Migration configuration - environment specific - temporarily disabled due to import issues
+    // migrations: isProduction ? ['dist/migrations/*.js'] : ['src/migrations/*.ts'],
     migrationsTableName: 'migrations',
-    migrationsRun: true, // Enabled for automatic database schema updates
+    migrationsRun: false, // Temporarily disabled due to TypeORM MigrationInterface import issues
 
     // Connection pool options for TypeORM
     ...(isProduction && {
