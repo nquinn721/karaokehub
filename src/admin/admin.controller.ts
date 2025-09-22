@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
-import { AdminService } from './admin.service';
+import { AdminService, VenueVerificationResult } from './admin.service';
 import { DeduplicationService } from './deduplication.service';
 
 @Controller('admin')
@@ -239,7 +239,7 @@ export class AdminController {
 
   // Venue geo verification endpoint
   @Post('venues/:id/verify-location')
-  async verifyVenueLocation(@Param('id') id: string) {
+  async verifyVenueLocation(@Param('id') id: string): Promise<VenueVerificationResult> {
     return await this.adminService.verifyVenueLocation(id);
   }
 
@@ -304,5 +304,16 @@ export class AdminController {
     @Body() body: { coins: number; description?: string },
   ) {
     return await this.adminService.updateUserCoins(userId, body.coins, body.description);
+  }
+
+  // Avatar Management
+  @Post('users/:id/assign-avatar')
+  async assignAvatarToUser(@Param('id') userId: string, @Body() body: { avatarId: string }) {
+    return await this.adminService.assignAvatarToUser(userId, body.avatarId);
+  }
+
+  @Get('avatars')
+  async getAvailableAvatars() {
+    return await this.adminService.getAvailableAvatars();
   }
 }

@@ -23,6 +23,7 @@ import {
   Typography,
 } from '@mui/material';
 import { localSubscriptionStore } from '@stores/LocalSubscriptionStore';
+import { uiStore } from '@stores/index';
 import React, { useState } from 'react';
 
 interface LocalSubscriptionModalProps {
@@ -83,8 +84,9 @@ export const LocalSubscriptionModal: React.FC<LocalSubscriptionModalProps> = ({
     localSubscriptionStore.setLocalSubscription(selectedPlan, 30);
 
     // Show success and close modal
-    alert(
+    uiStore.addNotification(
       `Successfully activated ${selectedPlan === 'ad_free' ? 'Ad-Free' : 'Premium'} subscription on this device!`,
+      'success',
     );
     onClose();
   };

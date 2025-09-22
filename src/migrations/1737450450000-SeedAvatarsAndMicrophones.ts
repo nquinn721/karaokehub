@@ -78,7 +78,7 @@ export class SeedAvatarsAndMicrophones1737450450000 implements MigrationInterfac
       for (const user of users) {
         // Give user the first basic avatar
         await queryRunner.query(`
-          INSERT IGNORE INTO user_avatars (id, userId, avatarId, acquiredAt)
+          INSERT IGNORE INTO user_avatars (id, userId, baseAvatarId, createdAt)
           VALUES (UUID(), '${user.id}', 'avatar_1', NOW())
         `);
 

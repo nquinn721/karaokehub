@@ -51,7 +51,7 @@ export class UpdateToNamedAvatars1737450500000 implements MigrationInterface {
         for (const avatarId of freeAvatars) {
           await queryRunner.query(
             `
-            INSERT IGNORE INTO user_avatars (userId, avatarId, acquiredAt)
+            INSERT IGNORE INTO user_avatars (userId, baseAvatarId, createdAt)
             VALUES (?, ?, NOW())
           `,
             [user.id, avatarId],

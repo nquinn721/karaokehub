@@ -25,12 +25,14 @@ import {
   Paper,
   Slider,
   TextField,
+  Tooltip,
   Typography,
   useTheme,
 } from '@mui/material';
 import JSZip from 'jszip';
 import { observer } from 'mobx-react-lite';
 import React, { useRef, useState } from 'react';
+import { uiStore } from '../stores';
 
 interface ProcessedAvatar {
   canvas: HTMLCanvasElement;
@@ -84,7 +86,7 @@ const SpriteCutter: React.FC = observer(() => {
 
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) {
-      alert('Please select a valid image file (PNG, JPG, JPEG)');
+      uiStore.addNotification('Please select a valid image file (PNG, JPG, JPEG)', 'error');
       return;
     }
 
@@ -126,7 +128,7 @@ const SpriteCutter: React.FC = observer(() => {
 
   const autoDetectGrid = () => {
     if (!originalImage) {
-      alert('Please upload an image first!');
+      uiStore.addNotification('Please upload an image first!', 'warning');
       return;
     }
 
@@ -215,7 +217,7 @@ const SpriteCutter: React.FC = observer(() => {
 
   const processSprite = async () => {
     if (!originalImage) {
-      alert('Please upload an image first!');
+      uiStore.addNotification('Please upload an image first!', 'warning');
       return;
     }
 
@@ -285,7 +287,7 @@ const SpriteCutter: React.FC = observer(() => {
 
   const downloadAll = () => {
     if (processedAvatars.length === 0) {
-      alert('Please process the sprite sheet first!');
+      uiStore.addNotification('Please process the sprite sheet first!', 'warning');
       return;
     }
 
@@ -345,29 +347,86 @@ const SpriteCutter: React.FC = observer(() => {
     }
   };
 
-  // Function to save processed sprite (renamed from "Save Sprite" to "Save As")
-  const saveProcessedSprite = () => {
+  // Function to save processed sprite using browser's native Save As dialog with directory picker
+  // Uses modern File System Access API when available (Chrome, Edge) for true directory picker
+  // Falls back to traditional download for other browsers (Firefox, Safari)
+  const saveProcessedSprite = async () => {
     if (!originalImage) {
       alert('Please upload a sprite sheet first!');
       return;
     }
 
-    // Prompt user for custom base name
-    const customBaseName = prompt('Enter base name for the file:', originalFileName || baseName);
-    if (!customBaseName) {
-      return; // User cancelled
-    }
+    try {
+      // Convert image to blob
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        alert('Canvas not supported');
+        return;
+      }
 
-    // Create download link
+      canvas.width = originalImage.naturalWidth;
+      canvas.height = originalImage.naturalHeight;
+      ctx.drawImage(originalImage, 0, 0);
+
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/png');
+      });
+
+      if (!blob) {
+        alert('Failed to create image file');
+        return;
+      }
+
+      // Check if File System Access API is supported (modern browsers)
+      if ('showSaveFilePicker' in window && window.showSaveFilePicker) {
+        try {
+          const fileHandle = await window.showSaveFilePicker({
+            suggestedName: originalFileName || `${baseName}.png`,
+            types: [
+              {
+                description: 'PNG images',
+                accept: {
+                  'image/png': ['.png'],
+                },
+              },
+            ],
+          });
+
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+
+          alert('File saved successfully!');
+        } catch (err: any) {
+          if (err.name !== 'AbortError') {
+            console.error('Error saving file:', err);
+            // Fallback to traditional download
+            fallbackDownload(blob);
+          }
+        }
+      } else {
+        // Fallback for browsers that don't support File System Access API
+        fallbackDownload(blob);
+      }
+    } catch (error) {
+      console.error('Error processing image:', error);
+      alert('Failed to process image');
+    }
+  };
+
+  // Fallback download method for older browsers
+  const fallbackDownload = (blob: Blob) => {
     const link = document.createElement('a');
-    link.download = `${customBaseName}.png`;
-    link.href = originalImage.src;
+    link.href = URL.createObjectURL(blob);
+    link.download = originalFileName || `${baseName}.png`;
 
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    alert(`✅ Saved original sprite as "${customBaseName}.png"!`);
+    // Clean up the blob URL
+    URL.revokeObjectURL(link.href);
   };
 
   // Function to undo changes to original image
@@ -941,16 +1000,18 @@ const SpriteCutter: React.FC = observer(() => {
                     >
                       Undo
                     </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<FontAwesomeIcon icon={faFileImage} />}
-                      onClick={saveProcessedSprite}
-                      disabled={!originalImage}
-                      size="small"
-                      color="info"
-                    >
-                      Save As
-                    </Button>
+                    <Tooltip title="Save image to your chosen location (modern browsers support directory picker)">
+                      <Button
+                        variant="outlined"
+                        startIcon={<FontAwesomeIcon icon={faFileImage} />}
+                        onClick={saveProcessedSprite}
+                        disabled={!originalImage}
+                        size="small"
+                        color="info"
+                      >
+                        Save To...
+                      </Button>
+                    </Tooltip>
                   </Box>
                 </Box>
                 <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Avatar } from '../avatar/entities/avatar.entity';
+import { UserAvatar } from '../avatar/entities/user-avatar.entity';
 import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
@@ -18,7 +20,7 @@ import {
 import { Vendor } from '../vendor/vendor.entity';
 import { Venue } from '../venue/venue.entity';
 
-interface VenueVerificationResult {
+export interface VenueVerificationResult {
   success: boolean;
   message: string;
   venue: Venue;
@@ -53,6 +55,10 @@ export class AdminService {
     private transactionRepository: Repository<Transaction>,
     @InjectRepository(CoinPackage)
     private coinPackageRepository: Repository<CoinPackage>,
+    @InjectRepository(Avatar)
+    private avatarRepository: Repository<Avatar>,
+    @InjectRepository(UserAvatar)
+    private userAvatarRepository: Repository<UserAvatar>,
     private geocodingService: GeocodingService,
   ) {}
 
@@ -284,7 +290,9 @@ export class AdminService {
     sortBy?: string,
     sortOrder: 'ASC' | 'DESC' = 'ASC',
   ) {
-    const query = this.userRepository.createQueryBuilder('user');
+    const query = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.equippedAvatar', 'equippedAvatar');
 
     if (search) {
       query.where('user.name LIKE :search OR user.email LIKE :search', {
@@ -323,6 +331,50 @@ export class AdminService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  // Avatar Management
+  async assignAvatarToUser(userId: string, avatarId: string) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const avatar = await this.avatarRepository.findOne({
+      where: { id: avatarId },
+    });
+    if (!avatar) {
+      throw new Error('Avatar not found');
+    }
+
+    // Create user_avatar record if it doesn't exist (for non-free avatars)
+    if (!avatar.isFree) {
+      const existingUserAvatar = await this.userAvatarRepository.findOne({
+        where: { userId, avatarId },
+      });
+
+      if (!existingUserAvatar) {
+        await this.userAvatarRepository.save({
+          id: require('crypto').randomUUID(),
+          userId,
+          avatarId,
+          acquiredAt: new Date(),
+        });
+      }
+    }
+
+    // Update user's equipped avatar
+    await this.userRepository.update(userId, { equippedAvatarId: avatarId });
+
+    return { success: true, message: `Avatar ${avatar.name} assigned to user` };
+  }
+
+  async getAvailableAvatars() {
+    const avatars = await this.avatarRepository.find({
+      where: { isAvailable: true },
+      order: { isFree: 'DESC', name: 'ASC' },
+    });
+    return avatars;
   }
 
   async getVenues(

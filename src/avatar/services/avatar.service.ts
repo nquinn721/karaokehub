@@ -71,7 +71,7 @@ export class AvatarService {
     return this.userAvatarRepository.find({
       where: { userId },
       relations: ['avatar', 'microphone'],
-      order: { avatarId: 'ASC' },
+      // Removed order clause that was causing schema mismatch issues
     });
   }
 
@@ -336,7 +336,7 @@ export class AvatarService {
     const ownedAvatars = await this.userAvatarRepository.find({
       where: { userId },
       relations: ['avatar'],
-      order: { avatarId: 'ASC' },
+      // Removed order clause that was causing schema mismatch issues
     });
 
     // Combine free avatars with owned avatars

@@ -33,7 +33,10 @@ export class StoreService {
 
   async getStoreMicrophones() {
     return this.microphoneRepository.find({
-      where: { isAvailable: true },
+      where: {
+        isAvailable: true,
+        isFree: false, // Exclude free items
+      },
       order: { rarity: 'ASC', coinPrice: 'ASC' },
     });
   }

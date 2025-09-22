@@ -1,6 +1,8 @@
+import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
   faClock,
   faGlobe,
+  faHeart,
   faMapMarkerAlt,
   faMicrophone,
   faPhone,
@@ -20,18 +22,25 @@ import { APIProvider, InfoWindow, Map, Marker } from '@vis.gl/react-google-maps'
 import { runInAction } from 'mobx';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
-import { apiStore, showStore } from '../stores';
+import { apiStore, authStore, favoriteStore, showStore } from '../stores';
 import { mapStore } from '../stores/MapStore';
+import { ShowActionsDropdown } from './ShowActionsDropdown';
 
 interface MapComponentProps {
   onScheduleModalOpen?: (show: any) => void;
+  onEditClick?: (event: React.MouseEvent, show: any) => void;
+  onFlagClick?: (event: React.MouseEvent, show: any) => void;
+  onShareClick?: (event: React.MouseEvent, show: any) => void;
 }
 
 // Popup content component for InfoWindow
 const PopupContent: React.FC<{
   show: any;
   onScheduleModalOpen?: (show: any) => void;
-}> = ({ show, onScheduleModalOpen }) => {
+  onEditClick?: (event: React.MouseEvent, show: any) => void;
+  onFlagClick?: (event: React.MouseEvent, show: any) => void;
+  onShareClick?: (event: React.MouseEvent, show: any) => void;
+}> = ({ show, onScheduleModalOpen, onEditClick, onFlagClick, onShareClick }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -409,268 +418,307 @@ const PopupContent: React.FC<{
           <FontAwesomeIcon icon={faRoute} style={{ fontSize: '14px' }} />
         </IconButton>
 
-        {/* Schedule Button */}
-        {onScheduleModalOpen && (
-          <IconButton
-            size="small"
-            onClick={() => onScheduleModalOpen(show)}
-            sx={{
-              color: theme.palette.primary.main,
-              backgroundColor: theme.palette.primary.main + '10',
-              '&:hover': {
-                backgroundColor: theme.palette.primary.main + '20',
-              },
-            }}
-            title="View Schedule"
-          >
-            <FontAwesomeIcon icon={faClock} style={{ fontSize: '14px' }} />
-          </IconButton>
-        )}
+        {/* Favorite Button */}
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+            showStore.handleFavoriteToggle(show);
+          }}
+          sx={{
+            color:
+              authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
+                ? theme.palette.error.main
+                : theme.palette.text.disabled,
+            backgroundColor:
+              authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
+                ? theme.palette.error.main + '10'
+                : 'transparent',
+            opacity: authStore.isAuthenticated ? 1 : 0.6,
+            '&:hover': {
+              color: theme.palette.error.main,
+              backgroundColor: theme.palette.error.main + '20',
+            },
+          }}
+          title="Add to Favorites"
+        >
+          <FontAwesomeIcon
+            icon={
+              authStore.isAuthenticated && favoriteStore.isFavorite(show.id)
+                ? faHeart
+                : faHeartRegular
+            }
+            style={{ fontSize: '14px' }}
+          />
+        </IconButton>
+
+        {/* 3-dot dropdown menu */}
+        <ShowActionsDropdown
+          show={show}
+          onScheduleClick={(_e, show) => onScheduleModalOpen && onScheduleModalOpen(show)}
+          onEditClick={onEditClick || (() => {})}
+          onFlagClick={onFlagClick || (() => {})}
+          onShareClick={onShareClick}
+          size="small"
+        />
       </Box>
     </Box>
   );
 };
 
-const MapComponent: React.FC<MapComponentProps> = observer(({ onScheduleModalOpen }) => {
-  const theme = useTheme();
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  // Current state
-  const currentZoom = mapStore.currentZoom;
-  const isZoomedOut = currentZoom <= 6; // Temporarily lower threshold for debugging
-  const shows = showStore.shows;
+const MapComponent: React.FC<MapComponentProps> = observer(
+  ({ onScheduleModalOpen, onEditClick, onFlagClick, onShareClick }) => {
+    const theme = useTheme();
+    const [map, setMap] = useState<google.maps.Map | null>(null);
+    // Current state
+    const currentZoom = mapStore.currentZoom;
+    const isZoomedOut = currentZoom <= 6; // Temporarily lower threshold for debugging
+    const shows = showStore.shows;
 
-  // Initialize stores only (no API calls in component)
-  useEffect(() => {
-    const initializeStores = async () => {
-      if (!mapStore.isInitialized) {
-        await mapStore.initialize();
+    // Initialize stores only (no API calls in component)
+    useEffect(() => {
+      const initializeStores = async () => {
+        if (!mapStore.isInitialized) {
+          await mapStore.initialize();
+        }
+      };
+
+      initializeStores();
+    }, []);
+
+    // Set map instance
+    useEffect(() => {
+      if (map) {
+        mapStore.setMapInstance(map);
       }
+    }, [map]);
+
+    // Render individual show markers
+    const renderShowMarkers = () => {
+      if (shows.length === 0) return null;
+
+      // Log a sample of the first few shows to check data structure
+
+      return shows.map((show: any) => {
+        // Try multiple ways to get coordinates
+        let lat, lng;
+
+        // First try venue coordinates
+        if (show.venue && typeof show.venue === 'object' && show.venue.lat && show.venue.lng) {
+          lat = typeof show.venue.lat === 'string' ? parseFloat(show.venue.lat) : show.venue.lat;
+          lng = typeof show.venue.lng === 'string' ? parseFloat(show.venue.lng) : show.venue.lng;
+        }
+        // Fallback to direct show coordinates
+        else if (show.lat && show.lng) {
+          lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
+          lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
+        }
+
+        // Skip if no valid coordinates
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+          return null;
+        }
+
+        return (
+          <Marker
+            key={show.id}
+            position={{ lat, lng }}
+            onClick={() => mapStore.handleMarkerClick(show)}
+          />
+        );
+      });
     };
 
-    initializeStores();
-  }, []);
+    // Show loading state while waiting for API key
+    const apiKey = apiStore.googleMapsApiKey;
 
-  // Set map instance
-  useEffect(() => {
-    if (map) {
-      mapStore.setMapInstance(map);
-    }
-  }, [map]);
-
-  // Render individual show markers
-  const renderShowMarkers = () => {
-    if (shows.length === 0) return null;
-
-    // Log a sample of the first few shows to check data structure
-
-    return shows.map((show: any) => {
-      // Try multiple ways to get coordinates
-      let lat, lng;
-
-      // First try venue coordinates
-      if (show.venue && typeof show.venue === 'object' && show.venue.lat && show.venue.lng) {
-        lat = typeof show.venue.lat === 'string' ? parseFloat(show.venue.lat) : show.venue.lat;
-        lng = typeof show.venue.lng === 'string' ? parseFloat(show.venue.lng) : show.venue.lng;
-      }
-      // Fallback to direct show coordinates
-      else if (show.lat && show.lng) {
-        lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
-        lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
-      }
-
-      // Skip if no valid coordinates
-      if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-        return null;
-      }
-
+    if (!apiKey) {
       return (
-        <Marker
-          key={show.id}
-          position={{ lat, lng }}
-          onClick={() => mapStore.handleMarkerClick(show)}
-        />
-      );
-    });
-  };
-
-  // Show loading state while waiting for API key
-  const apiKey = apiStore.googleMapsApiKey;
-
-  if (!apiKey) {
-    return (
-      <Box
-        sx={{
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: theme.palette.background.default,
-          gap: 2,
-        }}
-      >
-        <CircularProgress size={32} />
-        <Typography variant="body2" color="text.secondary">
-          Loading map...
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {apiStore.configLoaded
-            ? 'Config loaded - checking API key...'
-            : 'Loading config from server...'}
-        </Typography>
-        {apiStore.configLoaded && !apiKey && (
-          <Typography variant="caption" color="error">
-            Google Maps API key not available. Check server configuration.
-          </Typography>
-        )}
-      </Box>
-    );
-  }
-
-  return (
-    <APIProvider apiKey={apiKey}>
-      <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
-        {/* Zoom indicator */}
         <Box
           sx={{
-            position: 'absolute',
-            bottom: 16,
-            left: 16,
-            zIndex: 1000,
-            backgroundColor: theme.palette.background.paper,
-            padding: '4px 8px',
-            borderRadius: 1,
-            boxShadow: theme.shadows[2],
-            border: `1px solid ${theme.palette.divider}`,
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.palette.background.default,
+            gap: 2,
           }}
         >
-          <Typography variant="caption" color="textSecondary">
-            Zoom: {currentZoom} {isZoomedOut ? '(Cities)' : '(Shows)'}
+          <CircularProgress size={32} />
+          <Typography variant="body2" color="text.secondary">
+            Loading map...
           </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {apiStore.configLoaded
+              ? 'Config loaded - checking API key...'
+              : 'Loading config from server...'}
+          </Typography>
+          {apiStore.configLoaded && !apiKey && (
+            <Typography variant="caption" color="error">
+              Google Maps API key not available. Check server configuration.
+            </Typography>
+          )}
         </Box>
+      );
+    }
 
-        {/* Current location button */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 16,
-            right: 16,
-            zIndex: 1000,
-          }}
-        >
-          <IconButton
-            onClick={() => {
-              if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                  (position) => {
-                    const { latitude, longitude } = position.coords;
-                    mapStore.goToCurrentLocation();
-                    if (map) {
-                      map.setCenter({ lat: latitude, lng: longitude });
-                      map.setZoom(12);
-                    }
-                  },
-                  (error) => {
-                    console.error('Error getting current location:', error);
-                  },
-                );
-              }
-            }}
-            size="small"
+    return (
+      <APIProvider apiKey={apiKey}>
+        <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+          {/* Zoom indicator */}
+          <Box
             sx={{
-              backgroundColor: (theme) => (theme.palette.mode === 'dark' ? '#2a2a2a' : '#f5f5f5'),
-              color: '#1a73e8',
-              boxShadow: (theme) =>
-                theme.palette.mode === 'dark'
-                  ? '0 2px 8px rgba(0,0,0,0.5)'
-                  : '0 2px 8px rgba(0,0,0,0.15)',
-              '&:hover': {
+              position: 'absolute',
+              bottom: 16,
+              left: 16,
+              zIndex: 1000,
+              backgroundColor: theme.palette.background.paper,
+              padding: '4px 8px',
+              borderRadius: 1,
+              boxShadow: theme.shadows[2],
+              border: `1px solid ${theme.palette.divider}`,
+            }}
+          >
+            <Typography variant="caption" color="textSecondary">
+              Zoom: {currentZoom} {isZoomedOut ? '(Cities)' : '(Shows)'}
+            </Typography>
+          </Box>
+
+          {/* Current location button */}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 16,
+              right: 16,
+              zIndex: 1000,
+            }}
+          >
+            <IconButton
+              onClick={() => {
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                      const { latitude, longitude } = position.coords;
+                      mapStore.goToCurrentLocation();
+                      if (map) {
+                        map.setCenter({ lat: latitude, lng: longitude });
+                        map.setZoom(12);
+                      }
+                    },
+                    (error) => {
+                      console.error('Error getting current location:', error);
+                    },
+                  );
+                }
+              }}
+              size="small"
+              sx={{
                 backgroundColor: (theme) => (theme.palette.mode === 'dark' ? '#2a2a2a' : '#f5f5f5'),
                 color: '#1a73e8',
                 boxShadow: (theme) =>
                   theme.palette.mode === 'dark'
                     ? '0 2px 8px rgba(0,0,0,0.5)'
                     : '0 2px 8px rgba(0,0,0,0.15)',
-              },
+                '&:hover': {
+                  backgroundColor: (theme) =>
+                    theme.palette.mode === 'dark' ? '#2a2a2a' : '#f5f5f5',
+                  color: '#1a73e8',
+                  boxShadow: (theme) =>
+                    theme.palette.mode === 'dark'
+                      ? '0 2px 8px rgba(0,0,0,0.5)'
+                      : '0 2px 8px rgba(0,0,0,0.15)',
+                },
+              }}
+            >
+              <MyLocationRounded fontSize="small" />
+            </IconButton>
+          </Box>
+
+          {/* Map */}
+          <Map
+            style={{ width: '100%', height: '100%' }}
+            defaultCenter={mapStore.userLocation || { lat: 39.8283, lng: -98.5795 }}
+            defaultZoom={11}
+            gestureHandling={'greedy'}
+            disableDefaultUI={true}
+            colorScheme="DARK"
+            styles={undefined} // Use standard Google Maps styling for better venue visibility
+            onCameraChanged={(ev) => {
+              if (ev.map) {
+                // Always update zoom level when camera changes
+                const currentMapZoom = ev.map.getZoom() || 11;
+                if (currentMapZoom !== mapStore.currentZoom) {
+                  // Use runInAction to ensure MobX observability
+                  runInAction(() => {
+                    mapStore.currentZoom = currentMapZoom;
+                  });
+                }
+
+                // Set map instance if not already set
+                if (!map) {
+                  setMap(ev.map);
+                }
+              }
             }}
           >
-            <MyLocationRounded fontSize="small" />
-          </IconButton>
+            {renderShowMarkers()}
+
+            {/* InfoWindow for selected show */}
+            {mapStore.selectedShow &&
+              (() => {
+                const show = mapStore.selectedShow;
+                let lat, lng;
+
+                // Use same coordinate extraction logic as markers
+                if (
+                  show.venue &&
+                  typeof show.venue === 'object' &&
+                  show.venue.lat &&
+                  show.venue.lng
+                ) {
+                  lat =
+                    typeof show.venue.lat === 'string'
+                      ? parseFloat(show.venue.lat)
+                      : show.venue.lat;
+                  lng =
+                    typeof show.venue.lng === 'string'
+                      ? parseFloat(show.venue.lng)
+                      : show.venue.lng;
+                } else if (show.lat && show.lng) {
+                  lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
+                  lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
+                }
+
+                // Only render InfoWindow if we have valid coordinates
+                if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+                  return null;
+                }
+
+                return (
+                  <InfoWindow
+                    position={{ lat, lng }}
+                    onCloseClick={() => mapStore.clearSelectedShow()}
+                    pixelOffset={[0, -10]}
+                    maxWidth={400}
+                  >
+                    <PopupContent
+                      show={show}
+                      onScheduleModalOpen={onScheduleModalOpen}
+                      onEditClick={onEditClick}
+                      onFlagClick={onFlagClick}
+                      onShareClick={onShareClick}
+                    />
+                  </InfoWindow>
+                );
+              })()}
+          </Map>
         </Box>
-
-        {/* Map */}
-        <Map
-          style={{ width: '100%', height: '100%' }}
-          defaultCenter={mapStore.userLocation || { lat: 39.8283, lng: -98.5795 }}
-          defaultZoom={11}
-          gestureHandling={'greedy'}
-          disableDefaultUI={true}
-          colorScheme="DARK"
-          styles={undefined} // Use standard Google Maps styling for better venue visibility
-          onCameraChanged={(ev) => {
-            if (ev.map) {
-              // Always update zoom level when camera changes
-              const currentMapZoom = ev.map.getZoom() || 11;
-              if (currentMapZoom !== mapStore.currentZoom) {
-                // Use runInAction to ensure MobX observability
-                runInAction(() => {
-                  mapStore.currentZoom = currentMapZoom;
-                });
-              }
-
-              // Set map instance if not already set
-              if (!map) {
-                setMap(ev.map);
-              }
-            }
-          }}
-        >
-          {renderShowMarkers()}
-
-          {/* InfoWindow for selected show */}
-          {mapStore.selectedShow &&
-            (() => {
-              const show = mapStore.selectedShow;
-              let lat, lng;
-
-              // Use same coordinate extraction logic as markers
-              if (
-                show.venue &&
-                typeof show.venue === 'object' &&
-                show.venue.lat &&
-                show.venue.lng
-              ) {
-                lat =
-                  typeof show.venue.lat === 'string' ? parseFloat(show.venue.lat) : show.venue.lat;
-                lng =
-                  typeof show.venue.lng === 'string' ? parseFloat(show.venue.lng) : show.venue.lng;
-              } else if (show.lat && show.lng) {
-                lat = typeof show.lat === 'string' ? parseFloat(show.lat) : show.lat;
-                lng = typeof show.lng === 'string' ? parseFloat(show.lng) : show.lng;
-              }
-
-              // Only render InfoWindow if we have valid coordinates
-              if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-                return null;
-              }
-
-              return (
-                <InfoWindow
-                  position={{ lat, lng }}
-                  onCloseClick={() => mapStore.clearSelectedShow()}
-                  pixelOffset={[0, -10]}
-                  maxWidth={400}
-                >
-                  <PopupContent show={show} onScheduleModalOpen={onScheduleModalOpen} />
-                </InfoWindow>
-              );
-            })()}
-        </Map>
-      </Box>
-    </APIProvider>
-  );
-});
+      </APIProvider>
+    );
+  },
+);
 
 export default MapComponent;

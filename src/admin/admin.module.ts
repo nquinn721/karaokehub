@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ApiLoggingModule } from '../api-logging/api-logging.module';
+import { Avatar } from '../avatar/entities/avatar.entity';
+import { UserAvatar } from '../avatar/entities/user-avatar.entity';
 import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
@@ -32,6 +34,8 @@ import { DeduplicationService } from './deduplication.service';
       ShowReview,
       Transaction,
       CoinPackage,
+      Avatar,
+      UserAvatar,
     ]),
     ApiLoggingModule,
     GeocodingModule,

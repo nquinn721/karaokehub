@@ -379,11 +379,11 @@ const AvatarCustomizer: React.FC = observer(() => {
     try {
       // Get the current equipped avatar
       const currentAvatar = authStore.user?.equippedAvatar?.id;
-      
+
       if (currentAvatar) {
         // Re-equip the same avatar to trigger a refresh of the header
         const success = await userStore.updateEquippedAvatar(currentAvatar);
-        
+
         if (success) {
           console.log('Avatar configuration refreshed successfully');
           setSuccessMessage('Avatar refreshed! The header should now show your current avatar.');
@@ -394,7 +394,7 @@ const AvatarCustomizer: React.FC = observer(() => {
       } else {
         // If no avatar is equipped, equip a default one
         const success = await userStore.updateEquippedAvatar('alex');
-        
+
         if (success) {
           console.log('Default avatar equipped successfully');
           setSuccessMessage('Avatar updated! Check the header for the change.');

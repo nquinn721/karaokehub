@@ -12,12 +12,18 @@ import {
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
-import { apiStore, authStore } from '../stores';
+import CustomModal from '../components/CustomModal';
+import { apiStore, authStore, uiStore } from '../stores';
 
 const SettingsPage: React.FC = observer(() => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{
+    plan: 'free' | 'ad_free';
+    message: string;
+  } | null>(null);
 
   const loadSubscriptionStatus = async () => {
     if (!authStore.isAuthenticated) return;
@@ -38,10 +44,10 @@ const SettingsPage: React.FC = observer(() => {
     try {
       await apiStore.post('/subscription/sync');
       await loadSubscriptionStatus(); // Reload status after sync
-      alert('Subscription status synced successfully!');
+      uiStore.addNotification('Subscription status synced successfully!', 'success');
     } catch (error) {
       console.error('Error syncing subscription:', error);
-      alert('Error syncing subscription. Please try again.');
+      uiStore.addNotification('Error syncing subscription. Please try again.', 'error');
     } finally {
       setSyncing(false);
     }
@@ -53,7 +59,7 @@ const SettingsPage: React.FC = observer(() => {
       window.location.href = response.url;
     } catch (error) {
       console.error('Error opening billing portal:', error);
-      alert('Error opening billing portal. Please try again.');
+      uiStore.addNotification('Error opening billing portal. Please try again.', 'error');
     }
   };
 
@@ -65,7 +71,7 @@ const SettingsPage: React.FC = observer(() => {
       }
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      alert('Error starting upgrade process. Please try again.');
+      uiStore.addNotification('Error starting upgrade process. Please try again.', 'error');
     }
   };
 
@@ -75,31 +81,41 @@ const SettingsPage: React.FC = observer(() => {
         ? 'Are you sure you want to cancel your subscription and downgrade to the free plan? This will take effect at the end of your current billing period.'
         : 'Are you sure you want to downgrade to the Ad-Free plan? This will take effect immediately and you will be charged a prorated amount.';
 
-    if (!confirm(confirmMessage)) {
-      return;
-    }
+    // Show confirmation modal instead of native confirm
+    setPendingAction({ plan, message: confirmMessage });
+    setConfirmModalOpen(true);
+  };
+
+  const executeDowngrade = async () => {
+    if (!pendingAction) return;
 
     try {
       setLoading(true);
+      setConfirmModalOpen(false);
 
-      if (plan === 'free') {
+      if (pendingAction.plan === 'free') {
         // Cancel subscription (will downgrade to free at period end)
         await apiStore.post('/subscription/cancel', { immediately: false });
-        alert(
+        uiStore.addNotification(
           'Your subscription has been cancelled and will end at the end of your current billing period.',
+          'success',
         );
       } else {
         // Change to ad_free plan
-        await apiStore.post('/subscription/change-plan', { plan });
-        alert('Your subscription has been changed to Ad-Free.');
+        await apiStore.post('/subscription/change-plan', { plan: pendingAction.plan });
+        uiStore.addNotification('Your subscription has been changed to Ad-Free.', 'success');
       }
 
       await loadSubscriptionStatus(); // Reload status
     } catch (error) {
       console.error('Error changing subscription:', error);
-      alert('Error changing subscription. Please try again or contact support.');
+      uiStore.addNotification(
+        'Error changing subscription. Please try again or contact support.',
+        'error',
+      );
     } finally {
       setLoading(false);
+      setPendingAction(null);
     }
   };
 
@@ -441,6 +457,42 @@ const SettingsPage: React.FC = observer(() => {
           </CardContent>
         </Card>
       </Box>
+
+      {/* Confirmation Modal */}
+      <CustomModal
+        open={confirmModalOpen}
+        onClose={() => {
+          setConfirmModalOpen(false);
+          setPendingAction(null);
+        }}
+        title="Confirm Subscription Change"
+        maxWidth="sm"
+      >
+        <Box sx={{ p: 2 }}>
+          <Typography variant="body1" sx={{ mb: 3 }}>
+            {pendingAction?.message}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setConfirmModalOpen(false);
+                setPendingAction(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={executeDowngrade}
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={20} /> : 'Confirm'}
+            </Button>
+          </Box>
+        </Box>
+      </CustomModal>
     </Container>
   );
 });

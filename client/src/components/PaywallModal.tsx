@@ -24,7 +24,7 @@ import {
   ListItemText,
   Typography,
 } from '@mui/material';
-import { apiStore } from '@stores/index';
+import { apiStore, uiStore } from '@stores/index';
 import React, { useState } from 'react';
 
 interface PaywallModalProps {
@@ -148,7 +148,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
       // Show user-friendly error message
       const errorMessage =
         error.response?.data?.message || error.message || 'Failed to create checkout session';
-      alert(`Subscription Error: ${errorMessage}`);
+      uiStore.addNotification(`Subscription Error: ${errorMessage}`, 'error');
     } finally {
       setLoading(false);
     }

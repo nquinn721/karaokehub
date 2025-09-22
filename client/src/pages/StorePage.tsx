@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import { CoinPackage, Microphone, storeStore } from '@stores/StoreStore';
 import { userStore } from '@stores/UserStore';
+import { uiStore } from '@stores/index';
 import { formatNumber, formatPrice, isGreaterThan, toNumber } from '@utils/numberUtils';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
@@ -153,13 +154,16 @@ const StorePage: React.FC = observer(() => {
         console.log('Payment session created:', response);
         setCoinPackageModalOpen(false);
         setSelectedCoinPackage(null);
-        alert(`Payment integration needed. Redirecting to Stripe checkout...`);
+        uiStore.addNotification(
+          'Payment integration needed. Redirecting to Stripe checkout...',
+          'info',
+        );
       } else {
         throw new Error('No payment URL received from server');
       }
     } catch (error) {
       console.error('Error purchasing coin package:', error);
-      alert('Failed to initiate coin package purchase');
+      uiStore.addNotification('Failed to initiate coin package purchase', 'error');
     } finally {
       setLoading(false);
     }

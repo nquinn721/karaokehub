@@ -18,7 +18,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { apiStore } from '@stores/index';
+import { apiStore, uiStore } from '@stores/index';
 import React, { useState } from 'react';
 
 interface SubscriptionUpgradeModalProps {
@@ -88,8 +88,9 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
       }
     } catch (error: any) {
       console.error('Upgrade error:', error);
-      alert(
+      uiStore.addNotification(
         `Upgrade Error: ${error.response?.data?.message || error.message || 'Failed to start upgrade process'}`,
+        'error',
       );
     } finally {
       setLoading(false);

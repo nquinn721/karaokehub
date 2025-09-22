@@ -1,9 +1,6 @@
 import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 import {
-  faCalendarAlt,
   faClock,
-  faEdit,
-  faFlag,
   faHeart,
   faMapMarkerAlt,
   faMicrophone,
@@ -38,7 +35,8 @@ import { FlagShowDialog } from '../components/modals/FlagShowDialog';
 import { SubmitMissingInfoModal } from '../components/modals/SubmitMissingInfoModal';
 import { ShowSearch } from '../components/search/ShowSearch';
 import { SEO } from '../components/SEO';
-import { authStore, favoriteStore, showStore } from '../stores/index';
+import { ShowActionsDropdown } from '../components/ShowActionsDropdown';
+import { authStore, favoriteStore, showStore, uiStore } from '../stores/index';
 import { mapStore } from '../stores/MapStore';
 import { Show } from '../stores/ShowStore';
 
@@ -74,6 +72,57 @@ const ShowsPage: React.FC = observer(() => {
     showStore.setSidebarOpen(!isMobile);
   }, [isMobile]);
 
+  // Handle URL parameters for shared shows
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const showId = urlParams.get('showId');
+    const day = urlParams.get('day');
+    const lat = urlParams.get('lat');
+    const lng = urlParams.get('lng');
+    const zoom = urlParams.get('zoom');
+
+    if (showId && day) {
+      // Wait for shows to be loaded before selecting
+      const handleSharedShow = () => {
+        const show = showStore.shows.find((s) => s.id === showId && s.day === day);
+        if (show) {
+          // Set the map position if provided and map is initialized
+          if (lat && lng && mapStore.mapInstance) {
+            const latitude = parseFloat(lat);
+            const longitude = parseFloat(lng);
+            const zoomLevel = zoom ? parseInt(zoom, 10) : 15;
+
+            mapStore.mapInstance.setCenter({ lat: latitude, lng: longitude });
+            mapStore.mapInstance.setZoom(zoomLevel);
+          }
+
+          // Select the show to open its info window
+          mapStore.selectShowFromSidebar(show);
+
+          // Clean up URL parameters after handling
+          const currentUrl = window.location.href.split('?')[0];
+          window.history.replaceState({}, '', currentUrl);
+        }
+      };
+
+      // If shows are already loaded, handle immediately
+      if (showStore.shows.length > 0) {
+        handleSharedShow();
+      } else {
+        // Simple retry mechanism for when shows aren't loaded yet
+        const checkInterval = setInterval(() => {
+          if (showStore.shows.length > 0) {
+            clearInterval(checkInterval);
+            handleSharedShow();
+          }
+        }, 100);
+
+        // Clean up interval after 10 seconds
+        setTimeout(() => clearInterval(checkInterval), 10000);
+      }
+    }
+  }, [showStore.shows.length]);
+
   // Format time helper
   const formatTime = (time: string): string => {
     if (!time) return '';
@@ -106,7 +155,8 @@ const ShowsPage: React.FC = observer(() => {
   };
 
   // Handle schedule button click to show combined schedule modal
-  const handleScheduleClick = (show: Show) => {
+  const handleScheduleClick = (event: React.MouseEvent, show: Show) => {
+    event.stopPropagation();
     setSelectedShow(show);
     setScheduleModalOpen(true);
   };
@@ -139,6 +189,46 @@ const ShowsPage: React.FC = observer(() => {
     }
     setShowToEdit(show);
     setSubmitInfoModalOpen(true);
+  };
+
+  // Handle share button click
+  const handleShareClick = (event: React.MouseEvent, show: Show) => {
+    event.stopPropagation();
+
+    // Create URL with parameters for the show
+    const url = new URL(window.location.origin + '/shows');
+
+    // Add show parameters
+    url.searchParams.set('showId', show.id);
+    url.searchParams.set('day', show.day);
+
+    // Add map position if available
+    if (show.venue && typeof show.venue === 'object' && show.venue.lat && show.venue.lng) {
+      url.searchParams.set('lat', show.venue.lat.toString());
+      url.searchParams.set('lng', show.venue.lng.toString());
+      url.searchParams.set('zoom', '15'); // Appropriate zoom level for venue
+    }
+
+    // Add venue name for context
+    if (show.venue && typeof show.venue === 'object' && show.venue.name) {
+      url.searchParams.set('venue', encodeURIComponent(show.venue.name));
+    }
+
+    // Copy to clipboard
+    navigator.clipboard
+      .writeText(url.toString())
+      .then(() => {
+        // Show success message
+        uiStore.addNotification('Link copied to clipboard!', 'success');
+      })
+      .catch((err) => {
+        console.error('Failed to copy to clipboard:', err);
+        // Fallback: show error and copy instructions
+        uiStore.addNotification(
+          'Failed to copy link. Please copy manually from the address bar.',
+          'error',
+        );
+      });
   };
 
   // Handle close submit info modal
@@ -197,7 +287,12 @@ const ShowsPage: React.FC = observer(() => {
             height: { xs: '100%', md: '100%' },
           }}
         >
-          <MapComponent onScheduleModalOpen={handleScheduleModalOpen} />
+          <MapComponent
+            onScheduleModalOpen={handleScheduleModalOpen}
+            onEditClick={handleEditClick}
+            onFlagClick={handleFlagClick}
+            onShareClick={handleShareClick}
+          />
         </Box>
 
         {/* Bottom Sheet / Sidebar for Shows and Filters */}
@@ -677,28 +772,6 @@ const ShowsPage: React.FC = observer(() => {
                                     <Box
                                       sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}
                                     >
-                                      {/* Schedule button */}
-                                      <IconButton
-                                        size="small"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleScheduleClick(show);
-                                        }}
-                                        sx={{
-                                          color: theme.palette.primary.main,
-                                          width: { xs: '32px', md: '36px' },
-                                          height: { xs: '32px', md: '36px' },
-                                          '&:hover': {
-                                            backgroundColor: theme.palette.primary.main + '10',
-                                          },
-                                        }}
-                                      >
-                                        <FontAwesomeIcon
-                                          icon={faCalendarAlt}
-                                          style={{ fontSize: '14px' }}
-                                        />
-                                      </IconButton>
-
                                       {/* Favorite button */}
                                       <IconButton
                                         size="small"
@@ -725,47 +798,15 @@ const ShowsPage: React.FC = observer(() => {
                                         />
                                       </IconButton>
 
-                                      {/* Flag button */}
-                                      <IconButton
+                                      {/* 3-dot dropdown menu */}
+                                      <ShowActionsDropdown
+                                        show={show}
+                                        onScheduleClick={handleScheduleClick}
+                                        onEditClick={handleEditClick}
+                                        onFlagClick={handleFlagClick}
+                                        onShareClick={handleShareClick}
                                         size="small"
-                                        onClick={(e) => handleFlagClick(e, show)}
-                                        sx={{
-                                          color: show.isFlagged
-                                            ? theme.palette.warning.main
-                                            : theme.palette.text.disabled,
-                                          width: { xs: '32px', md: '36px' },
-                                          height: { xs: '32px', md: '36px' },
-                                          '&:hover': {
-                                            color: theme.palette.warning.main,
-                                            backgroundColor: theme.palette.warning.main + '10',
-                                          },
-                                        }}
-                                      >
-                                        <FontAwesomeIcon
-                                          icon={faFlag}
-                                          style={{ fontSize: '14px' }}
-                                        />
-                                      </IconButton>
-
-                                      {/* Edit button */}
-                                      <IconButton
-                                        size="small"
-                                        onClick={(e) => handleEditClick(e, show)}
-                                        sx={{
-                                          color: theme.palette.info.main,
-                                          width: { xs: '32px', md: '36px' },
-                                          height: { xs: '32px', md: '36px' },
-                                          '&:hover': {
-                                            color: theme.palette.info.main,
-                                            backgroundColor: theme.palette.info.main + '10',
-                                          },
-                                        }}
-                                      >
-                                        <FontAwesomeIcon
-                                          icon={faEdit}
-                                          style={{ fontSize: '14px' }}
-                                        />
-                                      </IconButton>
+                                      />
                                     </Box>
                                   </Box>
                                 </Box>
@@ -1209,28 +1250,6 @@ const ShowsPage: React.FC = observer(() => {
                                     minWidth: { xs: '32px', md: '36px' },
                                   }}
                                 >
-                                  {/* Schedule button */}
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleScheduleClick(show);
-                                    }}
-                                    sx={{
-                                      color: theme.palette.primary.main,
-                                      width: { xs: '28px', md: '32px' },
-                                      height: { xs: '28px', md: '32px' },
-                                      '&:hover': {
-                                        backgroundColor: theme.palette.primary.main + '10',
-                                      },
-                                    }}
-                                  >
-                                    <FontAwesomeIcon
-                                      icon={faCalendarAlt}
-                                      style={{ fontSize: '12px' }}
-                                    />
-                                  </IconButton>
-
                                   {/* Favorite button */}
                                   <IconButton
                                     size="small"
@@ -1266,45 +1285,15 @@ const ShowsPage: React.FC = observer(() => {
                                     />
                                   </IconButton>
 
-                                  {/* Flag button */}
-                                  <IconButton
+                                  {/* 3-dot dropdown menu */}
+                                  <ShowActionsDropdown
+                                    show={show}
+                                    onScheduleClick={handleScheduleClick}
+                                    onEditClick={handleEditClick}
+                                    onFlagClick={handleFlagClick}
+                                    onShareClick={handleShareClick}
                                     size="small"
-                                    onClick={(e) => handleFlagClick(e, show)}
-                                    sx={{
-                                      color: show.isFlagged
-                                        ? theme.palette.warning.main
-                                        : theme.palette.text.disabled,
-                                      width: { xs: '28px', md: '32px' },
-                                      height: { xs: '28px', md: '32px' },
-                                      '&:hover': {
-                                        color: theme.palette.warning.main,
-                                        backgroundColor: theme.palette.warning.main + '10',
-                                        transform: 'scale(1.1)',
-                                      },
-                                      transition: 'all 0.2s ease',
-                                    }}
-                                  >
-                                    <FontAwesomeIcon icon={faFlag} style={{ fontSize: '12px' }} />
-                                  </IconButton>
-
-                                  {/* Edit button */}
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => handleEditClick(e, show)}
-                                    sx={{
-                                      color: theme.palette.info.main,
-                                      width: { xs: '28px', md: '32px' },
-                                      height: { xs: '28px', md: '32px' },
-                                      '&:hover': {
-                                        color: theme.palette.info.main,
-                                        backgroundColor: theme.palette.info.main + '10',
-                                        transform: 'scale(1.1)',
-                                      },
-                                      transition: 'all 0.2s ease',
-                                    }}
-                                  >
-                                    <FontAwesomeIcon icon={faEdit} style={{ fontSize: '12px' }} />
-                                  </IconButton>
+                                  />
                                 </Box>
                               </Box>
                             </Box>
