@@ -5,6 +5,7 @@ import FriendsList from '@components/FriendsList';
 import MicrophoneSelectionModal from '@components/MicrophoneSelectionModal';
 import { PaywallModal } from '@components/PaywallModal';
 import { SEO, seoConfigs } from '@components/SEO';
+import { SubscriptionUpgradeModal } from '@components/SubscriptionUpgradeModal';
 import {
   faArrowRight,
   faCalendar,
@@ -72,6 +73,7 @@ const DashboardPage: React.FC = observer(() => {
   });
   const [activeTab, setActiveTab] = useState(0);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
   const [microphoneModalOpen, setMicrophoneModalOpen] = useState(false);
   const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
@@ -563,10 +565,32 @@ const DashboardPage: React.FC = observer(() => {
                   fontSize: { xs: '0.65rem', sm: '0.75rem' },
                   display: 'block',
                   lineHeight: 1.2,
+                  mb: !subscriptionStore.hasAdFreeAccess ? 0.5 : 0,
                 }}
               >
                 Subscription
               </Typography>
+              {/* Upgrade Button - Show only if not on Pro */}
+              {!subscriptionStore.hasAdFreeAccess && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setUpgradeModalOpen(true)}
+                  sx={{
+                    fontSize: { xs: '0.6rem', sm: '0.7rem' },
+                    py: { xs: 0.3, sm: 0.5 },
+                    px: { xs: 0.8, sm: 1 },
+                    borderColor: theme.palette.warning.main,
+                    color: theme.palette.warning.main,
+                    '&:hover': {
+                      borderColor: theme.palette.warning.dark,
+                      backgroundColor: alpha(theme.palette.warning.main, 0.1),
+                    },
+                  }}
+                >
+                  Upgrade
+                </Button>
+              )}
             </Box>
           </Grid>
         </Grid>
@@ -1667,6 +1691,12 @@ const DashboardPage: React.FC = observer(() => {
             ? 'Listen to 30-second song previews to help you prepare for karaoke night! Premium subscription required for unlimited previews.'
             : undefined
         }
+      />
+
+      {/* Subscription Upgrade Modal */}
+      <SubscriptionUpgradeModal
+        open={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
       />
 
       {/* Microphone Selection Modal */}

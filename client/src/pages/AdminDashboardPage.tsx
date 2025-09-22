@@ -1,7 +1,7 @@
 import AdminBreadcrumb from '@components/AdminBreadcrumb';
 import AdminDataTables from '@components/AdminDataTables';
-import ApiLogsMonitor from '@components/ApiLogsMonitor';
 import DataUploadModal from '@components/DataUploadModal';
+import EnhancedApiMonitoring from '@components/EnhancedApiMonitoring';
 import LocationTrackingModal from '@components/modals/LocationTrackingModal';
 import ShowAnalytics from '@components/ShowAnalytics';
 import SpriteCutter from '@components/SpriteCutter';
@@ -161,14 +161,14 @@ const AdminDashboardPageTabbed = observer(() => {
     },
     {
       id: 4,
-      title: 'API Monitoring',
+      title: 'Enhanced API Monitoring',
       icon: faRobot,
-      description: 'Monitor iTunes API usage and rate limiting',
-      component: <ApiLogsMonitor />,
+      description: 'Comprehensive API monitoring with charts and detailed error tracking',
+      component: <EnhancedApiMonitoring />,
       category: 'monitoring',
     },
     {
-      id: 5,
+      id: 6,
       title: 'Avatar Tools',
       icon: faCut,
       description: 'Avatar management and image processing tools',
@@ -176,7 +176,7 @@ const AdminDashboardPageTabbed = observer(() => {
       category: 'avatars',
     },
     {
-      id: 6,
+      id: 7,
       title: 'Store Generator',
       icon: faPalette,
       description: 'Generate avatar store items using AI image generation',
@@ -995,7 +995,7 @@ const AdminDashboardPageTabbed = observer(() => {
             </TabPanel>
 
             <TabPanel value={tabValue} index={4}>
-              <ApiLogsMonitor />
+              <EnhancedApiMonitoring />
             </TabPanel>
 
             <TabPanel value={tabValue} index={5}>

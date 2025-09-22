@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
 import { AdminModule } from './admin/admin.module';
 import { ApiLoggingModule } from './api-logging/api-logging.module';
+import { ApiMonitoringModule } from './api-monitoring/api-monitoring.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -82,6 +83,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     FriendsModule,
     LocationModule,
     ApiLoggingModule,
+    ApiMonitoringModule,
     ParserModule,
     MusicModule,
     SubscriptionModule,

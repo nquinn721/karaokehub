@@ -411,7 +411,8 @@ const StoreItemGenerator: React.FC = observer(() => {
                                           backgroundColor: '#f5f5f5',
                                         }}
                                         onError={(e) => {
-                                          e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.id}`;
+                                          // Fallback to a generic avatar placeholder instead of DiceBear
+                                          e.currentTarget.src = '/images/avatar/base.982Z.png';
                                         }}
                                       />
                                       <Chip

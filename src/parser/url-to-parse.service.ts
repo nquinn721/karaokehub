@@ -61,11 +61,11 @@ export class UrlToParseService {
     return result;
   }
 
-  async delete(id: number): Promise<void> {
+  async delete(id: string): Promise<void> {
     await this.urlToParseRepository.delete(id);
   }
 
-  async findById(id: number): Promise<UrlToParse | null> {
+  async findById(id: string): Promise<UrlToParse | null> {
     return await this.urlToParseRepository.findOne({ where: { id } });
   }
 
@@ -74,7 +74,7 @@ export class UrlToParseService {
     return count > 0;
   }
 
-  async approve(id: number): Promise<UrlToParse | null> {
+  async approve(id: string): Promise<UrlToParse | null> {
     const urlToParse = await this.findById(id);
     if (!urlToParse) {
       return null;
@@ -83,7 +83,7 @@ export class UrlToParseService {
     return await this.urlToParseRepository.save(urlToParse);
   }
 
-  async unapprove(id: number): Promise<UrlToParse | null> {
+  async unapprove(id: string): Promise<UrlToParse | null> {
     const urlToParse = await this.findById(id);
     if (!urlToParse) {
       return null;
@@ -92,7 +92,7 @@ export class UrlToParseService {
     return await this.urlToParseRepository.save(urlToParse);
   }
 
-  async markAsParsed(id: number): Promise<UrlToParse | null> {
+  async markAsParsed(id: string): Promise<UrlToParse | null> {
     const urlToParse = await this.findById(id);
     if (!urlToParse) {
       return null;
@@ -101,7 +101,7 @@ export class UrlToParseService {
     return await this.urlToParseRepository.save(urlToParse);
   }
 
-  async markAsUnparsed(id: number): Promise<UrlToParse | null> {
+  async markAsUnparsed(id: string): Promise<UrlToParse | null> {
     const urlToParse = await this.findById(id);
     if (!urlToParse) {
       return null;
@@ -111,7 +111,7 @@ export class UrlToParseService {
   }
 
   async update(
-    id: number,
+    id: string,
     updateData: { name?: string; city?: string; state?: string },
   ): Promise<UrlToParse | null> {
     const urlToParse = await this.findById(id);

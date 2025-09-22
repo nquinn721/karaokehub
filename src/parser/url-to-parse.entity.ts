@@ -11,8 +11,8 @@ import { User } from '../entities/user.entity';
 
 @Entity('urls_to_parse')
 export class UrlToParse {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'varchar', length: 500, unique: true })
   url: string;

@@ -634,8 +634,8 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
 
               {/* Desktop Controls - Hidden on small screens */}
               <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
-                {/* Upgrade Button - Only show if user is authenticated and not on premium */}
-                {authStore.isAuthenticated && subscriptionStore.currentPlan !== 'premium' && (
+                {/* Upgrade Button - Only show if user is authenticated and not on premium or ad-free */}
+                {authStore.isAuthenticated && !subscriptionStore.hasAdFreeAccess && (
                   <Button
                     variant="outlined"
                     size="small"
@@ -1270,8 +1270,8 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                   </ListItemButton>
                 </ListItem>
 
-                {/* Upgrade Button - Mobile - Only show if not on premium */}
-                {subscriptionStore.currentPlan !== 'premium' && (
+                {/* Upgrade Button - Mobile - Only show if not on premium or ad-free */}
+                {!subscriptionStore.hasAdFreeAccess && (
                   <ListItem disablePadding>
                     <ListItemButton
                       onClick={() => {

@@ -1,5 +1,7 @@
 import { DataSource } from 'typeorm';
 import { ApiLog } from './src/api-logging/api-log.entity';
+import { ApiIssue } from './src/api-monitoring/entities/api-issue.entity';
+import { ApiMetricsDaily } from './src/api-monitoring/entities/api-metrics-daily.entity';
 import { Avatar } from './src/avatar/entities/avatar.entity';
 import { Microphone } from './src/avatar/entities/microphone.entity';
 import { Outfit } from './src/avatar/entities/outfit.entity';
@@ -52,6 +54,9 @@ export default new DataSource({
     UserFeatureOverride,
     ShowReview,
     ApiLog,
+    // API Monitoring entities
+    ApiMetricsDaily,
+    ApiIssue,
     // Avatar system entities
     Avatar,
     UserAvatar,

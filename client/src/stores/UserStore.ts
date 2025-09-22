@@ -93,11 +93,11 @@ export class UserStore {
 
   // Helper to get avatar URL from userAvatar data
   getAvatarUrl(user: User | null): string {
-    if (!user) return '/images/avatar/avatar_1.png'; // Default avatar
+    if (!user) return '/images/avatar/avatars/alex.png'; // Default avatar
 
-    // If user has new userAvatar system data, use it
-    if (user.userAvatar?.baseAvatarId) {
-      return `/images/avatar/${user.userAvatar.baseAvatarId}.png`;
+    // If user has equipped avatar, use its imageUrl
+    if (user.equippedAvatar?.imageUrl) {
+      return user.equippedAvatar.imageUrl;
     }
 
     // Fallback to old avatar field if it exists
@@ -106,7 +106,7 @@ export class UserStore {
     }
 
     // Default avatar
-    return '/images/avatar/avatar_1.png';
+    return '/images/avatar/avatars/alex.png';
   }
 
   private clearError() {

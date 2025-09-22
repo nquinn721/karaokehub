@@ -259,10 +259,17 @@ export class StoreGenerationService {
       }
 
       this.logger.log(`Avatar-based prompt: ${prompt}`);
+      this.logger.log(
+        `Content parts: ${contentParts.length} parts (${request.baseImage ? 'with' : 'without'} base image)`,
+      );
 
       // Generate image with base image reference (like the successful example)
       const result = await model.generateContent(contentParts);
       const response = await result.response;
+
+      this.logger.log(
+        `Gemini response received with ${response.candidates?.length || 0} candidates`,
+      );
 
       // Find the generated image in the response
       for (const part of response.candidates?.[0]?.content?.parts || []) {
@@ -273,10 +280,12 @@ export class StoreGenerationService {
             part.inlineData.mimeType,
           );
           this.logger.log(`Successfully generated image: ${imageUrl}`);
+
           return imageUrl;
         }
       }
 
+      // No image found - this is an error
       throw new Error('No image found in Gemini response');
     } catch (error) {
       this.logger.error(`Failed to generate image with Gemini: ${error.message}`);
@@ -347,33 +356,63 @@ export class StoreGenerationService {
     variationIndex: number,
     totalVariations?: number,
   ): string {
-    // If user provided a custom prompt, modify it for individual image generation
+    // If user provided a custom prompt, make it much more specific
     if (request.customPrompt && request.customPrompt.trim()) {
       const originalPrompt = request.customPrompt.trim();
       this.logger.log(`Using custom prompt: ${originalPrompt}`);
 
-      // If generating multiple items, modify prompt to create ONE item per image
-      if (totalVariations && totalVariations > 1) {
-        const modifiedPrompt = this.modifyPromptForSingleItem(
-          originalPrompt,
-          variationIndex + 1,
-          totalVariations,
-        );
-        this.logger.log(`Modified for individual generation: ${modifiedPrompt}`);
-        return modifiedPrompt;
-      }
+      // Create a very specific prompt for avatar clothing/items
+      const enhancedPrompt = `Generate a clothing/fashion item image based on this request: "${originalPrompt}". 
 
-      return originalPrompt;
+REQUIREMENTS:
+- Create ONLY clothing, accessories, or wearable items
+- NO landscapes, buildings, or random objects
+- Style: ${request.style}
+- Theme: ${request.theme}
+- Item type: ${request.itemType}
+- Professional fashion photography style
+- Clean background
+- High quality clothing/accessory item suitable for an avatar character
+
+Focus specifically on creating wearable items like clothing, shoes, accessories that an avatar character could wear.`;
+
+      return enhancedPrompt;
     }
 
-    // Otherwise, create prompts that work like the successful Google AI Studio example
+    // Otherwise, create very specific prompts for avatar items
     const basePrompts = this.getAvatarItemPrompts(request.itemType, request.style, request.theme);
     const selectedPrompt = basePrompts[variationIndex % basePrompts.length];
 
-    // Create a prompt that generates items for the avatar character (like the successful example)
+    // Create a highly specific prompt that generates avatar clothing/items
     const avatarPrompt = request.baseImage
-      ? `Using this avatar character as reference, ${selectedPrompt}. Show the ${request.itemType} both as a separate item and worn by the character. Style: ${request.style}, Theme: ${request.theme}. Create clothing/items that would fit this character perfectly.`
-      : `Create ${selectedPrompt} for a cartoon avatar character. Style: ${request.style}, Theme: ${request.theme}. Show the ${request.itemType} as it would appear on an avatar character.`;
+      ? `Looking at this avatar character image, create a ${request.itemType} item that would suit this character.
+
+SPECIFIC REQUIREMENTS:
+- Generate ONLY ${request.itemType} clothing/accessories
+- Style: ${request.style}
+- Theme: ${request.theme}
+- ${selectedPrompt}
+- Professional fashion photography
+- Clean white or transparent background
+- High quality wearable item for avatar character
+- NO landscapes, buildings, or unrelated objects
+- Focus on clothing, shoes, accessories, or wearable items ONLY
+
+The result should be a clear image of ${request.itemType} that this avatar character could wear.`
+      : `Create a ${request.itemType} item for an avatar character.
+
+SPECIFIC REQUIREMENTS:
+- Generate ONLY ${request.itemType} clothing/accessories  
+- Style: ${request.style}
+- Theme: ${request.theme}
+- ${selectedPrompt}
+- Professional fashion/product photography
+- Clean background
+- High quality wearable item
+- NO landscapes, buildings, or unrelated objects
+- Focus on clothing, shoes, accessories, or wearable items ONLY
+
+The result should be a clear image of ${request.itemType} suitable for an avatar character to wear.`;
 
     return avatarPrompt;
   }
@@ -382,63 +421,65 @@ export class StoreGenerationService {
     switch (itemType) {
       case 'outfit':
         return [
-          `create a ${style} ${theme} outfit for this character - design clothing that fits their style and personality`,
-          `design a ${style} ${theme} costume for this avatar - create wearable clothing items that suit the character`,
-          `make a ${style} ${theme} outfit for this character to wear - design clothes that match their appearance`,
-          `create ${style} ${theme} clothing for this avatar character - design an outfit that fits perfectly`,
-          `design a ${style} ${theme} ensemble for this character - create clothing items they can wear`,
+          `a ${style} ${theme} clothing outfit - jacket, shirt, dress, or complete clothing ensemble`,
+          `a ${style} ${theme} costume or clothing set - wearable fashion items like tops, bottoms, dresses`,
+          `a ${style} ${theme} fashion outfit - clothing pieces such as shirts, pants, skirts, or dresses`,
+          `a ${style} ${theme} clothing ensemble - wearable garments like blouses, jackets, or complete outfits`,
+          `a ${style} ${theme} wardrobe item - clothing such as sweaters, coats, or fashionable attire`,
         ];
 
       case 'shoes':
         return [
-          `create ${style} ${theme} shoes for this character - design footwear that fits their style`,
-          `design ${style} ${theme} footwear for this avatar - create shoes that match the character`,
-          `make ${style} ${theme} shoes for this character to wear - design footwear that suits them`,
-          `create ${style} ${theme} boots/sneakers for this avatar character - design appropriate footwear`,
-          `design ${style} ${theme} footwear that this character would wear - create matching shoes`,
+          `${style} ${theme} footwear - shoes, boots, sneakers, or other wearable foot accessories`,
+          `${style} ${theme} shoes or boots - fashionable footwear like sneakers, dress shoes, or casual shoes`,
+          `${style} ${theme} footwear items - boots, sandals, heels, or athletic shoes`,
+          `${style} ${theme} shoe accessories - stylish footwear like loafers, pumps, or hiking boots`,
+          `${style} ${theme} wearable shoes - fashionable footwear such as oxfords, flats, or running shoes`,
         ];
 
       case 'microphone':
         return [
-          `create a ${style} ${theme} microphone for this character - design a mic that fits their personality`,
-          `design a ${style} ${theme} microphone that this avatar would use - create a custom mic`,
-          `make a ${style} ${theme} microphone for this character - design a personalized mic`,
-          `create a ${style} ${theme} karaoke microphone for this avatar - design a performance mic`,
-          `design a ${style} ${theme} microphone that matches this character's style`,
+          `a ${style} ${theme} karaoke microphone - professional singing microphone with unique design`,
+          `a ${style} ${theme} performance microphone - decorative singing mic for karaoke use`,
+          `a ${style} ${theme} vocal microphone - stylized singing microphone with custom appearance`,
+          `a ${style} ${theme} karaoke mic - fashionable microphone for singing performances`,
+          `a ${style} ${theme} singing microphone - decorative performance mic with unique styling`,
         ];
 
       case 'hair':
         return [
-          `create ${style} ${theme} hair accessories for this character - design items that enhance their hairstyle`,
-          `design ${style} ${theme} hair ornaments for this avatar - create accessories that fit their look`,
-          `make ${style} ${theme} hair clips/bands for this character - design hair accessories`,
-          `create ${style} ${theme} hair decorations for this avatar character - design stylish accessories`,
-          `design ${style} ${theme} hair accessories that complement this character's appearance`,
+          `${style} ${theme} hair accessories - wearable hair clips, bands, or ornaments`,
+          `${style} ${theme} hair ornaments - decorative hair accessories like clips, bows, or headbands`,
+          `${style} ${theme} hair clips or bands - fashionable hair accessories for styling`,
+          `${style} ${theme} hair decorations - stylish accessories to enhance hairstyles`,
+          `${style} ${theme} hair accessories - elegant ornaments for hair styling and decoration`,
         ];
 
       case 'hat':
         return [
-          `create a ${style} ${theme} hat for this character - design headwear that suits their personality`,
-          `design a ${style} ${theme} hat that this avatar would wear - create matching headwear`,
-          `make a ${style} ${theme} cap/beanie for this character - design appropriate headwear`,
-          `create ${style} ${theme} headwear for this avatar character - design a fitting hat`,
-          `design a ${style} ${theme} hat that complements this character's style`,
+          `a ${style} ${theme} hat or cap - wearable headwear like baseball caps, beanies, or formal hats`,
+          `a ${style} ${theme} headwear - fashionable hats such as fedoras, sun hats, or winter caps`,
+          `a ${style} ${theme} cap or beanie - stylish head accessories like snapbacks, bucket hats, or knit caps`,
+          `a ${style} ${theme} hat accessory - wearable headgear such as visors, cowboy hats, or dress hats`,
+          `a ${style} ${theme} head covering - fashionable hats like bowler hats, panama hats, or casual caps`,
         ];
 
       case 'jewelry':
         return [
-          `create ${style} ${theme} jewelry for this character - design accessories that enhance their look`,
-          `design ${style} ${theme} jewelry that this avatar would wear - create matching accessories`,
-          `make ${style} ${theme} necklace/earrings for this character - design elegant jewelry`,
-          `create ${style} ${theme} jewelry accessories for this avatar character - design stylish pieces`,
-          `design ${style} ${theme} jewelry that fits this character's personality and style`,
+          `${style} ${theme} jewelry accessories - wearable items like necklaces, earrings, or bracelets`,
+          `${style} ${theme} jewelry pieces - fashionable accessories such as rings, pendants, or chains`,
+          `${style} ${theme} wearable jewelry - elegant accessories like earrings, bracelets, or necklaces`,
+          `${style} ${theme} jewelry items - stylish accessories including rings, brooches, or pendants`,
+          `${style} ${theme} decorative jewelry - fashionable wearable accessories for personal styling`,
         ];
 
       default:
         return [
-          `create a ${style} ${theme} accessory for this character - design an item that suits their style`,
-          `design a ${style} ${theme} item that this avatar would use - create a matching accessory`,
-          `make a ${style} ${theme} accessory for this character - design something that fits their personality`,
+          `a ${style} ${theme} ${itemType} accessory - wearable item or clothing piece for avatar character`,
+          `a ${style} ${theme} ${itemType} item - fashionable accessory or clothing suitable for avatars`,
+          `a ${style} ${theme} ${itemType} piece - wearable fashion item or character accessory`,
+          `a ${style} ${theme} ${itemType} - stylish wearable item or clothing for avatar use`,
+          `a ${style} ${theme} ${itemType} accessory - fashionable wearable item for character customization`,
         ];
     }
   }

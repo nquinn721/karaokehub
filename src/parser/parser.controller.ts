@@ -526,7 +526,7 @@ export class ParserController {
   @Post('urls/:id/delete')
   async deleteUrl(@Param('id') id: string): Promise<{ message: string }> {
     try {
-      await this.urlToParseService.delete(parseInt(id));
+      await this.urlToParseService.delete(id);
       return { message: 'URL deleted successfully' };
     } catch (error) {
       console.error('Error deleting URL:', error);
@@ -537,7 +537,7 @@ export class ParserController {
   @Post('urls/:id/mark-parsed')
   async markUrlAsParsed(@Param('id') id: string): Promise<{ message: string }> {
     try {
-      await this.urlToParseService.markAsParsed(parseInt(id));
+      await this.urlToParseService.markAsParsed(id);
       return { message: 'URL marked as parsed successfully' };
     } catch (error) {
       console.error('Error marking URL as parsed:', error);
@@ -548,7 +548,7 @@ export class ParserController {
   @Post('urls/:id/mark-unparsed')
   async markUrlAsUnparsed(@Param('id') id: string): Promise<{ message: string }> {
     try {
-      await this.urlToParseService.markAsUnparsed(parseInt(id));
+      await this.urlToParseService.markAsUnparsed(id);
       return { message: 'URL marked as unparsed successfully' };
     } catch (error) {
       console.error('Error marking URL as unparsed:', error);
@@ -562,7 +562,7 @@ export class ParserController {
     @Body() body: { name?: string; city?: string; state?: string },
   ): Promise<UrlToParse> {
     try {
-      return await this.urlToParseService.update(parseInt(id), body);
+      return await this.urlToParseService.update(id, body);
     } catch (error) {
       console.error('Error updating URL:', error);
       throw new HttpException('Failed to update URL', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -572,7 +572,7 @@ export class ParserController {
   @Post('urls/:id/approve')
   async approveUrl(@Param('id') id: string): Promise<{ message: string }> {
     try {
-      await this.urlToParseService.approve(parseInt(id));
+      await this.urlToParseService.approve(id);
       return { message: 'URL approved successfully' };
     } catch (error) {
       console.error('Error approving URL:', error);
@@ -583,7 +583,7 @@ export class ParserController {
   @Post('urls/:id/unapprove')
   async unapproveUrl(@Param('id') id: string): Promise<{ message: string }> {
     try {
-      await this.urlToParseService.unapprove(parseInt(id));
+      await this.urlToParseService.unapprove(id);
       return { message: 'URL unapproved successfully' };
     } catch (error) {
       console.error('Error unapproving URL:', error);

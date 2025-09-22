@@ -55,6 +55,21 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = observer(
         const avatars = await userStore.getAvailableAvatars();
         setAvailableAvatars(avatars);
         console.log('🎭 AvatarSelectorModal: Available avatars:', avatars);
+        console.log('🎭 AvatarSelectorModal: Avatar count:', avatars?.length || 0);
+
+        // Debug: Log first avatar details
+        if (avatars && avatars.length > 0) {
+          console.log('🎭 AvatarSelectorModal: First avatar details:', {
+            id: avatars[0].id,
+            name: avatars[0].name,
+            imageUrl: avatars[0].imageUrl,
+            price: avatars[0].price,
+            coinPrice: avatars[0].coinPrice,
+            isAvailable: avatars[0].isAvailable,
+          });
+        } else {
+          console.warn('🎭 AvatarSelectorModal: No avatars received!');
+        }
 
         // Set currently equipped avatar as selected
         const equippedAvatar = userStore.getEquippedAvatar();
@@ -110,6 +125,16 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = observer(
 
     const isLoading = userStore.isLoading || isSaving || isLoadingAvatars;
 
+    // Debug logging
+    console.log('🎭 AvatarSelectorModal: Rendering with states:', {
+      isLoading,
+      availableAvatarsCount: availableAvatars?.length || 0,
+      selectedAvatar,
+      userStoreLoading: userStore.isLoading,
+      isLoadingAvatars,
+      isSaving,
+    });
+
     return (
       <CustomModal
         open={open}
@@ -136,6 +161,17 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = observer(
             <>
               {/* Avatar Grid */}
               <Grid container spacing={2} sx={{ mb: 3 }}>
+                {availableAvatars.length === 0 && (
+                  <Grid item xs={12}>
+                    <Typography
+                      variant="body1"
+                      sx={{ textAlign: 'center', p: 4, color: 'error.main' }}
+                    >
+                      🚫 No avatars available. Check console for errors.
+                    </Typography>
+                  </Grid>
+                )}
+
                 {availableAvatars.map((avatar) => {
                   const equippedAvatar = userStore.getEquippedAvatar();
                   const isEquipped = equippedAvatar?.avatarId === avatar.id;
@@ -169,7 +205,7 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = observer(
                             <AvatarDisplay3D
                               width={140}
                               height={180}
-                              avatarId={avatar.id}
+                              avatarId={avatar.name.toLowerCase()}
                               show3D={true}
                               sx={{
                                 borderRadius: '12px',

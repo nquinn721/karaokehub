@@ -1,7 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as path from 'path';
 import { Repository } from 'typeorm';
+import { Worker } from 'worker_threads';
 import { Avatar } from '../avatar/entities/avatar.entity';
 import { UserAvatar } from '../avatar/entities/user-avatar.entity';
 import { DJ } from '../dj/dj.entity';
@@ -1251,6 +1253,7 @@ export class AdminService {
 
   /**
    * Validate all venues using Gemini AI to lookup geo data and find conflicts
+   * Uses a worker thread to avoid blocking the main thread during intensive processing
    */
   async validateAllVenuesWithGemini(): Promise<{
     success: boolean;
@@ -1270,84 +1273,147 @@ export class AdminService {
         relations: ['shows'],
       });
 
-      const results = [];
-      let validatedCount = 0;
-      let conflictsFound = 0;
-      let updatedCount = 0;
-      let errorsCount = 0;
+      // Use worker thread for validation to avoid blocking main thread
+      const workerResult = await this.validateVenuesWithWorker(venues);
 
-      for (const venue of venues) {
-        try {
-          // Build search query for Gemini
-          const searchQuery = [venue.name, venue.address, venue.city, venue.state]
-            .filter(Boolean)
-            .join(', ');
+      // Apply any updates to the database based on worker results
+      for (const result of workerResult.results) {
+        if (result.wasUpdated && result.status !== 'error') {
+          try {
+            const venue = venues.find((v) => v.id === result.venueId);
+            if (venue && result.suggestedData) {
+              // Apply the updates that were validated in the worker
+              if (!venue.address && result.suggestedData.address) {
+                venue.address = result.suggestedData.address;
+              }
+              if (!venue.city && result.suggestedData.city) {
+                venue.city = result.suggestedData.city;
+              }
+              if (!venue.state && result.suggestedData.state) {
+                venue.state = result.suggestedData.state;
+              }
+              if (!venue.zip && result.suggestedData.zip) {
+                venue.zip = result.suggestedData.zip;
+              }
+              if (!venue.phone && result.suggestedData.phone) {
+                venue.phone = result.suggestedData.phone;
+              }
+              if (!venue.website && result.suggestedData.website) {
+                venue.website = result.suggestedData.website;
+              }
+              if (
+                (!venue.lat || !venue.lng) &&
+                result.suggestedData.lat &&
+                result.suggestedData.lng
+              ) {
+                venue.lat = result.suggestedData.lat;
+                venue.lng = result.suggestedData.lng;
+              }
 
-          if (!searchQuery.trim()) {
-            results.push({
-              venueId: venue.id,
-              venueName: venue.name,
-              status: 'skipped',
-              message: 'Insufficient data for validation',
-              currentData: this.extractVenueData(venue),
-            });
-            continue;
+              await this.venueRepository.save(venue);
+            }
+          } catch (error) {
+            console.error(`Failed to save updates for venue ${result.venueId}:`, error);
           }
-
-          // Use Gemini to lookup venue information
-          const geminiResult = await this.lookupVenueWithGemini(searchQuery, venue);
-          validatedCount++;
-
-          if (geminiResult.hasConflicts) {
-            conflictsFound++;
-          }
-
-          if (geminiResult.wasUpdated) {
-            updatedCount++;
-            // Update the venue in database
-            await this.venueRepository.save(venue);
-          }
-
-          results.push({
-            venueId: venue.id,
-            venueName: venue.name,
-            status: geminiResult.hasConflicts ? 'conflict' : 'validated',
-            message: geminiResult.message,
-            currentData: geminiResult.currentData,
-            suggestedData: geminiResult.suggestedData,
-            conflicts: geminiResult.conflicts,
-            wasUpdated: geminiResult.wasUpdated,
-            confidence: geminiResult.confidence,
-          });
-        } catch (error) {
-          errorsCount++;
-          results.push({
-            venueId: venue.id,
-            venueName: venue.name,
-            status: 'error',
-            message: `Error validating venue: ${error.message}`,
-            currentData: this.extractVenueData(venue),
-          });
         }
-
-        // Add small delay to avoid rate limiting
-        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      return {
-        success: true,
-        results,
-        summary: {
-          totalVenues: venues.length,
-          validatedCount,
-          conflictsFound,
-          updatedCount,
-          errorsCount,
-        },
-      };
+      return workerResult;
     } catch (error) {
       throw new Error(`Failed to validate venues: ${error.message}`);
     }
+  }
+
+  /**
+   * Validate venues using worker thread
+   */
+  private async validateVenuesWithWorker(venues: any[]): Promise<{
+    success: boolean;
+    results: any[];
+    summary: {
+      totalVenues: number;
+      validatedCount: number;
+      conflictsFound: number;
+      updatedCount: number;
+      errorsCount: number;
+    };
+  }> {
+    return new Promise((resolve) => {
+      const workerPath = path.resolve(__dirname, 'venue-validation-worker.js');
+      const worker = new Worker(workerPath);
+
+      // Handle worker messages
+      worker.on('message', (message) => {
+        if (message.type === 'progress') {
+          console.log(`🔄 [VENUE-VALIDATION] ${message.message}`);
+        } else if (message.type === 'complete') {
+          resolve(message.data);
+        } else if (message.type === 'error') {
+          console.error(`❌ [VENUE-VALIDATION] Error: ${message.error}`);
+          resolve({
+            success: false,
+            results: [],
+            summary: {
+              totalVenues: venues.length,
+              validatedCount: 0,
+              conflictsFound: 0,
+              updatedCount: 0,
+              errorsCount: venues.length,
+            },
+          });
+        }
+      });
+
+      worker.on('error', (error) => {
+        console.error(`❌ [VENUE-VALIDATION] Worker error: ${error.message}`);
+        resolve({
+          success: false,
+          results: [],
+          summary: {
+            totalVenues: venues.length,
+            validatedCount: 0,
+            conflictsFound: 0,
+            updatedCount: 0,
+            errorsCount: venues.length,
+          },
+        });
+      });
+
+      worker.on('exit', (code) => {
+        if (code !== 0) {
+          console.error(`❌ [VENUE-VALIDATION] Worker stopped with exit code ${code}`);
+          resolve({
+            success: false,
+            results: [],
+            summary: {
+              totalVenues: venues.length,
+              validatedCount: 0,
+              conflictsFound: 0,
+              updatedCount: 0,
+              errorsCount: venues.length,
+            },
+          });
+        }
+      });
+
+      // Send work data to worker
+      worker.postMessage({
+        venues: venues.map((venue) => ({
+          id: venue.id,
+          name: venue.name,
+          address: venue.address,
+          city: venue.city,
+          state: venue.state,
+          zip: venue.zip,
+          phone: venue.phone,
+          website: venue.website,
+          lat: venue.lat,
+          lng: venue.lng,
+          isActive: venue.isActive,
+        })),
+        geminiApiKey: process.env.GEMINI_API_KEY || '',
+      });
+    });
   }
 
   /**

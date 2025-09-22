@@ -1,6 +1,8 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ApiLogType, ApiProvider, LogLevel } from '../api-logging/api-log.entity';
 import { ApiLogService } from '../api-logging/api-log.service';
+import { ApiMonitoringService } from '../api-monitoring/api-monitoring.service';
+import { ApiEndpointType } from '../api-monitoring/entities/api-metrics-daily.entity';
 import { ArtistSearchResult, MusicSearchResult } from './music.interface';
 
 // Rate limiter for iTunes API
@@ -149,7 +151,10 @@ export class MusicService {
   private readonly userAgent = 'KaraokeRatingsApp/1.0.0';
   private readonly rateLimiter: ApiRateLimiter;
 
-  constructor(private readonly apiLogService: ApiLogService) {
+  constructor(
+    private readonly apiLogService: ApiLogService,
+    private readonly apiMonitoringService: ApiMonitoringService,
+  ) {
     this.rateLimiter = new ApiRateLimiter(this.apiLogService);
   }
 
@@ -250,11 +255,11 @@ export class MusicService {
     limit: number = 20,
   ): Promise<any> {
     const startTime = Date.now();
+    const endpointType = entity === 'song' ? ApiEndpointType.SEARCH : ApiEndpointType.SEARCH; // Both use SEARCH
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=${entity}&limit=${limit}&media=music`;
 
     try {
       await this.rateLimiter.waitForRateLimit('itunes');
-
-      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=${entity}&limit=${limit}&media=music`;
 
       console.log(`Fetching iTunes API: ${url}`);
 
@@ -270,7 +275,19 @@ export class MusicService {
       if (!response.ok) {
         console.error(`iTunes API error: ${response.status} - ${response.statusText}`);
 
-        // Log API error
+        // Enhanced monitoring for errors
+        await this.apiMonitoringService.logApiCall({
+          provider: ApiProvider.ITUNES,
+          endpointType,
+          requestUrl: url,
+          requestHeaders: { 'User-Agent': this.userAgent },
+          responseStatus: response.status,
+          responseTime,
+          errorMessage: `iTunes API error: ${response.status} - ${response.statusText}`,
+          isSuccess: false,
+        });
+
+        // Log API error (existing logging)
         await this.apiLogService.logApiCall({
           provider: ApiProvider.ITUNES,
           logType: entity === 'song' ? ApiLogType.SEARCH_SONGS : ApiLogType.SEARCH_ARTISTS,
@@ -294,7 +311,22 @@ export class MusicService {
       const data = await response.json();
       this.rateLimiter.recordSuccess('itunes');
 
-      // Log successful API call
+      // Enhanced monitoring for success
+      await this.apiMonitoringService.logApiCall({
+        provider: ApiProvider.ITUNES,
+        endpointType,
+        requestUrl: url,
+        requestHeaders: { 'User-Agent': this.userAgent },
+        responseStatus: response.status,
+        responseBody: {
+          resultCount: data.resultCount,
+          hasResults: data.results && data.results.length > 0,
+        },
+        responseTime,
+        isSuccess: true,
+      });
+
+      // Log successful API call (existing logging)
       await this.apiLogService.logApiCall({
         provider: ApiProvider.ITUNES,
         logType: entity === 'song' ? ApiLogType.SEARCH_SONGS : ApiLogType.SEARCH_ARTISTS,
@@ -316,7 +348,19 @@ export class MusicService {
       this.rateLimiter.recordFailure('itunes');
       console.error('iTunes fetch error:', error);
 
-      // Log API error
+      // Enhanced monitoring for exceptions
+      await this.apiMonitoringService.logApiCall({
+        provider: ApiProvider.ITUNES,
+        endpointType,
+        requestUrl: url,
+        requestHeaders: { 'User-Agent': this.userAgent },
+        responseStatus: 0, // no status code for exceptions
+        responseTime,
+        errorMessage: error.message || 'Unknown error',
+        isSuccess: false,
+      });
+
+      // Log API error (existing logging)
       await this.apiLogService.logApiError(
         ApiProvider.ITUNES,
         entity === 'song' ? ApiLogType.SEARCH_SONGS : ApiLogType.SEARCH_ARTISTS,

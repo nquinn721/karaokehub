@@ -333,20 +333,37 @@ export class AvatarService {
         order: { id: 'ASC' },
       });
 
-      // Get user's owned avatars
-      const ownedAvatars = await this.userAvatarRepository.find({
-        where: { userId },
-        relations: ['baseAvatar'],
-        // Removed order clause that was causing schema mismatch issues
-      });
+      // Get user's owned avatars - use raw query to handle avatarId column correctly
+      const ownedAvatarsRaw = await this.userAvatarRepository.query(
+        `
+        SELECT ua.id, ua.userId, ua.avatarId, a.id as avatar_id, a.name, a.description, a.type, a.rarity, a.imageUrl, a.price, a.coinPrice, a.isAvailable
+        FROM user_avatars ua
+        INNER JOIN avatars a ON ua.avatarId = a.id
+        WHERE ua.userId = ? AND a.isAvailable = 1
+      `,
+        [userId],
+      );
+
+      // Convert raw query results to Avatar objects
+      const ownedAvatars = ownedAvatarsRaw.map((row) => ({
+        id: row.avatar_id,
+        name: row.name,
+        description: row.description,
+        type: row.type,
+        rarity: row.rarity,
+        imageUrl: row.imageUrl,
+        price: parseFloat(row.price),
+        coinPrice: row.coinPrice,
+        isAvailable: row.isAvailable === 1,
+      }));
 
       // Combine free avatars with owned avatars
       const allAvatars = [...freeAvatars];
 
       // Add owned avatars that aren't already in the free list
-      for (const userAvatar of ownedAvatars) {
-        if (userAvatar.baseAvatar && !freeAvatars.find((a) => a.id === userAvatar.baseAvatar.id)) {
-          allAvatars.push(userAvatar.baseAvatar);
+      for (const ownedAvatar of ownedAvatars) {
+        if (!freeAvatars.find((a) => a.id === ownedAvatar.id)) {
+          allAvatars.push(ownedAvatar);
         }
       }
 

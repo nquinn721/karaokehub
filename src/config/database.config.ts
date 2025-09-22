@@ -31,7 +31,7 @@ import { Venue } from '../venue/venue.entity';
 export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => {
   const isProduction = configService.get('NODE_ENV') === 'production';
   const socketPath = configService.get('DATABASE_SOCKET_PATH');
-  
+
   console.log('🗃️  Database Config:', {
     NODE_ENV: configService.get('NODE_ENV'),
     isProduction,
@@ -76,22 +76,22 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       Transaction,
     ],
     synchronize: false, // Disabled to prevent foreign key constraint issues
-    logging: !isProduction, // Enable SQL logging in development only
+    logging: false, // SQL logging disabled
 
     // Handle schema synchronization more gracefully
     dropSchema: false, // Never drop the entire schema
-    
+
     // Additional safety options to prevent ANY schema changes
     autoLoadEntities: false, // Disable auto-loading to prevent unexpected schema changes
     retryAttempts: 0, // Don't retry failed connections that might trigger schema operations
-    
+
     // Completely disable schema validation
     extra: {
       charset: 'utf8mb4_unicode_ci',
       // Disable foreign key checks during connection to prevent constraint errors
       initSQLCommands: ['SET foreign_key_checks = 0;'],
     },
-    
+
     // Migration configuration - environment specific
     migrations: isProduction ? ['dist/migrations/*.js'] : [],
     migrationsTableName: 'migrations',

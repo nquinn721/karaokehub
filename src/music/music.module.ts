@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ApiLoggingModule } from '../api-logging/api-logging.module';
+import { ApiMonitoringModule } from '../api-monitoring/api-monitoring.module';
 import { User } from '../entities/user.entity';
 import { MusicController } from './music.controller';
 import { MusicService } from './music.service';
@@ -12,7 +13,11 @@ import { Song } from './song.entity';
 import { SongService } from './song.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Song, SongFavorite, User]), ApiLoggingModule],
+  imports: [
+    TypeOrmModule.forFeature([Song, SongFavorite, User]),
+    ApiLoggingModule,
+    ApiMonitoringModule,
+  ],
   controllers: [MusicController, SongController, SongFavoriteController],
   providers: [MusicService, SongService, SongFavoriteService],
   exports: [MusicService, SongService, SongFavoriteService],
