@@ -52,7 +52,7 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
       price: 0.99,
       features: [
         'Remove all advertisements',
-        'Clean browsing experience', 
+        'Clean browsing experience',
         'Support development',
         'All free features included',
       ],
@@ -65,7 +65,7 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
       features: [
         'All Ad-Free features',
         'Unlimited song favorites',
-        'Unlimited show favorites', 
+        'Unlimited show favorites',
         'Unlimited song previews',
         'Priority customer support',
         'Advanced features access',
@@ -118,7 +118,7 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
         <Typography variant="body1" color="text.secondary">
           You're already on the highest tier! Thank you for being a premium member.
         </Typography>
-        
+
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
           <Button onClick={onClose}>Close</Button>
         </Box>
@@ -155,7 +155,11 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
       {/* Current Plan Display */}
       {currentPlan === 'free' && (
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+          >
             <Typography component="span" sx={{ fontSize: '0.9rem', color: 'text.secondary' }}>
               SUBSCRIPTION
             </Typography>
@@ -224,22 +228,27 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
                 }}
               />
             )}
-            
+
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ textAlign: 'center', mb: 3 }}>
-                <Typography 
-                  variant="h4" 
+                <Typography
+                  variant="h4"
                   fontWeight={700}
-                  sx={{ 
+                  sx={{
                     color: plan.popular ? theme.palette.secondary.main : theme.palette.primary.main,
-                    mb: 1 
+                    mb: 1,
                   }}
                 >
                   {plan.name}
                 </Typography>
                 <Typography variant="h2" color="primary" fontWeight={700} sx={{ mb: 1 }}>
                   ${plan.price.toFixed(2)}
-                  <Typography component="span" variant="h6" color="text.secondary" sx={{ fontWeight: 400 }}>
+                  <Typography
+                    component="span"
+                    variant="h6"
+                    color="text.secondary"
+                    sx={{ fontWeight: 400 }}
+                  >
                     /month
                   </Typography>
                 </Typography>
@@ -260,15 +269,17 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
                     <ListItemIcon sx={{ minWidth: 36 }}>
                       <FontAwesomeIcon
                         icon={faCheck}
-                        style={{ 
-                          color: plan.popular ? theme.palette.secondary.main : theme.palette.success.main, 
-                          fontSize: '16px' 
+                        style={{
+                          color: plan.popular
+                            ? theme.palette.secondary.main
+                            : theme.palette.success.main,
+                          fontSize: '16px',
                         }}
                       />
                     </ListItemIcon>
                     <ListItemText
                       primary={feature}
-                      primaryTypographyProps={{ 
+                      primaryTypographyProps={{
                         variant: 'body1',
                         fontWeight: 500,
                       }}
@@ -284,7 +295,7 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
                 size="large"
                 disabled={loading}
                 onClick={() => handleUpgrade(plan.id)}
-                sx={{ 
+                sx={{
                   py: 1.5,
                   fontSize: '1.1rem',
                   fontWeight: 600,
@@ -304,8 +315,8 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
       </Box>
 
       {/* Footer */}
-      <Box 
-        sx={{ 
+      <Box
+        sx={{
           textAlign: 'center',
           p: 2,
           background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
@@ -316,8 +327,8 @@ export const SubscriptionUpgradeModal: React.FC<SubscriptionUpgradeModalProps> =
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           Cancel anytime. No long-term commitments. 30-day money-back guarantee.
         </Typography>
-        <Button 
-          onClick={onClose} 
+        <Button
+          onClick={onClose}
           startIcon={<FontAwesomeIcon icon={faTimes} />}
           variant="text"
           sx={{ mt: 1 }}

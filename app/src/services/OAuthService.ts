@@ -6,8 +6,8 @@ import { apiService } from './ApiService';
 
 // Configure Google Sign-In
 GoogleSignin.configure({
-  webClientId: '479508459081-8nlnt4fh1s1sccbkb46qrql3a4f7oj59.apps.googleusercontent.com', // Web client ID from Google Console
-  iosClientId: '479508459081-YOUR_IOS_CLIENT_ID.apps.googleusercontent.com', // iOS client ID (if you have one)
+  webClientId: '203453576607-ivpb2s4r8lnlkfk3osb6m0jb1pgdjd1.apps.googleusercontent.com', // Web client ID from Google Console
+  iosClientId: '203453576607-YOUR_IOS_CLIENT_ID.apps.googleusercontent.com', // iOS client ID (if you have one)
   offlineAccess: true,
   hostedDomain: '',
   forceCodeForRefreshToken: true,

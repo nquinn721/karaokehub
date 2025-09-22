@@ -47,7 +47,12 @@
       "expo-camera",
       "expo-image-picker",
       "expo-secure-store",
-      "@react-native-google-signin/google-signin",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.203453576607-ivpb2s4r8lnlkfk3osb6m0jb1pgdjd1"
+        }
+      ],
       [
         "expo-image-picker",
         {

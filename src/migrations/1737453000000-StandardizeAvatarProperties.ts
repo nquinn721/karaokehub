@@ -3,7 +3,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 export class StandardizeAvatarProperties1737453000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.log('🎭 Starting Avatar Properties Standardization Migration...');
-    
+
     try {
       // Show current state
       console.log('📊 Current avatar state before standardization:');
@@ -12,9 +12,11 @@ export class StandardizeAvatarProperties1737453000000 implements MigrationInterf
         FROM avatars 
         ORDER BY name
       `);
-      
+
       for (const avatar of currentAvatars) {
-        console.log(`   ${avatar.name}: ${avatar.type}/${avatar.rarity} (price: ${avatar.price}, coins: ${avatar.coinPrice}, free: ${avatar.isFree})`);
+        console.log(
+          `   ${avatar.name}: ${avatar.type}/${avatar.rarity} (price: ${avatar.price}, coins: ${avatar.coinPrice}, free: ${avatar.isFree})`,
+        );
       }
 
       // Simple update to standardize all avatars
@@ -29,7 +31,7 @@ export class StandardizeAvatarProperties1737453000000 implements MigrationInterf
           isFree = 1,
           isAvailable = 1
       `);
-      
+
       console.log(`✅ Updated ${updateResult.affectedRows || 'all'} avatar records`);
 
       // Show final state
@@ -39,9 +41,11 @@ export class StandardizeAvatarProperties1737453000000 implements MigrationInterf
         FROM avatars 
         ORDER BY name
       `);
-      
+
       for (const avatar of finalAvatars) {
-        console.log(`   ${avatar.name}: ${avatar.type}/${avatar.rarity} (price: ${avatar.price}, coins: ${avatar.coinPrice}, free: ${avatar.isFree})`);
+        console.log(
+          `   ${avatar.name}: ${avatar.type}/${avatar.rarity} (price: ${avatar.price}, coins: ${avatar.coinPrice}, free: ${avatar.isFree})`,
+        );
       }
 
       // Verify all avatars are standardized
@@ -53,16 +57,19 @@ export class StandardizeAvatarProperties1737453000000 implements MigrationInterf
       `);
 
       const stats = verificationResult[0];
-      console.log(`📈 Verification: ${stats.standardized_avatars}/${stats.total_avatars} avatars are now standardized`);
+      console.log(
+        `📈 Verification: ${stats.standardized_avatars}/${stats.total_avatars} avatars are now standardized`,
+      );
 
       if (stats.standardized_avatars !== stats.total_avatars) {
-        throw new Error(`❌ FAILED: Only ${stats.standardized_avatars}/${stats.total_avatars} avatars were standardized`);
+        throw new Error(
+          `❌ FAILED: Only ${stats.standardized_avatars}/${stats.total_avatars} avatars were standardized`,
+        );
       }
 
       console.log('🎉 Avatar Properties Standardization Migration completed successfully!');
       console.log('   ✅ All avatars are now basic/common/free');
       console.log('   ✅ Onyx and Tyler are no longer premium');
-
     } catch (error) {
       console.error('❌ Avatar Properties Standardization Migration failed:', error);
       throw error;

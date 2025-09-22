@@ -14,7 +14,9 @@ async function fixProductionAvatarData() {
   const connectionConfig = {
     type: 'mysql',
     // Production connection via Cloud SQL Proxy
-    socketPath: process.env.DATABASE_SOCKET_PATH || '/cloudsql/heroic-footing-460117-k8:us-central1:karaokehub-db',
+    socketPath:
+      process.env.DATABASE_SOCKET_PATH ||
+      '/cloudsql/heroic-footing-460117-k8:us-central1:karaokehub-db',
     username: process.env.DATABASE_USERNAME || 'admin',
     password: process.env.DATABASE_PASSWORD,
     database: process.env.DATABASE_NAME || 'karaoke-hub',
@@ -23,7 +25,7 @@ async function fixProductionAvatarData() {
   };
 
   let connection;
-  
+
   try {
     console.log('🔌 Connecting to production database...');
     connection = await createConnection(connectionConfig);
@@ -66,7 +68,7 @@ async function fixProductionAvatarData() {
 
     if (invalidUsers.length > 0) {
       console.log(`⚠️  Found ${invalidUsers.length} users with invalid avatar references`);
-      
+
       // Get default avatar for fixing
       const defaultAvatar = await connection.query(`
         SELECT id, name FROM avatars 
@@ -79,14 +81,19 @@ async function fixProductionAvatarData() {
         const defaultAvatarId = defaultAvatar[0].id;
         console.log(`🔧 Using default avatar: ${defaultAvatar[0].name} (${defaultAvatarId})`);
 
-        const updateResult = await connection.query(`
+        const updateResult = await connection.query(
+          `
           UPDATE users 
           SET equippedAvatarId = ? 
           WHERE equippedAvatarId IS NOT NULL 
           AND equippedAvatarId NOT IN (SELECT id FROM avatars)
-        `, [defaultAvatarId]);
+        `,
+          [defaultAvatarId],
+        );
 
-        console.log(`✅ Fixed ${updateResult.affectedRows || 0} users with invalid avatar references`);
+        console.log(
+          `✅ Fixed ${updateResult.affectedRows || 0} users with invalid avatar references`,
+        );
       }
     } else {
       console.log('✅ All user avatar references are valid');
@@ -105,12 +112,15 @@ async function fixProductionAvatarData() {
 
     if (usersNeedingRecords.length > 0) {
       console.log(`🔧 Creating ${usersNeedingRecords.length} missing user_avatars records...`);
-      
+
       for (const user of usersNeedingRecords) {
-        await connection.query(`
+        await connection.query(
+          `
           INSERT INTO user_avatars (id, userId, avatarId, acquiredAt)
           VALUES (UUID(), ?, ?, NOW())
-        `, [user.id, user.equippedAvatarId]);
+        `,
+          [user.id, user.equippedAvatarId],
+        );
       }
       console.log('✅ Created missing user_avatars records');
     } else {
@@ -141,13 +151,12 @@ async function fixProductionAvatarData() {
 
     console.log('\n🎉 Production avatar data fix completed successfully!');
     console.log('   The avatar system is now ready for UUID-based operations');
-
   } catch (error) {
     console.error('❌ Production avatar data fix failed:', error);
     console.error('Error details:', {
       message: error.message,
       code: error.code,
-      sqlState: error.sqlState
+      sqlState: error.sqlState,
     });
     process.exit(1);
   } finally {
