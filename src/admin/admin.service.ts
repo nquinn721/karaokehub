@@ -1,3 +1,4 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -32,6 +33,8 @@ export interface VenueVerificationResult {
 
 @Injectable()
 export class AdminService {
+  private genAI: GoogleGenerativeAI;
+
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
@@ -60,7 +63,13 @@ export class AdminService {
     @InjectRepository(UserAvatar)
     private userAvatarRepository: Repository<UserAvatar>,
     private geocodingService: GeocodingService,
-  ) {}
+  ) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is required');
+    }
+    this.genAI = new GoogleGenerativeAI(apiKey);
+  }
 
   async getStatistics() {
     const [
@@ -350,14 +359,14 @@ export class AdminService {
     // Create user_avatar record if it doesn't exist (for non-free avatars)
     if (!avatar.isFree) {
       const existingUserAvatar = await this.userAvatarRepository.findOne({
-        where: { userId, avatarId },
+        where: { userId, baseAvatarId: avatarId },
       });
 
       if (!existingUserAvatar) {
         await this.userAvatarRepository.save({
           id: require('crypto').randomUUID(),
           userId,
-          avatarId,
+          baseAvatarId: avatarId,
           acquiredAt: new Date(),
         });
       }
@@ -1238,6 +1247,342 @@ export class AdminService {
         error: error.message,
       };
     }
+  }
+
+  /**
+   * Validate all venues using Gemini AI to lookup geo data and find conflicts
+   */
+  async validateAllVenuesWithGemini(): Promise<{
+    success: boolean;
+    results: any[];
+    summary: {
+      totalVenues: number;
+      validatedCount: number;
+      conflictsFound: number;
+      updatedCount: number;
+      errorsCount: number;
+    };
+  }> {
+    try {
+      // Get all active venues
+      const venues = await this.venueRepository.find({
+        where: { isActive: true },
+        relations: ['shows'],
+      });
+
+      const results = [];
+      let validatedCount = 0;
+      let conflictsFound = 0;
+      let updatedCount = 0;
+      let errorsCount = 0;
+
+      for (const venue of venues) {
+        try {
+          // Build search query for Gemini
+          const searchQuery = [venue.name, venue.address, venue.city, venue.state]
+            .filter(Boolean)
+            .join(', ');
+
+          if (!searchQuery.trim()) {
+            results.push({
+              venueId: venue.id,
+              venueName: venue.name,
+              status: 'skipped',
+              message: 'Insufficient data for validation',
+              currentData: this.extractVenueData(venue),
+            });
+            continue;
+          }
+
+          // Use Gemini to lookup venue information
+          const geminiResult = await this.lookupVenueWithGemini(searchQuery, venue);
+          validatedCount++;
+
+          if (geminiResult.hasConflicts) {
+            conflictsFound++;
+          }
+
+          if (geminiResult.wasUpdated) {
+            updatedCount++;
+            // Update the venue in database
+            await this.venueRepository.save(venue);
+          }
+
+          results.push({
+            venueId: venue.id,
+            venueName: venue.name,
+            status: geminiResult.hasConflicts ? 'conflict' : 'validated',
+            message: geminiResult.message,
+            currentData: geminiResult.currentData,
+            suggestedData: geminiResult.suggestedData,
+            conflicts: geminiResult.conflicts,
+            wasUpdated: geminiResult.wasUpdated,
+            confidence: geminiResult.confidence,
+          });
+        } catch (error) {
+          errorsCount++;
+          results.push({
+            venueId: venue.id,
+            venueName: venue.name,
+            status: 'error',
+            message: `Error validating venue: ${error.message}`,
+            currentData: this.extractVenueData(venue),
+          });
+        }
+
+        // Add small delay to avoid rate limiting
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+
+      return {
+        success: true,
+        results,
+        summary: {
+          totalVenues: venues.length,
+          validatedCount,
+          conflictsFound,
+          updatedCount,
+          errorsCount,
+        },
+      };
+    } catch (error) {
+      throw new Error(`Failed to validate venues: ${error.message}`);
+    }
+  }
+
+  /**
+   * Use Gemini AI to lookup venue information and compare with database
+   */
+  private async lookupVenueWithGemini(
+    searchQuery: string,
+    venue: any,
+  ): Promise<{
+    hasConflicts: boolean;
+    wasUpdated: boolean;
+    message: string;
+    currentData: any;
+    suggestedData: any;
+    conflicts: string[];
+    confidence: number;
+  }> {
+    const model = this.genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: {
+        temperature: 0.1,
+        topP: 0.8,
+        topK: 40,
+        maxOutputTokens: 2048,
+      },
+    });
+
+    const prompt = `You are a venue data validation expert. Look up accurate information for this venue and compare it with the current database data.
+
+Venue to lookup: "${searchQuery}"
+
+Current database data:
+- Name: ${venue.name}
+- Address: ${venue.address || 'Not provided'}
+- City: ${venue.city || 'Not provided'}
+- State: ${venue.state || 'Not provided'}
+- ZIP: ${venue.zip || 'Not provided'}
+- Phone: ${venue.phone || 'Not provided'}
+- Website: ${venue.website || 'Not provided'}
+- Coordinates: ${venue.lat && venue.lng ? `${venue.lat}, ${venue.lng}` : 'Not provided'}
+
+Please find the most accurate, up-to-date information for this venue and return a JSON response with this structure:
+
+{
+  "venueFound": true/false,
+  "confidence": 0.0-1.0,
+  "suggestedData": {
+    "name": "Exact venue name",
+    "address": "Full street address",
+    "city": "City name",
+    "state": "State abbreviation (2 letters)",
+    "zip": "ZIP code",
+    "phone": "Phone number",
+    "website": "Website URL",
+    "lat": number,
+    "lng": number
+  },
+  "conflicts": [
+    "List of specific conflicts found between current and suggested data"
+  ],
+  "message": "Summary of findings"
+}
+
+If the venue cannot be found or you're not confident in the information, set venueFound to false and confidence to 0.`;
+
+    try {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      // Parse JSON response
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No valid JSON found in response');
+      }
+
+      const geminiData = JSON.parse(jsonMatch[0]);
+
+      if (!geminiData.venueFound || geminiData.confidence < 0.7) {
+        return {
+          hasConflicts: false,
+          wasUpdated: false,
+          message: geminiData.message || 'Venue not found or low confidence',
+          currentData: this.extractVenueData(venue),
+          suggestedData: null,
+          conflicts: [],
+          confidence: geminiData.confidence || 0,
+        };
+      }
+
+      // Compare data and identify conflicts
+      const conflicts = this.compareVenueData(venue, geminiData.suggestedData);
+      const hasConflicts = conflicts.length > 0;
+
+      // Auto-update certain fields if they're missing and confidence is high
+      let wasUpdated = false;
+      if (geminiData.confidence >= 0.9) {
+        if (!venue.lat && geminiData.suggestedData.lat) {
+          venue.lat = geminiData.suggestedData.lat;
+          wasUpdated = true;
+        }
+        if (!venue.lng && geminiData.suggestedData.lng) {
+          venue.lng = geminiData.suggestedData.lng;
+          wasUpdated = true;
+        }
+        if (!venue.phone && geminiData.suggestedData.phone) {
+          venue.phone = geminiData.suggestedData.phone;
+          wasUpdated = true;
+        }
+        if (!venue.website && geminiData.suggestedData.website) {
+          venue.website = geminiData.suggestedData.website;
+          wasUpdated = true;
+        }
+        if (!venue.zip && geminiData.suggestedData.zip) {
+          venue.zip = geminiData.suggestedData.zip;
+          wasUpdated = true;
+        }
+      }
+
+      return {
+        hasConflicts,
+        wasUpdated,
+        message: geminiData.message,
+        currentData: this.extractVenueData(venue),
+        suggestedData: geminiData.suggestedData,
+        conflicts,
+        confidence: geminiData.confidence,
+      };
+    } catch (error) {
+      throw new Error(`Gemini lookup failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Compare venue data and identify conflicts
+   */
+  private compareVenueData(current: any, suggested: any): string[] {
+    const conflicts = [];
+
+    // Compare key fields
+    if (
+      current.name &&
+      suggested.name &&
+      current.name.toLowerCase() !== suggested.name.toLowerCase()
+    ) {
+      conflicts.push(`Name: "${current.name}" vs "${suggested.name}"`);
+    }
+
+    if (
+      current.address &&
+      suggested.address &&
+      current.address.toLowerCase() !== suggested.address.toLowerCase()
+    ) {
+      conflicts.push(`Address: "${current.address}" vs "${suggested.address}"`);
+    }
+
+    if (
+      current.city &&
+      suggested.city &&
+      current.city.toLowerCase() !== suggested.city.toLowerCase()
+    ) {
+      conflicts.push(`City: "${current.city}" vs "${suggested.city}"`);
+    }
+
+    if (
+      current.state &&
+      suggested.state &&
+      current.state.toLowerCase() !== suggested.state.toLowerCase()
+    ) {
+      conflicts.push(`State: "${current.state}" vs "${suggested.state}"`);
+    }
+
+    if (current.zip && suggested.zip && current.zip !== suggested.zip) {
+      conflicts.push(`ZIP: "${current.zip}" vs "${suggested.zip}"`);
+    }
+
+    if (current.phone && suggested.phone && current.phone !== suggested.phone) {
+      conflicts.push(`Phone: "${current.phone}" vs "${suggested.phone}"`);
+    }
+
+    // Check coordinates if both exist
+    if (current.lat && current.lng && suggested.lat && suggested.lng) {
+      const distance = this.calculateDistance(
+        current.lat,
+        current.lng,
+        suggested.lat,
+        suggested.lng,
+      );
+      if (distance > 0.5) {
+        // More than 0.5 miles apart
+        conflicts.push(
+          `Location: Current coordinates are ${distance.toFixed(2)} miles from suggested location`,
+        );
+      }
+    }
+
+    return conflicts;
+  }
+
+  /**
+   * Calculate distance between two points in miles
+   */
+  private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 3959; // Earth's radius in miles
+    const dLat = this.toRadians(lat2 - lat1);
+    const dLng = this.toRadians(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(lat1)) *
+        Math.cos(this.toRadians(lat2)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
+
+  /**
+   * Extract venue data for comparison
+   */
+  private extractVenueData(venue: any) {
+    return {
+      name: venue.name,
+      address: venue.address,
+      city: venue.city,
+      state: venue.state,
+      zip: venue.zip,
+      phone: venue.phone,
+      website: venue.website,
+      lat: venue.lat,
+      lng: venue.lng,
+    };
   }
 
   // Transaction Management Methods

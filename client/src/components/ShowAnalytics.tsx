@@ -7,6 +7,7 @@ import {
   faMapMarkerAlt,
   faMicrophone,
   faSearch,
+  faShieldAlt,
   faUser,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -14,9 +15,11 @@ import { ExpandLess, ExpandMore } from '@mui/icons-material';
 import {
   Alert,
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Collapse,
   Grid,
   IconButton,
@@ -30,7 +33,8 @@ import {
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import { useEffect, useMemo, useState } from 'react';
-import { adminStore } from '../stores';
+import { adminStore, uiStore } from '../stores';
+import CustomModal from './CustomModal';
 
 interface ShowAnalyticsProps {}
 
@@ -38,6 +42,61 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
   const theme = useTheme();
   const [expandedCards, setExpandedCards] = useState<{ [key: string]: boolean }>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [isCleaningDuplicates, setIsCleaningDuplicates] = useState(false);
+  const [isValidatingVenues, setIsValidatingVenues] = useState(false);
+  const [validationModalOpen, setValidationModalOpen] = useState(false);
+  const [validationResults, setValidationResults] = useState<any>(null);
+
+  // Handle cleaning duplicates
+  const handleCleanDuplicates = async () => {
+    setIsCleaningDuplicates(true);
+    try {
+      const result = await adminStore.cleanupShowsSimple();
+      uiStore.addNotification(result.message, 'success');
+
+      // Refresh the statistics to reflect the cleanup
+      await adminStore.fetchStatistics();
+    } catch (error) {
+      console.error('Failed to clean duplicates:', error);
+      uiStore.addNotification('Failed to clean duplicates. Please try again.', 'error');
+    } finally {
+      setIsCleaningDuplicates(false);
+    }
+  };
+
+  // Handle venue validation with Gemini AI
+  const handleValidateVenues = async () => {
+    setIsValidatingVenues(true);
+    try {
+      uiStore.addNotification('Starting venue validation with Gemini AI...', 'info');
+      
+      const response = await fetch('/api/admin/venues/validate-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to validate venues');
+      }
+
+      const results = await response.json();
+      setValidationResults(results);
+      setValidationModalOpen(true);
+      
+      uiStore.addNotification(
+        `Venue validation complete! Found ${results.summary.conflictsFound} conflicts out of ${results.summary.totalVenues} venues.`,
+        'success'
+      );
+    } catch (error) {
+      console.error('Failed to validate venues:', error);
+      uiStore.addNotification('Failed to validate venues. Please try again.', 'error');
+    } finally {
+      setIsValidatingVenues(false);
+    }
+  };
 
   // State abbreviation to full name mapping
   const getFullStateName = (abbreviation: string): string => {
@@ -555,12 +614,40 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Show Analytics Dashboard
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-          Comprehensive insights into your karaoke show database
-        </Typography>
+        {/* Header with Title and Action Buttons */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+          <Box>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Show Analytics Dashboard
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Comprehensive insights into your karaoke show database
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<FontAwesomeIcon icon={faShieldAlt} />}
+              onClick={handleValidateVenues}
+              disabled={isValidatingVenues}
+              sx={{
+                borderRadius: 2,
+                px: 3,
+                py: 1.5,
+                minWidth: 200,
+              }}
+            >
+              {isValidatingVenues ? (
+                <>
+                  <CircularProgress size={16} sx={{ mr: 1 }} />
+                  Validating Venues...
+                </>
+              ) : (
+                'Validate Venue Data'
+              )}
+            </Button>
+          </Box>
+        </Box>
 
         {/* Search Filter */}
         <TextField
@@ -696,14 +783,35 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <FontAwesomeIcon
-                  icon={faClone}
-                  style={{ color: theme.palette.warning.main, fontSize: '1.5rem' }}
-                />
-                <Typography variant="h6">
-                  Duplicate Groups ({potentialDuplicates.length})
-                </Typography>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mb: 2,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <FontAwesomeIcon
+                    icon={faClone}
+                    style={{ color: theme.palette.warning.main, fontSize: '1.5rem' }}
+                  />
+                  <Typography variant="h6">
+                    Duplicate Groups ({potentialDuplicates.length})
+                  </Typography>
+                </Box>
+
+                {potentialDuplicates.length > 0 && (
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    onClick={handleCleanDuplicates}
+                    disabled={isCleaningDuplicates}
+                    size="small"
+                  >
+                    {isCleaningDuplicates ? 'Cleaning...' : 'Clean Duplicates'}
+                  </Button>
+                )}
               </Box>
 
               {potentialDuplicates.length > 0 ? (
@@ -790,6 +898,135 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
           />
         </Grid>
       </Grid>
+
+      {/* Venue Validation Results Modal */}
+      <CustomModal
+        open={validationModalOpen}
+        onClose={() => setValidationModalOpen(false)}
+        title="Venue Validation Results"
+        maxWidth="lg"
+      >
+        <Box sx={{ p: 2 }}>
+          {validationResults && (
+            <>
+              {/* Summary */}
+              <Card sx={{ mb: 3, p: 2, bgcolor: 'background.paper' }}>
+                <Typography variant="h6" gutterBottom sx={{ color: 'primary.main' }}>
+                  📊 Validation Summary
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={6} md={3}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h4" sx={{ color: 'text.primary', fontWeight: 'bold' }}>
+                        {validationResults.summary.totalVenues}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Total Venues
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6} md={3}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h4" sx={{ color: 'success.main', fontWeight: 'bold' }}>
+                        {validationResults.summary.validatedCount}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Validated
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6} md={3}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h4" sx={{ color: 'warning.main', fontWeight: 'bold' }}>
+                        {validationResults.summary.conflictsFound}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Conflicts Found
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6} md={3}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="h4" sx={{ color: 'info.main', fontWeight: 'bold' }}>
+                        {validationResults.summary.updatedCount}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Auto-Updated
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Card>
+
+              {/* Results List */}
+              <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
+                Detailed Results
+              </Typography>
+              <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
+                {validationResults.results.map((result: any) => (
+                  <Card 
+                    key={result.venueId} 
+                    sx={{ 
+                      mb: 2, 
+                      border: result.status === 'conflict' ? '1px solid' : '1px solid transparent',
+                      borderColor: result.status === 'conflict' ? 'warning.main' : 'divider',
+                    }}
+                  >
+                    <CardContent>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                          {result.venueName}
+                        </Typography>
+                        <Chip 
+                          label={result.status} 
+                          size="small"
+                          color={
+                            result.status === 'conflict' ? 'warning' :
+                            result.status === 'validated' ? 'success' :
+                            result.status === 'error' ? 'error' : 'default'
+                          }
+                        />
+                      </Box>
+                      
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {result.message}
+                      </Typography>
+
+                      {result.conflicts && result.conflicts.length > 0 && (
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" sx={{ color: 'warning.main', mb: 1 }}>
+                            ⚠️ Conflicts Found:
+                          </Typography>
+                          {result.conflicts.map((conflict: string, conflictIndex: number) => (
+                            <Typography 
+                              key={conflictIndex} 
+                              variant="body2" 
+                              sx={{ 
+                                ml: 2, 
+                                mb: 0.5,
+                                color: 'text.secondary',
+                                '&:before': { content: '"• "' }
+                              }}
+                            >
+                              {conflict}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )}
+
+                      {result.wasUpdated && (
+                        <Alert severity="info" sx={{ mt: 1 }}>
+                          This venue was automatically updated with missing information.
+                        </Alert>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </Box>
+            </>
+          )}
+        </Box>
+      </CustomModal>
     </Box>
   );
 });

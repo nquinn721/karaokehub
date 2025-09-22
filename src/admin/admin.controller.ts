@@ -243,6 +243,12 @@ export class AdminController {
     return await this.adminService.verifyVenueLocation(id);
   }
 
+  // Validate all venues with Gemini AI
+  @Post('venues/validate-all')
+  async validateAllVenues() {
+    return await this.adminService.validateAllVenuesWithGemini();
+  }
+
   // Transaction Management Endpoints
   @Get('transactions')
   async getTransactions(
