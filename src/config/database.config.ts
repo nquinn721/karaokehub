@@ -36,6 +36,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     NODE_ENV: configService.get('NODE_ENV'),
     isProduction,
     synchronize: false, // Always false for safety
+    migrationsEnabled: true, // Migrations enabled for database updates
   });
 
   const baseConfig = {
@@ -93,9 +94,9 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     },
 
     // Migration configuration - environment specific
-    migrations: isProduction ? ['dist/migrations/*.js'] : [],
+    migrations: isProduction ? ['dist/migrations/*.js'] : ['src/migrations/*.ts'],
     migrationsTableName: 'migrations',
-    migrationsRun: false, // Disable all migration runs to prevent any schema changes
+    migrationsRun: true, // Enable automatic migration execution on startup
 
     // Connection pool options for TypeORM
     ...(isProduction && {
