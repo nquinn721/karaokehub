@@ -20,7 +20,7 @@ async function testVenueValidation() {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ 
+    const model = genAI.getGenerativeModel({
       model: 'gemini-2.0-flash',
       generationConfig: {
         temperature: 0.1,
@@ -86,12 +86,12 @@ If the venue cannot be found or you're not confident in the information, set ven
         const parsedData = JSON.parse(jsonMatch[0]);
         console.log('\n✅ Successfully parsed JSON response:');
         console.log(JSON.stringify(parsedData, null, 2));
-        
+
         if (parsedData.venueFound) {
           console.log(`\n🎯 Venue found with confidence: ${parsedData.confidence}`);
           if (parsedData.conflicts && parsedData.conflicts.length > 0) {
             console.log('⚠️ Conflicts detected:');
-            parsedData.conflicts.forEach(conflict => console.log(`  - ${conflict}`));
+            parsedData.conflicts.forEach((conflict) => console.log(`  - ${conflict}`));
           }
         } else {
           console.log('\n❌ Venue not found or low confidence');
@@ -104,7 +104,6 @@ If the venue cannot be found or you're not confident in the information, set ven
     }
 
     console.log('\n✅ Venue validation test completed successfully!');
-    
   } catch (error) {
     console.error('❌ Test failed:', error.message);
   }

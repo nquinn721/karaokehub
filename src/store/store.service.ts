@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Avatar } from '../avatar/entities/avatar.entity';
 import { Microphone } from '../avatar/entities/microphone.entity';
+import { UserAvatar } from '../avatar/entities/user-avatar.entity';
 import { UserMicrophone } from '../avatar/entities/user-microphone.entity';
 import { User } from '../entities/user.entity';
 import { StripeService } from '../subscription/stripe.service';
@@ -13,6 +15,10 @@ export class StoreService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Avatar)
+    private avatarRepository: Repository<Avatar>,
+    @InjectRepository(UserAvatar)
+    private userAvatarRepository: Repository<UserAvatar>,
     @InjectRepository(Microphone)
     private microphoneRepository: Repository<Microphone>,
     @InjectRepository(UserMicrophone)
@@ -116,6 +122,118 @@ export class StoreService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async getStoreAvatars() {
+    return this.avatarRepository.find({
+      where: {
+        isAvailable: true,
+        isFree: false, // Exclude free items
+      },
+      order: { rarity: 'ASC', coinPrice: 'ASC' },
+    });
+  }
+
+  async getUserAvatars(userId: string) {
+    return this.userAvatarRepository.find({
+      where: { userId },
+      relations: ['baseAvatar'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async purchaseAvatarWithCoins(userId: string, avatarId: string) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const avatar = await this.avatarRepository.findOne({
+      where: { id: avatarId, isAvailable: true },
+    });
+    if (!avatar) {
+      throw new NotFoundException('Avatar not found or not available');
+    }
+
+    // Check if user already owns this avatar
+    const existingOwnership = await this.userAvatarRepository.findOne({
+      where: { userId, baseAvatarId: avatarId },
+    });
+    if (existingOwnership) {
+      throw new BadRequestException('You already own this avatar');
+    }
+
+    // Check if user has enough coins
+    if (user.coins < avatar.coinPrice) {
+      throw new BadRequestException('Insufficient coins');
+    }
+
+    // Start transaction
+    const queryRunner = this.userRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Deduct coins from user
+      user.coins -= avatar.coinPrice;
+      await queryRunner.manager.save(user);
+
+      // Add avatar to user's collection
+      const userAvatar = this.userAvatarRepository.create({
+        userId,
+        baseAvatarId: avatarId,
+      });
+      await queryRunner.manager.save(userAvatar);
+
+      // Record transaction
+      const transaction = this.transactionRepository.create({
+        userId,
+        type: TransactionType.AVATAR_PURCHASE,
+        status: TransactionStatus.COMPLETED,
+        coinAmount: -avatar.coinPrice,
+        avatarId,
+        description: `Purchased ${avatar.name}`,
+      });
+      await queryRunner.manager.save(transaction);
+
+      await queryRunner.commitTransaction();
+
+      return {
+        success: true,
+        userAvatar,
+        remainingCoins: user.coins,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async equipAvatar(userId: string, avatarId: string) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Check if user owns this avatar
+    const userAvatar = await this.userAvatarRepository.findOne({
+      where: { userId, baseAvatarId: avatarId },
+      relations: ['baseAvatar'],
+    });
+    if (!userAvatar) {
+      throw new BadRequestException('You do not own this avatar');
+    }
+
+    // Update user's equipped avatar
+    user.equippedAvatarId = avatarId;
+    await this.userRepository.save(user);
+
+    return {
+      success: true,
+      equippedAvatar: userAvatar.baseAvatar,
+    };
   }
 
   async addCoinsToUser(userId: string, coinAmount: number, description?: string) {

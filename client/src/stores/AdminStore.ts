@@ -428,6 +428,8 @@ export class AdminStore {
           items: response.items.map((user: any) => ({
             ...user,
             createdAt: new Date(user.createdAt),
+            // Map equippedAvatar to avatar field for consistent interface
+            avatar: user.equippedAvatar?.imageUrl || null,
           })),
         };
       });
@@ -1146,6 +1148,31 @@ export class AdminStore {
       throw new Error(errorMessage);
     } finally {
       this.isLoadingTable = false;
+    }
+  }
+
+  // Avatar Management
+  async getAvailableAvatars(): Promise<any[]> {
+    try {
+      const response = await apiStore.get('/admin/avatars');
+      return response;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to fetch available avatars';
+      throw new Error(errorMessage);
+    }
+  }
+
+  async assignAvatarToUser(userId: string, avatarId: string): Promise<void> {
+    try {
+      await apiStore.post(`/admin/users/${userId}/assign-avatar`, { avatarId });
+
+      // Refresh users list to show updated avatar
+      if (this.users) {
+        await this.fetchUsers(this.users.page, this.users.limit);
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to assign avatar to user';
+      throw new Error(errorMessage);
     }
   }
 }

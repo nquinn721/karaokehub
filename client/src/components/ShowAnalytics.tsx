@@ -69,12 +69,12 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
     setIsValidatingVenues(true);
     try {
       uiStore.addNotification('Starting venue validation with Gemini AI...', 'info');
-      
+
       const response = await fetch('/api/admin/venues/validate-all', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
 
@@ -85,10 +85,10 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
       const results = await response.json();
       setValidationResults(results);
       setValidationModalOpen(true);
-      
+
       uiStore.addNotification(
         `Venue validation complete! Found ${results.summary.conflictsFound} conflicts out of ${results.summary.totalVenues} venues.`,
-        'success'
+        'success',
       );
     } catch (error) {
       console.error('Failed to validate venues:', error);
@@ -615,7 +615,9 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
     <Box sx={{ p: 3 }}>
       <Box sx={{ mb: 4 }}>
         {/* Header with Title and Action Buttons */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+        <Box
+          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}
+        >
           <Box>
             <Typography variant="h4" component="h1" gutterBottom>
               Show Analytics Dashboard
@@ -964,30 +966,41 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
               </Typography>
               <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
                 {validationResults.results.map((result: any) => (
-                  <Card 
-                    key={result.venueId} 
-                    sx={{ 
-                      mb: 2, 
+                  <Card
+                    key={result.venueId}
+                    sx={{
+                      mb: 2,
                       border: result.status === 'conflict' ? '1px solid' : '1px solid transparent',
                       borderColor: result.status === 'conflict' ? 'warning.main' : 'divider',
                     }}
                   >
                     <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          mb: 1,
+                        }}
+                      >
                         <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                           {result.venueName}
                         </Typography>
-                        <Chip 
-                          label={result.status} 
+                        <Chip
+                          label={result.status}
                           size="small"
                           color={
-                            result.status === 'conflict' ? 'warning' :
-                            result.status === 'validated' ? 'success' :
-                            result.status === 'error' ? 'error' : 'default'
+                            result.status === 'conflict'
+                              ? 'warning'
+                              : result.status === 'validated'
+                                ? 'success'
+                                : result.status === 'error'
+                                  ? 'error'
+                                  : 'default'
                           }
                         />
                       </Box>
-                      
+
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                         {result.message}
                       </Typography>
@@ -998,14 +1011,14 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                             ⚠️ Conflicts Found:
                           </Typography>
                           {result.conflicts.map((conflict: string, conflictIndex: number) => (
-                            <Typography 
-                              key={conflictIndex} 
-                              variant="body2" 
-                              sx={{ 
-                                ml: 2, 
+                            <Typography
+                              key={conflictIndex}
+                              variant="body2"
+                              sx={{
+                                ml: 2,
                                 mb: 0.5,
                                 color: 'text.secondary',
-                                '&:before': { content: '"• "' }
+                                '&:before': { content: '"• "' },
                               }}
                             >
                               {conflict}

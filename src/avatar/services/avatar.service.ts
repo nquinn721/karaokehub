@@ -40,18 +40,18 @@ export class AvatarService {
     }
 
     if (!user.equippedAvatar) {
-      // If no avatar is equipped, equip the first free avatar (alex)
+      // If no avatar is equipped, equip the first free avatar (avatar_1)
       const defaultAvatar = await this.avatarRepository.findOne({
-        where: { id: 'alex' },
+        where: { id: 'avatar_1' },
       });
 
       if (defaultAvatar) {
-        await this.userRepository.update(userId, { equippedAvatarId: 'alex' });
+        await this.userRepository.update(userId, { equippedAvatarId: 'avatar_1' });
         return {
           avatar: defaultAvatar,
           microphone: user.equippedMicrophone,
           userId,
-          avatarId: 'alex',
+          avatarId: 'avatar_1',
           acquiredAt: new Date(),
         };
       }
@@ -89,7 +89,7 @@ export class AvatarService {
     // Check if avatar is free or user owns it
     if (!avatar.isFree) {
       const userAvatar = await this.userAvatarRepository.findOne({
-        where: { userId, avatarId },
+        where: { userId, baseAvatarId: avatarId },
       });
 
       if (!userAvatar) {
@@ -266,7 +266,7 @@ export class AvatarService {
       const userAvatars = paidAvatars.map((avatar) =>
         this.userAvatarRepository.create({
           userId,
-          avatarId: avatar.id,
+          baseAvatarId: avatar.id,
         }),
       );
       await this.userAvatarRepository.save(userAvatars);
@@ -303,7 +303,7 @@ export class AvatarService {
     if (itemType === 'avatar') {
       const userAvatar = this.userAvatarRepository.create({
         userId,
-        avatarId: itemId,
+        baseAvatarId: itemId,
       });
       return this.userAvatarRepository.save(userAvatar);
     }
@@ -326,31 +326,37 @@ export class AvatarService {
 
   // Get avatars available to user (free + owned)
   async getAvailableAvatarsForUser(userId: string) {
-    // Get all free avatars
-    const freeAvatars = await this.avatarRepository.find({
-      where: { isAvailable: true, isFree: true },
-      order: { id: 'ASC' },
-    });
+    try {
+      // Get all free avatars
+      const freeAvatars = await this.avatarRepository.find({
+        where: { isAvailable: true, isFree: true },
+        order: { id: 'ASC' },
+      });
 
-    // Get user's owned avatars
-    const ownedAvatars = await this.userAvatarRepository.find({
-      where: { userId },
-      relations: ['avatar'],
-      // Removed order clause that was causing schema mismatch issues
-    });
+      // Get user's owned avatars
+      const ownedAvatars = await this.userAvatarRepository.find({
+        where: { userId },
+        relations: ['baseAvatar'],
+        // Removed order clause that was causing schema mismatch issues
+      });
 
-    // Combine free avatars with owned avatars
-    const allAvatars = [...freeAvatars];
+      // Combine free avatars with owned avatars
+      const allAvatars = [...freeAvatars];
 
-    // Add owned avatars that aren't already in the free list
-    for (const userAvatar of ownedAvatars) {
-      if (userAvatar.avatar && !freeAvatars.find((a) => a.id === userAvatar.avatar.id)) {
-        allAvatars.push(userAvatar.avatar);
+      // Add owned avatars that aren't already in the free list
+      for (const userAvatar of ownedAvatars) {
+        if (userAvatar.baseAvatar && !freeAvatars.find((a) => a.id === userAvatar.baseAvatar.id)) {
+          allAvatars.push(userAvatar.baseAvatar);
+        }
       }
-    }
 
-    // Sort by ID for consistent ordering
-    return allAvatars.sort((a, b) => a.id.localeCompare(b.id));
+      // Sort by ID for consistent ordering
+      return allAvatars.sort((a, b) => a.id.localeCompare(b.id));
+    } catch (error) {
+      console.error('Error fetching available avatars:', error);
+      // Return empty array if there's an error (e.g., table doesn't exist yet)
+      return [];
+    }
   }
 
   // Get microphones available to user (free + owned)

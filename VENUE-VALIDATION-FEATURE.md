@@ -5,6 +5,7 @@ This feature adds AI-powered venue data validation to the KaraokeHub admin dashb
 ## Overview
 
 The venue validation system uses Google's Gemini AI to:
+
 1. Look up accurate venue information based on venue names and addresses
 2. Compare the found data with what's currently in the database
 3. Identify conflicts and missing information
@@ -16,17 +17,20 @@ The venue validation system uses Google's Gemini AI to:
 ### Backend (NestJS)
 
 **AdminService** (`src/admin/admin.service.ts`):
+
 - `validateAllVenuesWithGemini()` - Main validation function that processes all active venues
 - `lookupVenueWithGemini()` - Individual venue lookup using Gemini AI
 - `compareVenueData()` - Compares current vs suggested data and identifies conflicts
 - `calculateDistance()` - Calculates distance between coordinates to detect location conflicts
 
 **AdminController** (`src/admin/admin.controller.ts`):
+
 - `POST /api/admin/venues/validate-all` - New endpoint to trigger venue validation
 
 ### Frontend (React)
 
 **ShowAnalytics Component** (`client/src/components/ShowAnalytics.tsx`):
+
 - Added "Validate Venue Data" button in the header
 - Added state management for validation process
 - Added comprehensive results modal showing:
@@ -54,6 +58,7 @@ The venue validation system uses Google's Gemini AI to:
 ## Gemini AI Integration
 
 The system uses Gemini 2.0 Flash with structured prompts to:
+
 - Look up venue information from public sources
 - Return standardized JSON responses
 - Provide confidence scores (0.0-1.0)
@@ -94,10 +99,7 @@ The system uses Gemini 2.0 Flash with structured prompts to:
         "phone": "(310) 289-8410",
         "website": "https://abbeyweho.com/"
       },
-      "conflicts": [
-        "Name: 'The Abbey Bar' vs 'The Abbey'",
-        "Address is missing in current data"
-      ],
+      "conflicts": ["Name: 'The Abbey Bar' vs 'The Abbey'", "Address is missing in current data"],
       "wasUpdated": true,
       "confidence": 0.95
     }
@@ -123,10 +125,12 @@ The system uses Gemini 2.0 Flash with structured prompts to:
 ## Testing
 
 Two test scripts are provided:
+
 - `test-venue-validation.js` - Tests with a fake venue
 - `test-real-venue.js` - Tests with a real venue (The Abbey)
 
 Run tests with:
+
 ```bash
 node test-venue-validation.js
 node test-real-venue.js
@@ -135,6 +139,7 @@ node test-real-venue.js
 ## Rate Limiting
 
 The system includes built-in rate limiting:
+
 - 1-second delay between venue requests
 - Gemini 2.0 Flash has high rate limits for production use
 - Error handling for quota exceeded scenarios

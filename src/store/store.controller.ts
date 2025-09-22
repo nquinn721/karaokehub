@@ -22,6 +22,16 @@ export class StoreController {
     return this.storeService.getUserMicrophones(req.user.id);
   }
 
+  @Get('avatars')
+  async getStoreAvatars() {
+    return this.storeService.getStoreAvatars();
+  }
+
+  @Get('my-avatars')
+  async getUserAvatars(@Request() req) {
+    return this.storeService.getUserAvatars(req.user.id);
+  }
+
   @Get('my-coins')
   async getUserCoins(@Request() req) {
     const coins = await this.storeService.getUserCoins(req.user.id);
@@ -31,6 +41,16 @@ export class StoreController {
   @Post('purchase-microphone')
   async purchaseMicrophone(@Request() req, @Body() body: { microphoneId: string }) {
     return this.storeService.purchaseMicrophoneWithCoins(req.user.id, body.microphoneId);
+  }
+
+  @Post('purchase-avatar')
+  async purchaseAvatar(@Request() req, @Body() body: { avatarId: string }) {
+    return this.storeService.purchaseAvatarWithCoins(req.user.id, body.avatarId);
+  }
+
+  @Post('equip-avatar')
+  async equipAvatar(@Request() req, @Body() body: { avatarId: string }) {
+    return this.storeService.equipAvatar(req.user.id, body.avatarId);
   }
 
   @Get('transactions')

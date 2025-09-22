@@ -234,17 +234,17 @@ const main = async () => {
       for (const avatar of allAvatars) {
         // Check if user already has this avatar
         const [existing] = await connection.execute(
-          'SELECT id FROM user_avatars WHERE userId = ? AND avatarId = ?',
+          'SELECT id FROM user_avatars WHERE userId = ? AND baseAvatarId = ?',
           [user.id, avatar.id],
         );
 
         if ((existing as any[]).length === 0) {
           await connection.execute(
             `
-            INSERT INTO user_avatars (userId, avatarId, isEquipped, acquiredAt)
-            VALUES (?, ?, FALSE, NOW())
+            INSERT INTO user_avatars (id, userId, avatarId, baseAvatarId, acquiredAt)
+            VALUES (UUID(), ?, ?, ?, NOW())
           `,
-            [user.id, avatar.id],
+            [user.id, avatar.id, avatar.id],
           );
         }
       }
@@ -254,18 +254,11 @@ const main = async () => {
     // Set default equipped avatar for users who don't have any equipped
     console.log('\n🎭 Setting default equipped avatars...');
     await connection.execute(`
-      UPDATE user_avatars 
-      SET isEquipped = TRUE 
-      WHERE avatarId = 'avatar_3' 
-      AND userId IN (
-        SELECT userId FROM (
-          SELECT userId FROM user_avatars 
-          GROUP BY userId 
-          HAVING SUM(isEquipped) = 0
-        ) AS temp
-      )
+      UPDATE users 
+      SET equippedAvatarId = 'avatar_1' 
+      WHERE equippedAvatarId IS NULL OR equippedAvatarId = ''
     `);
-    console.log('✓ Set avatar_3 (Jordan) as default for users without equipped avatars');
+    console.log('✓ Set avatar_1 (Alex) as default for users without equipped avatars');
 
     console.log('\n🎉 Successfully seeded all 25 avatars and updated user_avatars structure!');
   } catch (error) {

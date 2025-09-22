@@ -7,12 +7,15 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Avatar } from '../../avatar/entities/avatar.entity';
+import { Microphone } from '../../avatar/entities/microphone.entity';
 import { User } from '../../entities/user.entity';
 import { CoinPackage } from './coin-package.entity';
 
 export enum TransactionType {
   COIN_PURCHASE = 'coin_purchase',
   MICROPHONE_PURCHASE = 'microphone_purchase',
+  AVATAR_PURCHASE = 'avatar_purchase',
   REWARD = 'reward',
   REFUND = 'refund',
 }
@@ -64,6 +67,9 @@ export class Transaction {
   microphoneId: string;
 
   @Column({ nullable: true })
+  avatarId: string;
+
+  @Column({ nullable: true })
   description: string;
 
   @CreateDateColumn()
@@ -80,4 +86,12 @@ export class Transaction {
   @ManyToOne(() => CoinPackage, { nullable: true })
   @JoinColumn({ name: 'coinPackageId' })
   coinPackage: CoinPackage;
+
+  @ManyToOne(() => Microphone, { nullable: true })
+  @JoinColumn({ name: 'microphoneId' })
+  microphone: Microphone;
+
+  @ManyToOne(() => Avatar, { nullable: true })
+  @JoinColumn({ name: 'avatarId' })
+  avatar: Avatar;
 }

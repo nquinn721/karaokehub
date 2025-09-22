@@ -19,7 +19,7 @@ async function testRealVenue() {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ 
+    const model = genAI.getGenerativeModel({
       model: 'gemini-2.0-flash',
       generationConfig: {
         temperature: 0.1,
@@ -30,7 +30,7 @@ async function testRealVenue() {
     });
 
     // Test with a well-known venue
-    const testVenue = "The Abbey Bar, West Hollywood, CA";
+    const testVenue = 'The Abbey Bar, West Hollywood, CA';
     console.log(`🔍 Testing real venue: ${testVenue}`);
 
     const prompt = `You are a venue data validation expert. Look up accurate information for this venue and compare it with the current database data.
@@ -82,7 +82,7 @@ Please find the most accurate, up-to-date information for this venue and return 
         const parsedData = JSON.parse(jsonMatch[0]);
         console.log('\n✅ Successfully parsed JSON response:');
         console.log(JSON.stringify(parsedData, null, 2));
-        
+
         if (parsedData.venueFound && parsedData.confidence > 0.7) {
           console.log(`\n🎯 High confidence venue found: ${parsedData.confidence}`);
           console.log('📍 Suggested data:');
@@ -97,7 +97,6 @@ Please find the most accurate, up-to-date information for this venue and return 
     }
 
     console.log('\n✅ Real venue test completed!');
-    
   } catch (error) {
     console.error('❌ Test failed:', error.message);
   }

@@ -15,6 +15,7 @@ import {
   faSearch,
   faTimes,
   faTrash,
+  faUser,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -64,6 +65,7 @@ import type {
 import { adminStore, authStore, uiStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
 import React, { useCallback, useEffect, useState } from 'react';
+import AvatarSelectionModal from './AvatarSelectionModal';
 import CustomModal from './CustomModal';
 import { ShowCleanupResultsModal } from './modals/ShowCleanupResultsModal';
 import { UserFeatureOverrideModal } from './UserFeatureOverrideModal';
@@ -273,6 +275,10 @@ const AdminDataTables: React.FC = observer(() => {
   // User feature override modal state
   const [userOverrideModalOpen, setUserOverrideModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+
+  // Avatar selection modal state
+  const [avatarSelectionModalOpen, setAvatarSelectionModalOpen] = useState(false);
+  const [userForAvatarChange, setUserForAvatarChange] = useState<AdminUser | null>(null);
 
   // Deduplication state
   const [dedupeDialogOpen, setDedupeDialogOpen] = useState(false);
@@ -498,6 +504,16 @@ const AdminDataTables: React.FC = observer(() => {
   const handleCloseUserOverrideModal = () => {
     setUserOverrideModalOpen(false);
     setSelectedUser(null);
+  };
+
+  const handleOpenAvatarSelectionModal = (user: AdminUser) => {
+    setUserForAvatarChange(user);
+    setAvatarSelectionModalOpen(true);
+  };
+
+  const handleCloseAvatarSelectionModal = () => {
+    setAvatarSelectionModalOpen(false);
+    setUserForAvatarChange(null);
   };
 
   // Deduplication handlers
@@ -849,6 +865,7 @@ const AdminDataTables: React.FC = observer(() => {
                     Stage Name
                   </TableSortLabel>
                 </TableCell>
+                <TableCell>Avatar</TableCell>
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.users === 'email'}
@@ -920,25 +937,28 @@ const AdminDataTables: React.FC = observer(() => {
             <TableBody>
               {adminStore.isLoadingTable ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center">
+                  <TableCell colSpan={9} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
               ) : (
                 adminStore.users?.items.map((user: AdminUser) => (
                   <TableRow key={user.id}>
+                    <TableCell>{user.name || 'N/A'}</TableCell>
+                    <TableCell>{user.stageName || 'N/A'}</TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {user.avatar && (
+                        {user.avatar ? (
                           <Tooltip title="Click to view larger image">
                             <Box
                               component="img"
                               src={user.avatar}
                               sx={{
-                                width: 32,
-                                height: 32,
+                                width: 48,
+                                height: 48,
                                 borderRadius: '50%',
                                 cursor: 'pointer',
+                                border: `2px solid ${theme.palette.divider}`,
                                 transition: 'transform 0.2s ease-in-out',
                                 '&:hover': {
                                   transform: 'scale(1.1)',
@@ -948,11 +968,32 @@ const AdminDataTables: React.FC = observer(() => {
                               onClick={() => handleViewUserImage(user.avatar!, user.name || 'User')}
                             />
                           </Tooltip>
+                        ) : (
+                          <Box
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              borderRadius: '50%',
+                              backgroundColor: theme.palette.grey[200],
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              border: `2px solid ${theme.palette.divider}`,
+                            }}
+                          >
+                            <FontAwesomeIcon icon={faUser} color={theme.palette.grey[400]} />
+                          </Box>
                         )}
-                        {user.name || 'N/A'}
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => handleOpenAvatarSelectionModal(user)}
+                          startIcon={<FontAwesomeIcon icon={faUser} />}
+                        >
+                          Change
+                        </Button>
                       </Box>
                     </TableCell>
-                    <TableCell>{user.stageName || 'N/A'}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
                       {user.provider ? (
@@ -2146,6 +2187,7 @@ const AdminDataTables: React.FC = observer(() => {
                 setEditType(null);
               } catch (error) {
                 console.error('Update failed:', error);
+                uiStore.addNotification('Failed to update item. Please try again.', 'error');
               }
             }}
             color="primary"
@@ -2321,6 +2363,13 @@ const AdminDataTables: React.FC = observer(() => {
         open={userOverrideModalOpen}
         onClose={handleCloseUserOverrideModal}
         user={selectedUser}
+      />
+
+      {/* Avatar Selection Modal */}
+      <AvatarSelectionModal
+        open={avatarSelectionModalOpen}
+        onClose={handleCloseAvatarSelectionModal}
+        user={userForAvatarChange}
       />
 
       {/* Show Review Modal */}

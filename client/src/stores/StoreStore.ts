@@ -33,11 +33,33 @@ export interface UserMicrophone {
   microphone: Microphone;
 }
 
+export interface Avatar {
+  id: string;
+  name: string;
+  description?: string;
+  type: string;
+  rarity: string;
+  imageUrl: string;
+  coinPrice: number;
+  isFree: boolean;
+  isAvailable: boolean;
+}
+
+export interface UserAvatar {
+  id: string;
+  userId: string;
+  avatarId: string;
+  acquiredAt: string;
+  avatar: Avatar;
+}
+
 class StoreStore {
   coins: number = 0;
   coinPackages: CoinPackage[] = [];
   storeMicrophones: Microphone[] = [];
   userMicrophones: UserMicrophone[] = [];
+  storeAvatars: Avatar[] = [];
+  userAvatars: UserAvatar[] = [];
   isLoading: boolean = false;
   error: string | null = null;
 
@@ -125,9 +147,7 @@ class StoreStore {
     }
   }
 
-  async purchaseCoinPackage(
-    packageId: string,
-  ): Promise<{
+  async purchaseCoinPackage(packageId: string): Promise<{
     checkoutUrl?: string;
     sessionId?: string;
     transactionId?: string;
@@ -198,6 +218,77 @@ class StoreStore {
 
   doesUserOwnMicrophone(microphoneId: string): boolean {
     return this.getOwnedMicrophoneIds().includes(microphoneId);
+  }
+
+  // Avatar methods
+  async fetchStoreAvatars(): Promise<void> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+      const data = await apiStore.get('/store/avatars');
+      this.storeAvatars = data;
+    } catch (error) {
+      this.setError(error instanceof Error ? error.message : 'Failed to fetch avatars');
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async fetchUserAvatars(): Promise<void> {
+    try {
+      this.setError(null);
+      const data = await apiStore.get('/store/my-avatars');
+      this.userAvatars = data;
+    } catch (error) {
+      this.setError(error instanceof Error ? error.message : 'Failed to fetch user avatars');
+    }
+  }
+
+  async purchaseAvatar(avatarId: string): Promise<boolean> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      const data = await apiStore.post('/store/purchase-avatar', { avatarId });
+      this.setCoins(data.remainingCoins);
+
+      // Refresh user avatars
+      await this.fetchUserAvatars();
+
+      return true;
+    } catch (error) {
+      this.setError(error instanceof Error ? error.message : 'Failed to purchase avatar');
+      return false;
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async equipAvatar(avatarId: string): Promise<boolean> {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await apiStore.post('/store/equip-avatar', { avatarId });
+
+      // Refresh user data to update equipped avatar
+      await this.fetchUserAvatars();
+
+      return true;
+    } catch (error) {
+      this.setError(error instanceof Error ? error.message : 'Failed to equip avatar');
+      return false;
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  getOwnedAvatarIds(): string[] {
+    return this.userAvatars.map((ua) => ua.avatarId);
+  }
+
+  doesUserOwnAvatar(avatarId: string): boolean {
+    return this.getOwnedAvatarIds().includes(avatarId);
   }
 }
 
