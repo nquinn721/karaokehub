@@ -391,4 +391,9 @@ export class AdminController {
   async getMigrationStatus() {
     return await this.adminService.getMigrationStatus();
   }
+
+  @Post('migrations/cleanup')
+  async cleanupMigrationArtifacts() {
+    return await this.adminService.cleanupMigrationArtifacts();
+  }
 }

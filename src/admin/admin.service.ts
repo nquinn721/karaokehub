@@ -2256,4 +2256,23 @@ If the venue cannot be found or you're not confident in the information, set ven
       };
     }
   }
+
+  async cleanupMigrationArtifacts(): Promise<any> {
+    try {
+      // This is a simple cleanup that removes temporary tables and resets failed migration state
+      await this.migrationService.cleanupTemporaryTables();
+      return {
+        success: true,
+        message: 'Migration artifacts cleaned up successfully',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to cleanup migration artifacts',
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
 }

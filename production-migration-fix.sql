@@ -27,6 +27,12 @@ SELECT 'Avatars after population:' as info, COUNT(*) as count FROM avatars;
 -- Step 3: Populate microphones table if needed
 SELECT 'POPULATING MICROPHONES TABLE' as step;
 
+-- Clean up any leftover temporary tables from previous failed attempts
+DROP TABLE IF EXISTS microphones_temp;
+DROP TABLE IF EXISTS microphones_new;
+DROP TABLE IF EXISTS microphones_backup;
+DROP TEMPORARY TABLE IF EXISTS microphone_id_mapping;
+
 -- First check if we need to convert existing microphones or create new ones
 SET @mic_count = (SELECT COUNT(*) FROM microphones);
 
@@ -37,7 +43,6 @@ SET @string_mic_count = (SELECT COUNT(*) FROM microphones WHERE id LIKE 'mic_%')
 SET foreign_key_checks = 0;
 
 -- Create temporary mapping table
-DROP TEMPORARY TABLE IF EXISTS microphone_id_mapping;
 CREATE TEMPORARY TABLE microphone_id_mapping (
   old_id VARCHAR(255),
   new_id VARCHAR(36),
