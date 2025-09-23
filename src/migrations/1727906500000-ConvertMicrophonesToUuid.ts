@@ -33,7 +33,7 @@ export class ConvertMicrophonesToUuid1727906500000 {
     try {
       // Step 1: Clean up any existing temporary table and create new one
       await dataSource.query(`DROP TABLE IF EXISTS microphones_temp;`);
-      
+
       await dataSource.query(`
         CREATE TABLE microphones_temp LIKE microphones;
       `);
@@ -105,7 +105,7 @@ export class ConvertMicrophonesToUuid1727906500000 {
       const transactionsColumns = await dataSource.query(`
         SHOW COLUMNS FROM transactions LIKE 'microphoneId'
       `);
-      
+
       if (transactionsColumns.length > 0) {
         console.log('🔗 Updating transactions table microphoneId references...');
         await dataSource.query(`
@@ -138,7 +138,9 @@ export class ConvertMicrophonesToUuid1727906500000 {
         WHERE id REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       `);
 
-      console.log(`✅ Successfully converted ${microphoneCount[0].count} microphones to UUID format`);
+      console.log(
+        `✅ Successfully converted ${microphoneCount[0].count} microphones to UUID format`,
+      );
 
       // Verify foreign key integrity
       const userMicCount = await dataSource.query(`
@@ -151,10 +153,9 @@ export class ConvertMicrophonesToUuid1727906500000 {
       console.log(`✅ Verified ${userMicCount[0].count} user microphone references are intact`);
 
       console.log('🎉 Microphone UUID conversion completed successfully!');
-      
     } catch (error) {
       console.error('❌ Migration failed:', error);
-      
+
       // Clean up temporary table in case of failure
       try {
         await dataSource.query(`DROP TABLE IF EXISTS microphones_temp;`);
@@ -162,7 +163,7 @@ export class ConvertMicrophonesToUuid1727906500000 {
       } catch (cleanupError) {
         console.error('⚠️  Failed to clean up temporary table:', cleanupError);
       }
-      
+
       throw error;
     }
   }

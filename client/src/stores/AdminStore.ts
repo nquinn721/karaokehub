@@ -1321,12 +1321,13 @@ export class AdminStore {
       return response;
     } catch (error: any) {
       console.error(`❌ Error deleting microphone ${id}:`, error);
-      
+
       // Try to get the most specific error message available
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data || 
-                          error.message || 
-                          'Failed to delete microphone';
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data ||
+        error.message ||
+        'Failed to delete microphone';
 
       // Set error in the store for UI display
       runInAction(() => {
@@ -1527,7 +1528,11 @@ export class AdminStore {
     }
   }
 
-  async suggestItemName(itemType: 'avatar' | 'microphone', rarity: string, description?: string): Promise<string[]> {
+  async suggestItemName(
+    itemType: 'avatar' | 'microphone',
+    rarity: string,
+    description?: string,
+  ): Promise<string[]> {
     try {
       console.log(`🤖 Requesting AI name suggestions for ${itemType} (${rarity})`);
       const response = await apiStore.post(`/admin/store/suggest-name`, {
@@ -1540,9 +1545,10 @@ export class AdminStore {
     } catch (error: any) {
       console.error(`❌ Error getting AI suggestions:`, error);
       // Return fallback suggestions if AI fails
-      const fallbackSuggestions = itemType === 'avatar' 
-        ? ['Melody Star', 'Rhythm Knight', 'Harmony Hero']
-        : ['Sound Wave', 'Echo Master', 'Vocal Pro'];
+      const fallbackSuggestions =
+        itemType === 'avatar'
+          ? ['Melody Star', 'Rhythm Knight', 'Harmony Hero']
+          : ['Sound Wave', 'Echo Master', 'Vocal Pro'];
       return fallbackSuggestions;
     }
   }

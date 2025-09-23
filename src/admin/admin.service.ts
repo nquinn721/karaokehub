@@ -1084,12 +1084,12 @@ export class AdminService {
     const usersWithEquippedMicrophone = await this.userRepository.find({
       where: { equippedMicrophoneId: id },
     });
-    
+
     // Check if microphone is owned by any users
     const ownedCount = await this.userMicrophoneRepository.count({
       where: { microphoneId: id },
     });
-    
+
     // Check if microphone has transaction history
     const transactionCount = await this.transactionRepository.count({
       where: { microphoneId: id },
@@ -1109,29 +1109,31 @@ export class AdminService {
     if (constraints.length > 0 && !force) {
       throw new Error(
         `Cannot delete microphone: ${constraints.join(', ')}. ` +
-        `Use force delete to remove all related records.`
+          `Use force delete to remove all related records.`,
       );
     }
 
     try {
       if (force && constraints.length > 0) {
-        console.log(`🚨 Force deleting microphone ${microphone.name} with constraints: ${constraints.join(', ')}`);
-        
+        console.log(
+          `🚨 Force deleting microphone ${microphone.name} with constraints: ${constraints.join(', ')}`,
+        );
+
         // Remove equipped microphone references from users
         if (usersWithEquippedMicrophone.length > 0) {
           await this.userRepository.update(
             { equippedMicrophoneId: id },
-            { equippedMicrophoneId: null }
+            { equippedMicrophoneId: null },
           );
           console.log(`📝 Unequipped microphone from ${usersWithEquippedMicrophone.length} users`);
         }
-        
+
         // Delete user ownership records
         if (ownedCount > 0) {
           await this.userMicrophoneRepository.delete({ microphoneId: id });
           console.log(`📝 Deleted ${ownedCount} user ownership records`);
         }
-        
+
         // Note: We don't delete transaction records as they are historical data
         // Just log if they exist
         if (transactionCount > 0) {
@@ -1328,7 +1330,7 @@ export class AdminService {
 
       // Fetch and return the updated avatar
       const updatedAvatar = await this.avatarRepository.findOne({ where: { id } });
-      
+
       console.log(`✅ Successfully updated avatar: ${updateData.name} (ID: ${id})`);
       return {
         message: 'Avatar updated successfully',
@@ -1362,7 +1364,7 @@ export class AdminService {
 
       // Fetch and return the updated microphone
       const updatedMicrophone = await this.microphoneRepository.findOne({ where: { id } });
-      
+
       console.log(`✅ Successfully updated microphone: ${updateData.name} (ID: ${id})`);
       return {
         message: 'Microphone updated successfully',
@@ -1390,7 +1392,7 @@ export class AdminService {
       });
 
       const savedAvatar = await this.avatarRepository.save(newAvatar);
-      
+
       console.log(`✅ Successfully created avatar: ${createData.name} (ID: ${savedAvatar.id})`);
       return {
         message: 'Avatar created successfully',
@@ -1418,8 +1420,10 @@ export class AdminService {
       });
 
       const savedMicrophone = await this.microphoneRepository.save(newMicrophone);
-      
-      console.log(`✅ Successfully created microphone: ${createData.name} (ID: ${savedMicrophone.id})`);
+
+      console.log(
+        `✅ Successfully created microphone: ${createData.name} (ID: ${savedMicrophone.id})`,
+      );
       return {
         message: 'Microphone created successfully',
         microphone: savedMicrophone,
@@ -1450,8 +1454,10 @@ export class AdminService {
       });
 
       const savedCoinPackage = await this.coinPackageRepository.save(newCoinPackage);
-      
-      console.log(`✅ Successfully created coin package: ${createData.name} (ID: ${savedCoinPackage.id})`);
+
+      console.log(
+        `✅ Successfully created coin package: ${createData.name} (ID: ${savedCoinPackage.id})`,
+      );
       return {
         message: 'Coin package created successfully',
         coinPackage: savedCoinPackage,
@@ -1465,7 +1471,7 @@ export class AdminService {
   async updateStoreCoinPackage(id: string, updateData: any) {
     try {
       const coinPackage = await this.coinPackageRepository.findOne({ where: { id } });
-      
+
       if (!coinPackage) {
         throw new Error(`Coin package with ID ${id} not found`);
       }
@@ -1473,22 +1479,40 @@ export class AdminService {
       // Update coin package with provided data
       Object.assign(coinPackage, {
         name: updateData.name !== undefined ? updateData.name : coinPackage.name,
-        description: updateData.description !== undefined ? updateData.description : coinPackage.description,
-        coinAmount: updateData.coinAmount !== undefined ? updateData.coinAmount : coinPackage.coinAmount,
+        description:
+          updateData.description !== undefined ? updateData.description : coinPackage.description,
+        coinAmount:
+          updateData.coinAmount !== undefined ? updateData.coinAmount : coinPackage.coinAmount,
         priceUSD: updateData.priceUSD !== undefined ? updateData.priceUSD : coinPackage.priceUSD,
-        bonusCoins: updateData.bonusCoins !== undefined ? updateData.bonusCoins : coinPackage.bonusCoins,
+        bonusCoins:
+          updateData.bonusCoins !== undefined ? updateData.bonusCoins : coinPackage.bonusCoins,
         isActive: updateData.isActive !== undefined ? updateData.isActive : coinPackage.isActive,
-        sortOrder: updateData.sortOrder !== undefined ? updateData.sortOrder : coinPackage.sortOrder,
+        sortOrder:
+          updateData.sortOrder !== undefined ? updateData.sortOrder : coinPackage.sortOrder,
         // New redemption and expiry fields
-        maxRedemptions: updateData.maxRedemptions !== undefined ? updateData.maxRedemptions : coinPackage.maxRedemptions,
-        expiryDate: updateData.expiryDate !== undefined ? (updateData.expiryDate ? new Date(updateData.expiryDate) : null) : coinPackage.expiryDate,
-        isLimitedTime: updateData.isLimitedTime !== undefined ? updateData.isLimitedTime : coinPackage.isLimitedTime,
-        isOneTimeUse: updateData.isOneTimeUse !== undefined ? updateData.isOneTimeUse : coinPackage.isOneTimeUse,
+        maxRedemptions:
+          updateData.maxRedemptions !== undefined
+            ? updateData.maxRedemptions
+            : coinPackage.maxRedemptions,
+        expiryDate:
+          updateData.expiryDate !== undefined
+            ? updateData.expiryDate
+              ? new Date(updateData.expiryDate)
+              : null
+            : coinPackage.expiryDate,
+        isLimitedTime:
+          updateData.isLimitedTime !== undefined
+            ? updateData.isLimitedTime
+            : coinPackage.isLimitedTime,
+        isOneTimeUse:
+          updateData.isOneTimeUse !== undefined
+            ? updateData.isOneTimeUse
+            : coinPackage.isOneTimeUse,
         // Note: currentRedemptions should not be updated through admin interface - managed by redemption logic
       });
 
       const savedCoinPackage = await this.coinPackageRepository.save(coinPackage);
-      
+
       console.log(`✅ Successfully updated coin package: ${updateData.name} (ID: ${id})`);
       return {
         message: 'Coin package updated successfully',
@@ -1507,7 +1531,7 @@ export class AdminService {
       }
 
       const model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
-      
+
       let prompt = '';
       if (itemType === 'avatar') {
         prompt = `Generate 3 creative and appealing names for a ${rarity} rarity avatar character for a karaoke app. The avatar should feel appropriate for a music/karaoke theme. Consider the rarity level when suggesting names - legendary should sound more epic, common should be simple and friendly.`;
@@ -1523,8 +1547,12 @@ export class AdminService {
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      const suggestions = response.text().trim().split(',').map(name => name.trim());
-      
+      const suggestions = response
+        .text()
+        .trim()
+        .split(',')
+        .map((name) => name.trim());
+
       console.log(`✅ Generated AI name suggestions for ${itemType}:`, suggestions);
       return {
         suggestions: suggestions.slice(0, 3), // Ensure we only return 3 suggestions
@@ -1532,10 +1560,11 @@ export class AdminService {
     } catch (error) {
       console.error(`❌ Error generating name suggestions:`, error);
       // Return fallback suggestions if AI fails
-      const fallbackSuggestions = itemType === 'avatar' 
-        ? ['Melody Star', 'Rhythm Knight', 'Harmony Hero']
-        : ['Sound Wave', 'Echo Master', 'Vocal Pro'];
-      
+      const fallbackSuggestions =
+        itemType === 'avatar'
+          ? ['Melody Star', 'Rhythm Knight', 'Harmony Hero']
+          : ['Sound Wave', 'Echo Master', 'Vocal Pro'];
+
       return {
         suggestions: fallbackSuggestions,
         fallback: true,

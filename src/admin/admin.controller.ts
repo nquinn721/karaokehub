@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpException,
+  HttpStatus,
+  Param,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { AdminService, VenueVerificationResult } from './admin.service';
 import { DeduplicationService } from './deduplication.service';
 
@@ -335,10 +346,7 @@ export class AdminController {
   }
 
   @Delete('store/microphones/:id')
-  async deleteMicrophone(
-    @Param('id') id: string,
-    @Query('force') force?: string,
-  ) {
+  async deleteMicrophone(@Param('id') id: string, @Query('force') force?: string) {
     try {
       const forceDelete = force === 'true';
       return await this.adminService.deleteMicrophone(id, forceDelete);
@@ -450,7 +458,9 @@ export class AdminController {
   }
 
   @Post('store/suggest-name')
-  async suggestItemName(@Body() body: { itemType: 'avatar' | 'microphone'; rarity: string; description?: string }) {
+  async suggestItemName(
+    @Body() body: { itemType: 'avatar' | 'microphone'; rarity: string; description?: string },
+  ) {
     try {
       return await this.adminService.suggestItemName(body.itemType, body.rarity, body.description);
     } catch (error) {

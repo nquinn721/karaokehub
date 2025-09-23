@@ -44,9 +44,9 @@ import {
 } from '@mui/material';
 import { adminStore } from '@stores/AdminStore';
 import { formatPrice } from '@utils/numberUtils';
-import CustomModal from './CustomModal';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
+import CustomModal from './CustomModal';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -119,9 +119,9 @@ const AddItemDialog: React.FC<AddItemDialogProps> = ({
   };
 
   return (
-    <CustomModal 
-      open={open} 
-      onClose={onClose} 
+    <CustomModal
+      open={open}
+      onClose={onClose}
       title={`Add New ${itemType.charAt(0).toUpperCase() + itemType.slice(1)}`}
       icon={<FontAwesomeIcon icon={faPlus} />}
       maxWidth="md"
@@ -150,13 +150,13 @@ const AddItemDialog: React.FC<AddItemDialogProps> = ({
               onDrop={onDrop}
               onClick={() => fileInputRef.current?.click()}
             >
-              <FontAwesomeIcon 
-                icon={faUpload} 
-                size="2x" 
-                style={{ 
+              <FontAwesomeIcon
+                icon={faUpload}
+                size="2x"
+                style={{
                   color: dragActive ? theme.palette.primary.main : theme.palette.text.secondary,
-                  marginBottom: 16 
-                }} 
+                  marginBottom: 16,
+                }}
               />
               <Typography variant="h6" gutterBottom>
                 {selectedFile ? selectedFile.name : 'Drop image here or click to select'}
@@ -191,7 +191,13 @@ const AddItemDialog: React.FC<AddItemDialogProps> = ({
                 <Button
                   size="small"
                   variant="outlined"
-                  startIcon={suggestionLoading ? <CircularProgress size={16} /> : <FontAwesomeIcon icon={faLightbulb} />}
+                  startIcon={
+                    suggestionLoading ? (
+                      <CircularProgress size={16} />
+                    ) : (
+                      <FontAwesomeIcon icon={faLightbulb} />
+                    )
+                  }
                   onClick={onAiSuggestion}
                   disabled={suggestionLoading || !formData.rarity}
                   sx={{ fontSize: '0.75rem', py: 0.5 }}
@@ -226,7 +232,7 @@ const AddItemDialog: React.FC<AddItemDialogProps> = ({
             />
           </Grid>
         )}
-        
+
         <Grid item xs={12}>
           <TextField
             fullWidth
@@ -251,7 +257,11 @@ const AddItemDialog: React.FC<AddItemDialogProps> = ({
                 onChange={(e) => onChange('coinAmount', parseInt(e.target.value) || 0)}
                 variant="outlined"
                 InputProps={{
-                  startAdornment: <InputAdornment position="start"><FontAwesomeIcon icon={faCoins} /></InputAdornment>,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faCoins} />
+                    </InputAdornment>
+                  ),
                 }}
               />
             </Grid>
@@ -278,7 +288,11 @@ const AddItemDialog: React.FC<AddItemDialogProps> = ({
                 variant="outlined"
                 helperText="Extra coins for larger packages"
                 InputProps={{
-                  startAdornment: <InputAdornment position="start"><FontAwesomeIcon icon={faCoins} /></InputAdornment>,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faCoins} />
+                    </InputAdornment>
+                  ),
                 }}
               />
             </Grid>
@@ -309,7 +323,9 @@ const AddItemDialog: React.FC<AddItemDialogProps> = ({
                 type="number"
                 label="Max Redemptions"
                 value={formData.maxRedemptions || ''}
-                onChange={(e) => onChange('maxRedemptions', e.target.value ? parseInt(e.target.value) : null)}
+                onChange={(e) =>
+                  onChange('maxRedemptions', e.target.value ? parseInt(e.target.value) : null)
+                }
                 variant="outlined"
                 helperText="Leave empty for unlimited redemptions"
               />
@@ -376,11 +392,13 @@ const AddItemDialog: React.FC<AddItemDialogProps> = ({
                   label="Type"
                   onChange={(e) => onChange('type', e.target.value)}
                 >
-                  {(itemType === 'avatar' ? avatarTypeOptions : microphoneTypeOptions).map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
-                    </MenuItem>
-                  ))}
+                  {(itemType === 'avatar' ? avatarTypeOptions : microphoneTypeOptions).map(
+                    (type) => (
+                      <MenuItem key={type} value={type}>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </MenuItem>
+                    ),
+                  )}
                 </Select>
               </FormControl>
             </Grid>
@@ -398,7 +416,11 @@ const AddItemDialog: React.FC<AddItemDialogProps> = ({
                 }}
                 variant="outlined"
                 InputProps={{
-                  startAdornment: <InputAdornment position="start"><FontAwesomeIcon icon={faCoins} /></InputAdornment>,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faCoins} />
+                    </InputAdornment>
+                  ),
                 }}
               />
             </Grid>
@@ -426,7 +448,7 @@ const AddItemDialog: React.FC<AddItemDialogProps> = ({
           </>
         )}
       </Grid>
-      
+
       {/* Action Buttons */}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
         <Button onClick={onClose} disabled={loading}>
@@ -435,7 +457,11 @@ const AddItemDialog: React.FC<AddItemDialogProps> = ({
         <Button
           onClick={onSave}
           variant="contained"
-          disabled={loading || !formData.name || (itemType !== 'coinPackage' && !selectedFile && !formData.imageUrl)}
+          disabled={
+            loading ||
+            !formData.name ||
+            (itemType !== 'coinPackage' && !selectedFile && !formData.imageUrl)
+          }
           startIcon={loading ? <CircularProgress size={16} /> : <FontAwesomeIcon icon={faPlus} />}
         >
           {loading ? 'Creating...' : 'Create Item'}
@@ -469,9 +495,9 @@ const EditItemDialog: React.FC<EditItemDialogProps> = ({
   const microphoneTypeOptions = ['basic', 'vintage', 'modern', 'wireless', 'premium', 'golden'];
 
   return (
-    <CustomModal 
-      open={open} 
-      onClose={onClose} 
+    <CustomModal
+      open={open}
+      onClose={onClose}
       title={`Edit ${itemType.charAt(0).toUpperCase() + itemType.slice(1)}`}
       icon={<FontAwesomeIcon icon={faEdit} />}
       maxWidth="md"
@@ -499,7 +525,7 @@ const EditItemDialog: React.FC<EditItemDialogProps> = ({
             />
           </Grid>
         )}
-        
+
         <Grid item xs={12}>
           <TextField
             fullWidth
@@ -524,7 +550,11 @@ const EditItemDialog: React.FC<EditItemDialogProps> = ({
                 onChange={(e) => onChange('coinAmount', parseInt(e.target.value) || 0)}
                 variant="outlined"
                 InputProps={{
-                  startAdornment: <InputAdornment position="start"><FontAwesomeIcon icon={faCoins} /></InputAdornment>,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faCoins} />
+                    </InputAdornment>
+                  ),
                 }}
               />
             </Grid>
@@ -551,7 +581,11 @@ const EditItemDialog: React.FC<EditItemDialogProps> = ({
                 variant="outlined"
                 helperText="Extra coins for larger packages"
                 InputProps={{
-                  startAdornment: <InputAdornment position="start"><FontAwesomeIcon icon={faCoins} /></InputAdornment>,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faCoins} />
+                    </InputAdornment>
+                  ),
                 }}
               />
             </Grid>
@@ -582,7 +616,9 @@ const EditItemDialog: React.FC<EditItemDialogProps> = ({
                 type="number"
                 label="Max Redemptions"
                 value={formData.maxRedemptions || ''}
-                onChange={(e) => onChange('maxRedemptions', e.target.value ? parseInt(e.target.value) : null)}
+                onChange={(e) =>
+                  onChange('maxRedemptions', e.target.value ? parseInt(e.target.value) : null)
+                }
                 variant="outlined"
                 helperText="Leave empty for unlimited redemptions"
               />
@@ -649,11 +685,13 @@ const EditItemDialog: React.FC<EditItemDialogProps> = ({
                   label="Type"
                   onChange={(e) => onChange('type', e.target.value)}
                 >
-                  {(itemType === 'avatar' ? avatarTypeOptions : microphoneTypeOptions).map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
-                    </MenuItem>
-                  ))}
+                  {(itemType === 'avatar' ? avatarTypeOptions : microphoneTypeOptions).map(
+                    (type) => (
+                      <MenuItem key={type} value={type}>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </MenuItem>
+                    ),
+                  )}
                 </Select>
               </FormControl>
             </Grid>
@@ -671,7 +709,11 @@ const EditItemDialog: React.FC<EditItemDialogProps> = ({
                 }}
                 variant="outlined"
                 InputProps={{
-                  startAdornment: <InputAdornment position="start"><FontAwesomeIcon icon={faCoins} /></InputAdornment>,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faCoins} />
+                    </InputAdornment>
+                  ),
                 }}
               />
             </Grid>
@@ -699,7 +741,7 @@ const EditItemDialog: React.FC<EditItemDialogProps> = ({
           </>
         )}
       </Grid>
-      
+
       {/* Action Buttons */}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
         <Button onClick={onClose} disabled={loading}>
@@ -740,9 +782,9 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   constraintError,
 }) => {
   return (
-    <CustomModal 
-      open={open} 
-      onClose={onClose} 
+    <CustomModal
+      open={open}
+      onClose={onClose}
       title={`Delete ${itemType}`}
       icon={<FontAwesomeIcon icon={faExclamationTriangle} />}
       maxWidth="sm"
@@ -750,7 +792,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
       <Typography variant="body1" gutterBottom>
         Are you sure you want to delete "{itemName}"?
       </Typography>
-      
+
       {constraintError ? (
         <Box sx={{ mt: 2, mb: 3 }}>
           <Alert severity="warning" sx={{ mb: 2 }}>
@@ -790,7 +832,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
           </Typography>
         </Box>
       )}
-      
+
       {/* Action Buttons */}
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
         <Button onClick={onClose} disabled={loading}>
@@ -802,7 +844,9 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
             color="error"
             variant="contained"
             disabled={loading}
-            startIcon={loading ? <CircularProgress size={16} /> : <FontAwesomeIcon icon={faTrash} />}
+            startIcon={
+              loading ? <CircularProgress size={16} /> : <FontAwesomeIcon icon={faTrash} />
+            }
           >
             {loading ? 'Force Deleting...' : 'Force Delete'}
           </Button>
@@ -812,7 +856,9 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
             color="error"
             variant="contained"
             disabled={loading}
-            startIcon={loading ? <CircularProgress size={16} /> : <FontAwesomeIcon icon={faTrash} />}
+            startIcon={
+              loading ? <CircularProgress size={16} /> : <FontAwesomeIcon icon={faTrash} />
+            }
           >
             {loading ? 'Deleting...' : 'Delete'}
           </Button>
@@ -844,7 +890,7 @@ const StoreManagement: React.FC = observer(() => {
     constraintError: undefined,
   });
   const [deleteLoading, setDeleteLoading] = useState(false);
-  
+
   // Edit dialog states
   const [editDialog, setEditDialog] = useState<{
     open: boolean;
@@ -1022,14 +1068,14 @@ const StoreManagement: React.FC = observer(() => {
     const fileExtension = file.name.split('.').pop();
     const baseFileName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
     const sanitizedFileName = baseFileName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    
+
     let imagePath = '';
     if (addDialog.type === 'avatar') {
       imagePath = `/images/avatar/avatars/${sanitizedFileName}.${fileExtension}`;
     } else {
       imagePath = `/images/microphones/microphones/${sanitizedFileName}.${fileExtension}`;
     }
-    
+
     handleAddFormChange('imageUrl', imagePath);
   };
 
@@ -1076,7 +1122,7 @@ const StoreManagement: React.FC = observer(() => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFileSelect(e.dataTransfer.files[0]);
     }
@@ -1088,7 +1134,7 @@ const StoreManagement: React.FC = observer(() => {
       adminStore.setTableError('Please provide a name');
       return;
     }
-    
+
     if (addDialog.type !== 'coinPackage' && !selectedFile && !addFormData.imageUrl) {
       adminStore.setTableError('Please select an image file or provide an image URL');
       return;
@@ -1159,12 +1205,15 @@ const StoreManagement: React.FC = observer(() => {
       setDeleteDialog({ open: false, item: null, type: 'avatar' });
     } catch (error: any) {
       console.error('Delete error in component:', error);
-      
+
       // Check if this is a constraint error for microphones
-      if (deleteDialog.type === 'microphone' && !deleteDialog.forceDelete && 
-          (error.message.includes('Use force delete') || error.message.includes('ownership records'))) {
+      if (
+        deleteDialog.type === 'microphone' &&
+        !deleteDialog.forceDelete &&
+        (error.message.includes('Use force delete') || error.message.includes('ownership records'))
+      ) {
         // Update dialog to show constraint error and offer force delete
-        setDeleteDialog(prev => ({
+        setDeleteDialog((prev) => ({
           ...prev,
           constraintError: error.message,
         }));
@@ -1176,7 +1225,7 @@ const StoreManagement: React.FC = observer(() => {
   };
 
   const handleForceDelete = () => {
-    setDeleteDialog(prev => ({
+    setDeleteDialog((prev) => ({
       ...prev,
       forceDelete: true,
       constraintError: undefined,
@@ -1194,11 +1243,12 @@ const StoreManagement: React.FC = observer(() => {
           display: 'flex',
           flexDirection: 'column',
           transition: 'all 0.3s ease',
-          background: theme.palette.mode === 'dark' 
-            ? `linear-gradient(135deg, 
+          background:
+            theme.palette.mode === 'dark'
+              ? `linear-gradient(135deg, 
                 ${theme.palette.grey[800]} 0%, 
                 ${theme.palette.grey[900]} 100%)`
-            : `linear-gradient(135deg, 
+              : `linear-gradient(135deg, 
                 ${theme.palette.background.paper} 0%, 
                 ${theme.palette.grey[50]} 100%)`,
           border: `1px solid ${theme.palette.divider}`,
@@ -1207,9 +1257,10 @@ const StoreManagement: React.FC = observer(() => {
           minHeight: 350,
           '&:hover': {
             transform: 'translateY(-4px)',
-            boxShadow: theme.palette.mode === 'dark'
-              ? `0 8px 32px rgba(0, 0, 0, 0.5)`
-              : `0 12px 40px ${theme.palette.primary.main}25`,
+            boxShadow:
+              theme.palette.mode === 'dark'
+                ? `0 8px 32px rgba(0, 0, 0, 0.5)`
+                : `0 12px 40px ${theme.palette.primary.main}25`,
             border: `1px solid ${theme.palette.primary.main}`,
           },
         }}
@@ -1219,17 +1270,20 @@ const StoreManagement: React.FC = observer(() => {
           height="180"
           image={avatar.imageUrl}
           alt={avatar.name}
-          sx={{ 
-            objectFit: 'contain', 
-            backgroundColor: theme.palette.mode === 'dark' 
-              ? theme.palette.grey[700] 
-              : theme.palette.grey[100],
+          sx={{
+            objectFit: 'contain',
+            backgroundColor:
+              theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.grey[100],
             p: 2,
             borderBottom: `1px solid ${theme.palette.divider}`,
           }}
         />
         <CardContent sx={{ flexGrow: 1, p: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2, color: theme.palette.text.primary }}>
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{ fontWeight: 600, mb: 2, color: theme.palette.text.primary }}
+          >
             {avatar.name}
           </Typography>
           <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 2 }}>
@@ -1251,17 +1305,17 @@ const StoreManagement: React.FC = observer(() => {
           </Box>
         </CardContent>
         <CardActions sx={{ p: 3, pt: 0 }}>
-          <IconButton 
-            size="medium" 
-            color="primary" 
+          <IconButton
+            size="medium"
+            color="primary"
             onClick={() => handleEdit(avatar, 'avatar')}
             sx={{ mr: 1 }}
           >
             <FontAwesomeIcon icon={faEdit} />
           </IconButton>
-          <IconButton 
-            size="medium" 
-            color="error" 
+          <IconButton
+            size="medium"
+            color="error"
             onClick={() => handleDelete(avatar, 'avatar')}
             sx={{ mr: 1 }}
           >
@@ -1281,11 +1335,12 @@ const StoreManagement: React.FC = observer(() => {
           display: 'flex',
           flexDirection: 'column',
           transition: 'all 0.3s ease',
-          background: theme.palette.mode === 'dark' 
-            ? `linear-gradient(135deg, 
+          background:
+            theme.palette.mode === 'dark'
+              ? `linear-gradient(135deg, 
                 ${theme.palette.grey[800]} 0%, 
                 ${theme.palette.grey[900]} 100%)`
-            : `linear-gradient(135deg, 
+              : `linear-gradient(135deg, 
                 ${theme.palette.background.paper} 0%, 
                 ${theme.palette.grey[50]} 100%)`,
           border: `1px solid ${theme.palette.divider}`,
@@ -1294,9 +1349,10 @@ const StoreManagement: React.FC = observer(() => {
           minHeight: 350,
           '&:hover': {
             transform: 'translateY(-4px)',
-            boxShadow: theme.palette.mode === 'dark'
-              ? `0 8px 32px rgba(0, 0, 0, 0.5)`
-              : `0 12px 40px ${theme.palette.primary.main}25`,
+            boxShadow:
+              theme.palette.mode === 'dark'
+                ? `0 8px 32px rgba(0, 0, 0, 0.5)`
+                : `0 12px 40px ${theme.palette.primary.main}25`,
             border: `1px solid ${theme.palette.primary.main}`,
           },
         }}
@@ -1306,17 +1362,20 @@ const StoreManagement: React.FC = observer(() => {
           height="180"
           image={microphone.imageUrl}
           alt={microphone.name}
-          sx={{ 
-            objectFit: 'contain', 
-            backgroundColor: theme.palette.mode === 'dark' 
-              ? theme.palette.grey[700] 
-              : theme.palette.grey[100],
+          sx={{
+            objectFit: 'contain',
+            backgroundColor:
+              theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.grey[100],
             p: 2,
             borderBottom: `1px solid ${theme.palette.divider}`,
           }}
         />
         <CardContent sx={{ flexGrow: 1, p: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2, color: theme.palette.text.primary }}>
+          <Typography
+            variant="h6"
+            gutterBottom
+            sx={{ fontWeight: 600, mb: 2, color: theme.palette.text.primary }}
+          >
             {microphone.name}
           </Typography>
           <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 2 }}>
@@ -1392,7 +1451,9 @@ const StoreManagement: React.FC = observer(() => {
             )}
           </Box>
         ) : (
-          <Typography variant="body2" color="text.secondary">Unlimited</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Unlimited
+          </Typography>
         )}
       </TableCell>
       <TableCell>
@@ -1406,27 +1467,35 @@ const StoreManagement: React.FC = observer(() => {
             )}
           </Box>
         ) : (
-          <Typography variant="body2" color="text.secondary">No expiry</Typography>
+          <Typography variant="body2" color="text.secondary">
+            No expiry
+          </Typography>
         )}
       </TableCell>
       <TableCell>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          {coinPackage.isLimitedTime && (
-            <Chip size="small" label="Limited Time" color="warning" />
-          )}
-          {coinPackage.isOneTimeUse && (
-            <Chip size="small" label="One Time Use" color="info" />
-          )}
+          {coinPackage.isLimitedTime && <Chip size="small" label="Limited Time" color="warning" />}
+          {coinPackage.isOneTimeUse && <Chip size="small" label="One Time Use" color="info" />}
           {!coinPackage.isLimitedTime && !coinPackage.isOneTimeUse && (
-            <Typography variant="body2" color="text.secondary">Standard</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Standard
+            </Typography>
           )}
         </Box>
       </TableCell>
       <TableCell>
         <Chip
           size="small"
-          label={(coinPackage.isActive !== undefined ? coinPackage.isActive : coinPackage.isAvailable) ? 'Available' : 'Unavailable'}
-          color={(coinPackage.isActive !== undefined ? coinPackage.isActive : coinPackage.isAvailable) ? 'success' : 'error'}
+          label={
+            (coinPackage.isActive !== undefined ? coinPackage.isActive : coinPackage.isAvailable)
+              ? 'Available'
+              : 'Unavailable'
+          }
+          color={
+            (coinPackage.isActive !== undefined ? coinPackage.isActive : coinPackage.isAvailable)
+              ? 'success'
+              : 'error'
+          }
         />
       </TableCell>
       <TableCell>
@@ -1462,11 +1531,12 @@ const StoreManagement: React.FC = observer(() => {
         sx={{
           width: '100%',
           mb: 2,
-          background: theme.palette.mode === 'dark' 
-            ? `linear-gradient(135deg, 
+          background:
+            theme.palette.mode === 'dark'
+              ? `linear-gradient(135deg, 
                 ${theme.palette.grey[800]} 0%, 
                 ${theme.palette.grey[900]} 100%)`
-            : `linear-gradient(135deg, 
+              : `linear-gradient(135deg, 
                 ${theme.palette.background.paper} 0%, 
                 ${theme.palette.background.default} 100%)`,
           backdropFilter: 'blur(10px)',
@@ -1481,11 +1551,12 @@ const StoreManagement: React.FC = observer(() => {
           sx={{
             borderBottom: 1,
             borderColor: 'divider',
-            background: theme.palette.mode === 'dark'
-              ? `linear-gradient(90deg, 
+            background:
+              theme.palette.mode === 'dark'
+                ? `linear-gradient(90deg, 
                   ${theme.palette.grey[800]} 0%, 
                   ${theme.palette.grey[900]} 100%)`
-              : `linear-gradient(90deg, 
+                : `linear-gradient(90deg, 
                   ${theme.palette.background.paper} 0%, 
                   ${theme.palette.background.default} 100%)`,
             '& .MuiTab-root': {
@@ -1678,11 +1749,12 @@ const StoreManagement: React.FC = observer(() => {
               component={Paper}
               elevation={4}
               sx={{
-                background: theme.palette.mode === 'dark' 
-                  ? `linear-gradient(135deg, 
+                background:
+                  theme.palette.mode === 'dark'
+                    ? `linear-gradient(135deg, 
                       ${theme.palette.grey[800]} 0%, 
                       ${theme.palette.grey[900]} 100%)`
-                  : `linear-gradient(135deg, 
+                    : `linear-gradient(135deg, 
                       ${theme.palette.background.paper} 0%, 
                       ${theme.palette.background.default} 100%)`,
                 border: `1px solid ${theme.palette.divider}`,

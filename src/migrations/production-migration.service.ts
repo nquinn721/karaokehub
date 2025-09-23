@@ -17,7 +17,7 @@ export class ProductionMigrationService {
     try {
       // Clean up any leftover temporary tables from previous failed attempts
       await this.cleanupTemporaryTables();
-      
+
       // Check if migrations table exists
       await this.ensureMigrationsTable();
 
@@ -252,14 +252,14 @@ export class ProductionMigrationService {
 
   async cleanupTemporaryTables(): Promise<void> {
     this.logger.log('🧹 Cleaning up any leftover temporary tables...');
-    
+
     try {
       // Clean up any temporary tables that might exist from failed migrations
       await this.dataSource.query('DROP TABLE IF EXISTS microphones_temp');
       await this.dataSource.query('DROP TABLE IF EXISTS microphones_new');
       await this.dataSource.query('DROP TABLE IF EXISTS microphones_backup');
       await this.dataSource.query('DROP TEMPORARY TABLE IF EXISTS microphone_id_mapping_temp');
-      
+
       this.logger.log('✅ Temporary tables cleaned up');
     } catch (error) {
       this.logger.warn('⚠️  Error during cleanup (this is usually safe to ignore):', error.message);
