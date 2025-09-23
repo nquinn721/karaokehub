@@ -122,15 +122,9 @@ const DashboardPage: React.FC = observer(() => {
     }
   }, [authStore.user?.equippedAvatar?.id]);
 
-  // Debug: Track microphone image URL changes
-  useEffect(() => {
-    console.log('🎤 currentMicrophoneImageUrl state changed to:', currentMicrophoneImageUrl);
-  }, [currentMicrophoneImageUrl]);
-
   // Reload microphone when UserStore currentUser changes
   useEffect(() => {
     if (userStore.currentUser && authStore.isAuthenticated) {
-      console.log('🎤 UserStore currentUser changed, reloading microphone');
       loadCurrentMicrophone();
     }
   }, [userStore.currentUser, authStore.isAuthenticated]);
@@ -146,15 +140,11 @@ const DashboardPage: React.FC = observer(() => {
 
       // Use AuthStore user data directly since it gets refreshed when avatar changes
       const user = authStore.user;
-      console.log('Loading avatar from AuthStore user:', user);
 
       if (user.equippedAvatar) {
         setCurrentAvatarId(user.equippedAvatar.id);
         setCurrentAvatarImageUrl(user.equippedAvatar.imageUrl);
         setCurrentAvatarName(user.equippedAvatar.name || 'Avatar');
-        console.log('Set current avatar ID:', user.equippedAvatar.id);
-        console.log('Set current avatar imageUrl:', user.equippedAvatar.imageUrl);
-        console.log('Set current avatar name:', user.equippedAvatar.name);
       } else {
         // If no equipped avatar, use fallback
         const fallbackAvatarId = 'alex';
@@ -162,7 +152,6 @@ const DashboardPage: React.FC = observer(() => {
         setCurrentAvatarId(fallbackAvatarId);
         setCurrentAvatarImageUrl(fallbackImageUrl);
         setCurrentAvatarName('Alex');
-        console.log('Using fallback avatar ID:', fallbackAvatarId);
       }
     } catch (error) {
       console.error('Failed to load current avatar:', error);
@@ -182,25 +171,13 @@ const DashboardPage: React.FC = observer(() => {
     }
 
     try {
-      console.log('UserStore currentUser:', userStore.currentUser);
-      console.log(
-        'UserStore currentUser equippedMicrophone:',
-        userStore.currentUser?.equippedMicrophone,
-      );
-      console.log(
-        'UserStore currentUser equippedMicrophoneId:',
-        userStore.currentUser?.equippedMicrophoneId,
-      );
-
       // Make sure we have current user data
       if (!userStore.currentUser) {
-        console.log('🎤 No currentUser in UserStore, cannot load microphone');
         return;
       }
 
       // Use UserStore to get equipped microphone
       const equippedMic = userStore.getEquippedMicrophone();
-      console.log('Loaded microphone from UserStore:', equippedMic);
 
       if (equippedMic?.microphoneId) {
         // setCurrentMicrophoneId(equippedMic.microphoneId);
@@ -212,17 +189,7 @@ const DashboardPage: React.FC = observer(() => {
         // Remove any double slashes except for the protocol
         imageUrl = imageUrl.replace(/([^:]\/)\/+/g, '$1');
         setCurrentMicrophoneImageUrl(imageUrl);
-
-        console.log('Set current microphone ID:', equippedMic.microphoneId);
-        console.log('Set current microphone name:', equippedMic.microphone?.name);
-        console.log(
-          'Set current microphone imageUrl (original):',
-          equippedMic.microphone?.imageUrl,
-        );
-        console.log('Set current microphone imageUrl (cleaned):', imageUrl);
       } else {
-        console.log('No equipped microphone found, using default');
-        // setCurrentMicrophoneId('mic_basic_1');
         setCurrentMicrophoneName('Basic Mic');
         setCurrentMicrophoneImageUrl('/images/avatar/parts/microphones/mic_basic_1.png');
       }

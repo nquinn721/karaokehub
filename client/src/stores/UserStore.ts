@@ -212,15 +212,11 @@ export class UserStore {
 
   // Get user's microphones
   async getUserMicrophones(): Promise<UserMicrophone[]> {
-    console.log('🔊 UserStore: getUserMicrophones called');
     this.clearError();
     this.isMicrophonesLoading = true;
 
     try {
-      console.log('🔊 UserStore: Making API call to /avatar/my-microphones');
       const microphones = await apiStore.get<UserMicrophone[]>('/avatar/my-microphones');
-      console.log('🔊 UserStore: API call successful, received:', microphones);
-      console.log('🔊 UserStore: Microphones count:', microphones?.length || 0);
 
       runInAction(() => {
         this.userMicrophones = microphones;
@@ -278,14 +274,8 @@ export class UserStore {
 
   // Get currently equipped microphone
   getEquippedMicrophone(): UserMicrophone | null {
-    console.log('🎤 getEquippedMicrophone called');
-    console.log('🎤 currentUser:', this.currentUser);
-    console.log('🎤 currentUser.equippedMicrophone:', this.currentUser?.equippedMicrophone);
-    console.log('🎤 currentUser.equippedMicrophoneId:', this.currentUser?.equippedMicrophoneId);
-
     // First try to use the new pattern from currentUser
     if (this.currentUser?.equippedMicrophone && this.currentUser?.equippedMicrophoneId) {
-      console.log('🎤 Using equipped microphone from currentUser');
       // Create a UserMicrophone-like object from the equipped microphone
       const result = {
         id: `equipped_${this.currentUser.equippedMicrophoneId}`,
@@ -295,22 +285,16 @@ export class UserStore {
         acquiredAt: new Date().toISOString(),
         microphone: this.currentUser.equippedMicrophone,
       };
-      console.log('🎤 Returning equipped microphone:', result);
       return result;
     }
 
-    console.log('🎤 No equipped microphone found in currentUser, checking userMicrophones');
-    console.log('🎤 userMicrophones:', this.userMicrophones);
-
     // Fallback to old pattern for compatibility
     const fallback = this.userMicrophones.find((um) => um.isEquipped) || null;
-    console.log('🎤 Fallback result:', fallback);
     return fallback;
   }
 
   // Get user's avatars
   async getUserAvatars(): Promise<UserAvatarOwnership[]> {
-    console.log('🎭 UserStore: getUserAvatars called');
     this.clearError();
     this.isAvatarsLoading = true;
 
