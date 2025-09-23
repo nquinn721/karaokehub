@@ -103,11 +103,12 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       initSQLCommands: ['SET foreign_key_checks = 0;'],
     },
 
-    // Migration configuration - enabled with only new migration files for production
+    // Migration configuration - enabled with all necessary migration files for production
     migrations: migrationsEnabled
       ? [
-          'src/migrations/1727906500000-ConvertMicrophonesToUuid.ts',
-          'src/migrations/1727906600000-PopulateAvatarsTable.ts',
+          'dist/migrations/1727906400000-RecordMicrophoneUuidConversion.js',
+          'dist/migrations/1727906500000-ConvertMicrophonesToUuid.js',
+          'dist/migrations/1727906600000-PopulateAvatarsTable.js',
         ]
       : [],
     migrationsTableName: 'migrations',

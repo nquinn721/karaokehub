@@ -81,7 +81,7 @@ const DashboardPage: React.FC = observer(() => {
   const [currentAvatarImageUrl, setCurrentAvatarImageUrl] = useState<string>(
     '/images/avatar/avatars/alex.png',
   );
-  const [currentMicrophoneId, setCurrentMicrophoneId] = useState<string>('mic_basic_1');
+  // const [currentMicrophoneId, setCurrentMicrophoneId] = useState<string>('mic_basic_1');
   const [currentMicrophoneImageUrl, setCurrentMicrophoneImageUrl] = useState<string>(
     '/images/avatar/parts/microphones/mic_basic_1.png',
   );
@@ -203,7 +203,7 @@ const DashboardPage: React.FC = observer(() => {
       console.log('Loaded microphone from UserStore:', equippedMic);
 
       if (equippedMic?.microphoneId) {
-        setCurrentMicrophoneId(equippedMic.microphoneId);
+        // setCurrentMicrophoneId(equippedMic.microphoneId);
         setCurrentMicrophoneName(equippedMic.microphone?.name || 'Microphone');
 
         // Clean up the image URL to avoid double slashes
@@ -222,13 +222,13 @@ const DashboardPage: React.FC = observer(() => {
         console.log('Set current microphone imageUrl (cleaned):', imageUrl);
       } else {
         console.log('No equipped microphone found, using default');
-        setCurrentMicrophoneId('mic_basic_1');
+        // setCurrentMicrophoneId('mic_basic_1');
         setCurrentMicrophoneName('Basic Mic');
         setCurrentMicrophoneImageUrl('/images/avatar/parts/microphones/mic_basic_1.png');
       }
     } catch (error) {
       console.error('Failed to load current microphone:', error);
-      setCurrentMicrophoneId('mic_basic_1');
+      // setCurrentMicrophoneId('mic_basic_1');
       setCurrentMicrophoneName('Basic Mic');
       setCurrentMicrophoneImageUrl('/images/avatar/parts/microphones/mic_basic_1.png');
     }

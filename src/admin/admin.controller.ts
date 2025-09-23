@@ -380,4 +380,15 @@ export class AdminController {
   ) {
     return await this.adminService.getStoreCoinPackages(+page, +limit, search);
   }
+
+  // Production Migration Endpoints
+  @Post('migrations/run-critical')
+  async runCriticalMigrations() {
+    return await this.adminService.runCriticalMigrations();
+  }
+
+  @Get('migrations/status')
+  async getMigrationStatus() {
+    return await this.adminService.getMigrationStatus();
+  }
 }

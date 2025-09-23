@@ -20,6 +20,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { ApiLogsController } from './api-logs.controller';
 import { DeduplicationService } from './deduplication.service';
+import { ProductionMigrationService } from '../migrations/production-migration.service';
 
 @Module({
   imports: [
@@ -43,7 +44,7 @@ import { DeduplicationService } from './deduplication.service';
     GeocodingModule,
   ],
   controllers: [AdminController, ApiLogsController],
-  providers: [AdminService, DeduplicationService],
+  providers: [AdminService, DeduplicationService, ProductionMigrationService],
   exports: [AdminService, DeduplicationService],
 })
 export class AdminModule {}

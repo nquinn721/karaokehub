@@ -12,6 +12,7 @@ import { User } from '../entities/user.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
 import { Feedback } from '../feedback/feedback.entity';
 import { GeocodingService } from '../geocoding/geocoding.service';
+import { ProductionMigrationService } from '../migrations/production-migration.service';
 import { ParsedSchedule, ParseStatus } from '../parser/parsed-schedule.entity';
 import { ReviewStatus, ShowReview } from '../show-review/show-review.entity';
 import { Show } from '../show/show.entity';
@@ -68,6 +69,7 @@ export class AdminService {
     @InjectRepository(UserAvatar)
     private userAvatarRepository: Repository<UserAvatar>,
     private geocodingService: GeocodingService,
+    private migrationService: ProductionMigrationService,
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -2215,6 +2217,43 @@ If the venue cannot be found or you're not confident in the information, set ven
       };
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  // Production Migration Methods
+  async runCriticalMigrations(): Promise<any> {
+    try {
+      await this.migrationService.runCriticalMigrations();
+      return {
+        success: true,
+        message: 'Critical migrations completed successfully',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Migration failed',
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      };
+    }
+  }
+
+  async getMigrationStatus(): Promise<any> {
+    try {
+      const status = await this.migrationService.getMigrationStatus();
+      return {
+        success: true,
+        ...status,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to get migration status',
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      };
     }
   }
 }
