@@ -5,7 +5,7 @@ export class AddSearchQueryToApiRecentCalls1737454100000 implements MigrationInt
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.log('🔄 Adding search_query and request_url columns to api_recent_calls...');
-    
+
     // Check if table exists first
     const tableExists = await queryRunner.hasTable('api_recent_calls');
     if (!tableExists) {
@@ -40,7 +40,7 @@ export class AddSearchQueryToApiRecentCalls1737454100000 implements MigrationInt
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     console.log('🔄 Removing search_query and request_url columns from api_recent_calls...');
-    
+
     const tableExists = await queryRunner.hasTable('api_recent_calls');
     if (!tableExists) {
       console.log('⚠️ Table api_recent_calls does not exist, skipping rollback');

@@ -184,7 +184,7 @@ const EnhancedApiMonitoring: React.FC = () => {
       try {
         const summaryRes = await fetch('/api/api-monitoring/realtime/status');
         const summaryData = await summaryRes.json();
-        
+
         // Transform real-time data to match expected interface
         setSummary({
           totalCallsToday: summaryData.metrics.totalCallsToday || 0,
@@ -284,8 +284,12 @@ const EnhancedApiMonitoring: React.FC = () => {
     try {
       // Use real-time data to create charts instead of non-existent chart endpoints
       const [statusData, recentCallsData] = await Promise.all([
-        fetch('/api/api-monitoring/realtime/status').then(res => res.json()).catch(() => null),
-        fetch('/api/api-monitoring/realtime/recent-calls').then(res => res.json()).catch(() => [])
+        fetch('/api/api-monitoring/realtime/status')
+          .then((res) => res.json())
+          .catch(() => null),
+        fetch('/api/api-monitoring/realtime/recent-calls')
+          .then((res) => res.json())
+          .catch(() => []),
       ]);
 
       // Create charts from real-time data
@@ -316,60 +320,71 @@ const EnhancedApiMonitoring: React.FC = () => {
     const now = new Date();
     const hoursAgo = [];
     const callCounts = [];
-    
+
     for (let i = 23; i >= 0; i--) {
       const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
       hoursAgo.push(hour.getHours() + ':00');
-      
-      const callsInHour = recentCalls.filter(call => {
+
+      const callsInHour = recentCalls.filter((call) => {
         const callTime = new Date(call.timestamp);
-        return callTime.getHours() === hour.getHours() && 
-               callTime.getDate() === hour.getDate();
+        return callTime.getHours() === hour.getHours() && callTime.getDate() === hour.getDate();
       }).length;
-      
+
       callCounts.push(callsInHour);
     }
-    
+
     return {
       labels: hoursAgo,
-      datasets: [{
-        label: 'API Calls per Hour',
-        data: callCounts,
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-      }],
+      datasets: [
+        {
+          label: 'API Calls per Hour',
+          data: callCounts,
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        },
+      ],
     };
   };
 
   const createResponseTimeChartFromRecentData = (recentCalls: any[]) => {
-    const labels = recentCalls.slice(0, 10).reverse().map((_, i) => `Call ${i + 1}`);
-    const responseTimes = recentCalls.slice(0, 10).reverse().map(call => call.responseTimeMs);
-    
+    const labels = recentCalls
+      .slice(0, 10)
+      .reverse()
+      .map((_, i) => `Call ${i + 1}`);
+    const responseTimes = recentCalls
+      .slice(0, 10)
+      .reverse()
+      .map((call) => call.responseTimeMs);
+
     return {
       labels,
-      datasets: [{
-        label: 'Response Time (ms)',
-        data: responseTimes,
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-      }],
+      datasets: [
+        {
+          label: 'Response Time (ms)',
+          data: responseTimes,
+          borderColor: 'rgb(255, 99, 132)',
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        },
+      ],
     };
   };
 
   const createSuccessRateChartFromStatus = (statusData: any) => {
     if (!statusData) return getPlaceholderChartData('successRate');
-    
+
     const successRate = statusData.metrics?.successRateToday || 100;
     const labels = ['Today'];
-    
+
     return {
       labels,
-      datasets: [{
-        label: 'Success Rate (%)',
-        data: [successRate],
-        borderColor: 'rgb(54, 162, 235)',
-        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-      }],
+      datasets: [
+        {
+          label: 'Success Rate (%)',
+          data: [successRate],
+          borderColor: 'rgb(54, 162, 235)',
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        },
+      ],
     };
   };
 
@@ -378,50 +393,56 @@ const EnhancedApiMonitoring: React.FC = () => {
       acc[call.provider] = (acc[call.provider] || 0) + 1;
       return acc;
     }, {});
-    
+
     return {
       labels: Object.keys(providerCounts),
-      datasets: [{
-        data: Object.values(providerCounts),
-        backgroundColor: [
-          'rgba(255, 99, 132, 0.8)',
-          'rgba(54, 162, 235, 0.8)',
-          'rgba(255, 205, 86, 0.8)',
-          'rgba(75, 192, 192, 0.8)',
-        ],
-      }],
+      datasets: [
+        {
+          data: Object.values(providerCounts),
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.8)',
+            'rgba(54, 162, 235, 0.8)',
+            'rgba(255, 205, 86, 0.8)',
+            'rgba(75, 192, 192, 0.8)',
+          ],
+        },
+      ],
     };
   };
 
   const createErrorTypesChartFromRecentData = (recentCalls: any[]) => {
     const errorCounts = recentCalls
-      .filter(call => !call.success)
+      .filter((call) => !call.success)
       .reduce((acc, call) => {
         const errorType = call.errorType || 'Unknown';
         acc[errorType] = (acc[errorType] || 0) + 1;
         return acc;
       }, {});
-    
+
     if (Object.keys(errorCounts).length === 0) {
       return {
         labels: ['No Errors'],
-        datasets: [{
-          data: [1],
-          backgroundColor: ['rgba(75, 192, 192, 0.8)'],
-        }],
+        datasets: [
+          {
+            data: [1],
+            backgroundColor: ['rgba(75, 192, 192, 0.8)'],
+          },
+        ],
       };
     }
-    
+
     return {
       labels: Object.keys(errorCounts),
-      datasets: [{
-        data: Object.values(errorCounts),
-        backgroundColor: [
-          'rgba(255, 99, 132, 0.8)',
-          'rgba(255, 159, 64, 0.8)',
-          'rgba(255, 205, 86, 0.8)',
-        ],
-      }],
+      datasets: [
+        {
+          data: Object.values(errorCounts),
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.8)',
+            'rgba(255, 159, 64, 0.8)',
+            'rgba(255, 205, 86, 0.8)',
+          ],
+        },
+      ],
     };
   };
 
@@ -760,8 +781,6 @@ const EnhancedApiMonitoring: React.FC = () => {
         </Grid>
       )}
 
-
-
       {/* Filters */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
@@ -979,23 +998,21 @@ const EnhancedApiMonitoring: React.FC = () => {
                   <TableBody>
                     {recentCalls.map((call) => (
                       <TableRow key={call.id}>
+                        <TableCell>{new Date(call.timestamp).toLocaleTimeString()}</TableCell>
                         <TableCell>
-                          {new Date(call.timestamp).toLocaleTimeString()}
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={call.provider.toUpperCase()} 
-                            size="small" 
-                            color="primary" 
+                          <Chip
+                            label={call.provider.toUpperCase()}
+                            size="small"
+                            color="primary"
                             variant="outlined"
                           />
                         </TableCell>
                         <TableCell>{call.endpointType}</TableCell>
                         <TableCell>
-                          <Chip 
-                            label={call.statusCode} 
-                            size="small" 
-                            color={call.statusCode === 200 ? "success" : "error"}
+                          <Chip
+                            label={call.statusCode}
+                            size="small"
+                            color={call.statusCode === 200 ? 'success' : 'error'}
                           />
                         </TableCell>
                         <TableCell>{call.responseTimeMs}ms</TableCell>
@@ -1008,7 +1025,10 @@ const EnhancedApiMonitoring: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           {call.rateLimited ? (
-                            <FontAwesomeIcon icon={faExclamationTriangle} style={{ color: 'orange' }} />
+                            <FontAwesomeIcon
+                              icon={faExclamationTriangle}
+                              style={{ color: 'orange' }}
+                            />
                           ) : (
                             <FontAwesomeIcon icon={faCheck} style={{ color: 'green' }} />
                           )}
@@ -1040,24 +1060,30 @@ const EnhancedApiMonitoring: React.FC = () => {
                       </Typography>
                       <Box sx={{ mb: 2 }}>
                         <Typography variant="body2" color="text.secondary">
-                          Rate Limit: {rateLimitStatus.currentMinuteCount} / {rateLimitStatus.maxRequestsPerMinute} per minute
+                          Rate Limit: {rateLimitStatus.currentMinuteCount} /{' '}
+                          {rateLimitStatus.maxRequestsPerMinute} per minute
                         </Typography>
                         <Box sx={{ mt: 1, mb: 1 }}>
                           {/* Progress bar for rate limit usage */}
-                          <Box 
-                            sx={{ 
-                              width: '100%', 
-                              height: 8, 
-                              bgcolor: 'grey.300', 
-                              borderRadius: 1 
+                          <Box
+                            sx={{
+                              width: '100%',
+                              height: 8,
+                              bgcolor: 'grey.300',
+                              borderRadius: 1,
                             }}
                           >
                             <Box
                               sx={{
                                 width: `${(rateLimitStatus.currentMinuteCount / rateLimitStatus.maxRequestsPerMinute) * 100}%`,
                                 height: '100%',
-                                bgcolor: rateLimitStatus.isRateLimited ? 'error.main' : 
-                                        (rateLimitStatus.currentMinuteCount / rateLimitStatus.maxRequestsPerMinute) > 0.8 ? 'warning.main' : 'success.main',
+                                bgcolor: rateLimitStatus.isRateLimited
+                                  ? 'error.main'
+                                  : rateLimitStatus.currentMinuteCount /
+                                        rateLimitStatus.maxRequestsPerMinute >
+                                      0.8
+                                    ? 'warning.main'
+                                    : 'success.main',
                                 borderRadius: 1,
                               }}
                             />
@@ -1067,18 +1093,18 @@ const EnhancedApiMonitoring: React.FC = () => {
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="body2">Status:</Typography>
-                          <Chip 
-                            label={rateLimitStatus.isRateLimited ? "RATE LIMITED" : "HEALTHY"} 
-                            size="small" 
-                            color={rateLimitStatus.isRateLimited ? "error" : "success"}
+                          <Chip
+                            label={rateLimitStatus.isRateLimited ? 'RATE LIMITED' : 'HEALTHY'}
+                            size="small"
+                            color={rateLimitStatus.isRateLimited ? 'error' : 'success'}
                           />
                         </Box>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="body2">Circuit Breaker:</Typography>
-                          <Chip 
-                            label={rateLimitStatus.circuitBreakerOpen ? "OPEN" : "CLOSED"} 
-                            size="small" 
-                            color={rateLimitStatus.circuitBreakerOpen ? "error" : "success"}
+                          <Chip
+                            label={rateLimitStatus.circuitBreakerOpen ? 'OPEN' : 'CLOSED'}
+                            size="small"
+                            color={rateLimitStatus.circuitBreakerOpen ? 'error' : 'success'}
                           />
                         </Box>
                         {rateLimitStatus.lastRequestAt && (

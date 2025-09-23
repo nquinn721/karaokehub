@@ -141,7 +141,7 @@ export class ApiMonitoringService {
 
   private async saveRecentCall(data: ApiCallData): Promise<void> {
     console.log('💾 Saving recent call to database...');
-    
+
     // Extract search query from URL if it's a search endpoint
     let searchQuery: string | undefined;
     if (data.requestUrl && data.endpointType === ApiEndpointType.SEARCH) {
@@ -164,7 +164,7 @@ export class ApiMonitoringService {
     });
 
     console.log('📝 Created recent call entity:', recentCall);
-    
+
     await this.recentCallRepository.save(recentCall);
     console.log('✅ Saved recent call to database');
 
