@@ -1,6 +1,9 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ApiLog } from '../api-logging/api-log.entity';
+import { ApiRateLimitStatus } from '../api-logging/entities/api-rate-limit-status.entity';
+import { ApiRealtimeMetric } from '../api-logging/entities/api-realtime-metric.entity';
+import { ApiRecentCall } from '../api-logging/entities/api-recent-call.entity';
 import { Avatar } from '../avatar/entities/avatar.entity';
 import { Microphone } from '../avatar/entities/microphone.entity';
 import { Outfit } from '../avatar/entities/outfit.entity';
@@ -32,11 +35,14 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
   const isProduction = configService.get('NODE_ENV') === 'production';
   const socketPath = configService.get('DATABASE_SOCKET_PATH');
 
+  // Try to enable migrations with updated @nestjs/typeorm
+  const migrationsEnabled = true; // Enabled with production-ready migrations
+
   console.log('🗃️  Database Config:', {
     NODE_ENV: configService.get('NODE_ENV'),
     isProduction,
     synchronize: false, // Always false for safety
-    migrationsEnabled: true, // Migrations enabled for database updates
+    migrationsEnabled: migrationsEnabled,
   });
 
   const baseConfig = {
@@ -63,6 +69,10 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       Friendship,
       UserFeatureOverride,
       ApiLog,
+      // Real-time API monitoring entities
+      ApiRecentCall,
+      ApiRealtimeMetric,
+      ApiRateLimitStatus,
       // Avatar system entities
       Avatar,
       UserAvatar,
@@ -93,10 +103,15 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       initSQLCommands: ['SET foreign_key_checks = 0;'],
     },
 
-    // Migration configuration - environment specific - temporarily disabled due to import issues
-    // migrations: isProduction ? ['dist/migrations/*.js'] : ['src/migrations/*.ts'],
+    // Migration configuration - enabled with only new migration files for production
+    migrations: migrationsEnabled
+      ? [
+          'src/migrations/1727906500000-ConvertMicrophonesToUuid.ts',
+          'src/migrations/1727906600000-PopulateAvatarsTable.ts',
+        ]
+      : [],
     migrationsTableName: 'migrations',
-    migrationsRun: false, // Temporarily disabled due to TypeORM MigrationInterface import issues
+    migrationsRun: migrationsEnabled,
 
     // Connection pool options for TypeORM
     ...(isProduction && {

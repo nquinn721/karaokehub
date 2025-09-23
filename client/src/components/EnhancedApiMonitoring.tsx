@@ -124,6 +124,31 @@ interface ItunesRateLimitStats {
   rateLimitReachedCount: number;
 }
 
+interface RecentApiCall {
+  id: number;
+  provider: string;
+  endpointType: string;
+  statusCode: number;
+  responseTimeMs: number;
+  success: boolean;
+  rateLimited: boolean;
+  errorType: string | null;
+  timestamp: string;
+}
+
+interface RateLimitStatus {
+  provider: string;
+  maxRequestsPerMinute: number;
+  currentMinuteCount: number;
+  currentMinuteStart: string | null;
+  isRateLimited: boolean;
+  circuitBreakerOpen: boolean;
+  lastRequestAt: string | null;
+  lastSuccessAt: string | null;
+  lastErrorAt: string | null;
+  updatedAt: string;
+}
+
 const EnhancedApiMonitoring: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -131,6 +156,8 @@ const EnhancedApiMonitoring: React.FC = () => {
   const [issues, setIssues] = useState<ApiIssue[]>([]);
   const [chartData, setChartData] = useState<any>(null);
   const [itunesStats, setItunesStats] = useState<ItunesRateLimitStats | null>(null);
+  const [recentCalls, setRecentCalls] = useState<RecentApiCall[]>([]);
+  const [rateLimits, setRateLimits] = useState<RateLimitStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIssue, setSelectedIssue] = useState<ApiIssue | null>(null);
   const [resolutionDialog, setResolutionDialog] = useState(false);
@@ -141,21 +168,65 @@ const EnhancedApiMonitoring: React.FC = () => {
     loadData();
   }, [daysFilter]);
 
+  // Auto-refresh every 30 seconds for real-time updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadData();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load summary with fallback data
+      // Load real-time status from new endpoint
       try {
-        const summaryRes = await fetch('/api-monitoring/dashboard/summary');
+        const summaryRes = await fetch('/api/api-monitoring/realtime/status');
         const summaryData = await summaryRes.json();
-        setSummary(summaryData);
+        
+        // Transform real-time data to match expected interface
+        setSummary({
+          totalCallsToday: summaryData.metrics.totalCallsToday || 0,
+          successRateToday: summaryData.metrics.successRateToday || 100,
+          activeIssues: summaryData.metrics.activeIssues || 0,
+          avgResponseTimeToday: summaryData.metrics.avgResponseTime || 0,
+        });
+
+        // Update iTunes stats from real-time status
+        setItunesStats({
+          maxRequestsPerMinute: summaryData.rateLimiting.maxPerMinute || 300,
+          minDelayBetweenRequests: 50,
+          requestsThisMinute: summaryData.rateLimiting.usedThisMinute || 0,
+          requestsThisHour: summaryData.usageStatistics.requestsThisHour || 0,
+          requestsToday: summaryData.usageStatistics.requestsToday || 0,
+          averageRequestsPerMinute: summaryData.usageStatistics.avgMinLastHour || 0,
+          circuitBreakerStatus: summaryData.usageStatistics.circuitBreaker || 'closed',
+          timeUntilReset: 0,
+          remainingQuotaThisMinute: summaryData.rateLimiting.remaining || 300,
+          projectedMinutelyUsage: 0,
+          rateLimitReachedCount: summaryData.rateLimiting.rateLimitsHitToday || 0,
+        });
       } catch (error) {
-        console.warn('Dashboard summary not available, using placeholder data');
+        console.warn('Real-time status not available, using placeholder data');
         setSummary({
           totalCallsToday: 0,
           successRateToday: 100,
           activeIssues: 0,
           avgResponseTimeToday: 0,
+        });
+        setItunesStats({
+          maxRequestsPerMinute: 300,
+          minDelayBetweenRequests: 50,
+          requestsThisMinute: 0,
+          requestsThisHour: 0,
+          requestsToday: 0,
+          averageRequestsPerMinute: 0,
+          circuitBreakerStatus: 'closed',
+          timeUntilReset: 0,
+          remainingQuotaThisMinute: 300,
+          projectedMinutelyUsage: 0,
+          rateLimitReachedCount: 0,
         });
       }
 
@@ -180,26 +251,24 @@ const EnhancedApiMonitoring: React.FC = () => {
         setIssues([]);
       }
 
-      // Load iTunes rate limit stats (prioritize this)
+      // Load recent API calls from new real-time endpoint
       try {
-        const itunesRes = await fetch('/admin/api-logs/itunes/rate-limit-info');
-        const itunesData = await itunesRes.json();
-        setItunesStats(itunesData);
+        const recentCallsRes = await fetch('/api/api-monitoring/realtime/recent-calls');
+        const recentCallsData = await recentCallsRes.json();
+        setRecentCalls(recentCallsData);
       } catch (error) {
-        console.warn('iTunes stats not available, using placeholder data');
-        setItunesStats({
-          maxRequestsPerMinute: 300,
-          minDelayBetweenRequests: 50,
-          requestsThisMinute: 0,
-          requestsThisHour: 0,
-          requestsToday: 0,
-          averageRequestsPerMinute: 0,
-          circuitBreakerStatus: 'closed',
-          timeUntilReset: 0,
-          remainingQuotaThisMinute: 300,
-          projectedMinutelyUsage: 0,
-          rateLimitReachedCount: 0,
-        });
+        console.warn('Recent calls not available, using empty data');
+        setRecentCalls([]);
+      }
+
+      // Load rate limit status from new real-time endpoint
+      try {
+        const rateLimitsRes = await fetch('/api/api-monitoring/realtime/rate-limits');
+        const rateLimitsData = await rateLimitsRes.json();
+        setRateLimits(rateLimitsData);
+      } catch (error) {
+        console.warn('Rate limits not available, using empty data');
+        setRateLimits([]);
       }
 
       // Load chart data with fallback
@@ -213,37 +282,19 @@ const EnhancedApiMonitoring: React.FC = () => {
 
   const loadChartData = async () => {
     try {
-      const [callsRes, responseTimeRes, successRateRes, providerRes, errorTypesRes] =
-        await Promise.all([
-          fetch(`/api-monitoring/charts/calls-over-time?days=${daysFilter}&provider=itunes`).catch(
-            () => null,
-          ),
-          fetch(`/api-monitoring/charts/response-times?days=${daysFilter}&provider=itunes`).catch(
-            () => null,
-          ),
-          fetch(`/api-monitoring/charts/success-rate?days=${daysFilter}&provider=itunes`).catch(
-            () => null,
-          ),
-          fetch(`/api-monitoring/charts/provider-breakdown?days=${daysFilter}`).catch(() => null),
-          fetch(`/api-monitoring/charts/error-types?days=${daysFilter}`).catch(() => null),
-        ]);
+      // Use real-time data to create charts instead of non-existent chart endpoints
+      const [statusData, recentCallsData] = await Promise.all([
+        fetch('/api/api-monitoring/realtime/status').then(res => res.json()).catch(() => null),
+        fetch('/api/api-monitoring/realtime/recent-calls').then(res => res.json()).catch(() => [])
+      ]);
 
+      // Create charts from real-time data
       const charts = {
-        calls: callsRes
-          ? await callsRes.json().catch(() => getPlaceholderChartData('calls'))
-          : getPlaceholderChartData('calls'),
-        responseTimes: responseTimeRes
-          ? await responseTimeRes.json().catch(() => getPlaceholderChartData('responseTimes'))
-          : getPlaceholderChartData('responseTimes'),
-        successRate: successRateRes
-          ? await successRateRes.json().catch(() => getPlaceholderChartData('successRate'))
-          : getPlaceholderChartData('successRate'),
-        providers: providerRes
-          ? await providerRes.json().catch(() => getPlaceholderChartData('providers'))
-          : getPlaceholderChartData('providers'),
-        errorTypes: errorTypesRes
-          ? await errorTypesRes.json().catch(() => getPlaceholderChartData('errorTypes'))
-          : getPlaceholderChartData('errorTypes'),
+        calls: createCallsChartFromRecentData(recentCallsData),
+        responseTimes: createResponseTimeChartFromRecentData(recentCallsData),
+        successRate: createSuccessRateChartFromStatus(statusData),
+        providers: createProviderBreakdownFromRecentData(recentCallsData),
+        errorTypes: createErrorTypesChartFromRecentData(recentCallsData),
       };
 
       setChartData(charts);
@@ -257,6 +308,121 @@ const EnhancedApiMonitoring: React.FC = () => {
         errorTypes: getPlaceholderChartData('errorTypes'),
       });
     }
+  };
+
+  // Helper functions to create charts from real-time data
+  const createCallsChartFromRecentData = (recentCalls: any[]) => {
+    // Group calls by hour to show recent activity
+    const now = new Date();
+    const hoursAgo = [];
+    const callCounts = [];
+    
+    for (let i = 23; i >= 0; i--) {
+      const hour = new Date(now.getTime() - i * 60 * 60 * 1000);
+      hoursAgo.push(hour.getHours() + ':00');
+      
+      const callsInHour = recentCalls.filter(call => {
+        const callTime = new Date(call.timestamp);
+        return callTime.getHours() === hour.getHours() && 
+               callTime.getDate() === hour.getDate();
+      }).length;
+      
+      callCounts.push(callsInHour);
+    }
+    
+    return {
+      labels: hoursAgo,
+      datasets: [{
+        label: 'API Calls per Hour',
+        data: callCounts,
+        borderColor: 'rgb(75, 192, 192)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+      }],
+    };
+  };
+
+  const createResponseTimeChartFromRecentData = (recentCalls: any[]) => {
+    const labels = recentCalls.slice(0, 10).reverse().map((_, i) => `Call ${i + 1}`);
+    const responseTimes = recentCalls.slice(0, 10).reverse().map(call => call.responseTimeMs);
+    
+    return {
+      labels,
+      datasets: [{
+        label: 'Response Time (ms)',
+        data: responseTimes,
+        borderColor: 'rgb(255, 99, 132)',
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+      }],
+    };
+  };
+
+  const createSuccessRateChartFromStatus = (statusData: any) => {
+    if (!statusData) return getPlaceholderChartData('successRate');
+    
+    const successRate = statusData.metrics?.successRateToday || 100;
+    const labels = ['Today'];
+    
+    return {
+      labels,
+      datasets: [{
+        label: 'Success Rate (%)',
+        data: [successRate],
+        borderColor: 'rgb(54, 162, 235)',
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+      }],
+    };
+  };
+
+  const createProviderBreakdownFromRecentData = (recentCalls: any[]) => {
+    const providerCounts = recentCalls.reduce((acc, call) => {
+      acc[call.provider] = (acc[call.provider] || 0) + 1;
+      return acc;
+    }, {});
+    
+    return {
+      labels: Object.keys(providerCounts),
+      datasets: [{
+        data: Object.values(providerCounts),
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.8)',
+          'rgba(54, 162, 235, 0.8)',
+          'rgba(255, 205, 86, 0.8)',
+          'rgba(75, 192, 192, 0.8)',
+        ],
+      }],
+    };
+  };
+
+  const createErrorTypesChartFromRecentData = (recentCalls: any[]) => {
+    const errorCounts = recentCalls
+      .filter(call => !call.success)
+      .reduce((acc, call) => {
+        const errorType = call.errorType || 'Unknown';
+        acc[errorType] = (acc[errorType] || 0) + 1;
+        return acc;
+      }, {});
+    
+    if (Object.keys(errorCounts).length === 0) {
+      return {
+        labels: ['No Errors'],
+        datasets: [{
+          data: [1],
+          backgroundColor: ['rgba(75, 192, 192, 0.8)'],
+        }],
+      };
+    }
+    
+    return {
+      labels: Object.keys(errorCounts),
+      datasets: [{
+        data: Object.values(errorCounts),
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.8)',
+          'rgba(255, 159, 64, 0.8)',
+          'rgba(255, 205, 86, 0.8)',
+        ],
+      }],
+    };
   };
 
   const getPlaceholderChartData = (type: string) => {
@@ -594,138 +760,7 @@ const EnhancedApiMonitoring: React.FC = () => {
         </Grid>
       )}
 
-      {/* iTunes Rate Limit Stats */}
-      {itunesStats && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              <FontAwesomeIcon icon={faRobot} style={{ marginRight: 8 }} />
-              iTunes API Rate Limit Status
-            </Typography>
 
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography color="textSecondary" gutterBottom>
-                      Max Requests/Minute
-                    </Typography>
-                    <Typography variant="h5">{itunesStats.maxRequestsPerMinute}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography color="textSecondary" gutterBottom>
-                      Used This Minute
-                    </Typography>
-                    <Typography
-                      variant="h5"
-                      color={
-                        itunesStats.requestsThisMinute > itunesStats.maxRequestsPerMinute * 0.8
-                          ? 'error.main'
-                          : itunesStats.requestsThisMinute > itunesStats.maxRequestsPerMinute * 0.5
-                            ? 'warning.main'
-                            : 'success.main'
-                      }
-                    >
-                      {itunesStats.requestsThisMinute}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography color="textSecondary" gutterBottom>
-                      Remaining Quota
-                    </Typography>
-                    <Typography
-                      variant="h5"
-                      color={
-                        itunesStats.remainingQuotaThisMinute < 50
-                          ? 'error.main'
-                          : itunesStats.remainingQuotaThisMinute < 100
-                            ? 'warning.main'
-                            : 'success.main'
-                      }
-                    >
-                      {itunesStats.remainingQuotaThisMinute}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography color="textSecondary" gutterBottom>
-                      Circuit Breaker
-                    </Typography>
-                    <Chip
-                      label={itunesStats.circuitBreakerStatus}
-                      color={itunesStats.circuitBreakerStatus === 'closed' ? 'success' : 'error'}
-                      size="small"
-                    />
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography color="textSecondary" gutterBottom>
-                      Requests This Hour
-                    </Typography>
-                    <Typography variant="h6">{itunesStats.requestsThisHour}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography color="textSecondary" gutterBottom>
-                      Requests Today
-                    </Typography>
-                    <Typography variant="h6">{itunesStats.requestsToday}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography color="textSecondary" gutterBottom>
-                      Rate Limits Hit Today
-                    </Typography>
-                    <Typography
-                      variant="h6"
-                      color={itunesStats.rateLimitReachedCount > 0 ? 'error.main' : 'success.main'}
-                    >
-                      {itunesStats.rateLimitReachedCount}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} sm={6} md={3}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography color="textSecondary" gutterBottom>
-                      Avg Requests/Min
-                    </Typography>
-                    <Typography variant="h6">{itunesStats.averageRequestsPerMinute}</Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Filters */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -770,6 +805,8 @@ const EnhancedApiMonitoring: React.FC = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} sx={{ mb: 3 }}>
         <Tab label="Charts & Analytics" />
+        <Tab label="Recent Calls" />
+        <Tab label="Rate Limits" />
         <Tab label="Active Issues" />
         <Tab label="Metrics Table" />
       </Tabs>
@@ -914,8 +951,164 @@ const EnhancedApiMonitoring: React.FC = () => {
         </Box>
       )}
 
-      {/* Issues Tab */}
+      {/* Recent Calls Tab */}
       {activeTab === 1 && (
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Recent API Calls ({recentCalls.length})
+            </Typography>
+            {recentCalls.length === 0 ? (
+              <Alert severity="info">
+                <FontAwesomeIcon icon={faClock} /> No recent API calls available.
+              </Alert>
+            ) : (
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Time</TableCell>
+                      <TableCell>Provider</TableCell>
+                      <TableCell>Endpoint</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Response Time</TableCell>
+                      <TableCell>Success</TableCell>
+                      <TableCell>Rate Limited</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {recentCalls.map((call) => (
+                      <TableRow key={call.id}>
+                        <TableCell>
+                          {new Date(call.timestamp).toLocaleTimeString()}
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={call.provider.toUpperCase()} 
+                            size="small" 
+                            color="primary" 
+                            variant="outlined"
+                          />
+                        </TableCell>
+                        <TableCell>{call.endpointType}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={call.statusCode} 
+                            size="small" 
+                            color={call.statusCode === 200 ? "success" : "error"}
+                          />
+                        </TableCell>
+                        <TableCell>{call.responseTimeMs}ms</TableCell>
+                        <TableCell>
+                          {call.success ? (
+                            <FontAwesomeIcon icon={faCheckCircle} style={{ color: 'green' }} />
+                          ) : (
+                            <FontAwesomeIcon icon={faTimesCircle} style={{ color: 'red' }} />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {call.rateLimited ? (
+                            <FontAwesomeIcon icon={faExclamationTriangle} style={{ color: 'orange' }} />
+                          ) : (
+                            <FontAwesomeIcon icon={faCheck} style={{ color: 'green' }} />
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Rate Limits Tab */}
+      {activeTab === 2 && (
+        <Card>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Rate Limit Status by Provider
+            </Typography>
+            <Grid container spacing={3}>
+              {rateLimits.map((rateLimitStatus) => (
+                <Grid item xs={12} md={6} lg={4} key={rateLimitStatus.provider}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        {rateLimitStatus.provider.toUpperCase()}
+                      </Typography>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Rate Limit: {rateLimitStatus.currentMinuteCount} / {rateLimitStatus.maxRequestsPerMinute} per minute
+                        </Typography>
+                        <Box sx={{ mt: 1, mb: 1 }}>
+                          {/* Progress bar for rate limit usage */}
+                          <Box 
+                            sx={{ 
+                              width: '100%', 
+                              height: 8, 
+                              bgcolor: 'grey.300', 
+                              borderRadius: 1 
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: `${(rateLimitStatus.currentMinuteCount / rateLimitStatus.maxRequestsPerMinute) * 100}%`,
+                                height: '100%',
+                                bgcolor: rateLimitStatus.isRateLimited ? 'error.main' : 
+                                        (rateLimitStatus.currentMinuteCount / rateLimitStatus.maxRequestsPerMinute) > 0.8 ? 'warning.main' : 'success.main',
+                                borderRadius: 1,
+                              }}
+                            />
+                          </Box>
+                        </Box>
+                      </Box>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2">Status:</Typography>
+                          <Chip 
+                            label={rateLimitStatus.isRateLimited ? "RATE LIMITED" : "HEALTHY"} 
+                            size="small" 
+                            color={rateLimitStatus.isRateLimited ? "error" : "success"}
+                          />
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2">Circuit Breaker:</Typography>
+                          <Chip 
+                            label={rateLimitStatus.circuitBreakerOpen ? "OPEN" : "CLOSED"} 
+                            size="small" 
+                            color={rateLimitStatus.circuitBreakerOpen ? "error" : "success"}
+                          />
+                        </Box>
+                        {rateLimitStatus.lastRequestAt && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2">Last Request:</Typography>
+                            <Typography variant="body2">
+                              {new Date(rateLimitStatus.lastRequestAt).toLocaleTimeString()}
+                            </Typography>
+                          </Box>
+                        )}
+                        {rateLimitStatus.lastErrorAt && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2">Last Error:</Typography>
+                            <Typography variant="body2" color="error">
+                              {new Date(rateLimitStatus.lastErrorAt).toLocaleTimeString()}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Issues Tab */}
+      {activeTab === 3 && (
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
@@ -1003,7 +1196,7 @@ const EnhancedApiMonitoring: React.FC = () => {
       )}
 
       {/* Metrics Table Tab */}
-      {activeTab === 2 && (
+      {activeTab === 4 && (
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>

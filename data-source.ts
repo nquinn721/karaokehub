@@ -1,5 +1,8 @@
 import { DataSource } from 'typeorm';
 import { ApiLog } from './src/api-logging/api-log.entity';
+import { ApiRateLimitStatus } from './src/api-logging/entities/api-rate-limit-status.entity';
+import { ApiRealtimeMetric } from './src/api-logging/entities/api-realtime-metric.entity';
+import { ApiRecentCall } from './src/api-logging/entities/api-recent-call.entity';
 import { ApiIssue } from './src/api-monitoring/entities/api-issue.entity';
 import { ApiMetricsDaily } from './src/api-monitoring/entities/api-metrics-daily.entity';
 import { Avatar } from './src/avatar/entities/avatar.entity';
@@ -57,6 +60,10 @@ export default new DataSource({
     // API Monitoring entities
     ApiMetricsDaily,
     ApiIssue,
+    // Real-time API monitoring entities
+    ApiRecentCall,
+    ApiRealtimeMetric,
+    ApiRateLimitStatus,
     // Avatar system entities
     Avatar,
     UserAvatar,

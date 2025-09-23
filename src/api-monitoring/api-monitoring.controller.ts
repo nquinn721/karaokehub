@@ -215,4 +215,27 @@ export class ApiMonitoringController {
       ],
     };
   }
+
+  // New real-time API monitoring endpoints
+  @Get('realtime/status')
+  async getRealtimeStatus() {
+    return this.apiMonitoringService.getRealtimeStatus();
+  }
+
+  @Get('realtime/recent-calls')
+  async getRecentCalls(@Query('limit') limit?: string) {
+    const limitNum = limit ? parseInt(limit) : 20;
+    return this.apiMonitoringService.getRecentCalls(limitNum);
+  }
+
+  @Get('realtime/rate-limits')
+  async getRateLimitStatus() {
+    return this.apiMonitoringService.getRateLimitStatus();
+  }
+
+  @Get('realtime/metrics/:provider')
+  async getProviderMetrics(@Param('provider') provider: string, @Query('hours') hours?: string) {
+    const hoursNum = hours ? parseInt(hours) : 24;
+    return this.apiMonitoringService.getProviderRealtimeMetrics(provider as ApiProvider, hoursNum);
+  }
 }
