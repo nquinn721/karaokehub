@@ -78,9 +78,13 @@ const DashboardPage: React.FC = observer(() => {
   const [microphoneModalOpen, setMicrophoneModalOpen] = useState(false);
   const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
   const [currentAvatarId, setCurrentAvatarId] = useState<string>('alex');
-  const [currentAvatarImageUrl, setCurrentAvatarImageUrl] = useState<string>('/images/avatar/avatars/alex.png');
+  const [currentAvatarImageUrl, setCurrentAvatarImageUrl] = useState<string>(
+    '/images/avatar/avatars/alex.png',
+  );
   const [currentMicrophoneId, setCurrentMicrophoneId] = useState<string>('mic_basic_1');
-  const [currentMicrophoneImageUrl, setCurrentMicrophoneImageUrl] = useState<string>('/images/avatar/parts/microphones/mic_basic_1.png');
+  const [currentMicrophoneImageUrl, setCurrentMicrophoneImageUrl] = useState<string>(
+    '/images/avatar/parts/microphones/mic_basic_1.png',
+  );
   const [currentAvatarName, setCurrentAvatarName] = useState<string>('Alex');
   const [currentMicrophoneName, setCurrentMicrophoneName] = useState<string>('Basic Mic');
   const [avatarLoading, setAvatarLoading] = useState(false);
@@ -179,15 +183,21 @@ const DashboardPage: React.FC = observer(() => {
 
     try {
       console.log('UserStore currentUser:', userStore.currentUser);
-      console.log('UserStore currentUser equippedMicrophone:', userStore.currentUser?.equippedMicrophone);
-      console.log('UserStore currentUser equippedMicrophoneId:', userStore.currentUser?.equippedMicrophoneId);
-      
+      console.log(
+        'UserStore currentUser equippedMicrophone:',
+        userStore.currentUser?.equippedMicrophone,
+      );
+      console.log(
+        'UserStore currentUser equippedMicrophoneId:',
+        userStore.currentUser?.equippedMicrophoneId,
+      );
+
       // Make sure we have current user data
       if (!userStore.currentUser) {
         console.log('🎤 No currentUser in UserStore, cannot load microphone');
         return;
       }
-      
+
       // Use UserStore to get equipped microphone
       const equippedMic = userStore.getEquippedMicrophone();
       console.log('Loaded microphone from UserStore:', equippedMic);
@@ -195,16 +205,20 @@ const DashboardPage: React.FC = observer(() => {
       if (equippedMic?.microphoneId) {
         setCurrentMicrophoneId(equippedMic.microphoneId);
         setCurrentMicrophoneName(equippedMic.microphone?.name || 'Microphone');
-        
+
         // Clean up the image URL to avoid double slashes
-        let imageUrl = equippedMic.microphone?.imageUrl || '/images/avatar/parts/microphones/mic_basic_1.png';
+        let imageUrl =
+          equippedMic.microphone?.imageUrl || '/images/avatar/parts/microphones/mic_basic_1.png';
         // Remove any double slashes except for the protocol
         imageUrl = imageUrl.replace(/([^:]\/)\/+/g, '$1');
         setCurrentMicrophoneImageUrl(imageUrl);
-        
+
         console.log('Set current microphone ID:', equippedMic.microphoneId);
         console.log('Set current microphone name:', equippedMic.microphone?.name);
-        console.log('Set current microphone imageUrl (original):', equippedMic.microphone?.imageUrl);
+        console.log(
+          'Set current microphone imageUrl (original):',
+          equippedMic.microphone?.imageUrl,
+        );
         console.log('Set current microphone imageUrl (cleaned):', imageUrl);
       } else {
         console.log('No equipped microphone found, using default');
@@ -1282,12 +1296,19 @@ const DashboardPage: React.FC = observer(() => {
                                     mb: 1,
                                   }}
                                   onError={(e) => {
-                                    console.log('🎤 Microphone image failed to load:', currentMicrophoneImageUrl);
+                                    console.log(
+                                      '🎤 Microphone image failed to load:',
+                                      currentMicrophoneImageUrl,
+                                    );
                                     console.log('🎤 Error event:', e);
-                                    (e.target as HTMLImageElement).src = '/images/avatar/parts/microphones/mic_basic_1.png';
+                                    (e.target as HTMLImageElement).src =
+                                      '/images/avatar/parts/microphones/mic_basic_1.png';
                                   }}
                                   onLoad={() => {
-                                    console.log('🎤 Microphone image loaded successfully:', currentMicrophoneImageUrl);
+                                    console.log(
+                                      '🎤 Microphone image loaded successfully:',
+                                      currentMicrophoneImageUrl,
+                                    );
                                   }}
                                 />
                                 <Typography
@@ -1298,7 +1319,8 @@ const DashboardPage: React.FC = observer(() => {
                                     fontWeight: 700,
                                     textAlign: 'center',
                                     textShadow: '0 2px 4px rgba(0,0,0,0.8)',
-                                    background: 'linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.4))',
+                                    background:
+                                      'linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.4))',
                                     px: 1,
                                     py: 0.3,
                                     borderRadius: '6px',
@@ -1359,7 +1381,8 @@ const DashboardPage: React.FC = observer(() => {
                                     fontWeight: 700,
                                     textAlign: 'center',
                                     textShadow: '0 2px 4px rgba(0,0,0,0.8)',
-                                    background: 'linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.4))',
+                                    background:
+                                      'linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.4))',
                                     px: 2,
                                     py: 0.5,
                                     borderRadius: '8px',

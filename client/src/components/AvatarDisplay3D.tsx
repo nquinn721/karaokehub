@@ -96,7 +96,9 @@ const AvatarDisplay: React.FC<AvatarDisplayProps> = ({
   sx = {},
 }) => {
   const [currentAvatarId, setCurrentAvatarId] = useState(avatarId || 'alex');
-  const [currentImageUrl, setCurrentImageUrl] = useState(imageUrl || '/images/avatar/avatars/alex.png');
+  const [currentImageUrl, setCurrentImageUrl] = useState(
+    imageUrl || '/images/avatar/avatars/alex.png',
+  );
 
   // Load saved avatar if no specific avatarId is provided
   useEffect(() => {

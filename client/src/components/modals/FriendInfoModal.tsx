@@ -296,8 +296,7 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
                         objectFit: 'contain',
                       }}
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          '/images/avatar/avatars/alex.png';
+                        (e.target as HTMLImageElement).src = '/images/avatar/avatars/alex.png';
                       }}
                     />
                   ) : (

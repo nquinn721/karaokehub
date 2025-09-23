@@ -282,7 +282,7 @@ export class UserStore {
     console.log('🎤 currentUser:', this.currentUser);
     console.log('🎤 currentUser.equippedMicrophone:', this.currentUser?.equippedMicrophone);
     console.log('🎤 currentUser.equippedMicrophoneId:', this.currentUser?.equippedMicrophoneId);
-    
+
     // First try to use the new pattern from currentUser
     if (this.currentUser?.equippedMicrophone && this.currentUser?.equippedMicrophoneId) {
       console.log('🎤 Using equipped microphone from currentUser');
@@ -301,7 +301,7 @@ export class UserStore {
 
     console.log('🎤 No equipped microphone found in currentUser, checking userMicrophones');
     console.log('🎤 userMicrophones:', this.userMicrophones);
-    
+
     // Fallback to old pattern for compatibility
     const fallback = this.userMicrophones.find((um) => um.isEquipped) || null;
     console.log('🎤 Fallback result:', fallback);

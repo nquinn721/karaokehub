@@ -83,7 +83,14 @@ export class FriendsService {
           startQuery: startQuery,
         },
       )
-      .select(['user.id', 'user.email', 'user.name', 'user.stageName', 'equippedAvatar.id', 'equippedAvatar.imageUrl'])
+      .select([
+        'user.id',
+        'user.email',
+        'user.name',
+        'user.stageName',
+        'equippedAvatar.id',
+        'equippedAvatar.imageUrl',
+      ])
       .orderBy(
         "CASE WHEN LOWER(COALESCE(user.stageName, '')) = :exactQuery THEN 0 " +
           "WHEN LOWER(COALESCE(user.name, '')) = :exactQuery THEN 1 " +

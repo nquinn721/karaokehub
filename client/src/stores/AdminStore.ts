@@ -1192,13 +1192,13 @@ export class AdminStore {
         page: page.toString(),
         limit: limit.toString(),
       });
-      
+
       if (search) {
         params.append('search', search);
       }
 
       const response = await apiStore.get(`/admin/store/avatars?${params}`);
-      
+
       runInAction(() => {
         this.storeItems.avatars = response;
       });
@@ -1212,7 +1212,11 @@ export class AdminStore {
     }
   }
 
-  async fetchStoreMicrophones(page: number = 1, limit: number = 50, search?: string): Promise<void> {
+  async fetchStoreMicrophones(
+    page: number = 1,
+    limit: number = 50,
+    search?: string,
+  ): Promise<void> {
     try {
       this.isLoadingTable = true;
       this.setTableError(null);
@@ -1221,13 +1225,13 @@ export class AdminStore {
         page: page.toString(),
         limit: limit.toString(),
       });
-      
+
       if (search) {
         params.append('search', search);
       }
 
       const response = await apiStore.get(`/admin/store/microphones?${params}`);
-      
+
       runInAction(() => {
         this.storeItems.microphones = response;
       });
@@ -1241,7 +1245,11 @@ export class AdminStore {
     }
   }
 
-  async fetchStoreCoinPackages(page: number = 1, limit: number = 50, search?: string): Promise<void> {
+  async fetchStoreCoinPackages(
+    page: number = 1,
+    limit: number = 50,
+    search?: string,
+  ): Promise<void> {
     try {
       this.isLoadingTable = true;
       this.setTableError(null);
@@ -1250,13 +1258,13 @@ export class AdminStore {
         page: page.toString(),
         limit: limit.toString(),
       });
-      
+
       if (search) {
         params.append('search', search);
       }
 
       const response = await apiStore.get(`/admin/store/coin-packages?${params}`);
-      
+
       runInAction(() => {
         this.storeItems.coinPackages = response;
       });
@@ -1275,22 +1283,22 @@ export class AdminStore {
       console.log(`🗑️ Attempting to delete avatar: ${id}`);
       const response = await apiStore.delete(`/admin/store/avatars/${id}`);
       console.log(`✅ Avatar deletion response:`, response);
-      
+
       // Refresh the avatars list
       if (this.storeItems.avatars) {
         await this.fetchStoreAvatars(this.storeItems.avatars.page, this.storeItems.avatars.limit);
       }
-      
+
       return response;
     } catch (error: any) {
       console.error(`❌ Error deleting avatar ${id}:`, error);
       const errorMessage = error.response?.data?.message || 'Failed to delete avatar';
-      
+
       // Set error in the store for UI display
       runInAction(() => {
         this.tableError = errorMessage;
       });
-      
+
       throw new Error(errorMessage);
     }
   }
@@ -1300,22 +1308,25 @@ export class AdminStore {
       console.log(`🗑️ Attempting to delete microphone: ${id}`);
       const response = await apiStore.delete(`/admin/store/microphones/${id}`);
       console.log(`✅ Microphone deletion response:`, response);
-      
+
       // Refresh the microphones list
       if (this.storeItems.microphones) {
-        await this.fetchStoreMicrophones(this.storeItems.microphones.page, this.storeItems.microphones.limit);
+        await this.fetchStoreMicrophones(
+          this.storeItems.microphones.page,
+          this.storeItems.microphones.limit,
+        );
       }
-      
+
       return response;
     } catch (error: any) {
       console.error(`❌ Error deleting microphone ${id}:`, error);
       const errorMessage = error.response?.data?.message || 'Failed to delete microphone';
-      
+
       // Set error in the store for UI display
       runInAction(() => {
         this.tableError = errorMessage;
       });
-      
+
       throw new Error(errorMessage);
     }
   }
@@ -1325,22 +1336,25 @@ export class AdminStore {
       console.log(`🗑️ Attempting to delete coin package: ${id}`);
       const response = await apiStore.delete(`/admin/store/coin-packages/${id}`);
       console.log(`✅ Coin package deletion response:`, response);
-      
+
       // Refresh the coin packages list
       if (this.storeItems.coinPackages) {
-        await this.fetchStoreCoinPackages(this.storeItems.coinPackages.page, this.storeItems.coinPackages.limit);
+        await this.fetchStoreCoinPackages(
+          this.storeItems.coinPackages.page,
+          this.storeItems.coinPackages.limit,
+        );
       }
-      
+
       return response;
     } catch (error: any) {
       console.error(`❌ Error deleting coin package ${id}:`, error);
       const errorMessage = error.response?.data?.message || 'Failed to delete coin package';
-      
+
       // Set error in the store for UI display
       runInAction(() => {
         this.tableError = errorMessage;
       });
-      
+
       throw new Error(errorMessage);
     }
   }

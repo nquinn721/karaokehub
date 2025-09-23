@@ -1041,7 +1041,9 @@ export class AdminService {
     }
 
     // Check if avatar is equipped by any users
-    const usersWithEquippedAvatar = await this.userRepository.find({ where: { equippedAvatarId: id } });
+    const usersWithEquippedAvatar = await this.userRepository.find({
+      where: { equippedAvatarId: id },
+    });
     if (usersWithEquippedAvatar.length > 0) {
       throw new Error('Cannot delete avatar: it is currently equipped by users');
     }
@@ -1057,9 +1059,9 @@ export class AdminService {
       await this.deleteImageFile(avatar.imageUrl);
 
       console.log(`✅ Successfully deleted avatar: ${avatar.name} (ID: ${id})`);
-      return { 
+      return {
         message: 'Avatar deleted successfully',
-        deletedItem: { id, name: avatar.name, imageUrl: avatar.imageUrl }
+        deletedItem: { id, name: avatar.name, imageUrl: avatar.imageUrl },
       };
     } catch (error) {
       console.error(`❌ Error deleting avatar ${avatar.name} (ID: ${id}):`, error);
@@ -1074,7 +1076,9 @@ export class AdminService {
     }
 
     // Check if microphone is equipped by any users
-    const usersWithEquippedMicrophone = await this.userRepository.find({ where: { equippedMicrophoneId: id } });
+    const usersWithEquippedMicrophone = await this.userRepository.find({
+      where: { equippedMicrophoneId: id },
+    });
     if (usersWithEquippedMicrophone.length > 0) {
       throw new Error('Cannot delete microphone: it is currently equipped by users');
     }
@@ -1090,9 +1094,9 @@ export class AdminService {
       await this.deleteImageFile(microphone.imageUrl);
 
       console.log(`✅ Successfully deleted microphone: ${microphone.name} (ID: ${id})`);
-      return { 
+      return {
         message: 'Microphone deleted successfully',
-        deletedItem: { id, name: microphone.name, imageUrl: microphone.imageUrl }
+        deletedItem: { id, name: microphone.name, imageUrl: microphone.imageUrl },
       };
     } catch (error) {
       console.error(`❌ Error deleting microphone ${microphone.name} (ID: ${id}):`, error);
@@ -1107,8 +1111,8 @@ export class AdminService {
     }
 
     // Check if coin package has any transactions
-    const transactions = await this.transactionRepository.find({ 
-      where: { coinPackageId: id } 
+    const transactions = await this.transactionRepository.find({
+      where: { coinPackageId: id },
     });
     if (transactions.length > 0) {
       throw new Error('Cannot delete coin package: it has associated transactions');
@@ -1122,9 +1126,9 @@ export class AdminService {
       }
 
       console.log(`✅ Successfully deleted coin package: ${coinPackage.name} (ID: ${id})`);
-      return { 
+      return {
         message: 'Coin package deleted successfully',
-        deletedItem: { id, name: coinPackage.name }
+        deletedItem: { id, name: coinPackage.name },
       };
     } catch (error) {
       console.error(`❌ Error deleting coin package ${coinPackage.name} (ID: ${id}):`, error);
@@ -1175,7 +1179,7 @@ export class AdminService {
     if (search) {
       queryBuilder.where(
         'avatar.name LIKE :search OR avatar.description LIKE :search OR avatar.type LIKE :search',
-        { search: `%${search}%` }
+        { search: `%${search}%` },
       );
     }
 
@@ -1201,7 +1205,7 @@ export class AdminService {
     if (search) {
       queryBuilder.where(
         'microphone.name LIKE :search OR microphone.description LIKE :search OR microphone.type LIKE :search',
-        { search: `%${search}%` }
+        { search: `%${search}%` },
       );
     }
 
@@ -1225,10 +1229,9 @@ export class AdminService {
     const queryBuilder = this.coinPackageRepository.createQueryBuilder('coinPackage');
 
     if (search) {
-      queryBuilder.where(
-        'coinPackage.name LIKE :search OR coinPackage.description LIKE :search',
-        { search: `%${search}%` }
-      );
+      queryBuilder.where('coinPackage.name LIKE :search OR coinPackage.description LIKE :search', {
+        search: `%${search}%`,
+      });
     }
 
     queryBuilder

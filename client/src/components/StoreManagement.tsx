@@ -1,10 +1,7 @@
 import {
   faCoins,
   faCrown,
-  faEdit,
-  faImage,
   faMicrophone,
-  faPlus,
   faSearch,
   faTrash,
 } from '@fortawesome/free-solid-svg-icons';
@@ -34,7 +31,6 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TablePagination,
   TableRow,
   Tabs,
   TextField,
@@ -181,13 +177,13 @@ const StoreManagement: React.FC = observer(() => {
     if (!deleteDialog.item) return;
 
     setDeleteLoading(true);
-    
+
     // Clear any previous errors
     adminStore.setTableError(null);
-    
+
     try {
       console.log(`🗑️ Confirming delete for ${deleteDialog.type}:`, deleteDialog.item);
-      
+
       switch (deleteDialog.type) {
         case 'avatar':
           await adminStore.deleteStoreAvatar(deleteDialog.item.id);
@@ -199,7 +195,7 @@ const StoreManagement: React.FC = observer(() => {
           await adminStore.deleteStoreCoinPackage(deleteDialog.item.id);
           break;
       }
-      
+
       console.log(`✅ Successfully deleted ${deleteDialog.type}: ${deleteDialog.item.name}`);
       setDeleteDialog({ open: false, item: null, type: 'avatar' });
     } catch (error: any) {
@@ -225,7 +221,7 @@ const StoreManagement: React.FC = observer(() => {
           border: `1px solid ${theme.palette.divider}`,
           borderRadius: 2,
           overflow: 'hidden',
-          '&:hover': { 
+          '&:hover': {
             transform: 'translateY(-4px)',
             boxShadow: `0 8px 32px ${theme.palette.primary.main}20`,
             border: `1px solid ${theme.palette.primary.main}40`,
@@ -261,11 +257,7 @@ const StoreManagement: React.FC = observer(() => {
           </Box>
         </CardContent>
         <CardActions>
-          <IconButton
-            size="small"
-            color="error"
-            onClick={() => handleDelete(avatar, 'avatar')}
-          >
+          <IconButton size="small" color="error" onClick={() => handleDelete(avatar, 'avatar')}>
             <FontAwesomeIcon icon={faTrash} />
           </IconButton>
         </CardActions>
@@ -288,7 +280,7 @@ const StoreManagement: React.FC = observer(() => {
           border: `1px solid ${theme.palette.divider}`,
           borderRadius: 2,
           overflow: 'hidden',
-          '&:hover': { 
+          '&:hover': {
             transform: 'translateY(-4px)',
             boxShadow: `0 8px 32px ${theme.palette.primary.main}20`,
             border: `1px solid ${theme.palette.primary.main}40`,
@@ -342,7 +334,10 @@ const StoreManagement: React.FC = observer(() => {
       <TableCell>{coinPackage.description || 'No description'}</TableCell>
       <TableCell>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <FontAwesomeIcon icon={faCoins} style={{ marginRight: 8, color: theme.palette.warning.main }} />
+          <FontAwesomeIcon
+            icon={faCoins}
+            style={{ marginRight: 8, color: theme.palette.warning.main }}
+          />
           {coinPackage.coinAmount}
         </Box>
       </TableCell>
@@ -374,10 +369,10 @@ const StoreManagement: React.FC = observer(() => {
         </Alert>
       )}
 
-      <Paper 
+      <Paper
         elevation={0}
-        sx={{ 
-          width: '100%', 
+        sx={{
+          width: '100%',
           mb: 2,
           background: `linear-gradient(135deg, 
             ${theme.palette.background.paper} 0%, 
@@ -535,7 +530,7 @@ const StoreManagement: React.FC = observer(() => {
               <CircularProgress />
             </Box>
           ) : (
-            <TableContainer 
+            <TableContainer
               component={Paper}
               elevation={0}
               sx={{

@@ -5,9 +5,9 @@ const path = require('path');
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
-  username: process.env.DB_USERNAME || 'postgres', 
+  username: process.env.DB_USERNAME || 'postgres',
   password: process.env.DB_PASSWORD || 'your_password',
-  database: process.env.DB_DATABASE || 'karaokehub'
+  database: process.env.DB_DATABASE || 'karaokehub',
 };
 
 console.log('🔍 Checking for users without default avatars/microphones...');
@@ -68,11 +68,15 @@ SELECT
 
 console.log('📝 SQL Query to execute:');
 console.log(fixQuery);
-console.log('\n🚨 IMPORTANT: Please run this SQL manually in your database management tool or using:');
-console.log('psql -h localhost -U postgres -d karaokehub -c "' + fixQuery.replace(/"/g, '\\"') + '"');
+console.log(
+  '\n🚨 IMPORTANT: Please run this SQL manually in your database management tool or using:',
+);
+console.log(
+  'psql -h localhost -U postgres -d karaokehub -c "' + fixQuery.replace(/"/g, '\\"') + '"',
+);
 console.log('\nThis will:');
 console.log('1. ✅ Add default avatar records for users who have none');
-console.log('2. ✅ Add default microphone records for users who have none'); 
+console.log('2. ✅ Add default microphone records for users who have none');
 console.log('3. ✅ Set equipped avatar for users who have none equipped');
 console.log('4. ✅ Set equipped microphone for users who have none equipped');
 console.log('\n📊 The query will show before/after counts to confirm the fix worked.');

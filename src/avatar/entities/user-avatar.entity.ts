@@ -5,13 +5,9 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../entities/user.entity';
 import { Avatar } from './avatar.entity';
-import { Microphone } from './microphone.entity';
-import { Outfit } from './outfit.entity';
-import { Shoes } from './shoes.entity';
 
 @Entity('user_avatars')
 export class UserAvatar {
