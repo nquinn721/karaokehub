@@ -5,6 +5,7 @@ import * as path from 'path';
 import { Repository } from 'typeorm';
 import { Worker } from 'worker_threads';
 import { Avatar } from '../avatar/entities/avatar.entity';
+import { Microphone } from '../avatar/entities/microphone.entity';
 import { UserAvatar } from '../avatar/entities/user-avatar.entity';
 import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
@@ -62,6 +63,8 @@ export class AdminService {
     private coinPackageRepository: Repository<CoinPackage>,
     @InjectRepository(Avatar)
     private avatarRepository: Repository<Avatar>,
+    @InjectRepository(Microphone)
+    private microphoneRepository: Repository<Microphone>,
     @InjectRepository(UserAvatar)
     private userAvatarRepository: Repository<UserAvatar>,
     private geocodingService: GeocodingService,
@@ -1022,6 +1025,226 @@ export class AdminService {
       throw new Error('Show review not found');
     }
     return { message: 'Show review deleted successfully' };
+  }
+
+  // Store Management Methods
+  async deleteAvatar(id: string) {
+    const avatar = await this.avatarRepository.findOne({ where: { id } });
+    if (!avatar) {
+      throw new Error('Avatar not found');
+    }
+
+    // Check if avatar is being used by any users
+    const userAvatars = await this.userAvatarRepository.find({ where: { avatarId: id } });
+    if (userAvatars.length > 0) {
+      throw new Error('Cannot delete avatar: it is currently owned by users');
+    }
+
+    // Check if avatar is equipped by any users
+    const usersWithEquippedAvatar = await this.userRepository.find({ where: { equippedAvatarId: id } });
+    if (usersWithEquippedAvatar.length > 0) {
+      throw new Error('Cannot delete avatar: it is currently equipped by users');
+    }
+
+    try {
+      // Delete the database record first
+      const result = await this.avatarRepository.delete(id);
+      if (result.affected === 0) {
+        throw new Error('Avatar not found or already deleted');
+      }
+
+      // Only delete the image file after successful database deletion
+      await this.deleteImageFile(avatar.imageUrl);
+
+      console.log(`✅ Successfully deleted avatar: ${avatar.name} (ID: ${id})`);
+      return { 
+        message: 'Avatar deleted successfully',
+        deletedItem: { id, name: avatar.name, imageUrl: avatar.imageUrl }
+      };
+    } catch (error) {
+      console.error(`❌ Error deleting avatar ${avatar.name} (ID: ${id}):`, error);
+      throw error;
+    }
+  }
+
+  async deleteMicrophone(id: string) {
+    const microphone = await this.microphoneRepository.findOne({ where: { id } });
+    if (!microphone) {
+      throw new Error('Microphone not found');
+    }
+
+    // Check if microphone is equipped by any users
+    const usersWithEquippedMicrophone = await this.userRepository.find({ where: { equippedMicrophoneId: id } });
+    if (usersWithEquippedMicrophone.length > 0) {
+      throw new Error('Cannot delete microphone: it is currently equipped by users');
+    }
+
+    try {
+      // Delete the database record first
+      const result = await this.microphoneRepository.delete(id);
+      if (result.affected === 0) {
+        throw new Error('Microphone not found or already deleted');
+      }
+
+      // Only delete the image file after successful database deletion
+      await this.deleteImageFile(microphone.imageUrl);
+
+      console.log(`✅ Successfully deleted microphone: ${microphone.name} (ID: ${id})`);
+      return { 
+        message: 'Microphone deleted successfully',
+        deletedItem: { id, name: microphone.name, imageUrl: microphone.imageUrl }
+      };
+    } catch (error) {
+      console.error(`❌ Error deleting microphone ${microphone.name} (ID: ${id}):`, error);
+      throw error;
+    }
+  }
+
+  async deleteCoinPackage(id: string) {
+    const coinPackage = await this.coinPackageRepository.findOne({ where: { id } });
+    if (!coinPackage) {
+      throw new Error('Coin package not found');
+    }
+
+    // Check if coin package has any transactions
+    const transactions = await this.transactionRepository.find({ 
+      where: { coinPackageId: id } 
+    });
+    if (transactions.length > 0) {
+      throw new Error('Cannot delete coin package: it has associated transactions');
+    }
+
+    try {
+      // Delete the database record
+      const result = await this.coinPackageRepository.delete(id);
+      if (result.affected === 0) {
+        throw new Error('Coin package not found or already deleted');
+      }
+
+      console.log(`✅ Successfully deleted coin package: ${coinPackage.name} (ID: ${id})`);
+      return { 
+        message: 'Coin package deleted successfully',
+        deletedItem: { id, name: coinPackage.name }
+      };
+    } catch (error) {
+      console.error(`❌ Error deleting coin package ${coinPackage.name} (ID: ${id}):`, error);
+      throw error;
+    }
+  }
+
+  private async deleteImageFile(imageUrl: string) {
+    if (!imageUrl) {
+      console.log('⚠️ No image URL provided for deletion');
+      return;
+    }
+
+    const fs = require('fs').promises;
+    const path = require('path');
+
+    try {
+      // Extract the file path from the URL
+      // Convert /images/avatar/avatars/alex.png to client/public/images/avatar/avatars/alex.png
+      const relativePath = imageUrl.startsWith('/') ? imageUrl.substring(1) : imageUrl;
+      const fullPath = path.join(process.cwd(), 'client', 'public', relativePath);
+
+      // Check if file exists before attempting to delete
+      try {
+        await fs.access(fullPath);
+        await fs.unlink(fullPath);
+        console.log(`✅ Deleted image file: ${fullPath}`);
+      } catch (error) {
+        if (error.code === 'ENOENT') {
+          console.log(`⚠️ Image file not found (already deleted?): ${fullPath}`);
+        } else {
+          console.error(`❌ Error deleting image file ${fullPath}:`, error);
+          // Don't throw error for image deletion failures - the database record is more important
+          console.log('⚠️ Continuing despite image deletion failure...');
+        }
+      }
+    } catch (error) {
+      console.error('Error processing image file deletion:', error);
+      // Don't throw error for image deletion failures - the database record is more important
+      console.log('⚠️ Continuing despite image deletion failure...');
+    }
+  }
+
+  // Store item listing methods for admin interface
+  async getStoreAvatars(page: number = 1, limit: number = 50, search?: string) {
+    const queryBuilder = this.avatarRepository.createQueryBuilder('avatar');
+
+    if (search) {
+      queryBuilder.where(
+        'avatar.name LIKE :search OR avatar.description LIKE :search OR avatar.type LIKE :search',
+        { search: `%${search}%` }
+      );
+    }
+
+    queryBuilder
+      .orderBy('avatar.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [items, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getStoreMicrophones(page: number = 1, limit: number = 50, search?: string) {
+    const queryBuilder = this.microphoneRepository.createQueryBuilder('microphone');
+
+    if (search) {
+      queryBuilder.where(
+        'microphone.name LIKE :search OR microphone.description LIKE :search OR microphone.type LIKE :search',
+        { search: `%${search}%` }
+      );
+    }
+
+    queryBuilder
+      .orderBy('microphone.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [items, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getStoreCoinPackages(page: number = 1, limit: number = 50, search?: string) {
+    const queryBuilder = this.coinPackageRepository.createQueryBuilder('coinPackage');
+
+    if (search) {
+      queryBuilder.where(
+        'coinPackage.name LIKE :search OR coinPackage.description LIKE :search',
+        { search: `%${search}%` }
+      );
+    }
+
+    queryBuilder
+      .orderBy('coinPackage.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [items, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async detectDuplicatesInParsedSchedule(parsedScheduleId: string) {

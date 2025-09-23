@@ -20,6 +20,7 @@ import { VenueProximity } from './services/GeolocationService';
 import AboutPage from './pages/AboutPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminParserPage from './pages/AdminParserPage';
+import AdminStoreManagementPage from './pages/AdminStoreManagementPage';
 import AdTestPage from './pages/AdTestPage';
 import AuthError from './pages/AuthError';
 import AuthSuccess from './pages/AuthSuccess';
@@ -349,6 +350,14 @@ const AppContent: React.FC = observer(() => {
               element={
                 <ProtectedRoute>
                   <AdminDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/store"
+              element={
+                <ProtectedRoute>
+                  <AdminStoreManagementPage />
                 </ProtectedRoute>
               }
             />

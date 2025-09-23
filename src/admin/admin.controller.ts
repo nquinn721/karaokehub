@@ -322,4 +322,62 @@ export class AdminController {
   async getAvailableAvatars() {
     return await this.adminService.getAvailableAvatars();
   }
+
+  // Store Management Endpoints
+  @Delete('store/avatars/:id')
+  async deleteAvatar(@Param('id') id: string) {
+    try {
+      return await this.adminService.deleteAvatar(id);
+    } catch (error) {
+      console.error('Controller error in deleteAvatar:', error);
+      throw error;
+    }
+  }
+
+  @Delete('store/microphones/:id')
+  async deleteMicrophone(@Param('id') id: string) {
+    try {
+      return await this.adminService.deleteMicrophone(id);
+    } catch (error) {
+      console.error('Controller error in deleteMicrophone:', error);
+      throw error;
+    }
+  }
+
+  @Delete('store/coin-packages/:id')
+  async deleteCoinPackage(@Param('id') id: string) {
+    try {
+      return await this.adminService.deleteCoinPackage(id);
+    } catch (error) {
+      console.error('Controller error in deleteCoinPackage:', error);
+      throw error;
+    }
+  }
+
+  @Get('store/avatars')
+  async getStoreAvatars(
+    @Query('page') page = 1,
+    @Query('limit') limit = 50,
+    @Query('search') search?: string,
+  ) {
+    return await this.adminService.getStoreAvatars(+page, +limit, search);
+  }
+
+  @Get('store/microphones')
+  async getStoreMicrophones(
+    @Query('page') page = 1,
+    @Query('limit') limit = 50,
+    @Query('search') search?: string,
+  ) {
+    return await this.adminService.getStoreMicrophones(+page, +limit, search);
+  }
+
+  @Get('store/coin-packages')
+  async getStoreCoinPackages(
+    @Query('page') page = 1,
+    @Query('limit') limit = 50,
+    @Query('search') search?: string,
+  ) {
+    return await this.adminService.getStoreCoinPackages(+page, +limit, search);
+  }
 }

@@ -676,6 +676,21 @@ const AdminDashboardPageTabbed = observer(() => {
                     Use Parser
                   </Button>
                 </Grid>
+                <Grid item xs={6}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    fullWidth
+                    startIcon={<FontAwesomeIcon icon={faCoins} />}
+                    onClick={() => {
+                      navigate('/admin/store');
+                      setMobileDrawerOpen(false);
+                    }}
+                    sx={{ py: 1.5, fontSize: '0.75rem' }}
+                  >
+                    Store
+                  </Button>
+                </Grid>
               </Grid>
             </Box>
           </Drawer>
@@ -880,6 +895,18 @@ const AdminDashboardPageTabbed = observer(() => {
                     }}
                   >
                     Use Parser
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<FontAwesomeIcon icon={faCoins} />}
+                    onClick={() => navigate('/admin/store')}
+                    sx={{
+                      borderRadius: 2,
+                      px: 3,
+                      py: 1.5,
+                    }}
+                  >
+                    Store Management
                   </Button>
                 </Box>
               </Box>

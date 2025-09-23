@@ -1175,6 +1175,175 @@ export class AdminStore {
       throw new Error(errorMessage);
     }
   }
+
+  // Store Management Methods
+  storeItems = {
+    avatars: null as any,
+    microphones: null as any,
+    coinPackages: null as any,
+  };
+
+  async fetchStoreAvatars(page: number = 1, limit: number = 50, search?: string): Promise<void> {
+    try {
+      this.isLoadingTable = true;
+      this.setTableError(null);
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      
+      if (search) {
+        params.append('search', search);
+      }
+
+      const response = await apiStore.get(`/admin/store/avatars?${params}`);
+      
+      runInAction(() => {
+        this.storeItems.avatars = response;
+      });
+    } catch (error: any) {
+      console.error('Error fetching store avatars:', error);
+      this.setTableError(error.response?.data?.message || 'Failed to fetch store avatars');
+    } finally {
+      runInAction(() => {
+        this.isLoadingTable = false;
+      });
+    }
+  }
+
+  async fetchStoreMicrophones(page: number = 1, limit: number = 50, search?: string): Promise<void> {
+    try {
+      this.isLoadingTable = true;
+      this.setTableError(null);
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      
+      if (search) {
+        params.append('search', search);
+      }
+
+      const response = await apiStore.get(`/admin/store/microphones?${params}`);
+      
+      runInAction(() => {
+        this.storeItems.microphones = response;
+      });
+    } catch (error: any) {
+      console.error('Error fetching store microphones:', error);
+      this.setTableError(error.response?.data?.message || 'Failed to fetch store microphones');
+    } finally {
+      runInAction(() => {
+        this.isLoadingTable = false;
+      });
+    }
+  }
+
+  async fetchStoreCoinPackages(page: number = 1, limit: number = 50, search?: string): Promise<void> {
+    try {
+      this.isLoadingTable = true;
+      this.setTableError(null);
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      
+      if (search) {
+        params.append('search', search);
+      }
+
+      const response = await apiStore.get(`/admin/store/coin-packages?${params}`);
+      
+      runInAction(() => {
+        this.storeItems.coinPackages = response;
+      });
+    } catch (error: any) {
+      console.error('Error fetching store coin packages:', error);
+      this.setTableError(error.response?.data?.message || 'Failed to fetch store coin packages');
+    } finally {
+      runInAction(() => {
+        this.isLoadingTable = false;
+      });
+    }
+  }
+
+  async deleteStoreAvatar(id: string): Promise<void> {
+    try {
+      console.log(`🗑️ Attempting to delete avatar: ${id}`);
+      const response = await apiStore.delete(`/admin/store/avatars/${id}`);
+      console.log(`✅ Avatar deletion response:`, response);
+      
+      // Refresh the avatars list
+      if (this.storeItems.avatars) {
+        await this.fetchStoreAvatars(this.storeItems.avatars.page, this.storeItems.avatars.limit);
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error(`❌ Error deleting avatar ${id}:`, error);
+      const errorMessage = error.response?.data?.message || 'Failed to delete avatar';
+      
+      // Set error in the store for UI display
+      runInAction(() => {
+        this.tableError = errorMessage;
+      });
+      
+      throw new Error(errorMessage);
+    }
+  }
+
+  async deleteStoreMicrophone(id: string): Promise<void> {
+    try {
+      console.log(`🗑️ Attempting to delete microphone: ${id}`);
+      const response = await apiStore.delete(`/admin/store/microphones/${id}`);
+      console.log(`✅ Microphone deletion response:`, response);
+      
+      // Refresh the microphones list
+      if (this.storeItems.microphones) {
+        await this.fetchStoreMicrophones(this.storeItems.microphones.page, this.storeItems.microphones.limit);
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error(`❌ Error deleting microphone ${id}:`, error);
+      const errorMessage = error.response?.data?.message || 'Failed to delete microphone';
+      
+      // Set error in the store for UI display
+      runInAction(() => {
+        this.tableError = errorMessage;
+      });
+      
+      throw new Error(errorMessage);
+    }
+  }
+
+  async deleteStoreCoinPackage(id: string): Promise<void> {
+    try {
+      console.log(`🗑️ Attempting to delete coin package: ${id}`);
+      const response = await apiStore.delete(`/admin/store/coin-packages/${id}`);
+      console.log(`✅ Coin package deletion response:`, response);
+      
+      // Refresh the coin packages list
+      if (this.storeItems.coinPackages) {
+        await this.fetchStoreCoinPackages(this.storeItems.coinPackages.page, this.storeItems.coinPackages.limit);
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error(`❌ Error deleting coin package ${id}:`, error);
+      const errorMessage = error.response?.data?.message || 'Failed to delete coin package';
+      
+      // Set error in the store for UI display
+      runInAction(() => {
+        this.tableError = errorMessage;
+      });
+      
+      throw new Error(errorMessage);
+    }
+  }
 }
 
 export const adminStore = new AdminStore();
