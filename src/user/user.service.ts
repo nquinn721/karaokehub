@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { AvatarService } from '../avatar/services/avatar.service';
 import { User } from '../entities/user.entity';
 
 export interface CreateUserDto {
@@ -25,6 +26,7 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private avatarService: AvatarService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
@@ -36,7 +38,17 @@ export class UserService {
 
     const user = this.userRepository.create(createUserDto);
     try {
-      return await this.userRepository.save(user);
+      const savedUser = await this.userRepository.save(user);
+      
+      // Setup basic equipment for new user (avatar and microphone)
+      try {
+        await this.avatarService.assignBasicMicrophones(savedUser.id);
+      } catch (equipmentError) {
+        console.error('Failed to assign basic equipment to new user:', equipmentError);
+        // Don't fail user creation if equipment assignment fails
+      }
+      
+      return savedUser;
     } catch (error) {
       // Handle database constraint violations
       if (error.code === '23505' || error.code === 'ER_DUP_ENTRY') {

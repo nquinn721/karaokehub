@@ -236,12 +236,12 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
                         }}
                         onError={(e) => {
                           (e.target as HTMLImageElement).src =
-                            '/images/avatar/microphones/mic_basic_1.png';
+                            '/images/avatar/parts/microphones/mic_basic_1.png';
                         }}
                       />
                     ) : (
                       <img
-                        src="/images/avatar/microphones/mic_basic_1.png"
+                        src="/images/avatar/parts/microphones/mic_basic_1.png"
                         alt="Default Microphone"
                         style={{
                           width: '100%',

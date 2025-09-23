@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
 import { Avatar } from '../entities/avatar.entity';
-import { Microphone } from '../entities/microphone.entity';
+import { Microphone, MicrophoneType, MicrophoneRarity } from '../entities/microphone.entity';
 import { Outfit } from '../entities/outfit.entity';
 import { Shoes } from '../entities/shoes.entity';
 import { UserAvatar } from '../entities/user-avatar.entity';
@@ -279,10 +279,23 @@ export class AvatarService {
       order: { id: 'ASC' },
     });
 
+    // Equip the first free microphone by default
+    const firstFreeMicrophone = await this.microphoneRepository.findOne({
+      where: { isAvailable: true, type: MicrophoneType.BASIC, rarity: MicrophoneRarity.COMMON },
+      order: { id: 'ASC' },
+    });
+
+    // Update user with equipped items
+    const updateData: any = {};
     if (firstFreeAvatar) {
-      await this.userRepository.update(userId, {
-        equippedAvatarId: firstFreeAvatar.id,
-      });
+      updateData.equippedAvatarId = firstFreeAvatar.id;
+    }
+    if (firstFreeMicrophone) {
+      updateData.equippedMicrophoneId = firstFreeMicrophone.id;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await this.userRepository.update(userId, updateData);
     }
 
     return { success: true };
