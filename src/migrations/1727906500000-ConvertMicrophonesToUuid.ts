@@ -119,11 +119,17 @@ export class ConvertMicrophonesToUuid1727906500000 {
         console.log('ℹ️  Skipping transactions table update - microphoneId column does not exist');
       }
 
-      // Step 5: Replace original table
+      // Step 5: Replace original table (handle foreign key constraints)
       console.log('🔄 Replacing original microphones table...');
+
+      // Temporarily disable foreign key checks
+      await dataSource.query(`SET FOREIGN_KEY_CHECKS = 0;`);
 
       await dataSource.query(`DROP TABLE microphones;`);
       await dataSource.query(`RENAME TABLE microphones_temp TO microphones;`);
+
+      // Re-enable foreign key checks
+      await dataSource.query(`SET FOREIGN_KEY_CHECKS = 1;`);
 
       // Step 6: Verify conversion
       const microphoneCount = await dataSource.query(`
