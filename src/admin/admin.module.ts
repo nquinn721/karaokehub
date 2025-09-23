@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ApiLoggingModule } from '../api-logging/api-logging.module';
 import { Avatar } from '../avatar/entities/avatar.entity';
+import { Microphone } from '../avatar/entities/microphone.entity';
 import { UserAvatar } from '../avatar/entities/user-avatar.entity';
 import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
@@ -35,6 +36,7 @@ import { DeduplicationService } from './deduplication.service';
       Transaction,
       CoinPackage,
       Avatar,
+      Microphone,
       UserAvatar,
     ]),
     ApiLoggingModule,
