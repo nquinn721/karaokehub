@@ -80,6 +80,7 @@ const DashboardPage: React.FC = observer(() => {
   const [currentAvatarId, setCurrentAvatarId] = useState<string>('alex');
   const [currentAvatarImageUrl, setCurrentAvatarImageUrl] = useState<string>('/images/avatar/avatars/alex.png');
   const [currentMicrophoneId, setCurrentMicrophoneId] = useState<string>('mic_basic_1');
+  const [currentMicrophoneImageUrl, setCurrentMicrophoneImageUrl] = useState<string>('/images/avatar/parts/microphones/mic_basic_1.png');
   const [currentAvatarName, setCurrentAvatarName] = useState<string>('Alex');
   const [currentMicrophoneName, setCurrentMicrophoneName] = useState<string>('Basic Mic');
   const [avatarLoading, setAvatarLoading] = useState(false);
@@ -93,7 +94,8 @@ const DashboardPage: React.FC = observer(() => {
     if (authStore.isAuthenticated) {
       loadDashboardData();
       // Load user data first, then equipped items
-      userStore.getCurrentUser().then(() => {
+      userStore.getCurrentUser().then((user) => {
+        console.log('getCurrentUser completed, user data:', user);
         loadCurrentAvatar();
         loadCurrentMicrophone();
       });
@@ -115,6 +117,19 @@ const DashboardPage: React.FC = observer(() => {
       loadCurrentAvatar();
     }
   }, [authStore.user?.equippedAvatar?.id]);
+
+  // Debug: Track microphone image URL changes
+  useEffect(() => {
+    console.log('🎤 currentMicrophoneImageUrl state changed to:', currentMicrophoneImageUrl);
+  }, [currentMicrophoneImageUrl]);
+
+  // Reload microphone when UserStore currentUser changes
+  useEffect(() => {
+    if (userStore.currentUser && authStore.isAuthenticated) {
+      console.log('🎤 UserStore currentUser changed, reloading microphone');
+      loadCurrentMicrophone();
+    }
+  }, [userStore.currentUser, authStore.isAuthenticated]);
 
   const loadCurrentAvatar = async () => {
     if (!authStore.isAuthenticated || !authStore.user?.id) {
@@ -163,6 +178,16 @@ const DashboardPage: React.FC = observer(() => {
     }
 
     try {
+      console.log('UserStore currentUser:', userStore.currentUser);
+      console.log('UserStore currentUser equippedMicrophone:', userStore.currentUser?.equippedMicrophone);
+      console.log('UserStore currentUser equippedMicrophoneId:', userStore.currentUser?.equippedMicrophoneId);
+      
+      // Make sure we have current user data
+      if (!userStore.currentUser) {
+        console.log('🎤 No currentUser in UserStore, cannot load microphone');
+        return;
+      }
+      
       // Use UserStore to get equipped microphone
       const equippedMic = userStore.getEquippedMicrophone();
       console.log('Loaded microphone from UserStore:', equippedMic);
@@ -170,17 +195,28 @@ const DashboardPage: React.FC = observer(() => {
       if (equippedMic?.microphoneId) {
         setCurrentMicrophoneId(equippedMic.microphoneId);
         setCurrentMicrophoneName(equippedMic.microphone?.name || 'Microphone');
+        
+        // Clean up the image URL to avoid double slashes
+        let imageUrl = equippedMic.microphone?.imageUrl || '/images/avatar/parts/microphones/mic_basic_1.png';
+        // Remove any double slashes except for the protocol
+        imageUrl = imageUrl.replace(/([^:]\/)\/+/g, '$1');
+        setCurrentMicrophoneImageUrl(imageUrl);
+        
         console.log('Set current microphone ID:', equippedMic.microphoneId);
         console.log('Set current microphone name:', equippedMic.microphone?.name);
+        console.log('Set current microphone imageUrl (original):', equippedMic.microphone?.imageUrl);
+        console.log('Set current microphone imageUrl (cleaned):', imageUrl);
       } else {
         console.log('No equipped microphone found, using default');
         setCurrentMicrophoneId('mic_basic_1');
         setCurrentMicrophoneName('Basic Mic');
+        setCurrentMicrophoneImageUrl('/images/avatar/parts/microphones/mic_basic_1.png');
       }
     } catch (error) {
       console.error('Failed to load current microphone:', error);
       setCurrentMicrophoneId('mic_basic_1');
       setCurrentMicrophoneName('Basic Mic');
+      setCurrentMicrophoneImageUrl('/images/avatar/parts/microphones/mic_basic_1.png');
     }
   };
 
@@ -1237,13 +1273,21 @@ const DashboardPage: React.FC = observer(() => {
                               >
                                 <Box
                                   component="img"
-                                  src={`/images/avatar/parts/microphones/${currentMicrophoneId}.png`}
+                                  src={currentMicrophoneImageUrl}
                                   alt="Current Microphone"
                                   sx={{
                                     width: '85%',
                                     height: '75%',
                                     objectFit: 'contain',
                                     mb: 1,
+                                  }}
+                                  onError={(e) => {
+                                    console.log('🎤 Microphone image failed to load:', currentMicrophoneImageUrl);
+                                    console.log('🎤 Error event:', e);
+                                    (e.target as HTMLImageElement).src = '/images/avatar/parts/microphones/mic_basic_1.png';
+                                  }}
+                                  onLoad={() => {
+                                    console.log('🎤 Microphone image loaded successfully:', currentMicrophoneImageUrl);
                                   }}
                                 />
                                 <Typography
@@ -1263,6 +1307,18 @@ const DashboardPage: React.FC = observer(() => {
                                   }}
                                 >
                                   {currentMicrophoneName}
+                                </Typography>
+                                {/* Temporary debug info */}
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    color: 'yellow',
+                                    fontSize: '0.6rem',
+                                    textAlign: 'center',
+                                    mt: 0.5,
+                                  }}
+                                >
+                                  Debug: {currentMicrophoneImageUrl}
                                 </Typography>
                               </Box>
                             </Box>

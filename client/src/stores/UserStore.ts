@@ -278,10 +278,16 @@ export class UserStore {
 
   // Get currently equipped microphone
   getEquippedMicrophone(): UserMicrophone | null {
+    console.log('🎤 getEquippedMicrophone called');
+    console.log('🎤 currentUser:', this.currentUser);
+    console.log('🎤 currentUser.equippedMicrophone:', this.currentUser?.equippedMicrophone);
+    console.log('🎤 currentUser.equippedMicrophoneId:', this.currentUser?.equippedMicrophoneId);
+    
     // First try to use the new pattern from currentUser
     if (this.currentUser?.equippedMicrophone && this.currentUser?.equippedMicrophoneId) {
+      console.log('🎤 Using equipped microphone from currentUser');
       // Create a UserMicrophone-like object from the equipped microphone
-      return {
+      const result = {
         id: `equipped_${this.currentUser.equippedMicrophoneId}`,
         userId: this.currentUser.id,
         microphoneId: this.currentUser.equippedMicrophoneId,
@@ -289,10 +295,17 @@ export class UserStore {
         acquiredAt: new Date().toISOString(),
         microphone: this.currentUser.equippedMicrophone,
       };
+      console.log('🎤 Returning equipped microphone:', result);
+      return result;
     }
 
+    console.log('🎤 No equipped microphone found in currentUser, checking userMicrophones');
+    console.log('🎤 userMicrophones:', this.userMicrophones);
+    
     // Fallback to old pattern for compatibility
-    return this.userMicrophones.find((um) => um.isEquipped) || null;
+    const fallback = this.userMicrophones.find((um) => um.isEquipped) || null;
+    console.log('🎤 Fallback result:', fallback);
+    return fallback;
   }
 
   // Get user's avatars

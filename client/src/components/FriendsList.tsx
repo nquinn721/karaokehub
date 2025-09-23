@@ -377,15 +377,14 @@ const FriendsList: React.FC<FriendsListProps> = observer(({ onUserSelect }) => {
                 >
                   <ListItemAvatar>
                     <Avatar sx={{ width: 36, height: 36 }}>
-                      {friend.equippedAvatar?.imageUrl ? (
-                        <img
-                          src={friend.equippedAvatar.imageUrl}
-                          alt={getDisplayName(friend)}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        getAvatarInitials(friend)
-                      )}
+                      <img
+                        src={friend.equippedAvatar?.imageUrl || '/images/avatar/avatars/alex.png'}
+                        alt={getDisplayName(friend)}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/images/avatar/avatars/alex.png';
+                        }}
+                      />
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
