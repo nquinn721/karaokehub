@@ -214,9 +214,36 @@ const ShowsPage: React.FC = observer(() => {
       url.searchParams.set('venue', encodeURIComponent(show.venue.name));
     }
 
-    // Copy to clipboard
+    // Prepare share data
+    const shareData = {
+      title: `Karaoke Show: ${show.dj?.name || 'Live Music'}`,
+      text: `Join the karaoke fun${show.venue && typeof show.venue === 'object' && show.venue.name ? ` at ${show.venue.name}` : ''}${show.day ? ` on ${show.day}` : ''}${show.startTime ? ` at ${show.startTime}` : ''}!`,
+      url: url.toString(),
+    };
+
+    // Check if mobile sharing is available
+    if (isMobile && navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      // Use native mobile share
+      navigator
+        .share(shareData)
+        .then(() => {
+          console.log('Show shared successfully');
+        })
+        .catch((err) => {
+          console.error('Error sharing:', err);
+          // Fallback to clipboard on mobile share failure
+          fallbackToClipboard(url.toString());
+        });
+    } else {
+      // Fallback to clipboard copy for desktop or when native sharing isn't available
+      fallbackToClipboard(url.toString());
+    }
+  };
+
+  // Fallback function for clipboard copy
+  const fallbackToClipboard = (urlString: string) => {
     navigator.clipboard
-      .writeText(url.toString())
+      .writeText(urlString)
       .then(() => {
         // Show success message
         uiStore.addNotification('Link copied to clipboard!', 'success');
