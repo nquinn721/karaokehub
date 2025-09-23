@@ -14,17 +14,6 @@ const StageNameRequiredModal: React.FC<StageNameRequiredModalProps> = observer((
   const [stageName, setStageName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Debug logging
-  console.log('StageNameRequiredModal render check:', {
-    open,
-    isAuthenticated: authStore.isAuthenticated,
-    hasUser: !!authStore.user,
-    currentStageName: authStore.user?.stageName,
-    stageNameLength: authStore.user?.stageName?.length,
-    stageNameTrimmed: authStore.user?.stageName?.trim(),
-    showStageNameModal: authStore.showStageNameModal,
-  });
-
   const handleSubmitStageName = async () => {
     if (!stageName.trim()) {
       uiStore.addNotification('Please enter a stage name', 'error');

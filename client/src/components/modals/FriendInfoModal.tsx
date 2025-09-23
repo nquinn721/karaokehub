@@ -109,15 +109,6 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
     }
   }, [open, friend?.id]);
 
-  // Debug logging for friend data
-  useEffect(() => {
-    if (friend) {
-      console.log('🔍 [FriendInfoModal] Friend data:', friend);
-      console.log('🔍 [FriendInfoModal] Equipped avatar:', friend.equippedAvatar);
-      console.log('🔍 [FriendInfoModal] Equipped microphone:', friend.equippedMicrophone);
-    }
-  }, [friend]);
-
   const formatTime = (time: string) => {
     if (!time) return '';
     try {
@@ -165,9 +156,6 @@ export const FriendInfoModal: React.FC<FriendInfoModalProps> = ({ open, onClose,
     friend?.firstName && friend?.lastName
       ? `${friend.firstName} ${friend.lastName}`
       : friend?.stageName || friend?.name || friend?.username || friend?.email || 'Friend';
-
-  // Debug log to see what friend data we're getting
-  console.log('Friend data in modal:', friend);
 
   return (
     <CustomModal
