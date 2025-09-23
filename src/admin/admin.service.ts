@@ -1252,6 +1252,173 @@ export class AdminService {
     };
   }
 
+  async updateStoreAvatar(id: string, updateData: any) {
+    const avatar = await this.avatarRepository.findOne({ where: { id } });
+    if (!avatar) {
+      throw new Error('Avatar not found');
+    }
+
+    try {
+      // Update the avatar with provided data
+      await this.avatarRepository.update(id, {
+        name: updateData.name,
+        description: updateData.description,
+        type: updateData.type,
+        rarity: updateData.rarity,
+        imageUrl: updateData.imageUrl,
+        price: updateData.price,
+        coinPrice: updateData.coinPrice,
+        isAvailable: updateData.isAvailable,
+        isFree: updateData.isFree,
+      });
+
+      // Fetch and return the updated avatar
+      const updatedAvatar = await this.avatarRepository.findOne({ where: { id } });
+      
+      console.log(`✅ Successfully updated avatar: ${updateData.name} (ID: ${id})`);
+      return {
+        message: 'Avatar updated successfully',
+        avatar: updatedAvatar,
+      };
+    } catch (error) {
+      console.error(`❌ Error updating avatar ${updateData.name} (ID: ${id}):`, error);
+      throw error;
+    }
+  }
+
+  async updateStoreMicrophone(id: string, updateData: any) {
+    const microphone = await this.microphoneRepository.findOne({ where: { id } });
+    if (!microphone) {
+      throw new Error('Microphone not found');
+    }
+
+    try {
+      // Update the microphone with provided data
+      await this.microphoneRepository.update(id, {
+        name: updateData.name,
+        description: updateData.description,
+        type: updateData.type,
+        rarity: updateData.rarity,
+        imageUrl: updateData.imageUrl,
+        price: updateData.price,
+        coinPrice: updateData.coinPrice,
+        isAvailable: updateData.isAvailable,
+        isFree: updateData.isFree,
+      });
+
+      // Fetch and return the updated microphone
+      const updatedMicrophone = await this.microphoneRepository.findOne({ where: { id } });
+      
+      console.log(`✅ Successfully updated microphone: ${updateData.name} (ID: ${id})`);
+      return {
+        message: 'Microphone updated successfully',
+        microphone: updatedMicrophone,
+      };
+    } catch (error) {
+      console.error(`❌ Error updating microphone ${updateData.name} (ID: ${id}):`, error);
+      throw error;
+    }
+  }
+
+  async createStoreAvatar(createData: any) {
+    try {
+      // Create new avatar with provided data
+      const newAvatar = this.avatarRepository.create({
+        name: createData.name,
+        description: createData.description,
+        type: createData.type || 'basic',
+        rarity: createData.rarity || 'common',
+        imageUrl: createData.imageUrl,
+        price: createData.price || 0,
+        coinPrice: createData.coinPrice || 0,
+        isAvailable: createData.isAvailable !== undefined ? createData.isAvailable : true,
+        isFree: createData.isFree || false,
+      });
+
+      const savedAvatar = await this.avatarRepository.save(newAvatar);
+      
+      console.log(`✅ Successfully created avatar: ${createData.name} (ID: ${savedAvatar.id})`);
+      return {
+        message: 'Avatar created successfully',
+        avatar: savedAvatar,
+      };
+    } catch (error) {
+      console.error(`❌ Error creating avatar ${createData.name}:`, error);
+      throw error;
+    }
+  }
+
+  async createStoreMicrophone(createData: any) {
+    try {
+      // Create new microphone with provided data
+      const newMicrophone = this.microphoneRepository.create({
+        name: createData.name,
+        description: createData.description,
+        type: createData.type || 'basic',
+        rarity: createData.rarity || 'common',
+        imageUrl: createData.imageUrl,
+        price: createData.price || 0,
+        coinPrice: createData.coinPrice || 0,
+        isAvailable: createData.isAvailable !== undefined ? createData.isAvailable : true,
+        isFree: createData.isFree || false,
+      });
+
+      const savedMicrophone = await this.microphoneRepository.save(newMicrophone);
+      
+      console.log(`✅ Successfully created microphone: ${createData.name} (ID: ${savedMicrophone.id})`);
+      return {
+        message: 'Microphone created successfully',
+        microphone: savedMicrophone,
+      };
+    } catch (error) {
+      console.error(`❌ Error creating microphone ${createData.name}:`, error);
+      throw error;
+    }
+  }
+
+  async suggestItemName(itemType: 'avatar' | 'microphone', rarity: string, description?: string) {
+    try {
+      if (!this.genAI) {
+        throw new Error('Google AI not configured');
+      }
+
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+      
+      let prompt = '';
+      if (itemType === 'avatar') {
+        prompt = `Generate 3 creative and appealing names for a ${rarity} rarity avatar character for a karaoke app. The avatar should feel appropriate for a music/karaoke theme. Consider the rarity level when suggesting names - legendary should sound more epic, common should be simple and friendly.`;
+      } else {
+        prompt = `Generate 3 creative and appealing names for a ${rarity} rarity microphone for a karaoke app. The microphone names should feel professional yet fun, appropriate for a music/karaoke theme. Consider the rarity level when suggesting names - legendary should sound more premium, common should be simple and accessible.`;
+      }
+
+      if (description) {
+        prompt += ` Additional context: ${description}`;
+      }
+
+      prompt += ` Return only the names as a comma-separated list, no explanations or formatting.`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const suggestions = response.text().trim().split(',').map(name => name.trim());
+      
+      console.log(`✅ Generated AI name suggestions for ${itemType}:`, suggestions);
+      return {
+        suggestions: suggestions.slice(0, 3), // Ensure we only return 3 suggestions
+      };
+    } catch (error) {
+      console.error(`❌ Error generating name suggestions:`, error);
+      // Return fallback suggestions if AI fails
+      const fallbackSuggestions = itemType === 'avatar' 
+        ? ['Melody Star', 'Rhythm Knight', 'Harmony Hero']
+        : ['Sound Wave', 'Echo Master', 'Vocal Pro'];
+      
+      return {
+        suggestions: fallbackSuggestions,
+        fallback: true,
+      };
+    }
+  }
+
   async detectDuplicatesInParsedSchedule(parsedScheduleId: string) {
     const parsedSchedule = await this.parsedScheduleRepository.findOne({
       where: { id: parsedScheduleId },

@@ -1358,6 +1358,132 @@ export class AdminStore {
       throw new Error(errorMessage);
     }
   }
+
+  async updateStoreAvatar(id: string, updateData: any): Promise<void> {
+    try {
+      console.log(`📝 Attempting to update avatar: ${id}`, updateData);
+      const response = await apiStore.put(`/admin/store/avatars/${id}`, updateData);
+      console.log(`✅ Avatar update response:`, response);
+
+      // Refresh the avatars list
+      if (this.storeItems.avatars) {
+        await this.fetchStoreAvatars(this.storeItems.avatars.page, this.storeItems.avatars.limit);
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error(`❌ Error updating avatar ${id}:`, error);
+      const errorMessage = error.response?.data?.message || 'Failed to update avatar';
+
+      // Set error in the store for UI display
+      runInAction(() => {
+        this.tableError = errorMessage;
+      });
+
+      throw new Error(errorMessage);
+    }
+  }
+
+  async updateStoreMicrophone(id: string, updateData: any): Promise<void> {
+    try {
+      console.log(`📝 Attempting to update microphone: ${id}`, updateData);
+      const response = await apiStore.put(`/admin/store/microphones/${id}`, updateData);
+      console.log(`✅ Microphone update response:`, response);
+
+      // Refresh the microphones list
+      if (this.storeItems.microphones) {
+        await this.fetchStoreMicrophones(
+          this.storeItems.microphones.page,
+          this.storeItems.microphones.limit,
+        );
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error(`❌ Error updating microphone ${id}:`, error);
+      const errorMessage = error.response?.data?.message || 'Failed to update microphone';
+
+      // Set error in the store for UI display
+      runInAction(() => {
+        this.tableError = errorMessage;
+      });
+
+      throw new Error(errorMessage);
+    }
+  }
+
+  async createStoreAvatar(createData: any): Promise<void> {
+    try {
+      console.log(`➕ Attempting to create avatar:`, createData);
+      const response = await apiStore.post(`/admin/store/avatars`, createData);
+      console.log(`✅ Avatar creation response:`, response);
+
+      // Refresh the avatars list
+      if (this.storeItems.avatars) {
+        await this.fetchStoreAvatars(this.storeItems.avatars.page, this.storeItems.avatars.limit);
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error(`❌ Error creating avatar:`, error);
+      const errorMessage = error.response?.data?.message || 'Failed to create avatar';
+
+      // Set error in the store for UI display
+      runInAction(() => {
+        this.tableError = errorMessage;
+      });
+
+      throw new Error(errorMessage);
+    }
+  }
+
+  async createStoreMicrophone(createData: any): Promise<void> {
+    try {
+      console.log(`➕ Attempting to create microphone:`, createData);
+      const response = await apiStore.post(`/admin/store/microphones`, createData);
+      console.log(`✅ Microphone creation response:`, response);
+
+      // Refresh the microphones list
+      if (this.storeItems.microphones) {
+        await this.fetchStoreMicrophones(
+          this.storeItems.microphones.page,
+          this.storeItems.microphones.limit,
+        );
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error(`❌ Error creating microphone:`, error);
+      const errorMessage = error.response?.data?.message || 'Failed to create microphone';
+
+      // Set error in the store for UI display
+      runInAction(() => {
+        this.tableError = errorMessage;
+      });
+
+      throw new Error(errorMessage);
+    }
+  }
+
+  async suggestItemName(itemType: 'avatar' | 'microphone', rarity: string, description?: string): Promise<string[]> {
+    try {
+      console.log(`🤖 Requesting AI name suggestions for ${itemType} (${rarity})`);
+      const response = await apiStore.post(`/admin/store/suggest-name`, {
+        itemType,
+        rarity,
+        description,
+      });
+      console.log(`✅ AI suggestions response:`, response);
+      return response.suggestions || [];
+    } catch (error: any) {
+      console.error(`❌ Error getting AI suggestions:`, error);
+      // Return fallback suggestions if AI fails
+      const fallbackSuggestions = itemType === 'avatar' 
+        ? ['Melody Star', 'Rhythm Knight', 'Harmony Hero']
+        : ['Sound Wave', 'Echo Master', 'Vocal Pro'];
+      return fallbackSuggestions;
+    }
+  }
 }
 
 export const adminStore = new AdminStore();

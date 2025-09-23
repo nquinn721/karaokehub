@@ -381,6 +381,56 @@ export class AdminController {
     return await this.adminService.getStoreCoinPackages(+page, +limit, search);
   }
 
+  @Put('store/avatars/:id')
+  async updateAvatar(@Param('id') id: string, @Body() updateData: any) {
+    try {
+      return await this.adminService.updateStoreAvatar(id, updateData);
+    } catch (error) {
+      console.error('Controller error in updateAvatar:', error);
+      throw error;
+    }
+  }
+
+  @Put('store/microphones/:id')
+  async updateMicrophone(@Param('id') id: string, @Body() updateData: any) {
+    try {
+      return await this.adminService.updateStoreMicrophone(id, updateData);
+    } catch (error) {
+      console.error('Controller error in updateMicrophone:', error);
+      throw error;
+    }
+  }
+
+  @Post('store/avatars')
+  async createAvatar(@Body() createData: any) {
+    try {
+      return await this.adminService.createStoreAvatar(createData);
+    } catch (error) {
+      console.error('Controller error in createAvatar:', error);
+      throw error;
+    }
+  }
+
+  @Post('store/microphones')
+  async createMicrophone(@Body() createData: any) {
+    try {
+      return await this.adminService.createStoreMicrophone(createData);
+    } catch (error) {
+      console.error('Controller error in createMicrophone:', error);
+      throw error;
+    }
+  }
+
+  @Post('store/suggest-name')
+  async suggestItemName(@Body() body: { itemType: 'avatar' | 'microphone'; rarity: string; description?: string }) {
+    try {
+      return await this.adminService.suggestItemName(body.itemType, body.rarity, body.description);
+    } catch (error) {
+      console.error('Controller error in suggestItemName:', error);
+      throw error;
+    }
+  }
+
   // Production Migration Endpoints
   @Post('migrations/run-critical')
   async runCriticalMigrations() {
