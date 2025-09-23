@@ -1308,18 +1308,6 @@ const DashboardPage: React.FC = observer(() => {
                                 >
                                   {currentMicrophoneName}
                                 </Typography>
-                                {/* Temporary debug info */}
-                                <Typography
-                                  variant="caption"
-                                  sx={{
-                                    color: 'yellow',
-                                    fontSize: '0.6rem',
-                                    textAlign: 'center',
-                                    mt: 0.5,
-                                  }}
-                                >
-                                  Debug: {currentMicrophoneImageUrl}
-                                </Typography>
                               </Box>
                             </Box>
 
