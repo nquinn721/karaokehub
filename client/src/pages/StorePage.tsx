@@ -1,6 +1,7 @@
 import { CoinDisplay } from '@components/CoinDisplay';
 import CoinPackagePurchaseModal from '@components/CoinPackagePurchaseModal';
 import CustomModal from '@components/CustomModal';
+import MicrophoneDetailModal from '@components/MicrophoneDetailModal';
 import MicrophonePurchaseModal from '@components/MicrophonePurchaseModal';
 import { faCoins, faCrown, faMicrophone, faShoppingCart } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -24,7 +25,7 @@ import {
 import { CoinPackage, Microphone, storeStore } from '@stores/StoreStore';
 import { userStore } from '@stores/UserStore';
 import { uiStore } from '@stores/index';
-import { formatNumber, formatPrice, isGreaterThan, toNumber } from '@utils/numberUtils';
+import { formatNumber, formatPrice, isGreaterThan } from '@utils/numberUtils';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 
@@ -55,6 +56,8 @@ const StorePage: React.FC = observer(() => {
   const [loading, setLoading] = useState(false);
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
   const [selectedMicrophone, setSelectedMicrophone] = useState<Microphone | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailMicrophone, setDetailMicrophone] = useState<Microphone | null>(null);
   const [coinPackageModalOpen, setCoinPackageModalOpen] = useState(false);
   const [selectedCoinPackage, setSelectedCoinPackage] = useState<CoinPackage | null>(null);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
@@ -209,6 +212,25 @@ const StorePage: React.FC = observer(() => {
   const handleClosePurchaseModal = () => {
     setPurchaseModalOpen(false);
     setSelectedMicrophone(null);
+  };
+
+  const handleMicrophoneDetail = (microphoneId: string) => {
+    const microphone = storeStore.storeMicrophones.find((mic) => mic.id === microphoneId);
+    if (microphone) {
+      setDetailMicrophone(microphone);
+      setDetailModalOpen(true);
+    }
+  };
+
+  const handleDetailModalPurchase = (microphoneId: string) => {
+    // Close detail modal and open purchase modal
+    setDetailModalOpen(false);
+    handleMicrophonePurchase(microphoneId);
+  };
+
+  const handleCloseDetailModal = () => {
+    setDetailModalOpen(false);
+    setDetailMicrophone(null);
   };
 
   const handleAvatarPurchase = async (avatarId: string) => {
@@ -465,6 +487,7 @@ const StorePage: React.FC = observer(() => {
                   return (
                     <Grid item xs={12} sm={6} md={4} lg={3} key={mic.id}>
                       <Card
+                        onClick={() => handleMicrophoneDetail(mic.id)}
                         sx={{
                           height: '100%',
                           display: 'flex',
@@ -474,9 +497,10 @@ const StorePage: React.FC = observer(() => {
                           border: isOwned ? '2px solid' : '1px solid',
                           borderColor: isOwned ? 'success.main' : 'divider',
                           transition: 'all 0.3s ease',
+                          cursor: 'pointer',
                           '&:hover': {
-                            transform: isOwned ? 'none' : 'translateY(-4px)',
-                            boxShadow: isOwned ? theme.shadows[2] : theme.shadows[8],
+                            transform: 'translateY(-4px)',
+                            boxShadow: theme.shadows[8],
                           },
                         }}
                       >
@@ -562,27 +586,17 @@ const StorePage: React.FC = observer(() => {
                           </Box>
                         </CardContent>
                         <CardActions sx={{ justifyContent: 'center', pb: 2 }}>
-                          {isOwned ? (
-                            <Button variant="outlined" disabled fullWidth sx={{ mx: 2 }}>
-                              Owned
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="contained"
-                              fullWidth
-                              disabled={loading || storeStore.coins < toNumber(mic.coinPrice)}
-                              onClick={() => handleMicrophonePurchase(mic.id)}
-                              sx={{ mx: 2 }}
-                            >
-                              {loading ? (
-                                <CircularProgress size={20} />
-                              ) : storeStore.coins < toNumber(mic.coinPrice) ? (
-                                'Insufficient Coins'
-                              ) : (
-                                'Purchase'
-                              )}
-                            </Button>
-                          )}
+                          <Button 
+                            variant={isOwned ? "outlined" : "contained"} 
+                            fullWidth 
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent card click
+                              handleMicrophoneDetail(mic.id);
+                            }}
+                            sx={{ mx: 2 }}
+                          >
+                            View Details
+                          </Button>
                         </CardActions>
                       </Card>
                     </Grid>
@@ -780,6 +794,16 @@ const StorePage: React.FC = observer(() => {
         userCoins={storeStore.coins}
         isLoading={loading}
         onConfirmPurchase={handleConfirmPurchase}
+      />
+
+      <MicrophoneDetailModal
+        open={detailModalOpen}
+        onClose={handleCloseDetailModal}
+        microphone={detailMicrophone}
+        userCoins={storeStore.coins}
+        isLoading={loading}
+        onPurchase={handleDetailModalPurchase}
+        isOwned={detailMicrophone ? storeStore.doesUserOwnMicrophone(detailMicrophone.id) : false}
       />
 
       <CoinPackagePurchaseModal
