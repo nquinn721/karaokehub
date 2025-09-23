@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, HttpException, HttpStatus } from '@nestjs/common';
 import { AdminService, VenueVerificationResult } from './admin.service';
 import { DeduplicationService } from './deduplication.service';
 
@@ -335,12 +335,20 @@ export class AdminController {
   }
 
   @Delete('store/microphones/:id')
-  async deleteMicrophone(@Param('id') id: string) {
+  async deleteMicrophone(
+    @Param('id') id: string,
+    @Query('force') force?: string,
+  ) {
     try {
-      return await this.adminService.deleteMicrophone(id);
+      const forceDelete = force === 'true';
+      return await this.adminService.deleteMicrophone(id, forceDelete);
     } catch (error) {
       console.error('Controller error in deleteMicrophone:', error);
-      throw error;
+      // Create a proper HTTP exception with the constraint message
+      if (error.message && error.message.includes('Cannot delete microphone')) {
+        throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      }
+      throw new HttpException('Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -417,6 +425,26 @@ export class AdminController {
       return await this.adminService.createStoreMicrophone(createData);
     } catch (error) {
       console.error('Controller error in createMicrophone:', error);
+      throw error;
+    }
+  }
+
+  @Post('store/coin-packages')
+  async createCoinPackage(@Body() createData: any) {
+    try {
+      return await this.adminService.createStoreCoinPackage(createData);
+    } catch (error) {
+      console.error('Controller error in createCoinPackage:', error);
+      throw error;
+    }
+  }
+
+  @Put('store/coin-packages/:id')
+  async updateCoinPackage(@Param('id') id: string, @Body() updateData: any) {
+    try {
+      return await this.adminService.updateStoreCoinPackage(id, updateData);
+    } catch (error) {
+      console.error('Controller error in updateCoinPackage:', error);
       throw error;
     }
   }

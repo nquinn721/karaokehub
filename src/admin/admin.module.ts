@@ -4,6 +4,7 @@ import { ApiLoggingModule } from '../api-logging/api-logging.module';
 import { Avatar } from '../avatar/entities/avatar.entity';
 import { Microphone } from '../avatar/entities/microphone.entity';
 import { UserAvatar } from '../avatar/entities/user-avatar.entity';
+import { UserMicrophone } from '../avatar/entities/user-microphone.entity';
 import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
@@ -39,6 +40,7 @@ import { ProductionMigrationService } from '../migrations/production-migration.s
       Avatar,
       Microphone,
       UserAvatar,
+      UserMicrophone,
     ]),
     ApiLoggingModule,
     GeocodingModule,

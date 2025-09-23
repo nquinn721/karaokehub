@@ -7,6 +7,7 @@ import { Worker } from 'worker_threads';
 import { Avatar } from '../avatar/entities/avatar.entity';
 import { Microphone } from '../avatar/entities/microphone.entity';
 import { UserAvatar } from '../avatar/entities/user-avatar.entity';
+import { UserMicrophone } from '../avatar/entities/user-microphone.entity';
 import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
@@ -68,6 +69,8 @@ export class AdminService {
     private microphoneRepository: Repository<Microphone>,
     @InjectRepository(UserAvatar)
     private userAvatarRepository: Repository<UserAvatar>,
+    @InjectRepository(UserMicrophone)
+    private userMicrophoneRepository: Repository<UserMicrophone>,
     private geocodingService: GeocodingService,
     private migrationService: ProductionMigrationService,
   ) {
@@ -1071,7 +1074,7 @@ export class AdminService {
     }
   }
 
-  async deleteMicrophone(id: string) {
+  async deleteMicrophone(id: string, force: boolean = false) {
     const microphone = await this.microphoneRepository.findOne({ where: { id } });
     if (!microphone) {
       throw new Error('Microphone not found');
@@ -1081,12 +1084,62 @@ export class AdminService {
     const usersWithEquippedMicrophone = await this.userRepository.find({
       where: { equippedMicrophoneId: id },
     });
+    
+    // Check if microphone is owned by any users
+    const ownedCount = await this.userMicrophoneRepository.count({
+      where: { microphoneId: id },
+    });
+    
+    // Check if microphone has transaction history
+    const transactionCount = await this.transactionRepository.count({
+      where: { microphoneId: id },
+    });
+
+    const constraints = [];
     if (usersWithEquippedMicrophone.length > 0) {
-      throw new Error('Cannot delete microphone: it is currently equipped by users');
+      constraints.push(`${usersWithEquippedMicrophone.length} users have it equipped`);
+    }
+    if (ownedCount > 0) {
+      constraints.push(`${ownedCount} ownership records`);
+    }
+    if (transactionCount > 0) {
+      constraints.push(`${transactionCount} transaction records`);
+    }
+
+    if (constraints.length > 0 && !force) {
+      throw new Error(
+        `Cannot delete microphone: ${constraints.join(', ')}. ` +
+        `Use force delete to remove all related records.`
+      );
     }
 
     try {
-      // Delete the database record first
+      if (force && constraints.length > 0) {
+        console.log(`🚨 Force deleting microphone ${microphone.name} with constraints: ${constraints.join(', ')}`);
+        
+        // Remove equipped microphone references from users
+        if (usersWithEquippedMicrophone.length > 0) {
+          await this.userRepository.update(
+            { equippedMicrophoneId: id },
+            { equippedMicrophoneId: null }
+          );
+          console.log(`📝 Unequipped microphone from ${usersWithEquippedMicrophone.length} users`);
+        }
+        
+        // Delete user ownership records
+        if (ownedCount > 0) {
+          await this.userMicrophoneRepository.delete({ microphoneId: id });
+          console.log(`📝 Deleted ${ownedCount} user ownership records`);
+        }
+        
+        // Note: We don't delete transaction records as they are historical data
+        // Just log if they exist
+        if (transactionCount > 0) {
+          console.log(`⚠️ Leaving ${transactionCount} transaction records for historical purposes`);
+        }
+      }
+
+      // Delete the database record
       const result = await this.microphoneRepository.delete(id);
       if (result.affected === 0) {
         throw new Error('Microphone not found or already deleted');
@@ -1097,8 +1150,9 @@ export class AdminService {
 
       console.log(`✅ Successfully deleted microphone: ${microphone.name} (ID: ${id})`);
       return {
-        message: 'Microphone deleted successfully',
+        message: `Microphone deleted successfully${force ? ' (with force)' : ''}`,
         deletedItem: { id, name: microphone.name, imageUrl: microphone.imageUrl },
+        constraintsRemoved: force ? constraints : [],
       };
     } catch (error) {
       console.error(`❌ Error deleting microphone ${microphone.name} (ID: ${id}):`, error);
@@ -1372,6 +1426,76 @@ export class AdminService {
       };
     } catch (error) {
       console.error(`❌ Error creating microphone ${createData.name}:`, error);
+      throw error;
+    }
+  }
+
+  async createStoreCoinPackage(createData: any) {
+    try {
+      // Create new coin package with provided data
+      const newCoinPackage = this.coinPackageRepository.create({
+        name: createData.name,
+        description: createData.description,
+        coinAmount: createData.coinAmount || 0,
+        priceUSD: createData.priceUSD || 0,
+        bonusCoins: createData.bonusCoins || 0,
+        isActive: createData.isActive !== undefined ? createData.isActive : true,
+        sortOrder: createData.sortOrder || 0,
+        // New redemption and expiry fields
+        maxRedemptions: createData.maxRedemptions || null,
+        currentRedemptions: 0, // Always start with 0 redemptions
+        expiryDate: createData.expiryDate ? new Date(createData.expiryDate) : null,
+        isLimitedTime: createData.isLimitedTime || false,
+        isOneTimeUse: createData.isOneTimeUse || false,
+      });
+
+      const savedCoinPackage = await this.coinPackageRepository.save(newCoinPackage);
+      
+      console.log(`✅ Successfully created coin package: ${createData.name} (ID: ${savedCoinPackage.id})`);
+      return {
+        message: 'Coin package created successfully',
+        coinPackage: savedCoinPackage,
+      };
+    } catch (error) {
+      console.error(`❌ Error creating coin package ${createData.name}:`, error);
+      throw error;
+    }
+  }
+
+  async updateStoreCoinPackage(id: string, updateData: any) {
+    try {
+      const coinPackage = await this.coinPackageRepository.findOne({ where: { id } });
+      
+      if (!coinPackage) {
+        throw new Error(`Coin package with ID ${id} not found`);
+      }
+
+      // Update coin package with provided data
+      Object.assign(coinPackage, {
+        name: updateData.name !== undefined ? updateData.name : coinPackage.name,
+        description: updateData.description !== undefined ? updateData.description : coinPackage.description,
+        coinAmount: updateData.coinAmount !== undefined ? updateData.coinAmount : coinPackage.coinAmount,
+        priceUSD: updateData.priceUSD !== undefined ? updateData.priceUSD : coinPackage.priceUSD,
+        bonusCoins: updateData.bonusCoins !== undefined ? updateData.bonusCoins : coinPackage.bonusCoins,
+        isActive: updateData.isActive !== undefined ? updateData.isActive : coinPackage.isActive,
+        sortOrder: updateData.sortOrder !== undefined ? updateData.sortOrder : coinPackage.sortOrder,
+        // New redemption and expiry fields
+        maxRedemptions: updateData.maxRedemptions !== undefined ? updateData.maxRedemptions : coinPackage.maxRedemptions,
+        expiryDate: updateData.expiryDate !== undefined ? (updateData.expiryDate ? new Date(updateData.expiryDate) : null) : coinPackage.expiryDate,
+        isLimitedTime: updateData.isLimitedTime !== undefined ? updateData.isLimitedTime : coinPackage.isLimitedTime,
+        isOneTimeUse: updateData.isOneTimeUse !== undefined ? updateData.isOneTimeUse : coinPackage.isOneTimeUse,
+        // Note: currentRedemptions should not be updated through admin interface - managed by redemption logic
+      });
+
+      const savedCoinPackage = await this.coinPackageRepository.save(coinPackage);
+      
+      console.log(`✅ Successfully updated coin package: ${updateData.name} (ID: ${id})`);
+      return {
+        message: 'Coin package updated successfully',
+        coinPackage: savedCoinPackage,
+      };
+    } catch (error) {
+      console.error(`❌ Error updating coin package ${id}:`, error);
       throw error;
     }
   }

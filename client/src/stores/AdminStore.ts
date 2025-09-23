@@ -1303,10 +1303,11 @@ export class AdminStore {
     }
   }
 
-  async deleteStoreMicrophone(id: string): Promise<void> {
+  async deleteStoreMicrophone(id: string, force: boolean = false): Promise<void> {
     try {
-      console.log(`🗑️ Attempting to delete microphone: ${id}`);
-      const response = await apiStore.delete(`/admin/store/microphones/${id}`);
+      console.log(`🗑️ Attempting to delete microphone: ${id}${force ? ' (force)' : ''}`);
+      const url = `/admin/store/microphones/${id}${force ? '?force=true' : ''}`;
+      const response = await apiStore.delete(url);
       console.log(`✅ Microphone deletion response:`, response);
 
       // Refresh the microphones list
@@ -1320,7 +1321,12 @@ export class AdminStore {
       return response;
     } catch (error: any) {
       console.error(`❌ Error deleting microphone ${id}:`, error);
-      const errorMessage = error.response?.data?.message || 'Failed to delete microphone';
+      
+      // Try to get the most specific error message available
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data || 
+                          error.message || 
+                          'Failed to delete microphone';
 
       // Set error in the store for UI display
       runInAction(() => {
@@ -1455,6 +1461,62 @@ export class AdminStore {
     } catch (error: any) {
       console.error(`❌ Error creating microphone:`, error);
       const errorMessage = error.response?.data?.message || 'Failed to create microphone';
+
+      // Set error in the store for UI display
+      runInAction(() => {
+        this.tableError = errorMessage;
+      });
+
+      throw new Error(errorMessage);
+    }
+  }
+
+  async createStoreCoinPackage(createData: any): Promise<void> {
+    try {
+      console.log(`➕ Attempting to create coin package:`, createData);
+      const response = await apiStore.post(`/admin/store/coin-packages`, createData);
+      console.log(`✅ Coin package creation response:`, response);
+
+      // Refresh the coin packages list
+      if (this.storeItems.coinPackages) {
+        await this.fetchStoreCoinPackages(
+          this.storeItems.coinPackages.page,
+          this.storeItems.coinPackages.limit,
+        );
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error(`❌ Error creating coin package:`, error);
+      const errorMessage = error.response?.data?.message || 'Failed to create coin package';
+
+      // Set error in the store for UI display
+      runInAction(() => {
+        this.tableError = errorMessage;
+      });
+
+      throw new Error(errorMessage);
+    }
+  }
+
+  async updateStoreCoinPackage(id: string, updateData: any): Promise<void> {
+    try {
+      console.log(`✏️ Attempting to update coin package ${id}:`, updateData);
+      const response = await apiStore.put(`/admin/store/coin-packages/${id}`, updateData);
+      console.log(`✅ Coin package update response:`, response);
+
+      // Refresh the coin packages list
+      if (this.storeItems.coinPackages) {
+        await this.fetchStoreCoinPackages(
+          this.storeItems.coinPackages.page,
+          this.storeItems.coinPackages.limit,
+        );
+      }
+
+      return response;
+    } catch (error: any) {
+      console.error(`❌ Error updating coin package ${id}:`, error);
+      const errorMessage = error.response?.data?.message || 'Failed to update coin package';
 
       // Set error in the store for UI display
       runInAction(() => {

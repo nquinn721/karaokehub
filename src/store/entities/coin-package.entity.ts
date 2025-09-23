@@ -32,6 +32,22 @@ export class CoinPackage {
   @Column({ type: 'int', default: 0 })
   sortOrder: number;
 
+  // Redemption and expiry features
+  @Column({ name: 'maxRedemptions', type: 'int', nullable: true })
+  maxRedemptions: number; // null = unlimited, number = max redemptions allowed
+
+  @Column({ name: 'currentRedemptions', type: 'int', default: 0 })
+  currentRedemptions: number; // Track how many times this package has been redeemed
+
+  @Column({ name: 'expiryDate', type: 'timestamp', nullable: true })
+  expiryDate: Date; // null = never expires, date = expires at this time
+
+  @Column({ name: 'isLimitedTime', default: false })
+  isLimitedTime: boolean; // Flag to indicate this is a limited-time offer
+
+  @Column({ name: 'isOneTimeUse', default: false })
+  isOneTimeUse: boolean; // Flag to indicate this is a one-time redemption package
+
   @CreateDateColumn()
   createdAt: Date;
 
