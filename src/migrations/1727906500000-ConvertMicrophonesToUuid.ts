@@ -101,13 +101,23 @@ export class ConvertMicrophonesToUuid1727906500000 {
         SET um.microphoneId = m.new_id;
       `);
 
-      // Update transactions table
-      await dataSource.query(`
-        UPDATE transactions t
-        JOIN microphone_id_mapping m ON t.microphoneId = m.old_id
-        SET t.microphoneId = m.new_id
-        WHERE t.microphoneId IS NOT NULL;
+      // Update transactions table (only if microphoneId column exists)
+      const transactionsColumns = await dataSource.query(`
+        SHOW COLUMNS FROM transactions LIKE 'microphoneId'
       `);
+      
+      if (transactionsColumns.length > 0) {
+        console.log('🔗 Updating transactions table microphoneId references...');
+        await dataSource.query(`
+          UPDATE transactions t
+          JOIN microphone_id_mapping m ON t.microphoneId = m.old_id
+          SET t.microphoneId = m.new_id
+          WHERE t.microphoneId IS NOT NULL;
+        `);
+        console.log('✅ Updated transactions table microphone references');
+      } else {
+        console.log('ℹ️  Skipping transactions table update - microphoneId column does not exist');
+      }
 
       // Step 5: Replace original table
       console.log('🔄 Replacing original microphones table...');
