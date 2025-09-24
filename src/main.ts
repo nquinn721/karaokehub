@@ -36,10 +36,19 @@ async function bootstrap() {
       try {
         const { DataSource } = await import('typeorm');
         const dataSource = app.get(DataSource);
-        await dataSource.runMigrations();
-        console.log('✅ Database migrations completed successfully');
+        console.log('� Running migrations (if any pending)...');
+        const migrations = await dataSource.runMigrations();
+        console.log(`✅ Successfully ran ${migrations.length} migrations`);
+        if (migrations.length > 0) {
+          migrations.forEach(migration => {
+            console.log(`  - ${migration.name}`);
+          });
+        } else {
+          console.log('📋 No pending migrations found');
+        }
       } catch (migrationError) {
         console.error('❌ Database migrations failed:', migrationError);
+        console.error('Migration error stack:', migrationError.stack);
         // Don't fail the startup for migration issues, just log them
         console.warn('⚠️ Application will continue despite migration failures');
       }
