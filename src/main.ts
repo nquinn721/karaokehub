@@ -30,6 +30,21 @@ async function bootstrap() {
 
     console.log('✅ NestJS application created successfully');
 
+    // Run database migrations on startup in production
+    if (process.env.NODE_ENV === 'production') {
+      console.log('🗄️ Running database migrations...');
+      try {
+        const { DataSource } = await import('typeorm');
+        const dataSource = app.get(DataSource);
+        await dataSource.runMigrations();
+        console.log('✅ Database migrations completed successfully');
+      } catch (migrationError) {
+        console.error('❌ Database migrations failed:', migrationError);
+        // Don't fail the startup for migration issues, just log them
+        console.warn('⚠️ Application will continue despite migration failures');
+      }
+    }
+
     const configService = app.get(ConfigService);
     const urlService = app.get(UrlService);
     // const cancellationService = app.get(CancellationService);
