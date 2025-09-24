@@ -31,6 +31,8 @@ async function bootstrap() {
     console.log('✅ NestJS application created successfully');
 
     // Run database migrations on startup in production
+    console.error('CHECKING NODE_ENV:', process.env.NODE_ENV);
+    console.error('IS PRODUCTION?', process.env.NODE_ENV === 'production');
     if (process.env.NODE_ENV === 'production') {
       console.error('=== STARTING DATABASE MIGRATIONS ===');
       try {
@@ -40,7 +42,7 @@ async function bootstrap() {
         const migrations = await dataSource.runMigrations();
         console.error(`SUCCESS: Executed ${migrations.length} migrations`);
         if (migrations.length > 0) {
-          migrations.forEach(migration => {
+          migrations.forEach((migration) => {
             console.error(`  - EXECUTED: ${migration.name}`);
           });
         } else {

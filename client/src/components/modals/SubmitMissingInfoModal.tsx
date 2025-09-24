@@ -22,6 +22,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
       venueName: '',
       venuePhone: '',
       venueWebsite: '',
+      location: '',
       description: '',
       comments: '',
     });
@@ -36,6 +37,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
             show.venue && typeof show.venue === 'object' ? show.venue.name || '' : show.venue || '',
           venuePhone: show.venue?.phone || '',
           venueWebsite: show.venue?.website || '',
+          location: showStore.getVenueAddress(show) || '',
           description: show.description || '',
           comments: '',
         });
@@ -55,10 +57,11 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
     const handleSubmit = async () => {
       if (!show || !authStore.user?.id) return;
 
-      // Check if at least one field is filled
-      const hasData = Object.values(formData).some((value) => value.trim() !== '');
+      // Check if at least one field has content (excluding comments which is optional)
+      const { comments, ...fieldsToCheck } = formData;
+      const hasData = Object.values(fieldsToCheck).some((value) => value.trim() !== '');
       if (!hasData) {
-        setError('Please fill in at least one field');
+        setError('Please update at least one field with information');
         return;
       }
 
@@ -80,6 +83,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
             show.venue && typeof show.venue === 'object' ? show.venue.name || '' : show.venue || '',
           venuePhone: show.venue?.phone || '',
           venueWebsite: show.venue?.website || '',
+          location: showStore.getVenueAddress(show) || '',
           description: show.description || '',
           comments: '',
         });
@@ -110,6 +114,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
                 : show.venue || '',
             venuePhone: show.venue?.phone || '',
             venueWebsite: show.venue?.website || '',
+            location: showStore.getVenueAddress(show) || '',
             description: show.description || '',
             comments: '',
           });
@@ -124,13 +129,12 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
         <CustomModal
           open={open}
           onClose={handleClose}
-          title="Submit Missing Information"
+          title="Update Show Info"
           icon={<FontAwesomeIcon icon={faEdit} />}
           maxWidth="md"
         >
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Help us improve our data by submitting missing information for this show. Your
-            submission will be reviewed by our team.
+            Help us improve our data by updating the show information below. You can modify any of the fields including vendor, DJ, venue, and location details. Your submission will be reviewed by our team.
           </Typography>
 
           {/* Current Show Info */}
@@ -205,6 +209,16 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
             />
 
             <TextField
+              label="Location"
+              value={formData.location}
+              onChange={handleInputChange('location')}
+              placeholder="Enter venue address (e.g., 8270 Sancus Blvd, Columbus, OH)"
+              fullWidth
+              disabled={loading}
+              size="small"
+            />
+
+            <TextField
               label="Description"
               value={formData.description}
               onChange={handleInputChange('description')}
@@ -240,7 +254,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
               disabled={loading}
               startIcon={<FontAwesomeIcon icon={faEdit} style={{ fontSize: '14px' }} />}
             >
-              {loading ? 'Submitting...' : 'Submit for Review'}
+              {loading ? 'Updating...' : 'Update Show Info'}
             </Button>
           </Box>
         </CustomModal>
@@ -251,7 +265,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
           <Alert severity="success" variant="filled">
-            Missing information submitted successfully! Thank you for helping improve our data.
+            Show information updated successfully! Thank you for helping improve our data.
           </Alert>
         </Snackbar>
 
