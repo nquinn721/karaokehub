@@ -601,14 +601,23 @@ const StorePage: React.FC = observer(() => {
                               size="small"
                               color={
                                 mic.rarity.toLowerCase() === 'legendary'
-                                  ? 'warning'
+                                  ? 'default'
                                   : mic.rarity.toLowerCase() === 'epic'
                                     ? 'secondary'
                                     : mic.rarity.toLowerCase() === 'rare'
                                       ? 'primary'
-                                      : 'default'
+                                      : mic.rarity.toLowerCase() === 'uncommon'
+                                        ? 'info'
+                                        : 'default'
                               }
-                              sx={{ textTransform: 'capitalize' }}
+                              sx={{
+                                textTransform: 'capitalize',
+                                ...(mic.rarity.toLowerCase() === 'legendary' && {
+                                  backgroundColor: '#FFD700',
+                                  color: '#000',
+                                  fontWeight: 'bold',
+                                }),
+                              }}
                             />
                             {!isOwned && (
                               <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -688,10 +697,18 @@ const StorePage: React.FC = observer(() => {
                           height: '100%',
                           display: 'flex',
                           flexDirection: 'column',
-                          border: isEquipped
-                            ? `2px solid ${theme.palette.primary.main}`
-                            : '1px solid',
-                          borderColor: isEquipped ? 'primary.main' : 'divider',
+                          border: isEquipped ? '2px solid' : '1px solid',
+                          borderColor: isEquipped
+                            ? 'primary.main'
+                            : avatar.rarity.toLowerCase() === 'legendary'
+                              ? '#FFD700'
+                              : avatar.rarity.toLowerCase() === 'epic'
+                                ? theme.palette.secondary.main
+                                : avatar.rarity.toLowerCase() === 'rare'
+                                  ? theme.palette.primary.main
+                                  : avatar.rarity.toLowerCase() === 'uncommon'
+                                    ? theme.palette.info.main
+                                    : 'divider',
                           transition: 'all 0.3s ease',
                           cursor: 'pointer',
                           '&:hover': {
@@ -757,42 +774,53 @@ const StorePage: React.FC = observer(() => {
                           <Box
                             sx={{
                               display: 'flex',
-                              justifyContent: 'center',
                               alignItems: 'center',
-                              gap: 1,
-                              mb: 2,
+                              justifyContent: 'space-between',
                             }}
                           >
                             <Chip
-                              label={avatar.rarity.toUpperCase()}
+                              label={avatar.rarity}
                               size="small"
-                              color="default"
-                              sx={{ textTransform: 'uppercase', fontWeight: 600 }}
-                            />
-                          </Box>
-                          {avatar.isFree ? (
-                            <Typography variant="h6" color="success.main" sx={{ fontWeight: 600 }}>
-                              FREE
-                            </Typography>
-                          ) : (
-                            <Box
+                              color={
+                                avatar.rarity.toLowerCase() === 'legendary'
+                                  ? 'default'
+                                  : avatar.rarity.toLowerCase() === 'epic'
+                                    ? 'secondary'
+                                    : avatar.rarity.toLowerCase() === 'rare'
+                                      ? 'primary'
+                                      : avatar.rarity.toLowerCase() === 'uncommon'
+                                        ? 'info'
+                                        : 'default'
+                              }
                               sx={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                gap: 1,
+                                textTransform: 'capitalize',
+                                ...(avatar.rarity.toLowerCase() === 'legendary' && {
+                                  backgroundColor: '#FFD700',
+                                  color: '#000',
+                                  fontWeight: 'bold',
+                                }),
                               }}
-                            >
-                              <FontAwesomeIcon icon={faCoins} color={theme.palette.warning.main} />
-                              <Typography
-                                variant="h6"
-                                color="warning.main"
-                                sx={{ fontWeight: 600 }}
-                              >
-                                {formatNumber(avatar.coinPrice)}
+                            />
+                            {avatar.isFree ? (
+                              <Typography variant="h6" color="success.main" sx={{ fontWeight: 600 }}>
+                                FREE
                               </Typography>
-                            </Box>
-                          )}
+                            ) : (
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <FontAwesomeIcon
+                                  icon={faCoins}
+                                  style={{ marginRight: '4px', color: '#FFD700' }}
+                                />
+                                <Typography
+                                  variant="h6"
+                                  component="span"
+                                  sx={{ fontWeight: 'bold' }}
+                                >
+                                  {formatNumber(avatar.coinPrice)}
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
                         </CardContent>
                         <CardActions sx={{ p: 2, pt: 0 }}>
                           {isOwned ? (
