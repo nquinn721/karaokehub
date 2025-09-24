@@ -356,27 +356,60 @@ export class StoreGenerationService {
     variationIndex: number,
     totalVariations?: number,
   ): string {
-    // If user provided a custom prompt, make it much more specific
+    // If user provided a custom prompt, handle both image-based and prompt-only scenarios
     if (request.customPrompt && request.customPrompt.trim()) {
       const originalPrompt = request.customPrompt.trim();
       this.logger.log(`Using custom prompt: ${originalPrompt}`);
 
-      // Create a very specific prompt for avatar clothing/items
-      const enhancedPrompt = `Generate a clothing/fashion item image based on this request: "${originalPrompt}". 
+      if (request.baseImage) {
+        // We have both a base image and a custom prompt - use image as context
+        const modificationKeywords =
+          /\b(remove|delete|edit|modify|change|without|take\s+out|get\s+rid\s+of|eliminate)\b/i;
+        const isModificationRequest = modificationKeywords.test(originalPrompt);
+
+        if (isModificationRequest) {
+          // This is an image modification request
+          const enhancedPrompt = `Looking at this image, please modify it according to this request: "${originalPrompt}". 
 
 REQUIREMENTS:
-- Create ONLY clothing, accessories, or wearable items
-- NO landscapes, buildings, or random objects
-- Style: ${request.style}
-- Theme: ${request.theme}
-- Item type: ${request.itemType}
-- Professional fashion photography style
-- Clean background
-- High quality clothing/accessory item suitable for an avatar character
+- Keep the same character/avatar style and appearance
+- Only make the specific changes requested
+- Maintain the same image quality and style
+- Keep the same background style
+- Preserve all other elements that weren't mentioned to be changed
+- Return the complete modified image, not just a part
 
-Focus specifically on creating wearable items like clothing, shoes, accessories that an avatar character could wear.`;
+Please apply the requested modification while preserving everything else about the character.`;
 
-      return enhancedPrompt;
+          return enhancedPrompt;
+        } else {
+          // Use the base image as inspiration/context for generation
+          const enhancedPrompt = `Using this image as reference/inspiration, create something based on this request: "${originalPrompt}". 
+
+REQUIREMENTS:
+- Use the provided image as context or inspiration
+- Generate based on the specific request
+- Maintain high quality and consistency
+- Follow the user's request exactly
+
+Please create what the user requested while using the provided image as context.`;
+
+          return enhancedPrompt;
+        }
+      } else {
+        // No base image - just generate based on the prompt alone
+        const enhancedPrompt = `Generate an image based on this request: "${originalPrompt}". 
+
+REQUIREMENTS:
+- Create exactly what the user requested
+- High quality image generation
+- Professional style
+- Clear and detailed result
+
+Please create what the user requested without any additional constraints.`;
+
+        return enhancedPrompt;
+      }
     }
 
     // Otherwise, create very specific prompts for avatar items

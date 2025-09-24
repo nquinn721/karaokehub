@@ -1021,7 +1021,10 @@ const StoreManagement: React.FC = observer(() => {
       }
 
       console.log(`✅ Successfully updated ${editDialog.type}: ${editFormData.name}`);
-      uiStore.addNotification(`Successfully updated ${editDialog.type}: ${editFormData.name}`, 'success');
+      uiStore.addNotification(
+        `Successfully updated ${editDialog.type}: ${editFormData.name}`,
+        'success',
+      );
       setEditDialog({ open: false, item: null, type: 'avatar' });
     } catch (error: any) {
       console.error('Edit error in component:', error);
@@ -1173,7 +1176,10 @@ const StoreManagement: React.FC = observer(() => {
       }
 
       console.log(`✅ Successfully created ${addDialog.type}: ${addFormData.name}`);
-      uiStore.addNotification(`Successfully created ${addDialog.type}: ${addFormData.name}`, 'success');
+      uiStore.addNotification(
+        `Successfully created ${addDialog.type}: ${addFormData.name}`,
+        'success',
+      );
       setAddDialog({ open: false, type: 'avatar' });
     } catch (error: any) {
       console.error('Add error in component:', error);
@@ -1212,7 +1218,10 @@ const StoreManagement: React.FC = observer(() => {
       }
 
       console.log(`✅ Successfully deleted ${deleteDialog.type}: ${deleteDialog.item.name}`);
-      uiStore.addNotification(`Successfully deleted ${deleteDialog.type}: ${deleteDialog.item.name}`, 'success');
+      uiStore.addNotification(
+        `Successfully deleted ${deleteDialog.type}: ${deleteDialog.item.name}`,
+        'success',
+      );
       setDeleteDialog({ open: false, item: null, type: 'avatar' });
     } catch (error: any) {
       console.error('Delete error in component:', error);
@@ -1453,7 +1462,7 @@ const StoreManagement: React.FC = observer(() => {
   );
 
   const renderCoinPackageRow = (coinPackage: any) => (
-    <TableRow 
+    <TableRow
       key={coinPackage.id}
       onClick={() => handlePreviewItem(coinPackage, 'coinPackage')}
       sx={{
@@ -1570,12 +1579,13 @@ const StoreManagement: React.FC = observer(() => {
         sx={{
           width: '100%',
           mb: 2,
-          background: theme.palette.mode === 'dark'
-            ? `linear-gradient(135deg, 
+          background:
+            theme.palette.mode === 'dark'
+              ? `linear-gradient(135deg, 
               ${theme.palette.grey[900]} 0%, 
               ${theme.palette.grey[800]} 50%,
               ${theme.palette.grey[900]} 100%)`
-            : `linear-gradient(135deg, 
+              : `linear-gradient(135deg, 
               ${theme.palette.background.paper} 0%, 
               ${theme.palette.grey[50]} 50%,
               ${theme.palette.background.paper} 100%)`,
@@ -1880,15 +1890,16 @@ const StoreManagement: React.FC = observer(() => {
         title={`Preview: ${previewModal.item?.name || 'Store Item'}`}
         maxWidth="md"
       >
-        <Box 
-          sx={{ 
+        <Box
+          sx={{
             p: 3,
-            background: theme.palette.mode === 'dark'
-              ? `linear-gradient(135deg, 
+            background:
+              theme.palette.mode === 'dark'
+                ? `linear-gradient(135deg, 
                 ${theme.palette.grey[900]} 0%, 
                 ${theme.palette.grey[800]} 50%,
                 ${theme.palette.grey[900]} 100%)`
-              : `linear-gradient(135deg, 
+                : `linear-gradient(135deg, 
                 ${theme.palette.background.paper} 0%, 
                 ${theme.palette.grey[50]} 50%,
                 ${theme.palette.background.paper} 100%)`,
@@ -1898,37 +1909,42 @@ const StoreManagement: React.FC = observer(() => {
         >
           {previewModal.item && (
             <>
-              {(previewModal.type === 'avatar' || previewModal.type === 'microphone') && previewModal.item.imageUrl && (
-                <Box sx={{ mb: 3, textAlign: 'center' }}>
-                  <img
-                    src={previewModal.item.imageUrl}
-                    alt={previewModal.item.name}
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: '400px',
-                      objectFit: 'contain',
-                      borderRadius: '8px',
-                      boxShadow: theme.shadows[4],
-                    }}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                    }}
-                  />
-                  <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
-                    {previewModal.item.imageUrl}
-                  </Typography>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => handleCopyImageUrl(previewModal.item.imageUrl)}
-                    sx={{ mt: 1 }}
-                  >
-                    <FontAwesomeIcon icon={faCopy} style={{ marginRight: '8px' }} />
-                    Copy Image URL
-                  </Button>
-                </Box>
-              )}
+              {(previewModal.type === 'avatar' || previewModal.type === 'microphone') &&
+                previewModal.item.imageUrl && (
+                  <Box sx={{ mb: 3, textAlign: 'center' }}>
+                    <img
+                      src={previewModal.item.imageUrl}
+                      alt={previewModal.item.name}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '400px',
+                        objectFit: 'contain',
+                        borderRadius: '8px',
+                        boxShadow: theme.shadows[4],
+                      }}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                    <Typography
+                      variant="caption"
+                      display="block"
+                      sx={{ mt: 1, color: 'text.secondary' }}
+                    >
+                      {previewModal.item.imageUrl}
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handleCopyImageUrl(previewModal.item.imageUrl)}
+                      sx={{ mt: 1 }}
+                    >
+                      <FontAwesomeIcon icon={faCopy} style={{ marginRight: '8px' }} />
+                      Copy Image URL
+                    </Button>
+                  </Box>
+                )}
 
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
@@ -1939,14 +1955,16 @@ const StoreManagement: React.FC = observer(() => {
                     <strong>Name:</strong> {previewModal.item.name}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    <strong>Description:</strong> {previewModal.item.description || 'No description'}
+                    <strong>Description:</strong>{' '}
+                    {previewModal.item.description || 'No description'}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     <strong>Type:</strong> {previewModal.type}
                   </Typography>
                   {previewModal.item.price !== undefined && (
                     <Typography variant="body2" color="text.secondary" gutterBottom>
-                      <strong>Price:</strong> {previewModal.item.isFree ? 'Free' : formatPrice(previewModal.item.price)}
+                      <strong>Price:</strong>{' '}
+                      {previewModal.item.isFree ? 'Free' : formatPrice(previewModal.item.price)}
                     </Typography>
                   )}
                   {previewModal.item.rarity && (
@@ -1977,7 +1995,8 @@ const StoreManagement: React.FC = observer(() => {
                       )}
                       {previewModal.item.expiryDate && (
                         <Typography variant="body2" color="text.secondary" gutterBottom>
-                          <strong>Expires:</strong> {new Date(previewModal.item.expiryDate).toLocaleDateString()}
+                          <strong>Expires:</strong>{' '}
+                          {new Date(previewModal.item.expiryDate).toLocaleDateString()}
                         </Typography>
                       )}
                     </>
@@ -1995,13 +2014,15 @@ const StoreManagement: React.FC = observer(() => {
                         <Typography variant="body2" color="text.secondary" gutterBottom>
                           <strong>Image URL:</strong>
                           <br />
-                          <code style={{ 
-                            fontSize: '0.75rem', 
-                            background: theme.palette.action.hover,
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            wordBreak: 'break-all'
-                          }}>
+                          <code
+                            style={{
+                              fontSize: '0.75rem',
+                              background: theme.palette.action.hover,
+                              padding: '4px 8px',
+                              borderRadius: '4px',
+                              wordBreak: 'break-all',
+                            }}
+                          >
                             {previewModal.item.imageUrl}
                           </code>
                         </Typography>

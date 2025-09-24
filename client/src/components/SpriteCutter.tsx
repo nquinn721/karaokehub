@@ -163,7 +163,7 @@ const SpriteCutter: React.FC = observer(() => {
 
     uiStore.addNotification(
       `Auto-detected grid: ${suggestedCols} columns × ${suggestedRows} rows. Image dimensions: ${width} × ${height}px. Total avatars: ${suggestedCols * suggestedRows}`,
-      'info'
+      'info',
     );
   };
 
@@ -283,7 +283,7 @@ const SpriteCutter: React.FC = observer(() => {
     setIsProcessing(false);
     uiStore.addNotification(
       `Successfully processed ${newProcessedAvatars.length} avatars from ${rows}x${columns} grid!`,
-      'success'
+      'success',
     );
   };
 
@@ -307,7 +307,10 @@ const SpriteCutter: React.FC = observer(() => {
       }, index * 200); // 200ms delay between downloads
     });
 
-    uiStore.addNotification(`Downloading ${processedAvatars.length} avatars with delays to avoid browser limits...`, 'info');
+    uiStore.addNotification(
+      `Downloading ${processedAvatars.length} avatars with delays to avoid browser limits...`,
+      'info',
+    );
   };
 
   const downloadAsZip = async () => {
@@ -340,7 +343,10 @@ const SpriteCutter: React.FC = observer(() => {
       link.click();
       document.body.removeChild(link);
 
-      uiStore.addNotification(`Successfully downloaded ${processedAvatars.length} avatars as ZIP file!`, 'success');
+      uiStore.addNotification(
+        `Successfully downloaded ${processedAvatars.length} avatars as ZIP file!`,
+        'success',
+      );
     } catch (error) {
       console.error('Error creating ZIP:', error);
       uiStore.addNotification('Error creating ZIP file. Please try individual downloads.', 'error');
