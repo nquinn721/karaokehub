@@ -13,6 +13,7 @@ import { UrlService } from './config/url.service';
 
 async function bootstrap() {
   try {
+    console.error('BOOTSTRAP START - MAIN.TS EXECUTING');
     console.log('🚀 Starting KaraokeHub application...');
     console.log('📊 Environment:', process.env.NODE_ENV);
     console.log(
@@ -21,6 +22,7 @@ async function bootstrap() {
     );
     console.log('🔍 Database Name:', process.env.DATABASE_NAME);
 
+    console.error('ABOUT TO CREATE NESTJS APP');
     const app = await NestFactory.create<NestExpressApplication>(AppModule, {
       logger:
         process.env.NODE_ENV === 'production'
@@ -28,6 +30,7 @@ async function bootstrap() {
           : ['log', 'error', 'warn', 'debug', 'verbose'],
     });
 
+    console.error('NESTJS APP CREATED - ABOUT TO CHECK MIGRATIONS');
     console.log('✅ NestJS application created successfully');
 
     // Run database migrations on startup in production
