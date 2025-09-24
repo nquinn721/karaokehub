@@ -32,25 +32,26 @@ async function bootstrap() {
 
     // Run database migrations on startup in production
     if (process.env.NODE_ENV === 'production') {
-      console.log('🗄️ Running database migrations...');
+      console.error('=== STARTING DATABASE MIGRATIONS ===');
       try {
         const { DataSource } = await import('typeorm');
         const dataSource = app.get(DataSource);
-        console.log('� Running migrations (if any pending)...');
+        console.error('DataSource acquired, executing migrations...');
         const migrations = await dataSource.runMigrations();
-        console.log(`✅ Successfully ran ${migrations.length} migrations`);
+        console.error(`SUCCESS: Executed ${migrations.length} migrations`);
         if (migrations.length > 0) {
           migrations.forEach(migration => {
-            console.log(`  - ${migration.name}`);
+            console.error(`  - EXECUTED: ${migration.name}`);
           });
         } else {
-          console.log('📋 No pending migrations found');
+          console.error('No pending migrations found');
         }
+        console.error('=== MIGRATIONS COMPLETE ===');
       } catch (migrationError) {
-        console.error('❌ Database migrations failed:', migrationError);
+        console.error('MIGRATION ERROR:', migrationError.message);
         console.error('Migration error stack:', migrationError.stack);
         // Don't fail the startup for migration issues, just log them
-        console.warn('⚠️ Application will continue despite migration failures');
+        console.error('Application will continue despite migration failures');
       }
     }
 
