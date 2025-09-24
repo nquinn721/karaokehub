@@ -1564,21 +1564,7 @@ const StoreManagement: React.FC = observer(() => {
   );
 
   return (
-    <Box 
-      sx={{ 
-        width: '100%',
-        background: theme.palette.mode === 'dark'
-          ? `linear-gradient(90deg, 
-            ${theme.palette.grey[800]} 0%, 
-            ${theme.palette.grey[900]} 100%)`
-          : `linear-gradient(90deg, 
-            ${theme.palette.background.paper} 0%, 
-            ${theme.palette.background.default} 100%)`,
-        minHeight: '100vh',
-        p: 3,
-        borderRadius: 2,
-      }}
-    >
+    <Box sx={{ width: '100%' }}>
       {adminStore.tableError && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {adminStore.tableError}
@@ -1590,7 +1576,15 @@ const StoreManagement: React.FC = observer(() => {
         sx={{
           width: '100%',
           mb: 2,
-          backgroundColor: 'transparent',
+          background: theme.palette.mode === 'dark'
+            ? `linear-gradient(135deg, 
+              ${theme.palette.grey[900]} 0%, 
+              ${theme.palette.grey[800]} 50%,
+              ${theme.palette.grey[900]} 100%)`
+            : `linear-gradient(135deg, 
+              ${theme.palette.background.paper} 0%, 
+              ${theme.palette.grey[50]} 50%,
+              ${theme.palette.background.paper} 100%)`,
           backdropFilter: 'blur(10px)',
           border: `1px solid ${theme.palette.divider}`,
           borderRadius: 3,
