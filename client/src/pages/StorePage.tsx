@@ -1,4 +1,5 @@
 import AvatarDetailModal from '@components/AvatarDetailModal';
+import AvatarPurchaseModal from '@components/AvatarPurchaseModal';
 import { CoinDisplay } from '@components/CoinDisplay';
 import CoinPackagePurchaseModal from '@components/CoinPackagePurchaseModal';
 import CustomModal from '@components/CustomModal';
@@ -61,6 +62,8 @@ const StorePage: React.FC = observer(() => {
   const [detailMicrophone, setDetailMicrophone] = useState<Microphone | null>(null);
   const [avatarDetailModalOpen, setAvatarDetailModalOpen] = useState(false);
   const [detailAvatar, setDetailAvatar] = useState<Avatar | null>(null);
+  const [avatarPurchaseModalOpen, setAvatarPurchaseModalOpen] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null);
   const [coinPackageModalOpen, setCoinPackageModalOpen] = useState(false);
   const [selectedCoinPackage, setSelectedCoinPackage] = useState<CoinPackage | null>(null);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
@@ -255,12 +258,24 @@ const StorePage: React.FC = observer(() => {
     setDetailAvatar(null);
   };
 
-  const handleAvatarPurchase = async (avatarId: string) => {
+  const handleAvatarPurchase = (avatarId: string) => {
+    const avatar = storeStore.storeAvatars.find((a: Avatar) => a.id === avatarId);
+    if (avatar) {
+      setSelectedAvatar(avatar);
+      setAvatarPurchaseModalOpen(true);
+    }
+  };
+
+  const handleConfirmAvatarPurchase = async () => {
+    if (!selectedAvatar) return;
+
     setLoading(true);
     try {
-      const success = await storeStore.purchaseAvatar(avatarId);
+      const success = await storeStore.purchaseAvatar(selectedAvatar.id);
       if (success) {
         console.log('Avatar purchased successfully');
+        setAvatarPurchaseModalOpen(false);
+        setSelectedAvatar(null);
       } else {
         console.error('Failed to purchase avatar');
       }
@@ -269,6 +284,11 @@ const StorePage: React.FC = observer(() => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancelAvatarPurchase = () => {
+    setAvatarPurchaseModalOpen(false);
+    setSelectedAvatar(null);
   };
 
   const handleEquipAvatar = async (avatarId: string) => {
@@ -609,12 +629,7 @@ const StorePage: React.FC = observer(() => {
                         </CardContent>
                         <CardActions sx={{ justifyContent: 'center', pb: 2 }}>
                           {isOwned ? (
-                            <Button
-                              variant="outlined"
-                              fullWidth
-                              disabled
-                              sx={{ mx: 2 }}
-                            >
+                            <Button variant="outlined" fullWidth disabled sx={{ mx: 2 }}>
                               OWNED
                             </Button>
                           ) : (
@@ -833,6 +848,15 @@ const StorePage: React.FC = observer(() => {
         onConfirmPurchase={handleConfirmPurchase}
       />
 
+      <AvatarPurchaseModal
+        open={avatarPurchaseModalOpen}
+        onClose={handleCancelAvatarPurchase}
+        avatar={selectedAvatar}
+        userCoins={storeStore.coins}
+        isLoading={loading}
+        onConfirmPurchase={handleConfirmAvatarPurchase}
+      />
+
       <MicrophoneDetailModal
         open={detailModalOpen}
         onClose={handleCloseDetailModal}
@@ -850,7 +874,11 @@ const StorePage: React.FC = observer(() => {
         userCoins={storeStore.coins}
         isLoading={loading}
         onPurchase={handleAvatarDetailModalPurchase}
-        isOwned={detailAvatar ? storeStore.userAvatars.some(ua => ua.avatarId === detailAvatar.id) : false}
+        isOwned={
+          detailAvatar
+            ? storeStore.userAvatars.some((ua) => ua.avatarId === detailAvatar.id)
+            : false
+        }
       />
 
       <CoinPackagePurchaseModal

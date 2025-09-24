@@ -51,7 +51,9 @@ import React, { useEffect, useState } from 'react';
 import CustomModal from './CustomModal';
 
 // Rarity color mapping for consistent UI
-const getRarityColor = (rarity: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
+const getRarityColor = (
+  rarity: string,
+): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
   switch (rarity?.toLowerCase()) {
     case 'common':
       return 'default';
@@ -1353,9 +1355,9 @@ const StoreManagement: React.FC = observer(() => {
               size="small"
               label={avatar.rarity}
               color={getRarityColor(avatar.rarity)}
-              sx={{ 
+              sx={{
                 fontWeight: 500,
-                textTransform: 'capitalize'
+                textTransform: 'capitalize',
               }}
             />
             <Chip
@@ -1450,9 +1452,9 @@ const StoreManagement: React.FC = observer(() => {
               size="small"
               label={microphone.rarity}
               color={getRarityColor(microphone.rarity)}
-              sx={{ 
+              sx={{
                 fontWeight: 500,
-                textTransform: 'capitalize'
+                textTransform: 'capitalize',
               }}
             />
             <Chip

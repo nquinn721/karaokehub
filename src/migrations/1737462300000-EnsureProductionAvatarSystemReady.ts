@@ -8,7 +8,7 @@ export class EnsureProductionAvatarSystemReady1737462300000 implements Migration
 
     // Step 1: Fix user_avatars constraints if needed
     console.log('Checking user_avatars constraints...');
-    
+
     // Check if the problematic constraint exists
     const badConstraints = await queryRunner.query(`
       SELECT CONSTRAINT_NAME 
@@ -56,12 +56,15 @@ export class EnsureProductionAvatarSystemReady1737462300000 implements Migration
     `);
 
     if (defaultAvatar.length > 0) {
-      const updateResult = await queryRunner.query(`
+      const updateResult = await queryRunner.query(
+        `
         UPDATE user_avatars 
         SET avatarId = ? 
         WHERE avatarId IS NULL OR avatarId = ''
-      `, [defaultAvatar[0].id]);
-      
+      `,
+        [defaultAvatar[0].id],
+      );
+
       if (updateResult.affectedRows > 0) {
         console.log(`Updated ${updateResult.affectedRows} user avatar records with default avatar`);
       }
@@ -181,29 +184,32 @@ export class EnsureProductionAvatarSystemReady1737462300000 implements Migration
         coinPrice: 500,
         isAvailable: true,
         isFree: false,
-      }
+      },
     ];
 
     let insertedCount = 0;
     for (const avatar of essentialAvatars) {
-      const result = await queryRunner.query(`
+      const result = await queryRunner.query(
+        `
         INSERT INTO avatars (id, name, description, type, rarity, imageUrl, price, coinPrice, isAvailable, isFree, createdAt, updatedAt)
         SELECT UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
         WHERE NOT EXISTS (
           SELECT 1 FROM avatars WHERE name = ?
         )
-      `, [
-        avatar.name,
-        avatar.description,
-        avatar.type,
-        avatar.rarity,
-        avatar.imageUrl,
-        avatar.price,
-        avatar.coinPrice,
-        avatar.isAvailable,
-        avatar.isFree,
-        avatar.name // for the WHERE NOT EXISTS check
-      ]);
+      `,
+        [
+          avatar.name,
+          avatar.description,
+          avatar.type,
+          avatar.rarity,
+          avatar.imageUrl,
+          avatar.price,
+          avatar.coinPrice,
+          avatar.isAvailable,
+          avatar.isFree,
+          avatar.name, // for the WHERE NOT EXISTS check
+        ],
+      );
 
       if (result.affectedRows > 0) {
         insertedCount++;

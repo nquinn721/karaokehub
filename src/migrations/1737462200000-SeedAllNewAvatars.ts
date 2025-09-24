@@ -28,7 +28,7 @@ export class SeedAllNewAvatars1737462200000 implements MigrationInterface {
         isFree: true,
       },
       {
-        id: 'b742520e-97e3-11f0-a9d5-f8ce72240675', 
+        id: 'b742520e-97e3-11f0-a9d5-f8ce72240675',
         name: 'Blake',
         description: 'Cool and confident Blake avatar',
         type: 'character',
@@ -43,7 +43,7 @@ export class SeedAllNewAvatars1737462200000 implements MigrationInterface {
         id: 'b742523a-97e3-11f0-a9d5-f8ce72240675',
         name: 'Cameron',
         description: 'Stylish Cameron avatar with great energy',
-        type: 'character', 
+        type: 'character',
         rarity: 'common',
         imageUrl: '/images/avatar/avatars/cameron.png',
         price: 0.0,
@@ -56,32 +56,35 @@ export class SeedAllNewAvatars1737462200000 implements MigrationInterface {
         name: 'Joe',
         description: 'Friendly Joe avatar perfect for any occasion',
         type: 'character',
-        rarity: 'common', 
+        rarity: 'common',
         imageUrl: '/images/avatar/avatars/joe.png',
         price: 0.0,
         coinPrice: 0,
         isAvailable: true,
         isFree: true,
-      }
+      },
     ];
 
     // Insert basic avatars (ignore if they already exist)
     for (const avatar of basicAvatars) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT IGNORE INTO avatars (id, name, description, type, rarity, imageUrl, price, coinPrice, isAvailable, isFree, createdAt, updatedAt)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-      `, [
-        avatar.id,
-        avatar.name,
-        avatar.description,
-        avatar.type,
-        avatar.rarity,
-        avatar.imageUrl,
-        avatar.price,
-        avatar.coinPrice,
-        avatar.isAvailable,
-        avatar.isFree
-      ]);
+      `,
+        [
+          avatar.id,
+          avatar.name,
+          avatar.description,
+          avatar.type,
+          avatar.rarity,
+          avatar.imageUrl,
+          avatar.price,
+          avatar.coinPrice,
+          avatar.isAvailable,
+          avatar.isFree,
+        ],
+      );
     }
 
     // Now add the rock theme avatars
@@ -129,29 +132,32 @@ export class SeedAllNewAvatars1737462200000 implements MigrationInterface {
         coinPrice: 1000,
         isAvailable: true,
         isFree: false,
-      }
+      },
     ];
 
     // Insert rock avatars (ignore if they already exist based on name)
     for (const avatar of rockAvatars) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO avatars (id, name, description, type, rarity, imageUrl, price, coinPrice, isAvailable, isFree, createdAt, updatedAt)
         SELECT UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
         WHERE NOT EXISTS (
           SELECT 1 FROM avatars WHERE name = ?
         )
-      `, [
-        avatar.name,
-        avatar.description,
-        avatar.type,
-        avatar.rarity,
-        avatar.imageUrl,
-        avatar.price,
-        avatar.coinPrice,
-        avatar.isAvailable,
-        avatar.isFree,
-        avatar.name // for the WHERE NOT EXISTS check
-      ]);
+      `,
+        [
+          avatar.name,
+          avatar.description,
+          avatar.type,
+          avatar.rarity,
+          avatar.imageUrl,
+          avatar.price,
+          avatar.coinPrice,
+          avatar.isAvailable,
+          avatar.isFree,
+          avatar.name, // for the WHERE NOT EXISTS check
+        ],
+      );
     }
 
     // Country themed avatars (these seem to already exist based on earlier query)
@@ -177,29 +183,32 @@ export class SeedAllNewAvatars1737462200000 implements MigrationInterface {
         coinPrice: 500,
         isAvailable: true,
         isFree: false,
-      }
+      },
     ];
 
     // Insert country avatars (ignore if they already exist)
     for (const avatar of countryAvatars) {
-      await queryRunner.query(`
+      await queryRunner.query(
+        `
         INSERT INTO avatars (id, name, description, type, rarity, imageUrl, price, coinPrice, isAvailable, isFree, createdAt, updatedAt)
         SELECT UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
         WHERE NOT EXISTS (
           SELECT 1 FROM avatars WHERE name = ?
         )
-      `, [
-        avatar.name,
-        avatar.description,
-        avatar.type,
-        avatar.rarity,
-        avatar.imageUrl,
-        avatar.price,
-        avatar.coinPrice,
-        avatar.isAvailable,
-        avatar.isFree,
-        avatar.name
-      ]);
+      `,
+        [
+          avatar.name,
+          avatar.description,
+          avatar.type,
+          avatar.rarity,
+          avatar.imageUrl,
+          avatar.price,
+          avatar.coinPrice,
+          avatar.isAvailable,
+          avatar.isFree,
+          avatar.name,
+        ],
+      );
     }
 
     const finalCount = await queryRunner.query(`

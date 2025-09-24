@@ -48,7 +48,7 @@ export class FixUserAvatarsConstraints1737462000000 implements MigrationInterfac
     await queryRunner.query(`
       ALTER TABLE user_avatars DROP INDEX unique_user_avatar_combo
     `);
-    
+
     await queryRunner.query(`
       ALTER TABLE user_avatars ADD UNIQUE KEY IDX_8e1c8161ffe23571cc8e52fe7a (userId)
     `);

@@ -20,11 +20,14 @@ export class FixUserAvatarData1737462100000 implements MigrationInterface {
     console.log(`Using default avatar ID: ${defaultAvatarId}`);
 
     // Update all user_avatars records that have empty/null avatarId
-    const updateResult = await queryRunner.query(`
+    const updateResult = await queryRunner.query(
+      `
       UPDATE user_avatars 
       SET avatarId = ? 
       WHERE avatarId IS NULL OR avatarId = ''
-    `, [defaultAvatarId]);
+    `,
+      [defaultAvatarId],
+    );
 
     console.log(`✅ Updated ${updateResult.affectedRows} user avatar records with default avatar`);
 
