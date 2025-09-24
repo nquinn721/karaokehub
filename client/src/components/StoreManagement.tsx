@@ -50,6 +50,24 @@ import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import CustomModal from './CustomModal';
 
+// Rarity color mapping for consistent UI
+const getRarityColor = (rarity: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
+  switch (rarity?.toLowerCase()) {
+    case 'common':
+      return 'default';
+    case 'uncommon':
+      return 'primary';
+    case 'rare':
+      return 'info';
+    case 'epic':
+      return 'secondary';
+    case 'legendary':
+      return 'warning';
+    default:
+      return 'default';
+  }
+};
+
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -1334,12 +1352,15 @@ const StoreManagement: React.FC = observer(() => {
             <Chip
               size="small"
               label={avatar.rarity}
-              color={avatar.rarity === 'legendary' ? 'warning' : 'default'}
-              sx={{ fontWeight: 500 }}
+              color={getRarityColor(avatar.rarity)}
+              sx={{ 
+                fontWeight: 500,
+                textTransform: 'capitalize'
+              }}
             />
             <Chip
               size="small"
-              label={avatar.isFree ? 'Free' : formatPrice(avatar.price)}
+              label={avatar.isFree ? 'Free' : `${avatar.coinPrice} coins`}
               color={avatar.isFree ? 'success' : 'primary'}
               sx={{ fontWeight: 500 }}
             />
@@ -1428,8 +1449,11 @@ const StoreManagement: React.FC = observer(() => {
             <Chip
               size="small"
               label={microphone.rarity}
-              color={microphone.rarity === 'legendary' ? 'warning' : 'default'}
-              sx={{ fontWeight: 500 }}
+              color={getRarityColor(microphone.rarity)}
+              sx={{ 
+                fontWeight: 500,
+                textTransform: 'capitalize'
+              }}
             />
             <Chip
               size="small"

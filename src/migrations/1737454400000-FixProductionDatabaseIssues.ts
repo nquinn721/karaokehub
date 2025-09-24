@@ -20,7 +20,20 @@ export class FixProductionDatabaseIssues1737454400000 implements MigrationInterf
       )
     `);
 
-    // 2. Add coinAmount column to transactions table if it doesn't exist
+    // 2. Add profileImageUrl column to users table if it doesn't exist
+    console.log('Adding profileImageUrl column to users table...');
+    const usersTableExists = await queryRunner.hasTable('users');
+    if (usersTableExists) {
+      const profileImageUrlColumnExists = await queryRunner.hasColumn('users', 'profileImageUrl');
+      if (!profileImageUrlColumnExists) {
+        await queryRunner.query(`
+          ALTER TABLE users 
+          ADD COLUMN profileImageUrl VARCHAR(500) NULL AFTER providerId
+        `);
+      }
+    }
+
+    // 3. Add coinAmount column to transactions table if it doesn't exist
     console.log('Adding coinAmount column to transactions table...');
     const transactionsTableExists = await queryRunner.hasTable('transactions');
     if (transactionsTableExists) {
@@ -33,7 +46,7 @@ export class FixProductionDatabaseIssues1737454400000 implements MigrationInterf
       }
     }
 
-    // 3. Add acquiredAt column to user_avatars table if it doesn't exist
+    // 4. Add acquiredAt column to user_avatars table if it doesn't exist
     console.log('Adding acquiredAt column to user_avatars table...');
     const userAvatarsTableExists = await queryRunner.hasTable('user_avatars');
     if (userAvatarsTableExists) {
@@ -46,7 +59,7 @@ export class FixProductionDatabaseIssues1737454400000 implements MigrationInterf
       }
     }
 
-    // 4. Add acquiredAt column to user_microphones table if it doesn't exist
+    // 5. Add acquiredAt column to user_microphones table if it doesn't exist
     console.log('Adding acquiredAt column to user_microphones table...');
     const userMicrophonesTableExists = await queryRunner.hasTable('user_microphones');
     if (userMicrophonesTableExists) {
@@ -59,7 +72,7 @@ export class FixProductionDatabaseIssues1737454400000 implements MigrationInterf
       }
     }
 
-    // 5. Initialize API rate limit status for both providers
+    // 6. Initialize API rate limit status for both providers
     console.log('Initializing API rate limit status...');
     await queryRunner.query(`
       INSERT IGNORE INTO api_rate_limit_status (provider, requestsToday, dailyLimit, lastResetDate, isLimitExceeded)
@@ -98,6 +111,15 @@ export class FixProductionDatabaseIssues1737454400000 implements MigrationInterf
       const coinAmountColumnExists = await queryRunner.hasColumn('transactions', 'coinAmount');
       if (coinAmountColumnExists) {
         await queryRunner.query(`ALTER TABLE transactions DROP COLUMN coinAmount`);
+      }
+    }
+
+    // Remove profileImageUrl column from users
+    const usersTableExists = await queryRunner.hasTable('users');
+    if (usersTableExists) {
+      const profileImageUrlColumnExists = await queryRunner.hasColumn('users', 'profileImageUrl');
+      if (profileImageUrlColumnExists) {
+        await queryRunner.query(`ALTER TABLE users DROP COLUMN profileImageUrl`);
       }
     }
 

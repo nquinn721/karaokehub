@@ -608,17 +608,29 @@ const StorePage: React.FC = observer(() => {
                           </Box>
                         </CardContent>
                         <CardActions sx={{ justifyContent: 'center', pb: 2 }}>
-                          <Button
-                            variant={isOwned ? 'outlined' : 'contained'}
-                            fullWidth
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent card click
-                              handleMicrophoneDetail(mic.id);
-                            }}
-                            sx={{ mx: 2 }}
-                          >
-                            View Details
-                          </Button>
+                          {isOwned ? (
+                            <Button
+                              variant="outlined"
+                              fullWidth
+                              disabled
+                              sx={{ mx: 2 }}
+                            >
+                              OWNED
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="contained"
+                              fullWidth
+                              disabled={storeStore.coins < mic.coinPrice || loading}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent card click
+                                handleMicrophonePurchase(mic.id);
+                              }}
+                              sx={{ mx: 2 }}
+                            >
+                              PURCHASE
+                            </Button>
+                          )}
                         </CardActions>
                       </Card>
                     </Grid>
@@ -784,12 +796,13 @@ const StorePage: React.FC = observer(() => {
                               variant="contained"
                               color="primary"
                               disabled={!canAfford || loading}
-                              onClick={() => handleAvatarPurchase(avatar.id)}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent card click
+                                handleAvatarPurchase(avatar.id);
+                              }}
                               startIcon={loading ? <CircularProgress size={16} /> : undefined}
                             >
-                              {avatar.isFree
-                                ? 'GET FREE'
-                                : `BUY FOR ${formatNumber(avatar.coinPrice)} COINS`}
+                              {avatar.isFree ? 'GET FREE' : 'PURCHASE'}
                             </Button>
                           )}
                         </CardActions>
