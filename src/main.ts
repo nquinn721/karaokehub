@@ -342,6 +342,7 @@ async function bootstrap() {
 
     await app.listen(port, '0.0.0.0');
 
+    console.error('SERVER LISTEN COMPLETED - ABOUT TO LOG FINAL MESSAGES');
     console.log(`🚀 KaraokeHub Server is running on http://localhost:${port}`);
     console.log(`📱 KaraokeHub Frontend: ${urlService.getFrontendUrl()}`);
     console.log(`🌐 WebSocket connection: ws://localhost:${port}`);

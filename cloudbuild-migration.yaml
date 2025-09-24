@@ -1,0 +1,26 @@
+steps:
+  # Build the Docker image with the migration script
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'  
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/migration-runner'
+      - '-f'
+      - 'Dockerfile.migration'
+      - '.'
+  
+  # Run the migration script
+  - name: 'gcr.io/$PROJECT_ID/migration-runner'
+    env:
+      - 'NODE_ENV=production'
+      - 'DATABASE_NAME=${_DATABASE_NAME}'
+      - 'DATABASE_USERNAME=${_DATABASE_USERNAME}' 
+      - 'DATABASE_PASSWORD=${_DATABASE_PASSWORD}'
+      - 'DATABASE_SOCKET_PATH=${_DATABASE_SOCKET_PATH}'
+    args: ['node', 'run-migrations.js']
+
+substitutions:
+  _DATABASE_NAME: 'karaoke-hub'
+  _DATABASE_USERNAME: 'root'
+  _DATABASE_PASSWORD: 'your-db-password'  # This should be set in Cloud Build
+  _DATABASE_SOCKET_PATH: '/cloudsql/heroic-footing-460117-k8:us-central1:accountant'
