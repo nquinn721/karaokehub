@@ -1886,7 +1886,22 @@ const StoreManagement: React.FC = observer(() => {
         title={`Preview: ${previewModal.item?.name || 'Store Item'}`}
         maxWidth="md"
       >
-        <Box sx={{ p: 3 }}>
+        <Box 
+          sx={{ 
+            p: 3,
+            background: theme.palette.mode === 'dark'
+              ? `linear-gradient(135deg, 
+                ${theme.palette.grey[900]} 0%, 
+                ${theme.palette.grey[800]} 50%,
+                ${theme.palette.grey[900]} 100%)`
+              : `linear-gradient(135deg, 
+                ${theme.palette.background.paper} 0%, 
+                ${theme.palette.grey[50]} 50%,
+                ${theme.palette.background.paper} 100%)`,
+            borderRadius: 2,
+            minHeight: '400px',
+          }}
+        >
           {previewModal.item && (
             <>
               {(previewModal.type === 'avatar' || previewModal.type === 'microphone') && previewModal.item.imageUrl && (
