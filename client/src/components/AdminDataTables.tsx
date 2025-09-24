@@ -2579,77 +2579,116 @@ const AdminDataTables: React.FC = observer(() => {
       >
         {reviewingShowReview && (
           <Box>
-            {/* Original Show Info */}
-            <Typography variant="subtitle2" sx={{ mb: 1, color: 'primary.main' }}>
-              Current Show Information:
+            {/* Changes Table */}
+            <Typography variant="subtitle2" sx={{ mb: 2, color: 'primary.main' }}>
+              Proposed Changes:
             </Typography>
-            <Box sx={{ mb: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-              <Typography variant="body2" sx={{ mb: 0.5 }}>
-                <strong>Venue:</strong>{' '}
-                {reviewingShowReview.show
-                  ? getAdminShowVenueName(reviewingShowReview.show)
-                  : 'Not specified'}
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 0.5 }}>
-                <strong>Address:</strong>{' '}
-                {reviewingShowReview.show
-                  ? getAdminShowVenueAddress(reviewingShowReview.show) || 'Not specified'
-                  : 'Not specified'}
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 0.5 }}>
-                <strong>DJ/Host:</strong> {reviewingShowReview.show?.dj?.name || 'Not specified'}
-              </Typography>
-              <Typography variant="body2">
-                <strong>Vendor:</strong>{' '}
-                {reviewingShowReview.show?.dj?.vendor?.name || 'Not specified'}
-              </Typography>
-            </Box>
+            <TableContainer component={Paper} sx={{ mb: 3 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell><strong>Field</strong></TableCell>
+                    <TableCell><strong>Original Value</strong></TableCell>
+                    <TableCell><strong>Suggested Value</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {reviewingShowReview.djName && (
+                    <TableRow>
+                      <TableCell>DJ/Host</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {reviewingShowReview.show?.dj?.name || 'Not specified'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="success.main" fontWeight="medium">
+                          {reviewingShowReview.djName}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {reviewingShowReview.vendorName && (
+                    <TableRow>
+                      <TableCell>Vendor</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {reviewingShowReview.show?.dj?.vendor?.name || 'Not specified'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="success.main" fontWeight="medium">
+                          {reviewingShowReview.vendorName}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {reviewingShowReview.venueName && (
+                    <TableRow>
+                      <TableCell>Venue</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {reviewingShowReview.show
+                            ? getAdminShowVenueName(reviewingShowReview.show)
+                            : 'Not specified'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="success.main" fontWeight="medium">
+                          {reviewingShowReview.venueName}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {reviewingShowReview.venuePhone && (
+                    <TableRow>
+                      <TableCell>Venue Phone</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {reviewingShowReview.show?.venue?.phone || 'Not specified'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="success.main" fontWeight="medium">
+                          {reviewingShowReview.venuePhone}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {reviewingShowReview.venueWebsite && (
+                    <TableRow>
+                      <TableCell>Venue Website</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {reviewingShowReview.show?.venue?.website || 'Not specified'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="success.main" fontWeight="medium">
+                          {reviewingShowReview.venueWebsite}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
 
-            {/* Submitted Changes */}
-            <Typography variant="subtitle2" sx={{ mb: 1, color: 'secondary.main' }}>
-              Submitted Changes:
-            </Typography>
-            <Box
-              sx={{
-                mb: 3,
-                p: 2,
-                bgcolor: 'success.50',
-                borderRadius: 1,
-                border: '1px solid',
-                borderColor: 'success.200',
-              }}
-            >
-              {reviewingShowReview.djName && (
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>DJ/Host:</strong> {reviewingShowReview.djName}
-                </Typography>
-              )}
-              {reviewingShowReview.vendorName && (
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>Vendor:</strong> {reviewingShowReview.vendorName}
-                </Typography>
-              )}
-              {reviewingShowReview.venueName && (
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>Venue:</strong> {reviewingShowReview.venueName}
-                </Typography>
-              )}
-              {reviewingShowReview.venuePhone && (
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>Phone:</strong> {reviewingShowReview.venuePhone}
-                </Typography>
-              )}
-              {reviewingShowReview.venueWebsite && (
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>Website:</strong> {reviewingShowReview.venueWebsite}
-                </Typography>
-              )}
-              {reviewingShowReview.description && (
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>Description:</strong> {reviewingShowReview.description}
-                </Typography>
-              )}
-            </Box>
+                  {reviewingShowReview.description && (
+                    <TableRow>
+                      <TableCell>Description</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {reviewingShowReview.show?.description || 'Not specified'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="success.main" fontWeight="medium">
+                          {reviewingShowReview.description}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
 
             {/* User Comments */}
             {reviewingShowReview.comments && (
