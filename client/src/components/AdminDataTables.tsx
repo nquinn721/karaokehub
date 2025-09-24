@@ -63,6 +63,7 @@ import type {
   AdminVenue,
 } from '@stores/AdminStore';
 import { adminStore, authStore, uiStore } from '@stores/index';
+import { DayOfWeek } from '@components/DayPicker/DayPicker';
 import { observer } from 'mobx-react-lite';
 import React, { useCallback, useEffect, useState } from 'react';
 import AvatarSelectionModal from './AvatarSelectionModal';
@@ -297,6 +298,70 @@ const AdminDataTables: React.FC = observer(() => {
 
   // Deduplication error dialog state
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+
+  // Location filtering state for shows
+  const [useLocationFilter, setUseLocationFilter] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<DayOfWeek>(DayOfWeek.TUESDAY); // Default to Tuesday like the main shows page
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Function to get user's current location
+  const getCurrentLocation = async () => {
+    if (navigator.geolocation) {
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 600000, // 10 minutes
+          });
+        });
+        
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        
+        setUserLocation(location);
+        return location;
+      } catch (error) {
+        console.warn('Unable to get user location:', error);
+        uiStore.addNotification('Unable to get your location. Using all shows instead.', 'warning');
+        return null;
+      }
+    } else {
+      uiStore.addNotification('Geolocation is not supported by this browser.', 'error');
+      return null;
+    }
+  };
+
+  // Handle location filter toggle
+  const handleLocationFilterToggle = async (enabled: boolean) => {
+    setUseLocationFilter(enabled);
+    
+    if (enabled) {
+      // Get user location when enabling location filter
+      const location = await getCurrentLocation();
+      if (location) {
+        // Refresh shows data with location filtering
+        fetchData('shows', pages.shows || 0, searchTerms.shows || undefined);
+      } else {
+        // If we couldn't get location, disable the filter
+        setUseLocationFilter(false);
+      }
+    } else {
+      // When disabling location filter, refresh with regular fetch
+      fetchData('shows', pages.shows || 0, searchTerms.shows || undefined);
+    }
+  };
+
+  // Handle day selection change
+  const handleDayChange = (day: DayOfWeek) => {
+    setSelectedDay(day);
+    // Refresh shows data with new day filter
+    if (useLocationFilter && userLocation) {
+      fetchData('shows', pages.shows || 0, searchTerms.shows || undefined);
+    }
+  };
   const [errorMessage, setErrorMessage] = useState('');
 
   // Show cleanup state
@@ -385,7 +450,18 @@ const AdminDataTables: React.FC = observer(() => {
         );
         break;
       case 'shows':
-        await adminStore.fetchShows(page + 1, rowsPerPage, search, currentSortBy, currentSortOrder);
+        if (useLocationFilter && userLocation) {
+          // Use location-based fetching for shows
+          await adminStore.fetchNearbyShows(
+            userLocation.lat,
+            userLocation.lng,
+            100, // 100 mile radius like the main shows page
+            selectedDay,
+          );
+        } else {
+          // Use regular admin fetching
+          await adminStore.fetchShows(page + 1, rowsPerPage, search, currentSortBy, currentSortOrder);
+        }
         break;
       case 'djs':
         await adminStore.fetchDjs(page + 1, rowsPerPage, search, currentSortBy, currentSortOrder);
@@ -1256,6 +1332,71 @@ const AdminDataTables: React.FC = observer(() => {
             </Button>
           </Box>
         </Box>
+
+        {/* Location Filter Controls */}
+        <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={useLocationFilter}
+                onChange={(e) => handleLocationFilterToggle(e.target.checked)}
+                color="primary"
+              />
+            }
+            label="Show nearby venues only (100 miles)"
+          />
+          
+          {useLocationFilter && (
+            <>
+              <Typography variant="body2" color="text.secondary">
+                Filter by day:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                {Object.values(DayOfWeek).map((day) => {
+                  const isSelected = selectedDay === day;
+                  const dayLabels = {
+                    [DayOfWeek.MONDAY]: 'Mon',
+                    [DayOfWeek.TUESDAY]: 'Tue',
+                    [DayOfWeek.WEDNESDAY]: 'Wed',
+                    [DayOfWeek.THURSDAY]: 'Thu',
+                    [DayOfWeek.FRIDAY]: 'Fri',
+                    [DayOfWeek.SATURDAY]: 'Sat',
+                    [DayOfWeek.SUNDAY]: 'Sun',
+                  };
+
+                  return (
+                    <Button
+                      key={day}
+                      variant={isSelected ? 'contained' : 'outlined'}
+                      size="small"
+                      onClick={() => handleDayChange(day)}
+                      sx={{ 
+                        minWidth: 48,
+                        fontSize: '0.75rem',
+                        bgcolor: isSelected ? 'primary.main' : 'transparent',
+                        color: isSelected ? 'primary.contrastText' : 'text.primary',
+                        '&:hover': {
+                          bgcolor: isSelected ? 'primary.dark' : 'action.hover',
+                        },
+                      }}
+                    >
+                      {dayLabels[day]}
+                    </Button>
+                  );
+                })}
+              </Box>
+              {userLocation && (
+                <Chip
+                  label={`📍 Using your location`}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                />
+              )}
+            </>
+          )}
+        </Box>
+
         <TableContainer>
           <Table>
             <TableHead>

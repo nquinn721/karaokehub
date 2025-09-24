@@ -1,5 +1,6 @@
 import {
   faCoins,
+  faCopy,
   faCrown,
   faEdit,
   faExclamationTriangle,
@@ -43,6 +44,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { adminStore } from '@stores/AdminStore';
+import { uiStore } from '@stores/index';
 import { formatPrice } from '@utils/numberUtils';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
@@ -919,6 +921,17 @@ const StoreManagement: React.FC = observer(() => {
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
 
+  // Preview modal state
+  const [previewModal, setPreviewModal] = useState<{
+    open: boolean;
+    item: any;
+    type: 'avatar' | 'microphone' | 'coinPackage';
+  }>({
+    open: false,
+    item: null,
+    type: 'avatar',
+  });
+
   useEffect(() => {
     // Load store items when component mounts
     adminStore.fetchStoreAvatars();
@@ -1234,15 +1247,34 @@ const StoreManagement: React.FC = observer(() => {
     confirmDelete();
   };
 
+  const handlePreviewItem = (item: any, type: 'avatar' | 'microphone' | 'coinPackage') => {
+    setPreviewModal({
+      open: true,
+      item,
+      type,
+    });
+  };
+
+  const handleCopyImageUrl = async (imageUrl: string) => {
+    try {
+      await navigator.clipboard.writeText(imageUrl);
+      uiStore.addNotification('Image URL copied to clipboard!', 'success');
+    } catch (error) {
+      uiStore.addNotification('Failed to copy image URL', 'error');
+    }
+  };
+
   const renderAvatarCard = (avatar: any) => (
     <Grid item xs={12} sm={6} md={4} xl={3} key={avatar.id}>
       <Card
         elevation={4}
+        onClick={() => handlePreviewItem(avatar, 'avatar')}
         sx={{
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
           transition: 'all 0.3s ease',
+          cursor: 'pointer',
           background:
             theme.palette.mode === 'dark'
               ? `linear-gradient(135deg, 
@@ -1330,11 +1362,13 @@ const StoreManagement: React.FC = observer(() => {
     <Grid item xs={12} sm={6} md={4} xl={3} key={microphone.id}>
       <Card
         elevation={4}
+        onClick={() => handlePreviewItem(microphone, 'microphone')}
         sx={{
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
           transition: 'all 0.3s ease',
+          cursor: 'pointer',
           background:
             theme.palette.mode === 'dark'
               ? `linear-gradient(135deg, 
@@ -1419,7 +1453,18 @@ const StoreManagement: React.FC = observer(() => {
   );
 
   const renderCoinPackageRow = (coinPackage: any) => (
-    <TableRow key={coinPackage.id}>
+    <TableRow 
+      key={coinPackage.id}
+      onClick={() => handlePreviewItem(coinPackage, 'coinPackage')}
+      sx={{
+        cursor: 'pointer',
+        '&:hover': {
+          backgroundColor: theme.palette.action.hover,
+          transform: 'scale(1.01)',
+          transition: 'all 0.2s ease',
+        },
+      }}
+    >
       <TableCell>{coinPackage.name}</TableCell>
       <TableCell>{coinPackage.description || 'No description'}</TableCell>
       <TableCell>
@@ -1519,7 +1564,23 @@ const StoreManagement: React.FC = observer(() => {
   );
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box 
+      sx={{ 
+        width: '100%',
+        background: theme.palette.mode === 'dark'
+          ? `linear-gradient(135deg, 
+            ${theme.palette.grey[900]} 0%, 
+            ${theme.palette.grey[800]} 50%,
+            ${theme.palette.grey[900]} 100%)`
+          : `linear-gradient(135deg, 
+            ${theme.palette.background.paper} 0%, 
+            ${theme.palette.grey[50]} 50%,
+            ${theme.palette.background.paper} 100%)`,
+        minHeight: '100vh',
+        p: 3,
+        borderRadius: 2,
+      }}
+    >
       {adminStore.tableError && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {adminStore.tableError}
@@ -1531,14 +1592,7 @@ const StoreManagement: React.FC = observer(() => {
         sx={{
           width: '100%',
           mb: 2,
-          background:
-            theme.palette.mode === 'dark'
-              ? `linear-gradient(135deg, 
-                ${theme.palette.grey[800]} 0%, 
-                ${theme.palette.grey[900]} 100%)`
-              : `linear-gradient(135deg, 
-                ${theme.palette.background.paper} 0%, 
-                ${theme.palette.background.default} 100%)`,
+          backgroundColor: 'transparent',
           backdropFilter: 'blur(10px)',
           border: `1px solid ${theme.palette.divider}`,
           borderRadius: 3,
@@ -1832,6 +1886,133 @@ const StoreManagement: React.FC = observer(() => {
         loading={deleteLoading}
         constraintError={deleteDialog.constraintError}
       />
+
+      {/* Preview Modal */}
+      <CustomModal
+        open={previewModal.open}
+        onClose={() => setPreviewModal({ open: false, item: null, type: 'avatar' })}
+        title={`Preview: ${previewModal.item?.name || 'Store Item'}`}
+        maxWidth="md"
+      >
+        <Box sx={{ p: 3 }}>
+          {previewModal.item && (
+            <>
+              {(previewModal.type === 'avatar' || previewModal.type === 'microphone') && previewModal.item.imageUrl && (
+                <Box sx={{ mb: 3, textAlign: 'center' }}>
+                  <img
+                    src={previewModal.item.imageUrl}
+                    alt={previewModal.item.name}
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '400px',
+                      objectFit: 'contain',
+                      borderRadius: '8px',
+                      boxShadow: theme.shadows[4],
+                    }}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                  <Typography variant="caption" display="block" sx={{ mt: 1, color: 'text.secondary' }}>
+                    {previewModal.item.imageUrl}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => handleCopyImageUrl(previewModal.item.imageUrl)}
+                    sx={{ mt: 1 }}
+                  >
+                    <FontAwesomeIcon icon={faCopy} style={{ marginRight: '8px' }} />
+                    Copy Image URL
+                  </Button>
+                </Box>
+              )}
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="h6" gutterBottom>
+                    Item Details
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    <strong>Name:</strong> {previewModal.item.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    <strong>Description:</strong> {previewModal.item.description || 'No description'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    <strong>Type:</strong> {previewModal.type}
+                  </Typography>
+                  {previewModal.item.price !== undefined && (
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      <strong>Price:</strong> {previewModal.item.isFree ? 'Free' : formatPrice(previewModal.item.price)}
+                    </Typography>
+                  )}
+                  {previewModal.item.rarity && (
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      <strong>Rarity:</strong> {previewModal.item.rarity}
+                    </Typography>
+                  )}
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  {previewModal.type === 'coinPackage' && (
+                    <>
+                      <Typography variant="h6" gutterBottom>
+                        Package Details
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        <strong>Coin Amount:</strong> {previewModal.item.coinAmount}
+                      </Typography>
+                      {previewModal.item.bonusCoins > 0 && (
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          <strong>Bonus Coins:</strong> {previewModal.item.bonusCoins}
+                        </Typography>
+                      )}
+                      {previewModal.item.maxRedemptions && (
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          <strong>Max Redemptions:</strong> {previewModal.item.maxRedemptions}
+                        </Typography>
+                      )}
+                      {previewModal.item.expiryDate && (
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          <strong>Expires:</strong> {new Date(previewModal.item.expiryDate).toLocaleDateString()}
+                        </Typography>
+                      )}
+                    </>
+                  )}
+
+                  {(previewModal.type === 'avatar' || previewModal.type === 'microphone') && (
+                    <>
+                      <Typography variant="h6" gutterBottom>
+                        Item Properties
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        <strong>Available:</strong> {previewModal.item.isAvailable ? 'Yes' : 'No'}
+                      </Typography>
+                      {previewModal.item.imageUrl && (
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          <strong>Image URL:</strong>
+                          <br />
+                          <code style={{ 
+                            fontSize: '0.75rem', 
+                            background: theme.palette.action.hover,
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            wordBreak: 'break-all'
+                          }}>
+                            {previewModal.item.imageUrl}
+                          </code>
+                        </Typography>
+                      )}
+                    </>
+                  )}
+                </Grid>
+              </Grid>
+            </>
+          )}
+        </Box>
+      </CustomModal>
     </Box>
   );
 });

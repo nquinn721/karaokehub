@@ -547,6 +547,45 @@ export class AdminStore {
     }
   }
 
+  async fetchNearbyShows(
+    lat: number,
+    lng: number,
+    maxDistance = 100,
+    day?: string,
+  ): Promise<void> {
+    try {
+      this.setTableLoading(true);
+      this.setTableError(null);
+
+      // Use the same endpoint as the main shows page
+      const endpoint = apiStore.endpoints.location.nearbyShows(lat, lng, maxDistance, day);
+      const response = await apiStore.get(endpoint);
+
+      runInAction(() => {
+        // Transform the response to match the admin shows format
+        this.shows = {
+          items: response.map((show: any) => ({
+            ...show,
+            createdAt: show.createdAt ? new Date(show.createdAt) : new Date(),
+          })),
+          total: response.length,
+          page: 1,
+          limit: response.length,
+          totalPages: 1,
+        };
+      });
+    } catch (error: any) {
+      // Don't show error for authentication issues since they're handled by interceptor
+      if (error.response?.status === 401) {
+        return;
+      }
+      const errorMessage = error.response?.data?.message || 'Failed to fetch nearby shows';
+      this.setTableError(errorMessage);
+    } finally {
+      this.setTableLoading(false);
+    }
+  }
+
   async fetchDjs(
     page = 1,
     limit = 10,
