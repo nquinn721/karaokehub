@@ -43,6 +43,9 @@ export class ShowReview {
   venueWebsite: string;
 
   @Column({ type: 'text', nullable: true })
+  location: string;
+
+  @Column({ type: 'text', nullable: true })
   description: string;
 
   @Column({ type: 'text', nullable: true })

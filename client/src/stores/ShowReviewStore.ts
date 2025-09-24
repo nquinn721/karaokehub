@@ -45,6 +45,7 @@ export interface CreateShowReviewDto {
   venueName?: string;
   venuePhone?: string;
   venueWebsite?: string;
+  location?: string;
   description?: string;
   comments?: string;
 }

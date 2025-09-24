@@ -802,7 +802,11 @@ const StorePage: React.FC = observer(() => {
                               }}
                             />
                             {avatar.isFree ? (
-                              <Typography variant="h6" color="success.main" sx={{ fontWeight: 600 }}>
+                              <Typography
+                                variant="h6"
+                                color="success.main"
+                                sx={{ fontWeight: 600 }}
+                              >
                                 FREE
                               </Typography>
                             ) : (

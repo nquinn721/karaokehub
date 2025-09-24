@@ -2579,17 +2579,49 @@ const AdminDataTables: React.FC = observer(() => {
       >
         {reviewingShowReview && (
           <Box>
+            {/* Show Information Summary */}
+            <Typography variant="subtitle2" sx={{ mb: 1, color: 'primary.main' }}>
+              Show Information:
+            </Typography>
+            <Box sx={{ mb: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Venue:</strong>{' '}
+                {reviewingShowReview.show
+                  ? getAdminShowVenueName(reviewingShowReview.show)
+                  : 'Not specified'}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>Address:</strong>{' '}
+                {reviewingShowReview.show
+                  ? getAdminShowVenueAddress(reviewingShowReview.show) || 'Not specified'
+                  : 'Not specified'}
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                <strong>DJ/Host:</strong> {reviewingShowReview.show?.dj?.name || 'Not specified'}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Vendor:</strong>{' '}
+                {reviewingShowReview.show?.dj?.vendor?.name || 'Not specified'}
+              </Typography>
+            </Box>
+
             {/* Changes Table */}
-            <Typography variant="subtitle2" sx={{ mb: 2, color: 'primary.main' }}>
+            <Typography variant="subtitle2" sx={{ mb: 2, color: 'secondary.main' }}>
               Proposed Changes:
             </Typography>
             <TableContainer component={Paper} sx={{ mb: 3 }}>
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell><strong>Field</strong></TableCell>
-                    <TableCell><strong>Original Value</strong></TableCell>
-                    <TableCell><strong>Suggested Value</strong></TableCell>
+                    <TableCell>
+                      <strong>Field</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Original Value</strong>
+                    </TableCell>
+                    <TableCell>
+                      <strong>Suggested Value</strong>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -2671,6 +2703,23 @@ const AdminDataTables: React.FC = observer(() => {
                     </TableRow>
                   )}
 
+                  {reviewingShowReview.location && (
+                    <TableRow>
+                      <TableCell>Location</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {reviewingShowReview.show
+                            ? getAdminShowVenueAddress(reviewingShowReview.show) || 'Not specified'
+                            : 'Not specified'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="success.main" fontWeight="medium">
+                          {reviewingShowReview.location}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {reviewingShowReview.description && (
                     <TableRow>
                       <TableCell>Description</TableCell>

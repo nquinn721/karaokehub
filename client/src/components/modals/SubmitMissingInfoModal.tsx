@@ -27,10 +27,21 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
       comments: '',
     });
 
+    // Track original values to compare against changes
+    const [originalData, setOriginalData] = useState({
+      djName: '',
+      vendorName: '',
+      venueName: '',
+      venuePhone: '',
+      venueWebsite: '',
+      location: '',
+      description: '',
+    });
+
     // Initialize form data when show changes
     React.useEffect(() => {
       if (show) {
-        setFormData({
+        const initialData = {
           djName: show.dj?.name || '',
           vendorName: show.dj?.vendor?.name || '',
           venueName:
@@ -39,8 +50,14 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
           venueWebsite: show.venue?.website || '',
           location: showStore.getVenueAddress(show) || '',
           description: show.description || '',
+        };
+
+        setFormData({
+          ...initialData,
           comments: '',
         });
+
+        setOriginalData(initialData);
       }
     }, [show]);
     const [loading, setLoading] = useState(false);
@@ -57,11 +74,25 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
     const handleSubmit = async () => {
       if (!show || !authStore.user?.id) return;
 
-      // Check if at least one field has content (excluding comments which is optional)
-      const { comments, ...fieldsToCheck } = formData;
-      const hasData = Object.values(fieldsToCheck).some((value) => value.trim() !== '');
-      if (!hasData) {
-        setError('Please update at least one field with information');
+      // Get only the fields that have changed from their original values
+      const changedFields: any = {};
+      Object.keys(originalData).forEach((key) => {
+        const originalValue = originalData[key as keyof typeof originalData];
+        const currentValue = formData[key as keyof typeof formData];
+
+        if (currentValue.trim() !== originalValue.trim()) {
+          changedFields[key] = currentValue;
+        }
+      });
+
+      // Always include comments if provided
+      if (formData.comments.trim()) {
+        changedFields.comments = formData.comments;
+      }
+
+      // Check if at least one field has changed
+      if (Object.keys(changedFields).length === 0) {
+        setError('Please modify at least one field to submit changes');
         return;
       }
 
@@ -72,19 +103,12 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
         await showReviewStore.submitReview({
           showId: show.id,
           submittedByUserId: authStore.user.id,
-          ...formData,
+          ...changedFields,
         });
 
         setSuccess(true);
         setFormData({
-          djName: show.dj?.name || '',
-          vendorName: show.dj?.vendor?.name || '',
-          venueName:
-            show.venue && typeof show.venue === 'object' ? show.venue.name || '' : show.venue || '',
-          venuePhone: show.venue?.phone || '',
-          venueWebsite: show.venue?.website || '',
-          location: showStore.getVenueAddress(show) || '',
-          description: show.description || '',
+          ...originalData,
           comments: '',
         });
 
@@ -106,16 +130,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
         setError(null);
         if (show) {
           setFormData({
-            djName: show.dj?.name || '',
-            vendorName: show.dj?.vendor?.name || '',
-            venueName:
-              show.venue && typeof show.venue === 'object'
-                ? show.venue.name || ''
-                : show.venue || '',
-            venuePhone: show.venue?.phone || '',
-            venueWebsite: show.venue?.website || '',
-            location: showStore.getVenueAddress(show) || '',
-            description: show.description || '',
+            ...originalData,
             comments: '',
           });
         }
@@ -134,7 +149,9 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
           maxWidth="md"
         >
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Help us improve our data by updating the show information below. You can modify any of the fields including vendor, DJ, venue, and location details. Your submission will be reviewed by our team.
+            Help us improve our data by updating the show information below. You can modify any of
+            the fields including vendor, DJ, venue, and location details. Your submission will be
+            reviewed by our team.
           </Typography>
 
           {/* Current Show Info */}

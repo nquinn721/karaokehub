@@ -1,4 +1,6 @@
 -- Manual migration script to fix production database issues
+-- Database: karaoke-hub  
+-- Username: KaraokeHubUser
 -- Run this directly on the production database
 
 -- 1. Add profileImageUrl column to users table (from migration 1737462400000-AddProfileImageUrlToUsers.ts)
