@@ -35,8 +35,8 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
   const isProduction = configService.get('NODE_ENV') === 'production';
   const socketPath = configService.get('DATABASE_SOCKET_PATH');
 
-  // Try to enable migrations with updated @nestjs/typeorm
-  const migrationsEnabled = true; // Enabled with production-ready migrations
+  // Only enable migrations in production
+  const migrationsEnabled = isProduction;
 
   console.log('🗃️  Database Config:', {
     NODE_ENV: configService.get('NODE_ENV'),
@@ -109,6 +109,33 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
           'dist/migrations/1727906400000-RecordMicrophoneUuidConversion.js',
           'dist/migrations/1727906500000-ConvertMicrophonesToUuid.js',
           'dist/migrations/1727906600000-PopulateAvatarsTable.js',
+          'dist/migrations/1736531800000-CreateApiMonitoringTables.js',
+          'dist/migrations/1737450000000-DropDjNicknamesTable.js',
+          'dist/migrations/1737450050000-CreateAvatarsTable.js',
+          'dist/migrations/1737450100000-CreateAvatarSystem.js',
+          'dist/migrations/1737450200000-RemoveAvatarFromUsers.js',
+          'dist/migrations/1737450310000-PopulateUserAvatars.js',
+          'dist/migrations/1737450350000-CreateStoreSystem.js',
+          'dist/migrations/1737450400000-SeedBasicMicrophones.js',
+          'dist/migrations/1737450450000-SeedAvatarsAndMicrophones.js',
+          'dist/migrations/1737450500000-UpdateToNamedAvatars.js',
+          'dist/migrations/1737450600000-PopulateUserAvatars.js',
+          'dist/migrations/1737450650000-UpdateUserAvatarsTableStructure.js',
+          'dist/migrations/1737450700000-AddAvatarIdToTransactions.js',
+          'dist/migrations/1737450850000-ConvertUrlsToParseToUuid.js',
+          'dist/migrations/1737450900000-AddStatusToTransactionsTable.js',
+          'dist/migrations/1737453000000-StandardizeAvatarProperties.js',
+          'dist/migrations/1737454000000-CreateRealTimeApiMetrics.js',
+          'dist/migrations/1737454100000-AddSearchQueryToApiRecentCalls.js',
+          'dist/migrations/1737454200000-AddProfileImageUrlToUser.js',
+          'dist/migrations/1737454300000-AddRockThemeAvatars.js',
+          'dist/migrations/1737454400000-FixProductionDatabaseIssues.js',
+          'dist/migrations/1737454500000-AddLocationToShowReviews.js',
+          'dist/migrations/1737462000000-FixUserAvatarsConstraints.js',
+          'dist/migrations/1737462100000-FixUserAvatarData.js',
+          'dist/migrations/1737462200000-SeedAllNewAvatars.js',
+          'dist/migrations/1737462300000-EnsureProductionAvatarSystemReady.js',
+          'dist/migrations/1737462400000-AddProfileImageUrlToUsers.js',
         ]
       : [],
     migrationsTableName: 'migrations',

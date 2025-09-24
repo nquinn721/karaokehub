@@ -12,7 +12,7 @@ export class DropDjNicknamesTable1737450000000 implements MigrationInterface {
     // Recreate the table if we need to rollback
     // Note: This is a destructive migration, data will be lost
     await queryRunner.query(`
-      CREATE TABLE \`dj_nicknames\` (
+      CREATE TABLE IF NOT EXISTS \`dj_nicknames\` (
         \`id\` int NOT NULL AUTO_INCREMENT,
         \`nickname\` varchar(255) NOT NULL,
         \`realName\` varchar(255) DEFAULT NULL,

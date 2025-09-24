@@ -6,7 +6,7 @@ export class CreateRealTimeApiMetrics1737454000000 implements MigrationInterface
 
     // 1. Recent API Calls (last 20 requests - rolling window)
     await queryRunner.query(`
-      CREATE TABLE api_recent_calls (
+      CREATE TABLE IF NOT EXISTS api_recent_calls (
         id INT AUTO_INCREMENT PRIMARY KEY,
         provider ENUM('itunes','spotify','youtube','google','facebook','twitter','gemini') NOT NULL,
         endpoint_type ENUM('search','detail','image_generation','authentication','social_post','other') NOT NULL,
@@ -24,7 +24,7 @@ export class CreateRealTimeApiMetrics1737454000000 implements MigrationInterface
 
     // 2. Real-time counters (minute-level granularity)
     await queryRunner.query(`
-      CREATE TABLE api_realtime_metrics (
+      CREATE TABLE IF NOT EXISTS api_realtime_metrics (
         id INT AUTO_INCREMENT PRIMARY KEY,
         provider ENUM('itunes','spotify','youtube','google','facebook','twitter','gemini') NOT NULL,
         minute_timestamp DATETIME NOT NULL, -- Truncated to minute (2025-09-22 14:35:00)
@@ -52,7 +52,7 @@ export class CreateRealTimeApiMetrics1737454000000 implements MigrationInterface
 
     // 3. Rate limit status (current state)
     await queryRunner.query(`
-      CREATE TABLE api_rate_limit_status (
+      CREATE TABLE IF NOT EXISTS api_rate_limit_status (
         provider ENUM('itunes','spotify','youtube','google','facebook','twitter','gemini') PRIMARY KEY,
         
         -- Current rate limit info

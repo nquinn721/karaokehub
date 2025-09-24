@@ -1,3 +1,4 @@
+import * as dotenv from 'dotenv';
 import { DataSource } from 'typeorm';
 import { ApiLog } from './src/api-logging/api-log.entity';
 import { ApiRateLimitStatus } from './src/api-logging/entities/api-rate-limit-status.entity';
@@ -32,13 +33,15 @@ import { UserFeatureOverride } from './src/user-feature-override/user-feature-ov
 import { Vendor } from './src/vendor/vendor.entity';
 import { Venue } from './src/venue/venue.entity';
 
+dotenv.config();
+
 export default new DataSource({
   type: 'mysql',
-  host: 'localhost',
-  port: 3306,
-  username: 'admin',
-  password: 'password',
-  database: 'karaoke-hub',
+  host: process.env.DATABASE_HOST || 'localhost',
+  port: parseInt(process.env.DATABASE_PORT || '3306'),
+  username: process.env.DATABASE_USERNAME || 'admin',
+  password: process.env.DATABASE_PASSWORD || 'password',
+  database: process.env.DATABASE_NAME || 'karaoke-hub',
   entities: [
     User,
     Vendor,
@@ -77,7 +80,38 @@ export default new DataSource({
     CoinPackage,
     Transaction,
   ],
-  migrations: ['./src/migrations/*.ts'],
+  migrations: [
+    'src/migrations/1727906400000-RecordMicrophoneUuidConversion.ts',
+    'src/migrations/1727906500000-ConvertMicrophonesToUuid.ts',
+    'src/migrations/1727906600000-PopulateAvatarsTable.ts',
+    'src/migrations/1736531800000-CreateApiMonitoringTables.ts',
+    'src/migrations/1737450000000-DropDjNicknamesTable.ts',
+    'src/migrations/1737450050000-CreateAvatarsTable.ts',
+    'src/migrations/1737450100000-CreateAvatarSystem.ts',
+    'src/migrations/1737450200000-RemoveAvatarFromUsers.ts',
+    'src/migrations/1737450310000-PopulateUserAvatars.ts',
+    'src/migrations/1737450350000-CreateStoreSystem.ts',
+    'src/migrations/1737450400000-SeedBasicMicrophones.ts',
+    'src/migrations/1737450450000-SeedAvatarsAndMicrophones.ts',
+    'src/migrations/1737450500000-UpdateToNamedAvatars.ts',
+    'src/migrations/1737450600000-PopulateUserAvatars.ts',
+    'src/migrations/1737450650000-UpdateUserAvatarsTableStructure.ts',
+    'src/migrations/1737450700000-AddAvatarIdToTransactions.ts',
+    'src/migrations/1737450850000-ConvertUrlsToParseToUuid.ts',
+    'src/migrations/1737450900000-AddStatusToTransactionsTable.ts',
+    'src/migrations/1737453000000-StandardizeAvatarProperties.ts',
+    'src/migrations/1737454000000-CreateRealTimeApiMetrics.ts',
+    'src/migrations/1737454100000-AddSearchQueryToApiRecentCalls.ts',
+    'src/migrations/1737454200000-AddProfileImageUrlToUser.ts',
+    'src/migrations/1737454300000-AddRockThemeAvatars.ts',
+    'src/migrations/1737454400000-FixProductionDatabaseIssues.ts',
+    'src/migrations/1737454500000-AddLocationToShowReviews.ts',
+    'src/migrations/1737462000000-FixUserAvatarsConstraints.ts',
+    'src/migrations/1737462100000-FixUserAvatarData.ts',
+    'src/migrations/1737462200000-SeedAllNewAvatars.ts',
+    'src/migrations/1737462300000-EnsureProductionAvatarSystemReady.ts',
+    'src/migrations/1737462400000-AddProfileImageUrlToUsers.ts',
+  ],
   synchronize: false,
   logging: true,
 });

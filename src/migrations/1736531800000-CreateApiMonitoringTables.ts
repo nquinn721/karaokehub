@@ -4,9 +4,9 @@ export class CreateApiMonitoringTables1736531800000 implements MigrationInterfac
   name = 'CreateApiMonitoringTables1736531800000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Create api_metrics_daily table
+    // Create api_metrics_daily table (if not exists)
     await queryRunner.query(`
-            CREATE TABLE api_metrics_daily (
+            CREATE TABLE IF NOT EXISTS api_metrics_daily (
                 id CHAR(36) NOT NULL DEFAULT (UUID()),
                 date VARCHAR(10) NOT NULL,
                 provider ENUM('itunes', 'spotify', 'youtube', 'google', 'facebook', 'twitter', 'gemini') NOT NULL,
@@ -29,9 +29,9 @@ export class CreateApiMonitoringTables1736531800000 implements MigrationInterfac
             ) ENGINE=InnoDB
         `);
 
-    // Create api_issues table
+    // Create api_issues table (if not exists)
     await queryRunner.query(`
-            CREATE TABLE api_issues (
+            CREATE TABLE IF NOT EXISTS api_issues (
                 id CHAR(36) NOT NULL DEFAULT (UUID()),
                 timestamp TIMESTAMP(6) NOT NULL,
                 provider ENUM('itunes', 'spotify', 'youtube', 'google', 'facebook', 'twitter', 'gemini') NOT NULL,
@@ -60,7 +60,7 @@ export class CreateApiMonitoringTables1736531800000 implements MigrationInterfac
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE api_issues`);
-    await queryRunner.query(`DROP TABLE api_metrics_daily`);
+    await queryRunner.query(`DROP TABLE IF EXISTS api_issues`);
+    await queryRunner.query(`DROP TABLE IF EXISTS api_metrics_daily`);
   }
 }
