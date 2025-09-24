@@ -1568,14 +1568,12 @@ const StoreManagement: React.FC = observer(() => {
       sx={{ 
         width: '100%',
         background: theme.palette.mode === 'dark'
-          ? `linear-gradient(135deg, 
-            ${theme.palette.grey[900]} 0%, 
-            ${theme.palette.grey[800]} 50%,
+          ? `linear-gradient(90deg, 
+            ${theme.palette.grey[800]} 0%, 
             ${theme.palette.grey[900]} 100%)`
-          : `linear-gradient(135deg, 
+          : `linear-gradient(90deg, 
             ${theme.palette.background.paper} 0%, 
-            ${theme.palette.grey[50]} 50%,
-            ${theme.palette.background.paper} 100%)`,
+            ${theme.palette.background.default} 100%)`,
         minHeight: '100vh',
         p: 3,
         borderRadius: 2,
