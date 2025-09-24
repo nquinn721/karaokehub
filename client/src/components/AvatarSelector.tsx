@@ -1,7 +1,6 @@
-import { faCheck, faLock, faSave, faUndo, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faLock, faSave, faUndo, faUser } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  Alert,
   Box,
   Button,
   Card,
@@ -15,6 +14,7 @@ import {
 } from '@mui/material';
 import { observer } from 'mobx-react-lite';
 import React, { useCallback, useEffect, useState } from 'react';
+import { uiStore } from '../stores';
 
 interface Avatar {
   id: string;
@@ -136,7 +136,6 @@ export const AvatarSelector: React.FC = observer(() => {
   const theme = useTheme();
   const [selectedAvatar, setSelectedAvatar] = useState<string>('alex');
   const [savedAvatar, setSavedAvatar] = useState<string>('alex');
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [userLevel] = useState(25); // Mock user level - integrate with your user system
 
   // Load saved avatar on component mount
@@ -158,8 +157,7 @@ export const AvatarSelector: React.FC = observer(() => {
   const handleSaveAvatar = useCallback(() => {
     localStorage.setItem('selectedAvatar', selectedAvatar);
     setSavedAvatar(selectedAvatar);
-    setShowSuccessMessage(true);
-    setTimeout(() => setShowSuccessMessage(false), 3000);
+    uiStore.addNotification('Avatar saved successfully!', 'success');
   }, [selectedAvatar]);
 
   const handleResetToSaved = useCallback(() => {
@@ -189,14 +187,6 @@ export const AvatarSelector: React.FC = observer(() => {
           Select your karaoke persona and stand out on stage!
         </Typography>
       </Box>
-
-      {/* Success Message */}
-      {showSuccessMessage && (
-        <Alert severity="success" sx={{ mb: 3 }}>
-          <FontAwesomeIcon icon={faCheck} style={{ marginRight: '8px' }} />
-          Avatar saved successfully!
-        </Alert>
-      )}
 
       <Grid container spacing={3}>
         {/* Avatar Preview */}

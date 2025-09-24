@@ -66,6 +66,7 @@ export interface AdminUser {
   name: string;
   stageName?: string;
   avatar?: string;
+  profileImageUrl?: string;
   provider?: string;
   providerId?: string;
   isActive: boolean;
@@ -430,6 +431,8 @@ export class AdminStore {
             createdAt: new Date(user.createdAt),
             // Map equippedAvatar to avatar field for consistent interface
             avatar: user.equippedAvatar?.imageUrl || null,
+            // Ensure profileImageUrl is preserved in the mapping
+            profileImageUrl: user.profileImageUrl,
           })),
         };
       });
@@ -547,12 +550,7 @@ export class AdminStore {
     }
   }
 
-  async fetchNearbyShows(
-    lat: number,
-    lng: number,
-    maxDistance = 100,
-    day?: string,
-  ): Promise<void> {
+  async fetchNearbyShows(lat: number, lng: number, maxDistance = 100, day?: string): Promise<void> {
     try {
       this.setTableLoading(true);
       this.setTableError(null);

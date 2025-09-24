@@ -1,6 +1,5 @@
 import {
   faCamera,
-  faCog,
   faDownload,
   faEye,
   faImage,
@@ -17,22 +16,15 @@ import {
   Button,
   Card,
   CardContent,
-  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControl,
-  FormHelperText,
   Grid,
   IconButton,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
-  Slider,
   Tab,
   Tabs,
   TextField,
@@ -48,24 +40,16 @@ const StoreItemGenerator: React.FC = observer(() => {
   const theme = useTheme();
 
   // Local state for UI
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [selectedBaseImage, setSelectedBaseImage] = useState<string | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [baseImageSource, setBaseImageSource] = useState<'upload' | 'existing'>('upload');
-  const [selectedExistingItem, setSelectedExistingItem] = useState<any | null>(null);
+  const [selectedExistingItems, setSelectedExistingItems] = useState<any[]>([]);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<any | null>(null);
   const [baseImageTabValue, setBaseImageTabValue] = useState(0);
   const [existingItemsTabValue, setExistingItemsTabValue] = useState(0);
 
-  const [settings, setSettings] = useState({
-    itemType: 'outfit',
-    style: 'modern',
-    variations: 4,
-    quality: 'standard',
-    theme: 'casual',
-    customPrompt: '',
-  });
+  const [prompt, setPrompt] = useState('');
 
   // Load existing items when component mounts
   useEffect(() => {
@@ -89,96 +73,103 @@ const StoreItemGenerator: React.FC = observer(() => {
 
   // Dropzone for image upload
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
+    const newImages: string[] = [];
+    let completed = 0;
+    
+    acceptedFiles.forEach((file) => {
       const reader = new FileReader();
-      reader.onload = () => setUploadedImage(reader.result as string);
+      reader.onload = () => {
+        newImages.push(reader.result as string);
+        completed++;
+        
+        if (completed === acceptedFiles.length) {
+          setUploadedImages(prev => [...prev, ...newImages]);
+        }
+      };
       reader.readAsDataURL(file);
-    }
+    });
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/*': [] },
-    multiple: false,
+    multiple: true,
   });
 
-  const itemTypes = [
-    { value: 'outfit', label: 'Outfits', icon: '👔' },
-    { value: 'shoes', label: 'Shoes', icon: '👟' },
-    { value: 'microphone', label: 'Microphones', icon: '🎤' },
-    { value: 'hair', label: 'Hair Accessories', icon: '💇' },
-    { value: 'hat', label: 'Hats & Headwear', icon: '🎩' },
-    { value: 'jewelry', label: 'Jewelry', icon: '💎' },
-  ];
 
-  const styles = [
-    { value: 'modern', label: 'Modern' },
-    { value: 'vintage', label: 'Vintage' },
-    { value: 'fantasy', label: 'Fantasy' },
-    { value: 'casual', label: 'Casual' },
-    { value: 'formal', label: 'Formal' },
-    { value: 'sporty', label: 'Sporty' },
-    { value: 'elegant', label: 'Elegant' },
-    { value: 'punk', label: 'Punk' },
-  ];
-
-  const themes = [
-    { value: 'casual', label: 'Casual Day' },
-    { value: 'party', label: 'Party Night' },
-    { value: 'professional', label: 'Professional' },
-    { value: 'beach', label: 'Beach/Summer' },
-    { value: 'winter', label: 'Winter/Cozy' },
-    { value: 'festival', label: 'Festival/Concert' },
-    { value: 'formal', label: 'Formal Event' },
-    { value: 'retro', label: 'Retro/Vintage' },
-  ];
-
-  const qualityOptions = [
-    { value: 'draft', label: 'Draft (Fast)' },
-    { value: 'standard', label: 'Standard' },
-    { value: 'high', label: 'High Quality' },
-  ];
 
   const handleGenerate = async () => {
-    const baseImage = baseImageSource === 'upload' ? uploadedImage : selectedBaseImage;
-
-    // Allow generation with just custom prompt (no base image required)
-    if (!baseImage && (!settings.customPrompt || !settings.customPrompt.trim())) {
-      storeGenerationStore.setError(
-        'Please either select/upload a base image OR enter a custom prompt',
-      );
+    if (!prompt || !prompt.trim()) {
+      storeGenerationStore.setError('Please enter a prompt for generating items');
       return;
     }
 
-    await storeGenerationStore.generateStoreItems(baseImage || '', settings);
+    const selectedImages = baseImageSource === 'upload' ? uploadedImages : selectedExistingItems.map(item => item.imageUrl);
+    
+    if (selectedImages.length === 0) {
+      storeGenerationStore.setError('Please select at least one base image');
+      return;
+    }
+
+    // Clear previous results
+    storeGenerationStore.generatedItems = [];
+
+    // Create workers for each selected image
+    const generationPromises = selectedImages.map(async (imageUrl, index) => {
+      try {
+        const result = await storeGenerationStore.generateStoreItems(imageUrl, {
+          itemType: 'outfit',
+          style: 'modern',
+          theme: 'casual',
+          variations: 1, // Generate 1 variation per image to avoid duplication
+          quality: 'standard',
+          customPrompt: prompt, // Send only the prompt without pre-explanation
+        });
+        return { success: true, imageIndex: index, result };
+      } catch (error) {
+        return { success: false, imageIndex: index, error };
+      }
+    });
+
+    // Wait for all workers to complete
+    try {
+      const results = await Promise.allSettled(generationPromises);
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const failureCount = results.filter(r => r.status === 'rejected').length;
+      
+      if (successCount > 0) {
+        storeGenerationStore.setSuccess(`Generated items for ${successCount} images${failureCount > 0 ? `, ${failureCount} failed` : ''}`);
+      } else {
+        storeGenerationStore.setError('Failed to generate items for all images');
+      }
+    } catch (error) {
+      storeGenerationStore.setError('Failed to process generation workers');
+    }
   };
 
   const handleExistingItemSelect = (item: any) => {
-    setSelectedExistingItem(item);
-    setSelectedBaseImage(item.imageUrl);
+    setSelectedExistingItems(prev => {
+      const isSelected = prev.some(i => i.id === item.id);
+      if (isSelected) {
+        return prev.filter(i => i.id !== item.id);
+      } else {
+        return [...prev, item];
+      }
+    });
+    
+
+    
     setBaseImageSource('existing');
   };
 
   const handleUploadedImageSelect = () => {
     setBaseImageSource('upload');
-    setSelectedExistingItem(null);
-    setSelectedBaseImage(null);
+    setSelectedExistingItems([]);
   };
 
-  const getCurrentBaseImage = () => {
-    return baseImageSource === 'upload' ? uploadedImage : selectedBaseImage;
-  };
 
-  const handleImageSelect = (imageId: string) => {
-    const newSelected = new Set(selectedImages);
-    if (newSelected.has(imageId)) {
-      newSelected.delete(imageId);
-    } else {
-      newSelected.add(imageId);
-    }
-    setSelectedImages(newSelected);
-  };
+
+
 
   const handleSaveSelected = async () => {
     if (selectedImages.size === 0) {
@@ -245,8 +236,8 @@ const StoreItemGenerator: React.FC = observer(() => {
       )}
 
       <Grid container spacing={3}>
-        {/* Upload Section */}
-        <Grid item xs={12} md={4}>
+        {/* Upload Section - Hidden */}
+        <Grid item xs={12} md={4} sx={{ display: 'none' }}>
           <Card>
             <CardContent>
               <Typography
@@ -296,23 +287,30 @@ const StoreItemGenerator: React.FC = observer(() => {
                   onClick={handleUploadedImageSelect}
                 >
                   <input {...getInputProps()} />
-                  {uploadedImage ? (
+                  {uploadedImages.length > 0 ? (
                     <Box>
-                      <img
-                        src={uploadedImage}
-                        alt="Uploaded"
-                        style={{
-                          maxWidth: '100%',
-                          maxHeight: '200px',
-                          borderRadius: '8px',
-                          border:
-                            baseImageSource === 'upload'
-                              ? `3px solid ${theme.palette.primary.main}`
-                              : 'none',
-                        }}
-                      />
+                      <Grid container spacing={1} sx={{ mb: 2 }}>
+                        {uploadedImages.map((image, index) => (
+                          <Grid item xs={6} key={index}>
+                            <img
+                              src={image}
+                              alt={`Uploaded ${index + 1}`}
+                              style={{
+                                width: '100%',
+                                height: '80px',
+                                objectFit: 'cover',
+                                borderRadius: '8px',
+                                border:
+                                  baseImageSource === 'upload'
+                                    ? `3px solid ${theme.palette.primary.main}`
+                                    : 'none',
+                              }}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
                       <Typography variant="body2" sx={{ mt: 1 }}>
-                        Click or drag to replace
+                        Drop more images to add ({uploadedImages.length} selected)
                       </Typography>
                     </Box>
                   ) : (
@@ -391,7 +389,7 @@ const StoreItemGenerator: React.FC = observer(() => {
                                     sx={{
                                       cursor: 'pointer',
                                       border:
-                                        selectedExistingItem?.id === item.id
+                                        selectedExistingItems.some(i => i.id === item.id)
                                           ? `2px solid ${theme.palette.primary.main}`
                                           : '1px solid transparent',
                                       '&:hover': {
@@ -456,7 +454,7 @@ const StoreItemGenerator: React.FC = observer(() => {
                                     sx={{
                                       cursor: 'pointer',
                                       border:
-                                        selectedExistingItem?.id === item.id
+                                        selectedExistingItems.some(i => i.id === item.id)
                                           ? `2px solid ${theme.palette.primary.main}`
                                           : '1px solid transparent',
                                       '&:hover': {
@@ -504,164 +502,79 @@ const StoreItemGenerator: React.FC = observer(() => {
                 </Box>
               )}
 
-              {/* Selected base image preview */}
-              {getCurrentBaseImage() && (
+              {/* Selected base images preview */}
+              {(uploadedImages.length > 0 || selectedExistingItems.length > 0) && (
                 <Box sx={{ mt: 2, p: 2, bgcolor: theme.palette.background.paper, borderRadius: 1 }}>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Selected Base Image:
+                    Selected Base Images ({baseImageSource === 'upload' ? uploadedImages.length : selectedExistingItems.length}):
                   </Typography>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <img
-                      src={getCurrentBaseImage() || ''}
-                      alt="Selected base"
-                      style={{
-                        maxWidth: '100%',
-                        maxHeight: '100px',
-                        borderRadius: '4px',
-                        border: `2px solid ${theme.palette.primary.main}`,
-                      }}
-                    />
-                    {selectedExistingItem && (
-                      <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                        {selectedExistingItem.name}
-                      </Typography>
+                  <Grid container spacing={1}>
+                    {baseImageSource === 'upload' ? (
+                      uploadedImages.map((image, index) => (
+                        <Grid item xs={4} key={index}>
+                          <img
+                            src={image}
+                            alt={`Selected base ${index + 1}`}
+                            style={{
+                              width: '100%',
+                              height: '60px',
+                              objectFit: 'cover',
+                              borderRadius: '4px',
+                              border: `2px solid ${theme.palette.primary.main}`,
+                            }}
+                          />
+                        </Grid>
+                      ))
+                    ) : (
+                      selectedExistingItems.map((item) => (
+                        <Grid item xs={4} key={item.id}>
+                          <Box sx={{ textAlign: 'center' }}>
+                            <img
+                              src={item.imageUrl}
+                              alt={item.name}
+                              style={{
+                                width: '100%',
+                                height: '60px',
+                                objectFit: 'cover',
+                                borderRadius: '4px',
+                                border: `2px solid ${theme.palette.primary.main}`,
+                              }}
+                            />
+                            <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                              {item.name}
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      ))
                     )}
-                  </Box>
+                  </Grid>
                 </Box>
               )}
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Settings Section */}
-        <Grid item xs={12} md={8}>
+        {/* Prompt Section */}
+        <Grid item xs={12}>
           <Card>
             <CardContent>
-              <Typography
-                variant="h6"
-                gutterBottom
-                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-              >
-                <FontAwesomeIcon icon={faCog} />
-                Generation Settings
-              </Typography>
-
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Item Type</InputLabel>
-                    <Select
-                      value={settings.itemType}
-                      label="Item Type"
-                      onChange={(e) =>
-                        setSettings((prev) => ({ ...prev, itemType: e.target.value }))
-                      }
-                    >
-                      {itemTypes.map((type) => (
-                        <MenuItem key={type.value} value={type.value}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <span>{type.icon}</span>
-                            {type.label}
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Style</InputLabel>
-                    <Select
-                      value={settings.style}
-                      label="Style"
-                      onChange={(e) => setSettings((prev) => ({ ...prev, style: e.target.value }))}
-                    >
-                      {styles.map((style) => (
-                        <MenuItem key={style.value} value={style.value}>
-                          {style.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Theme</InputLabel>
-                    <Select
-                      value={settings.theme}
-                      label="Theme"
-                      onChange={(e) => setSettings((prev) => ({ ...prev, theme: e.target.value }))}
-                    >
-                      {themes.map((theme) => (
-                        <MenuItem key={theme.value} value={theme.value}>
-                          {theme.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Quality</InputLabel>
-                    <Select
-                      value={settings.quality}
-                      label="Quality"
-                      onChange={(e) =>
-                        setSettings((prev) => ({ ...prev, quality: e.target.value }))
-                      }
-                    >
-                      {qualityOptions.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={3}
-                    label="Custom Prompt (Optional)"
-                    placeholder="Enter your own generation prompt (e.g., 'create 5 yellow shirts and blue overalls outfits' or 'generate 3 red sneakers')"
-                    value={settings.customPrompt}
-                    onChange={(e) =>
-                      setSettings((prev) => ({ ...prev, customPrompt: e.target.value }))
-                    }
-                    helperText="Leave empty to use automatic prompts, or enter your own text to override ALL settings. You can specify quantity in your prompt."
-                  />
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Typography gutterBottom>Variations: {settings.variations}</Typography>
-                  <Slider
-                    value={settings.variations}
-                    onChange={(_, value) =>
-                      setSettings((prev) => ({ ...prev, variations: value as number }))
-                    }
-                    min={1}
-                    max={8}
-                    marks
-                    valueLabelDisplay="auto"
-                  />
-                  <FormHelperText>More variations take longer to generate</FormHelperText>
-                </Grid>
-              </Grid>
+              <TextField
+                fullWidth
+                multiline
+                rows={6}
+                label="Enter your prompt"
+                placeholder="Tell Nano Banana what you want to generate (e.g., 'create 5 yellow shirts and blue overalls outfits' or 'generate 3 red sneakers')"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                helperText="Describe what you want to generate and Nano Banana will create it for you"
+                sx={{ mb: 3 }}
+              />
 
               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
                 <Button
                   variant="contained"
                   onClick={handleGenerate}
-                  disabled={
-                    (!getCurrentBaseImage() &&
-                      (!settings.customPrompt || !settings.customPrompt.trim())) ||
-                    storeGenerationStore.isLoading
-                  }
+                  disabled={!prompt.trim() || storeGenerationStore.isLoading}
                   sx={{ minWidth: 150 }}
                   startIcon={
                     storeGenerationStore.isLoading ? (
@@ -718,57 +631,47 @@ const StoreItemGenerator: React.FC = observer(() => {
                   </Box>
                 </Box>
 
-                <Grid container spacing={2}>
+                <Grid container spacing={1}>
                   {storeGenerationStore.generatedItems.map((item) => (
-                    <Grid item xs={6} sm={4} md={3} key={item.id}>
-                      <Card sx={{ position: 'relative' }}>
-                        <Box sx={{ position: 'relative' }}>
+                    <Grid item xs={4} sm={3} md={2} key={item.id}>
+                      <Card sx={{ position: 'relative', height: '180px' }}>
+                        <Box sx={{ position: 'relative', height: '140px' }}>
                           <img
                             src={item.imageUrl}
                             alt={item.prompt}
                             style={{
                               width: '100%',
-                              height: '200px',
-                              objectFit: 'cover',
+                              height: '140px',
+                              objectFit: 'contain',
+                              backgroundColor: '#f5f5f5',
                             }}
                           />
-                          <Checkbox
-                            checked={selectedImages.has(item.id)}
-                            onChange={() => handleImageSelect(item.id)}
-                            sx={{
-                              position: 'absolute',
-                              top: 8,
-                              left: 8,
-                              bgcolor: 'rgba(255,255,255,0.8)',
-                              '&:hover': {
-                                bgcolor: 'rgba(255,255,255,0.9)',
-                              },
-                            }}
-                          />
+
                           <IconButton
                             onClick={() => handlePreview(item)}
                             sx={{
                               position: 'absolute',
-                              top: 8,
-                              right: 8,
+                              top: 4,
+                              right: 4,
                               bgcolor: 'rgba(255,255,255,0.8)',
                               '&:hover': {
                                 bgcolor: 'rgba(255,255,255,0.9)',
                               },
+                              transform: 'scale(0.8)',
                             }}
                           >
                             <FontAwesomeIcon icon={faEye} />
                           </IconButton>
                         </Box>
-                        <CardContent sx={{ p: 1 }}>
+                        <CardContent sx={{ p: 0.5, height: '40px', overflow: 'hidden' }}>
                           <Typography
                             variant="caption"
-                            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '10px' }}
                           >
-                            <FontAwesomeIcon icon={faPalette} />
+                            <FontAwesomeIcon icon={faPalette} size="xs" />
                             {item.style} {item.itemType}
                           </Typography>
-                          <Typography variant="body2" noWrap>
+                          <Typography variant="caption" noWrap sx={{ fontSize: '9px', opacity: 0.7 }}>
                             {item.prompt}
                           </Typography>
                         </CardContent>

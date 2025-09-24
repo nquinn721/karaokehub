@@ -1,4 +1,4 @@
-import { faCoins, faMicrophone, faShoppingCart, faStar } from '@fortawesome/free-solid-svg-icons';
+import { faCoins, faShoppingCart, faStar, faUser } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   alpha,
@@ -13,25 +13,25 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { Microphone } from '@stores/StoreStore';
+import { Avatar } from '@stores/StoreStore';
 import { formatNumber, toNumber } from '@utils/numberUtils';
 import React from 'react';
 import CustomModal from './CustomModal';
 
-interface MicrophoneDetailModalProps {
+interface AvatarDetailModalProps {
   open: boolean;
   onClose: () => void;
-  microphone: Microphone | null;
+  avatar: Avatar | null;
   userCoins: number;
   isLoading: boolean;
-  onPurchase: (microphoneId: string) => void;
+  onPurchase: (avatarId: string) => void;
   isOwned: boolean;
 }
 
-const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
+const AvatarDetailModal: React.FC<AvatarDetailModalProps> = ({
   open,
   onClose,
-  microphone,
+  avatar,
   userCoins,
   isLoading,
   onPurchase,
@@ -39,9 +39,9 @@ const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
 }) => {
   const theme = useTheme();
 
-  if (!microphone) return null;
+  if (!avatar) return null;
 
-  const canAfford = userCoins >= toNumber(microphone.coinPrice);
+  const canAfford = userCoins >= toNumber(avatar.coinPrice);
 
   const getRarityColor = (rarity: string) => {
     switch (rarity.toLowerCase()) {
@@ -74,8 +74,8 @@ const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
   };
 
   const handlePurchaseClick = () => {
-    if (microphone && !isOwned && canAfford) {
-      onPurchase(microphone.id);
+    if (avatar && !isOwned && canAfford) {
+      onPurchase(avatar.id);
     }
   };
 
@@ -83,8 +83,8 @@ const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
     <CustomModal
       open={open}
       onClose={onClose}
-      title={microphone.name}
-      icon={<FontAwesomeIcon icon={faMicrophone} />}
+      title={avatar.name}
+      icon={<FontAwesomeIcon icon={faUser} />}
       maxWidth="md"
     >
       <Box sx={{ p: 0 }}>
@@ -101,8 +101,8 @@ const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                border: `2px solid ${alpha(getRarityColor(microphone.rarity), 0.3)}`,
-                boxShadow: `0 0 20px ${alpha(getRarityColor(microphone.rarity), 0.2)}`,
+                border: `2px solid ${alpha(getRarityColor(avatar.rarity), 0.3)}`,
+                boxShadow: `0 0 20px ${alpha(getRarityColor(avatar.rarity), 0.2)}`,
               }}
             >
               {isOwned && (
@@ -121,8 +121,8 @@ const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
               )}
               <CardMedia
                 component="img"
-                image={microphone.imageUrl}
-                alt={microphone.name}
+                image={avatar.imageUrl}
+                alt={avatar.name}
                 sx={{
                   width: '85%',
                   height: '85%',
@@ -143,11 +143,11 @@ const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
               {/* Rarity */}
               <Box sx={{ mb: 2 }}>
                 <Chip
-                  label={microphone.rarity}
+                  label={avatar.rarity}
                   sx={{
-                    backgroundColor: alpha(getRarityColor(microphone.rarity), 0.1),
-                    color: getRarityColor(microphone.rarity),
-                    border: `1px solid ${alpha(getRarityColor(microphone.rarity), 0.3)}`,
+                    backgroundColor: alpha(getRarityColor(avatar.rarity), 0.1),
+                    color: getRarityColor(avatar.rarity),
+                    border: `1px solid ${alpha(getRarityColor(avatar.rarity), 0.3)}`,
                     fontWeight: 'bold',
                     textTransform: 'uppercase',
                     fontSize: '0.875rem',
@@ -160,8 +160,8 @@ const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
                       icon={faStar}
                       style={{
                         color:
-                          index < getRarityStars(microphone.rarity)
-                            ? getRarityColor(microphone.rarity)
+                          index < getRarityStars(avatar.rarity)
+                            ? getRarityColor(avatar.rarity)
                             : '#E0E0E0',
                         fontSize: '16px',
                         marginRight: '2px',
@@ -169,7 +169,7 @@ const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
                     />
                   ))}
                   <Typography variant="body2" sx={{ ml: 1, color: 'text.secondary' }}>
-                    {getRarityStars(microphone.rarity)}/5 stars
+                    {getRarityStars(avatar.rarity)}/5 stars
                   </Typography>
                 </Box>
               </Box>
@@ -180,7 +180,7 @@ const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
                   Description
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-                  {microphone.description || 'A premium microphone for your karaoke performances.'}
+                  {avatar.description || 'A unique avatar to represent your karaoke personality.'}
                 </Typography>
               </Box>
 
@@ -198,7 +198,7 @@ const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
                     component="span"
                     sx={{ fontWeight: 'bold', color: 'primary.main' }}
                   >
-                    {formatNumber(microphone.coinPrice)}
+                    {formatNumber(avatar.coinPrice)}
                   </Typography>
                   <Typography variant="body1" color="text.secondary">
                     coins
@@ -226,7 +226,7 @@ const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
                 </Box>
                 {!canAfford && !isOwned && (
                   <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                    You need {formatNumber(toNumber(microphone.coinPrice) - userCoins)} more coins
+                    You need {formatNumber(toNumber(avatar.coinPrice) - userCoins)} more coins
                   </Typography>
                 )}
               </Box>
@@ -243,7 +243,7 @@ const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
                   }}
                 >
                   <Typography variant="body2" color="error" sx={{ fontWeight: 'bold' }}>
-                    Insufficient coins to purchase this microphone.
+                    Insufficient coins to purchase this avatar.
                   </Typography>
                   <Typography variant="body2" color="error" sx={{ mt: 1 }}>
                     Visit the Coin Packages tab to purchase more coins.
@@ -303,4 +303,4 @@ const MicrophoneDetailModal: React.FC<MicrophoneDetailModalProps> = ({
   );
 };
 
-export default MicrophoneDetailModal;
+export default AvatarDetailModal;

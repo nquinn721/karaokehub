@@ -1,3 +1,4 @@
+import { DayOfWeek } from '@components/DayPicker/DayPicker';
 import {
   faCheck,
   faCheckCircle,
@@ -63,7 +64,6 @@ import type {
   AdminVenue,
 } from '@stores/AdminStore';
 import { adminStore, authStore, uiStore } from '@stores/index';
-import { DayOfWeek } from '@components/DayPicker/DayPicker';
 import { observer } from 'mobx-react-lite';
 import React, { useCallback, useEffect, useState } from 'react';
 import AvatarSelectionModal from './AvatarSelectionModal';
@@ -315,12 +315,12 @@ const AdminDataTables: React.FC = observer(() => {
             maximumAge: 600000, // 10 minutes
           });
         });
-        
+
         const location = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         };
-        
+
         setUserLocation(location);
         return location;
       } catch (error) {
@@ -337,7 +337,7 @@ const AdminDataTables: React.FC = observer(() => {
   // Handle location filter toggle
   const handleLocationFilterToggle = async (enabled: boolean) => {
     setUseLocationFilter(enabled);
-    
+
     if (enabled) {
       // Get user location when enabling location filter
       const location = await getCurrentLocation();
@@ -460,7 +460,13 @@ const AdminDataTables: React.FC = observer(() => {
           );
         } else {
           // Use regular admin fetching
-          await adminStore.fetchShows(page + 1, rowsPerPage, search, currentSortBy, currentSortOrder);
+          await adminStore.fetchShows(
+            page + 1,
+            rowsPerPage,
+            search,
+            currentSortBy,
+            currentSortOrder,
+          );
         }
         break;
       case 'djs':
@@ -915,6 +921,7 @@ const AdminDataTables: React.FC = observer(() => {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell>Profile Image</TableCell>
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.users === 'name'}
@@ -1013,19 +1020,59 @@ const AdminDataTables: React.FC = observer(() => {
             <TableBody>
               {adminStore.isLoadingTable ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
+                  <TableCell colSpan={10} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
               ) : (
                 adminStore.users?.items.map((user: AdminUser) => (
                   <TableRow key={user.id}>
+                    <TableCell>
+                      {user.profileImageUrl ? (
+                        <Tooltip title="Click to view larger OAuth profile image">
+                          <Box
+                            component="img"
+                            src={user.profileImageUrl}
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              borderRadius: '50%',
+                              cursor: 'pointer',
+                              border: `2px solid ${theme.palette.primary.main}`,
+                              transition: 'transform 0.2s ease-in-out',
+                              '&:hover': {
+                                transform: 'scale(1.1)',
+                              },
+                            }}
+                            alt="OAuth Profile Image"
+                            onClick={() =>
+                              handleViewUserImage(user.profileImageUrl!, user.name || 'User')
+                            }
+                          />
+                        </Tooltip>
+                      ) : (
+                        <Box
+                          sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: '50%',
+                            backgroundColor: theme.palette.grey[200],
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: `2px solid ${theme.palette.divider}`,
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faUser} color={theme.palette.grey[400]} />
+                        </Box>
+                      )}
+                    </TableCell>
                     <TableCell>{user.name || 'N/A'}</TableCell>
                     <TableCell>{user.stageName || 'N/A'}</TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         {user.avatar ? (
-                          <Tooltip title="Click to view larger image">
+                          <Tooltip title="Click to view larger avatar image">
                             <Box
                               component="img"
                               src={user.avatar}
@@ -1345,7 +1392,7 @@ const AdminDataTables: React.FC = observer(() => {
             }
             label="Show nearby venues only (100 miles)"
           />
-          
+
           {useLocationFilter && (
             <>
               <Typography variant="body2" color="text.secondary">
@@ -1370,7 +1417,7 @@ const AdminDataTables: React.FC = observer(() => {
                       variant={isSelected ? 'contained' : 'outlined'}
                       size="small"
                       onClick={() => handleDayChange(day)}
-                      sx={{ 
+                      sx={{
                         minWidth: 48,
                         fontSize: '0.75rem',
                         bgcolor: isSelected ? 'primary.main' : 'transparent',

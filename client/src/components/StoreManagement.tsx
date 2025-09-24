@@ -1004,7 +1004,6 @@ const StoreManagement: React.FC = observer(() => {
     if (!editDialog.item) return;
 
     setEditLoading(true);
-    adminStore.setTableError(null);
 
     try {
       console.log(`📝 Updating ${editDialog.type}:`, editDialog.item.id, editFormData);
@@ -1022,10 +1021,11 @@ const StoreManagement: React.FC = observer(() => {
       }
 
       console.log(`✅ Successfully updated ${editDialog.type}: ${editFormData.name}`);
+      uiStore.addNotification(`Successfully updated ${editDialog.type}: ${editFormData.name}`, 'success');
       setEditDialog({ open: false, item: null, type: 'avatar' });
     } catch (error: any) {
       console.error('Edit error in component:', error);
-      // Error will be shown via adminStore.tableError
+      uiStore.addNotification(`Failed to update ${editDialog.type}. Please try again.`, 'error');
     } finally {
       setEditLoading(false);
     }
@@ -1095,12 +1095,12 @@ const StoreManagement: React.FC = observer(() => {
   const handleAiSuggestion = async () => {
     // Only provide AI suggestions for avatars and microphones, not coin packages
     if (addDialog.type === 'coinPackage') {
-      adminStore.setTableError('AI suggestions are not available for coin packages');
+      uiStore.addNotification('AI suggestions are not available for coin packages', 'warning');
       return;
     }
 
     if (!addFormData.rarity) {
-      adminStore.setTableError('Please select a rarity first');
+      uiStore.addNotification('Please select a rarity first', 'warning');
       return;
     }
 
@@ -1115,7 +1115,7 @@ const StoreManagement: React.FC = observer(() => {
       console.log('🤖 AI suggestions received:', suggestions);
     } catch (error) {
       console.error('Error getting AI suggestions:', error);
-      adminStore.setTableError('Failed to get AI suggestions');
+      uiStore.addNotification('Failed to get AI suggestions', 'error');
     } finally {
       setSuggestionLoading(false);
     }
@@ -1144,17 +1144,16 @@ const StoreManagement: React.FC = observer(() => {
   const confirmAdd = async () => {
     // Validation based on item type
     if (!addFormData.name) {
-      adminStore.setTableError('Please provide a name');
+      uiStore.addNotification('Please provide a name', 'warning');
       return;
     }
 
     if (addDialog.type !== 'coinPackage' && !selectedFile && !addFormData.imageUrl) {
-      adminStore.setTableError('Please select an image file or provide an image URL');
+      uiStore.addNotification('Please select an image file or provide an image URL', 'warning');
       return;
     }
 
     setAddLoading(true);
-    adminStore.setTableError(null);
 
     try {
       console.log(`➕ Creating new ${addDialog.type}:`, addFormData);
@@ -1174,10 +1173,11 @@ const StoreManagement: React.FC = observer(() => {
       }
 
       console.log(`✅ Successfully created ${addDialog.type}: ${addFormData.name}`);
+      uiStore.addNotification(`Successfully created ${addDialog.type}: ${addFormData.name}`, 'success');
       setAddDialog({ open: false, type: 'avatar' });
     } catch (error: any) {
       console.error('Add error in component:', error);
-      // Error will be shown via adminStore.tableError
+      uiStore.addNotification(`Failed to create ${addDialog.type}`, 'error');
     } finally {
       setAddLoading(false);
     }
@@ -1196,9 +1196,6 @@ const StoreManagement: React.FC = observer(() => {
 
     setDeleteLoading(true);
 
-    // Clear any previous errors
-    adminStore.setTableError(null);
-
     try {
       console.log(`🗑️ Confirming delete for ${deleteDialog.type}:`, deleteDialog.item);
 
@@ -1215,6 +1212,7 @@ const StoreManagement: React.FC = observer(() => {
       }
 
       console.log(`✅ Successfully deleted ${deleteDialog.type}: ${deleteDialog.item.name}`);
+      uiStore.addNotification(`Successfully deleted ${deleteDialog.type}: ${deleteDialog.item.name}`, 'success');
       setDeleteDialog({ open: false, item: null, type: 'avatar' });
     } catch (error: any) {
       console.error('Delete error in component:', error);
@@ -1230,8 +1228,10 @@ const StoreManagement: React.FC = observer(() => {
           ...prev,
           constraintError: error.message,
         }));
+      } else {
+        // Show generic error for other failures
+        uiStore.addNotification(`Failed to delete ${deleteDialog.type}`, 'error');
       }
-      // Error will be shown via adminStore.tableError
     } finally {
       setDeleteLoading(false);
     }
@@ -1565,12 +1565,6 @@ const StoreManagement: React.FC = observer(() => {
 
   return (
     <Box sx={{ width: '100%' }}>
-      {adminStore.tableError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {adminStore.tableError}
-        </Alert>
-      )}
-
       <Paper
         elevation={4}
         sx={{

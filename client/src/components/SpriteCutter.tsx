@@ -161,8 +161,9 @@ const SpriteCutter: React.FC = observer(() => {
     setColumns(suggestedCols);
     setRows(suggestedRows);
 
-    alert(
-      `Auto-detected grid: ${suggestedCols} columns × ${suggestedRows} rows\nImage dimensions: ${width} × ${height}px\nTotal avatars: ${suggestedCols * suggestedRows}`,
+    uiStore.addNotification(
+      `Auto-detected grid: ${suggestedCols} columns × ${suggestedRows} rows. Image dimensions: ${width} × ${height}px. Total avatars: ${suggestedCols * suggestedRows}`,
+      'info'
     );
   };
 
@@ -280,8 +281,9 @@ const SpriteCutter: React.FC = observer(() => {
 
     setProcessedAvatars(newProcessedAvatars);
     setIsProcessing(false);
-    alert(
+    uiStore.addNotification(
       `Successfully processed ${newProcessedAvatars.length} avatars from ${rows}x${columns} grid!`,
+      'success'
     );
   };
 
@@ -305,12 +307,12 @@ const SpriteCutter: React.FC = observer(() => {
       }, index * 200); // 200ms delay between downloads
     });
 
-    alert(`Downloading ${processedAvatars.length} avatars with delays to avoid browser limits...`);
+    uiStore.addNotification(`Downloading ${processedAvatars.length} avatars with delays to avoid browser limits...`, 'info');
   };
 
   const downloadAsZip = async () => {
     if (processedAvatars.length === 0) {
-      alert('Please process the sprite sheet first!');
+      uiStore.addNotification('Please process the sprite sheet first!', 'warning');
       return;
     }
 
@@ -338,10 +340,10 @@ const SpriteCutter: React.FC = observer(() => {
       link.click();
       document.body.removeChild(link);
 
-      alert(`Successfully downloaded ${processedAvatars.length} avatars as ZIP file!`);
+      uiStore.addNotification(`Successfully downloaded ${processedAvatars.length} avatars as ZIP file!`, 'success');
     } catch (error) {
       console.error('Error creating ZIP:', error);
-      alert('Error creating ZIP file. Please try individual downloads.');
+      uiStore.addNotification('Error creating ZIP file. Please try individual downloads.', 'error');
     } finally {
       setIsDownloading(false);
     }
@@ -352,7 +354,7 @@ const SpriteCutter: React.FC = observer(() => {
   // Falls back to traditional download for other browsers (Firefox, Safari)
   const saveProcessedSprite = async () => {
     if (!originalImage) {
-      alert('Please upload a sprite sheet first!');
+      uiStore.addNotification('Please upload a sprite sheet first!', 'warning');
       return;
     }
 
@@ -361,7 +363,7 @@ const SpriteCutter: React.FC = observer(() => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        alert('Canvas not supported');
+        uiStore.addNotification('Canvas not supported', 'error');
         return;
       }
 
@@ -374,7 +376,7 @@ const SpriteCutter: React.FC = observer(() => {
       });
 
       if (!blob) {
-        alert('Failed to create image file');
+        uiStore.addNotification('Failed to create image file', 'error');
         return;
       }
 
@@ -397,7 +399,7 @@ const SpriteCutter: React.FC = observer(() => {
           await writable.write(blob);
           await writable.close();
 
-          alert('File saved successfully!');
+          uiStore.addNotification('File saved successfully!', 'success');
         } catch (err: any) {
           if (err.name !== 'AbortError') {
             console.error('Error saving file:', err);
@@ -411,7 +413,7 @@ const SpriteCutter: React.FC = observer(() => {
       }
     } catch (error) {
       console.error('Error processing image:', error);
-      alert('Failed to process image');
+      uiStore.addNotification('Failed to process image', 'error');
     }
   };
 
@@ -432,18 +434,18 @@ const SpriteCutter: React.FC = observer(() => {
   // Function to undo changes to original image
   const undoChanges = () => {
     if (!originalUnmodifiedImage) {
-      alert('No original image to restore!');
+      uiStore.addNotification('No original image to restore!', 'warning');
       return;
     }
 
     setOriginalImage(originalUnmodifiedImage);
-    alert('✅ Image restored to original state!');
+    uiStore.addNotification('Image restored to original state!', 'success');
   };
 
   // Function to remove background from the original sprite image
   const removeBackgroundsFromAvatars = async () => {
     if (!originalImage) {
-      alert('Please upload a sprite sheet first!');
+      uiStore.addNotification('Please upload a sprite sheet first!', 'warning');
       return;
     }
 
@@ -500,12 +502,12 @@ const SpriteCutter: React.FC = observer(() => {
       const newImg = new Image();
       newImg.onload = () => {
         setOriginalImage(newImg);
-        alert('✅ Background removed from sprite sheet!');
+        uiStore.addNotification('Background removed from sprite sheet!', 'success');
       };
       newImg.src = canvas.toDataURL();
     } catch (error) {
       console.error('Error removing background:', error);
-      alert('❌ Failed to remove background. Please try again.');
+      uiStore.addNotification('Failed to remove background. Please try again.', 'error');
     } finally {
       setIsRemovingBackgrounds(false);
     }
@@ -514,7 +516,7 @@ const SpriteCutter: React.FC = observer(() => {
   // Function to remove shadows from the original sprite image
   const removeShadowsFromAvatars = async () => {
     if (!originalImage) {
-      alert('Please upload a sprite sheet first!');
+      uiStore.addNotification('Please upload a sprite sheet first!', 'warning');
       return;
     }
 
@@ -606,12 +608,12 @@ const SpriteCutter: React.FC = observer(() => {
       const newImg = new Image();
       newImg.onload = () => {
         setOriginalImage(newImg);
-        alert('✅ Shadows removed from sprite sheet!');
+        uiStore.addNotification('Shadows removed from sprite sheet!', 'success');
       };
       newImg.src = canvas.toDataURL();
     } catch (error) {
       console.error('Error removing shadows:', error);
-      alert('❌ Failed to remove shadows. Please try again.');
+      uiStore.addNotification('Failed to remove shadows. Please try again.', 'error');
     } finally {
       setIsRemovingBackgrounds(false);
     }
@@ -619,7 +621,7 @@ const SpriteCutter: React.FC = observer(() => {
 
   const generateConfig = () => {
     if (processedAvatars.length === 0) {
-      alert('Please process the sprite sheet first!');
+      uiStore.addNotification('Please process the sprite sheet first!', 'warning');
       return;
     }
 
@@ -727,7 +729,7 @@ const SpriteCutter: React.FC = observer(() => {
 
     // Copy to clipboard
     navigator.clipboard.writeText(config).then(() => {
-      alert('Configuration copied to clipboard!');
+      uiStore.addNotification('Configuration copied to clipboard!', 'success');
     });
 
     setShowConfig(true);

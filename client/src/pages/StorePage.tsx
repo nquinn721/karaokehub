@@ -1,3 +1,4 @@
+import AvatarDetailModal from '@components/AvatarDetailModal';
 import { CoinDisplay } from '@components/CoinDisplay';
 import CoinPackagePurchaseModal from '@components/CoinPackagePurchaseModal';
 import CustomModal from '@components/CustomModal';
@@ -22,7 +23,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { CoinPackage, Microphone, storeStore } from '@stores/StoreStore';
+import { Avatar, CoinPackage, Microphone, storeStore } from '@stores/StoreStore';
 import { userStore } from '@stores/UserStore';
 import { uiStore } from '@stores/index';
 import { formatNumber, formatPrice, isGreaterThan } from '@utils/numberUtils';
@@ -58,6 +59,8 @@ const StorePage: React.FC = observer(() => {
   const [selectedMicrophone, setSelectedMicrophone] = useState<Microphone | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailMicrophone, setDetailMicrophone] = useState<Microphone | null>(null);
+  const [avatarDetailModalOpen, setAvatarDetailModalOpen] = useState(false);
+  const [detailAvatar, setDetailAvatar] = useState<Avatar | null>(null);
   const [coinPackageModalOpen, setCoinPackageModalOpen] = useState(false);
   const [selectedCoinPackage, setSelectedCoinPackage] = useState<CoinPackage | null>(null);
   const [successModalOpen, setSuccessModalOpen] = useState(false);
@@ -231,6 +234,25 @@ const StorePage: React.FC = observer(() => {
   const handleCloseDetailModal = () => {
     setDetailModalOpen(false);
     setDetailMicrophone(null);
+  };
+
+  const handleAvatarDetail = (avatarId: string) => {
+    const avatar = storeStore.storeAvatars.find((av) => av.id === avatarId);
+    if (avatar) {
+      setDetailAvatar(avatar);
+      setAvatarDetailModalOpen(true);
+    }
+  };
+
+  const handleAvatarDetailModalPurchase = (avatarId: string) => {
+    // Close detail modal and purchase directly
+    setAvatarDetailModalOpen(false);
+    handleAvatarPurchase(avatarId);
+  };
+
+  const handleCloseAvatarDetailModal = () => {
+    setAvatarDetailModalOpen(false);
+    setDetailAvatar(null);
   };
 
   const handleAvatarPurchase = async (avatarId: string) => {
@@ -586,9 +608,9 @@ const StorePage: React.FC = observer(() => {
                           </Box>
                         </CardContent>
                         <CardActions sx={{ justifyContent: 'center', pb: 2 }}>
-                          <Button 
-                            variant={isOwned ? "outlined" : "contained"} 
-                            fullWidth 
+                          <Button
+                            variant={isOwned ? 'outlined' : 'contained'}
+                            fullWidth
                             onClick={(e) => {
                               e.stopPropagation(); // Prevent card click
                               handleMicrophoneDetail(mic.id);
@@ -634,6 +656,7 @@ const StorePage: React.FC = observer(() => {
                   return (
                     <Grid item xs={12} sm={6} md={4} lg={3} key={avatar.id}>
                       <Card
+                        onClick={() => handleAvatarDetail(avatar.id)}
                         sx={{
                           height: '100%',
                           display: 'flex',
@@ -643,6 +666,7 @@ const StorePage: React.FC = observer(() => {
                             : '1px solid',
                           borderColor: isEquipped ? 'primary.main' : 'divider',
                           transition: 'all 0.3s ease',
+                          cursor: 'pointer',
                           '&:hover': {
                             transform: 'translateY(-4px)',
                             boxShadow: theme.shadows[8],
@@ -804,6 +828,16 @@ const StorePage: React.FC = observer(() => {
         isLoading={loading}
         onPurchase={handleDetailModalPurchase}
         isOwned={detailMicrophone ? storeStore.doesUserOwnMicrophone(detailMicrophone.id) : false}
+      />
+
+      <AvatarDetailModal
+        open={avatarDetailModalOpen}
+        onClose={handleCloseAvatarDetailModal}
+        avatar={detailAvatar}
+        userCoins={storeStore.coins}
+        isLoading={loading}
+        onPurchase={handleAvatarDetailModalPurchase}
+        isOwned={detailAvatar ? storeStore.userAvatars.some(ua => ua.avatarId === detailAvatar.id) : false}
       />
 
       <CoinPackagePurchaseModal

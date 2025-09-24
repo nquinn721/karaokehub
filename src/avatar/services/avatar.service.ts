@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
 import { Avatar } from '../entities/avatar.entity';
-import { Microphone, MicrophoneType, MicrophoneRarity } from '../entities/microphone.entity';
+import { Microphone, MicrophoneRarity, MicrophoneType } from '../entities/microphone.entity';
 import { Outfit } from '../entities/outfit.entity';
 import { Shoes } from '../entities/shoes.entity';
 import { UserAvatar } from '../entities/user-avatar.entity';

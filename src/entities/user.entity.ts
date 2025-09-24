@@ -41,6 +41,9 @@ export class User {
   @Column({ nullable: true })
   providerId: string;
 
+  @Column({ nullable: true })
+  profileImageUrl: string;
+
   @Column({ default: true })
   isActive: boolean;
 

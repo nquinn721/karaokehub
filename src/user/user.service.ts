@@ -17,6 +17,7 @@ export interface UpdateUserDto {
   name?: string;
   stageName?: string;
   password?: string;
+  profileImageUrl?: string;
   isActive?: boolean;
   isAdmin?: boolean;
 }
@@ -39,7 +40,7 @@ export class UserService {
     const user = this.userRepository.create(createUserDto);
     try {
       const savedUser = await this.userRepository.save(user);
-      
+
       // Setup basic equipment for new user (avatar and microphone)
       try {
         await this.avatarService.assignBasicMicrophones(savedUser.id);
@@ -47,7 +48,7 @@ export class UserService {
         console.error('Failed to assign basic equipment to new user:', equipmentError);
         // Don't fail user creation if equipment assignment fails
       }
-      
+
       return savedUser;
     } catch (error) {
       // Handle database constraint violations

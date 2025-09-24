@@ -241,19 +241,17 @@ export class AuthService {
           // Don't fail OAuth registration if microphone assignment fails
         }
 
-        // Create avatar from provider photo if available
-        const providerAvatar = photos?.[0]?.value;
-        if (providerAvatar) {
+        // Store profile image from provider if available
+        const providerProfileImage = photos?.[0]?.value;
+        if (providerProfileImage) {
           try {
-            // For new users, we can safely set avatar from OAuth provider
-            const userAvatar = await this.avatarService.getUserAvatar(user.id);
-            await this.avatarService.updateUserAvatar(user.id, {
-              baseAvatarId: providerAvatar,
+            await this.userService.update(user.id, {
+              profileImageUrl: providerProfileImage,
             });
-            console.log('🟢 [AUTH_SERVICE] Set new user avatar from provider photo');
-          } catch (avatarError) {
-            console.error('🔴 [AUTH_SERVICE] Failed to create avatar:', avatarError);
-            // Continue without avatar - the default one will be created later
+            console.log('🟢 [AUTH_SERVICE] Stored profile image from OAuth provider');
+          } catch (imageError) {
+            console.error('🔴 [AUTH_SERVICE] Failed to store profile image:', imageError);
+            // Continue without profile image
           }
         }
       } catch (error) {
@@ -267,47 +265,34 @@ export class AuthService {
     } else {
       console.log('🟢 [AUTH_SERVICE] User exists, handling provider linking/updates');
 
-      // If this is a Facebook login and user was found by email,
-      // we need to decide how to handle provider linking
+      // Handle profile image updates for existing users
+      const updateData: any = {};
+      const providerProfileImage = photos?.[0]?.value;
+
+      // Always capture/update profile image if:
+      // 1. User doesn't have a profile image yet, OR
+      // 2. The provider image is different from what we have stored
+      if (providerProfileImage) {
+        const shouldUpdateImage =
+          !user.profileImageUrl || user.profileImageUrl !== providerProfileImage;
+
+        if (shouldUpdateImage) {
+          updateData.profileImageUrl = providerProfileImage;
+          console.log('🔍 [AUTH_SERVICE] Updating profile image from OAuth provider:', {
+            provider,
+            oldImage: user.profileImageUrl || 'none',
+            newImage: providerProfileImage,
+          });
+        }
+      }
+
+      // If this is a Facebook login and user was found by email with different provider
       if (provider === 'facebook' && email && user.provider !== 'facebook') {
         console.log('🔍 [AUTH_SERVICE] Facebook login for user with different provider:', {
           existingProvider: user.provider,
           userEmail: user.email,
           facebookId: id,
         });
-
-        // For existing users logging in with Facebook, we'll:
-        // 1. Keep their original provider (Google/GitHub) for continuity
-        // 2. Update their profile with Facebook data if it's better/newer
-        // 3. Log this as a successful Facebook login
-
-        const updateData: any = {};
-
-        // Update avatar if Facebook has one and user doesn't have a custom avatar
-        const providerAvatar = photos?.[0]?.value;
-        if (providerAvatar) {
-          try {
-            const userHasCustomAvatar = await hasCustomAvatar(user.id);
-            if (!userHasCustomAvatar) {
-              const currentAvatar = await this.avatarService.getUserAvatar(user.id);
-              if (!currentAvatar || currentAvatar.avatarId !== providerAvatar) {
-                await this.avatarService.updateUserAvatar(user.id, {
-                  baseAvatarId: providerAvatar,
-                });
-                console.log('🔍 [AUTH_SERVICE] Updated avatar from Facebook (no custom avatar):', {
-                  oldAvatar: currentAvatar?.avatarId || 'none',
-                  newAvatar: providerAvatar,
-                });
-              }
-            } else {
-              console.log(
-                '🔒 [AUTH_SERVICE] Preserving user custom avatar, skipping Facebook avatar update',
-              );
-            }
-          } catch (avatarError) {
-            console.error('🔴 [AUTH_SERVICE] Failed to update avatar:', avatarError);
-          }
-        }
 
         // Update name if Facebook has a better one
         if (displayName && displayName !== user.name && displayName.length > user.name.length) {
@@ -317,78 +302,25 @@ export class AuthService {
             newName: displayName,
           });
         }
+      }
 
-        if (Object.keys(updateData).length > 0) {
+      // Apply any updates to the user
+      if (Object.keys(updateData).length > 0) {
+        try {
           user = await this.userService.update(user.id, updateData);
-          console.log('🟢 [AUTH_SERVICE] User profile updated with Facebook data:', updateData);
-        }
-
-        console.log(
-          '🟢 [AUTH_SERVICE] Facebook login successful for existing user - provider linking complete',
-        );
-      } else if (provider === user.provider) {
-        // Same provider login - only update avatar if user doesn't have a custom one
-        const providerAvatar = photos?.[0]?.value;
-        if (providerAvatar) {
-          try {
-            const userHasCustomAvatar = await hasCustomAvatar(user.id);
-            if (!userHasCustomAvatar) {
-              const currentAvatar = await this.avatarService.getUserAvatar(user.id);
-              if (!currentAvatar || currentAvatar.avatarId !== providerAvatar) {
-                await this.avatarService.updateUserAvatar(user.id, {
-                  baseAvatarId: providerAvatar,
-                });
-                console.log(
-                  '🔍 [AUTH_SERVICE] Updated user avatar for same provider (no custom avatar):',
-                  {
-                    provider,
-                    oldAvatar: currentAvatar?.avatarId || 'none',
-                    newAvatar: providerAvatar,
-                  },
-                );
-              }
-            } else {
-              console.log(
-                '🔒 [AUTH_SERVICE] Preserving user custom avatar, skipping provider avatar update',
-              );
-            }
-          } catch (avatarError) {
-            console.error('🔴 [AUTH_SERVICE] Failed to update avatar:', avatarError);
-          }
-        }
-      } else {
-        console.log('🔍 [AUTH_SERVICE] Different provider login - email match found:', {
-          existingProvider: user.provider,
-          newProvider: provider,
-          userEmail: user.email,
-        });
-
-        // Handle case where user has different provider but same email
-        // Only update avatar if user doesn't have a custom one
-        const providerAvatar = photos?.[0]?.value;
-        if (providerAvatar) {
-          try {
-            const userHasCustomAvatar = await hasCustomAvatar(user.id);
-            if (!userHasCustomAvatar) {
-              const currentAvatar = await this.avatarService.getUserAvatar(user.id);
-              if (!currentAvatar || currentAvatar.avatarId !== providerAvatar) {
-                await this.avatarService.updateUserAvatar(user.id, {
-                  baseAvatarId: providerAvatar,
-                });
-                console.log(
-                  '🔍 [AUTH_SERVICE] Updated avatar for different provider login (no custom avatar)',
-                );
-              }
-            } else {
-              console.log(
-                '🔒 [AUTH_SERVICE] Preserving user custom avatar for different provider login',
-              );
-            }
-          } catch (avatarError) {
-            console.error('🔴 [AUTH_SERVICE] Failed to update avatar:', avatarError);
-          }
+          console.log('🟢 [AUTH_SERVICE] User profile updated with OAuth data:', updateData);
+        } catch (updateError) {
+          console.error('� [AUTH_SERVICE] Failed to update user profile:', updateError);
+          // Continue with login even if profile update fails
         }
       }
+
+      // Log successful OAuth login
+      console.log('🟢 [AUTH_SERVICE] OAuth login successful for existing user:', {
+        provider,
+        userId: user.id,
+        profileImageUpdated: !!updateData.profileImageUrl,
+      });
     }
 
     console.log('🟢 [AUTH_SERVICE] OAuth user validation completed successfully:', {
