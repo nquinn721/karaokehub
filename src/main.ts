@@ -347,6 +347,24 @@ async function bootstrap() {
     console.log(`📱 KaraokeHub Frontend: ${urlService.getFrontendUrl()}`);
     console.log(`🌐 WebSocket connection: ws://localhost:${port}`);
     console.log(`🩺 Health check: http://localhost:${port}/health`);
+    
+    // Add a simple health check test to ensure the server is responding
+    console.log('🔍 Testing health endpoint...');
+    try {
+      const http = require('http');
+      const healthCheckRequest = http.get(`http://localhost:${port}/api/health`, (res) => {
+        console.log(`✅ Health check responded with status: ${res.statusCode}`);
+      });
+      healthCheckRequest.on('error', (err) => {
+        console.error('❌ Health check failed:', err.message);
+      });
+      healthCheckRequest.setTimeout(5000, () => {
+        console.error('⏰ Health check timed out');
+        healthCheckRequest.destroy();
+      });
+    } catch (healthError) {
+      console.error('❌ Health check test failed:', healthError.message);
+    }
   } catch (error) {
     console.error('❌ Failed to start KaraokeHub application:', error);
     console.error('📊 Error details:', {

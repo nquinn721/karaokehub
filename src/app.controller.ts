@@ -19,11 +19,12 @@ export class AppController {
   }
 
   @Get('health')
-  getReadiness(): { status: string; timestamp: string } {
+  getReadiness(): { status: string; timestamp: string; uptime: number } {
     // Simple readiness check that doesn't require database
     return {
       status: 'ready',
       timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
     };
   }
 
