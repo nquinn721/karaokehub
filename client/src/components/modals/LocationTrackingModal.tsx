@@ -22,8 +22,8 @@ import {
 import { Show } from '@stores/ShowStore';
 import { apiStore } from '@stores/index';
 import { geocodingService } from '@utils/geocoding';
-import { getCurrentDay, formatDistance as formatDistanceUtil } from '../../utils/dateUtils';
 import React, { useCallback, useEffect, useState } from 'react';
+import { formatDistance as formatDistanceUtil, getCurrentDay } from '../../utils/dateUtils';
 
 interface LocationTrackingModalProps {
   open: boolean;

@@ -339,12 +339,12 @@ async function analyzePageWithGemini(
     const pageText = await page.evaluate(() => {
       // Get all visible text from dialogs, modals, and prominent elements
       const elements = [
-        ...document.querySelectorAll('[role="dialog"]'),
-        ...document.querySelectorAll('.modal'),
-        ...document.querySelectorAll('[style*="position: fixed"]'),
-        ...document.querySelectorAll('[style*="z-index"]'),
-        ...document.querySelectorAll('button'),
-        ...document.querySelectorAll('[aria-label]'),
+        ...Array.from(document.querySelectorAll('[role="dialog"]')),
+        ...Array.from(document.querySelectorAll('.modal')),
+        ...Array.from(document.querySelectorAll('[style*="position: fixed"]')),
+        ...Array.from(document.querySelectorAll('[style*="z-index"]')),
+        ...Array.from(document.querySelectorAll('button')),
+        ...Array.from(document.querySelectorAll('[aria-label]')),
       ];
 
       const textContent = [];

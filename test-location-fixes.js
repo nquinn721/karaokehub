@@ -6,7 +6,7 @@
 
 function testLocationFixes() {
   console.log('🧪 Testing Location Tracking Fixes');
-  console.log('=' .repeat(60));
+  console.log('='.repeat(60));
 
   // Test 1: Current day detection
   console.log('\n📅 Testing current day detection:');
@@ -17,8 +17,8 @@ function testLocationFixes() {
   // Test 2: Distance formatting
   console.log('\n📏 Testing distance formatting:');
   const testDistances = [5, 50, 500, 1500, 5000, 10000]; // meters
-  
-  testDistances.forEach(distance => {
+
+  testDistances.forEach((distance) => {
     const formatted = formatDistance(distance);
     console.log(`   ${distance}m → ${formatted}`);
   });
@@ -30,7 +30,7 @@ function testLocationFixes() {
   const mockLng = -83.056406;
   const mockRadius = 10;
   const mockMaxMiles = 100;
-  
+
   // This is what the fixed proximityCheck URL should look like
   const expectedUrl = `/location/proximity-check?lat=${mockLat}&lng=${mockLng}&radius=${mockRadius}&maxMiles=${mockMaxMiles}&day=${currentDay}`;
   console.log(`   Expected URL: ${expectedUrl}`);
@@ -47,7 +47,7 @@ function testLocationFixes() {
 
   // Test 5: Expected behavior
   console.log('\n🎯 Expected behavior improvements:');
-  console.log('   • Location tracking will only show TODAY\'s karaoke shows');
+  console.log("   • Location tracking will only show TODAY's karaoke shows");
   console.log('   • Distance calculations will be more accurate using Google Maps');
   console.log('   • When at Crescent Lounge, it should show 0m-50m distance');
   console.log('   • Show filtering will match current day of week');
@@ -59,7 +59,7 @@ function testLocationFixes() {
 // Mock test without imports for standalone execution
 function mockTestLocationFixes() {
   console.log('🧪 Mock Testing Location Tracking Fixes');
-  console.log('=' .repeat(60));
+  console.log('='.repeat(60));
 
   // Mock current day
   const today = new Date();
@@ -72,8 +72,8 @@ function mockTestLocationFixes() {
   // Mock distance formatting
   const testDistances = [5, 50, 500, 1500, 5000, 10000]; // meters
   console.log('\n📏 Distance formatting test:');
-  
-  testDistances.forEach(distance => {
+
+  testDistances.forEach((distance) => {
     let formatted;
     if (distance < 1000) {
       formatted = `${Math.round(distance)}m`;

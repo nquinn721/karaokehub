@@ -2,8 +2,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import * as compression from 'compression';
-import * as cookieParser from 'cookie-parser';
+import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import * as express from 'express';
 import helmet from 'helmet';
 import { join } from 'path';
@@ -347,7 +347,7 @@ async function bootstrap() {
     console.log(`📱 KaraokeHub Frontend: ${urlService.getFrontendUrl()}`);
     console.log(`🌐 WebSocket connection: ws://localhost:${port}`);
     console.log(`🩺 Health check: http://localhost:${port}/health`);
-    
+
     // Add a simple health check test to ensure the server is responding
     console.log('🔍 Testing health endpoint...');
     try {

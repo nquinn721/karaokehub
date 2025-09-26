@@ -164,7 +164,9 @@ export class GeocodingService {
     // For very short distances (< 0.01 miles / ~50 feet), use Haversine as it's more accurate
     const haversineDistance = this.calculateHaversineDistance(lat1, lng1, lat2, lng2);
     if (haversineDistance < 0.01) {
-      this.logger.debug(`Using Haversine for very short distance: ${haversineDistance.toFixed(4)} miles`);
+      this.logger.debug(
+        `Using Haversine for very short distance: ${haversineDistance.toFixed(4)} miles`,
+      );
       return haversineDistance;
     }
 
@@ -176,7 +178,7 @@ export class GeocodingService {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         // 5 second timeout
         signal: AbortSignal.timeout(5000),

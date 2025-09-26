@@ -669,7 +669,7 @@ export class KaraokeParserService {
       const nameSelectors = ['h1', '[data-testid*="name"]', 'title'];
       for (const selector of nameSelectors) {
         const elements = document.querySelectorAll(selector);
-        for (const element of elements) {
+        for (const element of Array.from(elements)) {
           if (element && element.textContent.trim()) {
             data.name = element.textContent.trim();
             break;
@@ -4827,7 +4827,7 @@ Return ONLY valid JSON:
         const seeMoreButtons = document.querySelectorAll('button, span, div');
         let seeMoreClicked = false;
 
-        for (const element of seeMoreButtons) {
+        for (const element of Array.from(seeMoreButtons)) {
           const text = element.textContent?.toLowerCase() || '';
           if (text.includes('see more') || text.includes('more') || text.includes('...more')) {
             try {

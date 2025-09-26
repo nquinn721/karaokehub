@@ -574,7 +574,13 @@ class ApiStore {
         if (day) url += `&day=${day}`;
         return url;
       },
-      proximityCheck: (lat: number, lng: number, radius?: number, maxMiles?: number, day?: string) => {
+      proximityCheck: (
+        lat: number,
+        lng: number,
+        radius?: number,
+        maxMiles?: number,
+        day?: string,
+      ) => {
         let url = `/location/proximity-check?lat=${lat}&lng=${lng}`;
         if (radius) url += `&radius=${radius}`;
         if (maxMiles) url += `&maxMiles=${maxMiles}`;
