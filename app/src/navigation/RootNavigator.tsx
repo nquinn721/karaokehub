@@ -5,6 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { observer } from 'mobx-react-lite';
 
 // Screens
+import AvatarCustomizationScreen from '../screens/AvatarCustomizationScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import ImageUploadScreen from '../screens/ImageUploadScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -73,6 +74,41 @@ const SubmitStack = () => (
       component={ManualEntryScreen}
       options={{
         title: 'Manual Entry',
+      }}
+    />
+  </Stack.Navigator>
+);
+
+// Store Stack for store-related screens
+const StoreStack = () => (
+  <Stack.Navigator
+    screenOptions={{
+      headerShown: true,
+      headerStyle: {
+        backgroundColor: '#1E1E1E',
+        borderBottomWidth: 1,
+        borderBottomColor: '#333333',
+      },
+      headerTintColor: '#FFFFFF',
+      headerTitleStyle: {
+        fontWeight: '600',
+      },
+      cardStyle: { backgroundColor: '#121212' },
+    }}
+  >
+    <Stack.Screen
+      name="StoreHome"
+      component={StoreScreen}
+      options={{
+        title: 'Store',
+        headerShown: false, // Hide header for main store screen
+      }}
+    />
+    <Stack.Screen
+      name="AvatarCustomization"
+      component={AvatarCustomizationScreen}
+      options={{
+        title: 'Avatar Customization',
       }}
     />
   </Stack.Navigator>
@@ -166,7 +202,7 @@ const MainTabs = () => (
     />
     <Tab.Screen
       name="Store"
-      component={(props: any) => <AuthRequired component={StoreScreen} {...props} />}
+      component={(props: any) => <AuthRequired component={StoreStack} {...props} />}
       options={{ title: 'Store' }}
     />
     <Tab.Screen

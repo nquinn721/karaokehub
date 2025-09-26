@@ -22,6 +22,7 @@ import {
 import { Show } from '@stores/ShowStore';
 import { apiStore } from '@stores/index';
 import { geocodingService } from '@utils/geocoding';
+import { getCurrentDay, formatDistance as formatDistanceUtil } from '../../utils/dateUtils';
 import React, { useCallback, useEffect, useState } from 'react';
 
 interface LocationTrackingModalProps {
@@ -103,6 +104,9 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
 
       setLocation(userLocation);
 
+      // Get current day for filtering shows
+      const currentDay = getCurrentDay();
+
       // Get shows and address using backend endpoint
       const response = await apiStore.get(
         apiStore.endpoints.location.proximityCheck(
@@ -110,6 +114,7 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
           userLocation.longitude,
           10,
           maxMiles,
+          currentDay,
         ),
       );
 
@@ -117,9 +122,9 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
         setAddress(response.location.address);
         setNearbyShows(response.withinRadius || []);
 
-        // Filter shows within 20 meters
+        // Filter shows within 20 meters (backend returns distance in meters)
         const within20m = (response.allShowsByDistance || []).filter(
-          (show: ShowWithDistance) => show.distance && show.distance <= 0.02, // 20 meters in km
+          (show: ShowWithDistance) => show.distance && show.distance <= 20, // 20 meters
         );
         setShowsWithin20m(within20m);
 
@@ -283,13 +288,8 @@ export const LocationTrackingModal: React.FC<LocationTrackingModalProps> = ({ op
     };
   }, [open]); // Removed startTracking and stopTracking from dependencies
 
-  const formatDistance = (distance: number): string => {
-    if (distance < 1000) {
-      return `${Math.round(distance)}m`;
-    } else {
-      return `${(distance / 1000).toFixed(2)}km`;
-    }
-  };
+  // Use the utility function for consistent distance formatting
+  const formatDistance = formatDistanceUtil;
 
   const formatTime = (time: string): string => {
     try {

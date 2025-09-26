@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { observer } from 'mobx-react-lite';
 import { useEffect } from 'react';
 import {
@@ -18,6 +19,8 @@ import { storeStore } from '../stores';
 import { CoinPackage } from '../stores/StoreStore';
 
 const StoreScreen = observer(() => {
+  const navigation = useNavigation();
+
   useEffect(() => {
     console.log('🌍 Store API Configuration:', {
       baseURL: apiService.environmentInfo.baseURL,
@@ -102,6 +105,25 @@ const StoreScreen = observer(() => {
                 <Text style={styles.balanceAmount}>{storeStore.coins.toLocaleString()} coins</Text>
               </View>
             </View>
+
+            {/* Store Categories */}
+            <View style={styles.categoriesContainer}>
+              <TouchableOpacity
+                style={styles.categoryCard}
+                onPress={() => navigation.navigate('AvatarCustomization' as never)}
+              >
+                <Ionicons name="person" size={32} color="#6C5CE7" />
+                <Text style={styles.categoryTitle}>Avatars</Text>
+                <Text style={styles.categorySubtitle}>Customize your look</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.categoryCard}>
+                <Ionicons name="mic" size={32} color="#FF6B6B" />
+                <Text style={styles.categoryTitle}>Microphones</Text>
+                <Text style={styles.categorySubtitle}>Premium audio gear</Text>
+              </TouchableOpacity>
+            </View>
+
             <Text style={styles.sectionTitle}>Coin Packages</Text>
           </View>
         }
@@ -218,6 +240,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 16,
     textAlign: 'center',
+  },
+  categoriesContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  categoryCard: {
+    flex: 1,
+    backgroundColor: '#1E1E1E',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  categoryTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 8,
+  },
+  categorySubtitle: {
+    color: '#AAAAAA',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
   },
 });
 

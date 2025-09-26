@@ -124,16 +124,18 @@ export class GeocodingService {
   /**
    * Calculate distance between two coordinates using Google Maps Distance Matrix API
    * Falls back to Haversine formula if API fails
+   * Always returns distance in miles for consistency
    */
   async calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): Promise<number> {
-    // Try Google Maps Distance Matrix API first for real driving distance
-    const realDistance = await this.calculateRealDistance(lat1, lng1, lat2, lng2);
-    if (realDistance !== null) {
-      return realDistance;
+    // First try Google Maps Distance Matrix API for accurate road distance
+    const roadDistance = await this.calculateRealDistance(lat1, lng1, lat2, lng2);
+    if (roadDistance !== null) {
+      this.logger.debug(`Using Google Maps road distance: ${roadDistance.toFixed(2)} miles`);
+      return roadDistance;
     }
 
-    // Fallback to Haversine formula
-    this.logger.warn('Falling back to Haversine distance calculation');
+    // Fallback to Haversine formula (straight-line distance)
+    this.logger.debug('Using Haversine straight-line distance calculation');
     return this.calculateHaversineDistance(lat1, lng1, lat2, lng2);
   }
 
@@ -146,6 +148,7 @@ export class GeocodingService {
 
   /**
    * Calculate real driving distance using Google Maps Distance Matrix API
+   * Returns distance in miles, with better error handling and retries
    */
   async calculateRealDistance(
     lat1: number,
@@ -154,19 +157,33 @@ export class GeocodingService {
     lng2: number,
   ): Promise<number | null> {
     if (!this.googleMapsApiKey) {
-      this.logger.warn('Google Maps API key not configured for distance calculation');
+      this.logger.debug('Google Maps API key not configured, will use Haversine calculation');
       return null;
+    }
+
+    // For very short distances (< 0.01 miles / ~50 feet), use Haversine as it's more accurate
+    const haversineDistance = this.calculateHaversineDistance(lat1, lng1, lat2, lng2);
+    if (haversineDistance < 0.01) {
+      this.logger.debug(`Using Haversine for very short distance: ${haversineDistance.toFixed(4)} miles`);
+      return haversineDistance;
     }
 
     try {
       const origins = `${lat1},${lng1}`;
       const destinations = `${lat2},${lng2}`;
-      const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origins}&destinations=${destinations}&units=imperial&key=${this.googleMapsApiKey}`;
+      const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origins}&destinations=${destinations}&units=imperial&mode=driving&avoid=tolls&key=${this.googleMapsApiKey}`;
 
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        // 5 second timeout
+        signal: AbortSignal.timeout(5000),
+      });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`Google Maps API HTTP error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -174,24 +191,38 @@ export class GeocodingService {
       if (data.status === 'OK' && data.rows && data.rows.length > 0) {
         const element = data.rows[0].elements[0];
 
-        if (element.status === 'OK' && element.distance) {
-          // Google returns distance in meters, convert to miles
+        if (element.status === 'OK' && element.distance && element.duration) {
+          // Convert meters to miles (Google returns distance in meters for imperial units request)
           const distanceInMiles = element.distance.value * 0.000621371;
 
           this.logger.debug(
-            `Real distance calculated: ${distanceInMiles.toFixed(2)} miles (${element.distance.text})`,
+            `Google Maps distance: ${distanceInMiles.toFixed(2)} miles (${element.distance.text}), duration: ${element.duration.text}`,
           );
           return distanceInMiles;
         } else if (element.status === 'ZERO_RESULTS') {
-          this.logger.warn('No route found between coordinates');
+          this.logger.debug('Google Maps: No route found between coordinates, using Haversine');
+          return haversineDistance;
+        } else if (element.status === 'NOT_FOUND') {
+          this.logger.debug('Google Maps: Location not found, using Haversine');
+          return haversineDistance;
         } else {
-          this.logger.warn(`Distance calculation failed: ${element.status}`);
+          this.logger.warn(`Google Maps element status: ${element.status}`);
         }
+      } else if (data.status === 'OVER_QUERY_LIMIT') {
+        this.logger.warn('Google Maps API quota exceeded, using Haversine fallback');
+        return haversineDistance;
+      } else if (data.status === 'REQUEST_DENIED') {
+        this.logger.error('Google Maps API request denied - check API key permissions');
       } else {
-        this.logger.warn(`Distance Matrix API failed with status: ${data.status}`);
+        this.logger.warn(`Google Maps API status: ${data.status}`);
       }
     } catch (error) {
-      this.logger.error('Error during real distance calculation:', error);
+      if (error.name === 'TimeoutError') {
+        this.logger.debug('Google Maps API timeout, using Haversine fallback');
+      } else {
+        this.logger.warn(`Google Maps API error: ${error.message}`);
+      }
+      return haversineDistance;
     }
 
     return null;

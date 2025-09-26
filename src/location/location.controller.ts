@@ -197,6 +197,7 @@ export class LocationController {
     @Query('lng') lng: string,
     @Query('radius') radius?: string, // in meters, default 10
     @Query('maxMiles') maxMiles?: string, // in miles, default 100
+    @Query('day') day?: DayOfWeek,
   ) {
     const latitude = parseFloat(lat);
     const longitude = parseFloat(lng);
@@ -207,9 +208,9 @@ export class LocationController {
       throw new Error('Invalid latitude or longitude');
     }
 
-    // Get today's shows
-    const today = this.getTodayDay();
-    const shows = await this.showService.findByDay(today);
+    // Get shows for the specified day or today
+    const targetDay = day || this.getTodayDay();
+    const shows = await this.showService.findByDay(targetDay);
 
     // Calculate distances for all shows (async for real distance calculation)
     const showsWithDistance = [];
@@ -275,7 +276,7 @@ export class LocationController {
       allShowsByDistance: showsWithinMaxDistance,
       radius: radiusMeters,
       maxMiles: maxMilesDistance,
-      day: today,
+      day: targetDay,
     };
   }
 
