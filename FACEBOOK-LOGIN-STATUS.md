@@ -1,16 +1,20 @@
 # Facebook Login Troubleshooting Guide
 
 ## Current Status
+
 Facebook login has been properly configured with the following improvements:
 
 ### ✅ What's Working
+
 - Facebook OAuth strategy is properly configured
 - Environment variables are set correctly (`FACEBOOK_APP_ID` and `FACEBOOK_APP_SECRET`)
 - Callback URLs are properly configured
 - Error handling and logging have been enhanced
 
 ### 🔍 Enhanced Debugging
+
 Added comprehensive logging to help identify issues:
+
 - Facebook auth initiation logging
 - Callback processing with detailed error information
 - Strategy validation with user profile details
@@ -19,28 +23,33 @@ Added comprehensive logging to help identify issues:
 ### 🚨 Common Issues & Solutions
 
 #### 1. **Facebook App Configuration**
+
 - **Issue**: App domain not properly configured in Facebook Developer Console
 - **Solution**: Ensure the Facebook app has the correct domains configured:
   - Development: `localhost:5173` and `localhost:3001`
   - Production: `karaoke-hub.com` and backend domain
 
 #### 2. **Callback URL Mismatch**
+
 - **Issue**: Callback URL doesn't match what's configured in Facebook app
 - **Solution**: Facebook app should have these redirect URIs:
   - Development: `http://localhost:3001/api/auth/facebook/callback`
   - Production: `https://karaoke-hub-backend-993538830120.us-central1.run.app/api/auth/facebook/callback`
 
 #### 3. **App Review Requirements**
+
 - **Issue**: Facebook may require app review for `email` permission
 - **Solution**: Submit app for review or use test users during development
 
 #### 4. **HTTPS Requirements**
+
 - **Issue**: Facebook requires HTTPS in production
 - **Solution**: Ensure production deployment uses HTTPS (already configured)
 
 ### 🛠️ Testing Steps
 
 1. **Check Configuration**:
+
    ```bash
    curl https://your-backend-url/api/auth/facebook/debug
    ```

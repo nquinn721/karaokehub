@@ -254,10 +254,22 @@ export class AdminController {
     return await this.adminService.verifyVenueLocation(id);
   }
 
-  // Validate all venues with Gemini AI
+  // Validate all venues with Gemini AI (original)
   @Post('venues/validate-all')
   async validateAllVenues() {
     return await this.adminService.validateAllVenuesWithGemini();
+  }
+
+  // Enhanced multi-threaded venue validation with time fixes
+  @Post('venues/validate-all-enhanced')
+  async validateAllVenuesEnhanced() {
+    return await this.adminService.validateAllVenuesEnhanced();
+  }
+
+  // Validate and fix show times
+  @Post('shows/validate-times')
+  async validateShowTimes() {
+    return await this.adminService.validateAllShowTimes();
   }
 
   // Transaction Management Endpoints

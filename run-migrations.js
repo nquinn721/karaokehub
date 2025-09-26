@@ -24,16 +24,16 @@ async function runMigrations() {
   console.log('Environment:', process.env.NODE_ENV);
   console.log('Database:', process.env.DATABASE_NAME);
   console.log('Socket path:', process.env.DATABASE_SOCKET_PATH || 'TCP connection');
-  
+
   try {
     console.log('📞 Initializing database connection...');
     await dataSource.initialize();
     console.log('✅ Database connection established');
-    
+
     console.log('🔍 Checking for pending migrations...');
     const pendingMigrations = await dataSource.showMigrations();
     console.log(`Found ${pendingMigrations.length} pending migrations`);
-    
+
     if (pendingMigrations.length > 0) {
       console.log('🚀 Running migrations...');
       const executedMigrations = await dataSource.runMigrations();
@@ -44,7 +44,7 @@ async function runMigrations() {
     } else {
       console.log('📋 No pending migrations found');
     }
-    
+
     console.log('🏁 Migration process completed successfully');
   } catch (error) {
     console.error('❌ Migration failed:', error.message);

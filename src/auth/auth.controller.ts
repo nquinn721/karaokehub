@@ -186,9 +186,9 @@ export class AuthController {
       callbackUrl: this.urlService.getOAuthUrls().facebookCallback,
       nodeEnv: process.env.NODE_ENV,
     };
-    
+
     console.log('🟢 [FACEBOOK_DEBUG] Configuration check:', config);
-    
+
     return {
       success: true,
       message: 'Facebook OAuth configuration',

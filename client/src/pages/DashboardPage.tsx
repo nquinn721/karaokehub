@@ -993,7 +993,8 @@ const DashboardPage: React.FC = observer(() => {
           sx={{
             maxWidth: { xs: '100%', sm: '95%', md: '1200px', xl: '1400px' },
             mx: 'auto',
-            py: { xs: 3, sm: 4, md: 6 },
+            pt: { xs: 6, sm: 8, md: 10 },
+            pb: { xs: 3, sm: 4, md: 6 },
             position: 'relative',
             zIndex: 1,
           }}

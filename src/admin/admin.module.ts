@@ -22,6 +22,8 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { ApiLogsController } from './api-logs.controller';
 import { DeduplicationService } from './deduplication.service';
+import { EnhancedVenueValidationService } from './enhanced-venue-validation.service';
+import { TimeValidationService } from './time-validation.service';
 
 @Module({
   imports: [
@@ -46,7 +48,13 @@ import { DeduplicationService } from './deduplication.service';
     GeocodingModule,
   ],
   controllers: [AdminController, ApiLogsController],
-  providers: [AdminService, DeduplicationService, ProductionMigrationService],
+  providers: [
+    AdminService,
+    DeduplicationService,
+    ProductionMigrationService,
+    EnhancedVenueValidationService,
+    TimeValidationService,
+  ],
   exports: [AdminService, DeduplicationService],
 })
 export class AdminModule {}

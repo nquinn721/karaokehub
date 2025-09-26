@@ -6,6 +6,7 @@ import {
   faExclamationTriangle,
   faMapMarkerAlt,
   faMicrophone,
+  faRocket,
   faSearch,
   faShieldAlt,
   faUser,
@@ -44,6 +45,7 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCleaningDuplicates, setIsCleaningDuplicates] = useState(false);
   const [isValidatingVenues, setIsValidatingVenues] = useState(false);
+  const [isValidatingTimes, setIsValidatingTimes] = useState(false);
   const [validationModalOpen, setValidationModalOpen] = useState(false);
   const [validationResults, setValidationResults] = useState<any>(null);
 
@@ -95,6 +97,79 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
       uiStore.addNotification('Failed to validate venues. Please try again.', 'error');
     } finally {
       setIsValidatingVenues(false);
+    }
+  };
+
+  // Handle enhanced multi-threaded venue validation with time fixes
+  const handleValidateVenuesEnhanced = async () => {
+    setIsValidatingVenues(true);
+    try {
+      uiStore.addNotification(
+        'Starting enhanced multi-threaded venue validation with time detection...',
+        'info',
+      );
+
+      const response = await fetch('/api/admin/venues/validate-all-enhanced', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to validate venues with enhanced system');
+      }
+
+      const results = await response.json();
+      setValidationResults(results);
+      setValidationModalOpen(true);
+
+      const summary = results.summary;
+      const processingTime = Math.round(results.processingTime / 1000);
+      const threadsUsed = results.threadsUsed;
+
+      uiStore.addNotification(
+        `Enhanced validation complete! ${summary.totalVenues} venues processed using ${threadsUsed} threads in ${processingTime}s. Fixed: ${summary.timeFixesCount} times, ${summary.geoFixesCount} locations, ${summary.conflictsFound} conflicts found.`,
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to validate venues with enhanced system:', error);
+      uiStore.addNotification('Enhanced venue validation failed. Please try again.', 'error');
+    } finally {
+      setIsValidatingVenues(false);
+    }
+  };
+
+  // Handle show time validation and fixes
+  const handleValidateTimes = async () => {
+    setIsValidatingTimes(true);
+    try {
+      uiStore.addNotification('Starting show time validation and automatic fixes...', 'info');
+
+      const response = await fetch('/api/admin/shows/validate-times', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to validate show times');
+      }
+
+      const results = await response.json();
+
+      uiStore.addNotification(
+        `Time validation complete! Found ${results.issuesFound} issues in ${results.totalShows} shows. Fixed ${results.fixesApplied} automatically. AM/PM errors: ${results.summary.amPmErrors}, Range issues: ${results.summary.impossibleRanges}`,
+        results.fixesApplied > 0 ? 'success' : 'warning',
+      );
+    } catch (error) {
+      console.error('Failed to validate show times:', error);
+      uiStore.addNotification('Show time validation failed. Please try again.', 'error');
+    } finally {
+      setIsValidatingTimes(false);
     }
   };
 
@@ -646,6 +721,60 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                 </>
               ) : (
                 'Validate Venue Data'
+              )}
+            </Button>
+
+            <Button
+              variant="contained"
+              startIcon={<FontAwesomeIcon icon={faRocket} />}
+              onClick={handleValidateVenuesEnhanced}
+              disabled={isValidatingVenues}
+              sx={{
+                borderRadius: 2,
+                px: 3,
+                py: 1.5,
+                minWidth: 220,
+                background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #FF5252, #26C6DA)',
+                },
+              }}
+            >
+              {isValidatingVenues ? (
+                <>
+                  <CircularProgress size={16} sx={{ mr: 1, color: 'white' }} />
+                  Enhanced Validating...
+                </>
+              ) : (
+                'Enhanced Multi-Thread Fix'
+              )}
+            </Button>
+
+            <Button
+              variant="outlined"
+              startIcon={<FontAwesomeIcon icon={faCalendar} />}
+              onClick={handleValidateTimes}
+              disabled={isValidatingTimes}
+              sx={{
+                borderRadius: 2,
+                px: 3,
+                py: 1.5,
+                minWidth: 200,
+                borderColor: theme.palette.warning.main,
+                color: theme.palette.warning.main,
+                '&:hover': {
+                  borderColor: theme.palette.warning.dark,
+                  backgroundColor: alpha(theme.palette.warning.main, 0.1),
+                },
+              }}
+            >
+              {isValidatingTimes ? (
+                <>
+                  <CircularProgress size={16} sx={{ mr: 1, color: theme.palette.warning.main }} />
+                  Fixing Times...
+                </>
+              ) : (
+                'Fix Show Times'
               )}
             </Button>
           </Box>

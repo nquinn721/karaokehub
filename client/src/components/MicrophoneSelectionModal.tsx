@@ -54,15 +54,16 @@ export const MicrophoneSelectionModal: React.FC<MicrophoneSelectionModalProps> =
     const getRarityChipProps = (rarity: string) => {
       const lowerRarity = rarity.toLowerCase();
       return {
-        color: lowerRarity === 'legendary'
-          ? 'default' as const
-          : lowerRarity === 'epic'
-            ? 'secondary' as const
-            : lowerRarity === 'rare'
-              ? 'primary' as const
-              : lowerRarity === 'uncommon'
-                ? 'info' as const
-                : 'default' as const,
+        color:
+          lowerRarity === 'legendary'
+            ? ('default' as const)
+            : lowerRarity === 'epic'
+              ? ('secondary' as const)
+              : lowerRarity === 'rare'
+                ? ('primary' as const)
+                : lowerRarity === 'uncommon'
+                  ? ('info' as const)
+                  : ('default' as const),
         sx: {
           textTransform: 'capitalize',
           ...(lowerRarity === 'legendary' && {
@@ -70,7 +71,7 @@ export const MicrophoneSelectionModal: React.FC<MicrophoneSelectionModalProps> =
             color: '#000',
             fontWeight: 'bold',
           }),
-        }
+        },
       };
     };
 

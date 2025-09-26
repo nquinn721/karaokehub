@@ -182,7 +182,7 @@ const StoreItemGenerator: React.FC = observer(() => {
           customPrompt: prompt, // Send only the prompt without pre-explanation
         });
 
-        // Add source filename to generated items if we have source info
+        // Add source information to generated items if we have source info
         if (result.success && result.data && sourceItem) {
           // Extract filename from URL - handle both full URLs and filenames
           let sourceFileName = '';
@@ -208,6 +208,7 @@ const StoreItemGenerator: React.FC = observer(() => {
 
           result.data.items?.forEach((generatedItem: any) => {
             generatedItem.sourceFileName = sourceFileName;
+            generatedItem.baseImageName = sourceItem.name; // Keep the original display name (e.g., "Country Alex")
           });
         }
         return { success: true, imageIndex: index, result, sourceItem };
@@ -271,10 +272,16 @@ const StoreItemGenerator: React.FC = observer(() => {
       // Generate suggested filename based on source item if available
       let suggestedName = `AI-${item.itemType}-${item.style}-${Date.now()}.png`;
 
-      // If this item has source information, use the original filename pattern
+      // Prioritize base image name for clearer file naming
+      const baseImageName = (item as any).baseImageName;
       const sourceFileName = (item as any).sourceFileName;
-      if (sourceFileName) {
-        // Extract the base name without extension and add timestamp
+
+      if (baseImageName) {
+        // Use the original display name like "Country Alex"
+        const cleanName = baseImageName.replace(/\s+/g, '-').toLowerCase();
+        suggestedName = `${cleanName}-generated-${Date.now()}.png`;
+      } else if (sourceFileName) {
+        // Fallback to filename pattern
         const baseName = sourceFileName.replace(/\.(png|jpg|jpeg|gif)$/i, '');
         suggestedName = `${baseName}-modified-${Date.now()}.png`;
       }
@@ -849,6 +856,27 @@ const StoreItemGenerator: React.FC = observer(() => {
                             }}
                           />
 
+                          {/* Base Image Name Badge */}
+                          {(item as any).baseImageName && (
+                            <Chip
+                              label={(item as any).baseImageName}
+                              size="small"
+                              sx={{
+                                position: 'absolute',
+                                top: 4,
+                                left: 4,
+                                fontSize: '9px',
+                                height: '20px',
+                                bgcolor: theme.palette.primary.main,
+                                color: 'white',
+                                fontWeight: 600,
+                                '& .MuiChip-label': {
+                                  px: 1,
+                                },
+                              }}
+                            />
+                          )}
+
                           <Box
                             sx={{
                               position: 'absolute',
@@ -909,20 +937,28 @@ const StoreItemGenerator: React.FC = observer(() => {
                               display: 'flex',
                               alignItems: 'center',
                               gap: 0.5,
-                              fontSize: '10px',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              color: theme.palette.primary.main,
                             }}
                           >
                             <FontAwesomeIcon icon={faPalette} size="xs" />
-                            {(item as any).sourceFileName
-                              ? (item as any).sourceFileName.replace(/\.(png|jpg|jpeg|gif)$/i, '')
-                              : `${item.style} ${item.itemType}`}
+                            {(item as any).baseImageName
+                              ? (item as any).baseImageName
+                              : (item as any).sourceFileName
+                                ? (item as any).sourceFileName.replace(/\.(png|jpg|jpeg|gif)$/i, '')
+                                : `${item.style} ${item.itemType}`}
                           </Typography>
                           <Typography
                             variant="caption"
                             noWrap
                             sx={{ fontSize: '9px', opacity: 0.7 }}
                           >
-                            {(item as any).sourceFileName ? 'Modified from original' : item.prompt}
+                            {(item as any).baseImageName
+                              ? 'Based on ' + (item as any).baseImageName
+                              : (item as any).sourceFileName
+                                ? 'Modified from original'
+                                : item.prompt}
                           </Typography>
                         </CardContent>
                       </Card>
@@ -952,11 +988,21 @@ const StoreItemGenerator: React.FC = observer(() => {
                 borderRadius: '8px',
               }}
             />
-            <Typography variant="body1" sx={{ mt: 2 }}>
+            {(previewImage as any).baseImageName && (
+              <Typography
+                variant="h6"
+                sx={{ mt: 2, color: theme.palette.primary.main, fontWeight: 600 }}
+              >
+                Based on: {(previewImage as any).baseImageName}
+              </Typography>
+            )}
+            <Typography variant="body1" sx={{ mt: 1 }}>
               <strong>Style:</strong>{' '}
-              {(previewImage as any).sourceFileName
-                ? `${(previewImage as any).sourceFileName.replace(/\.(png|jpg|jpeg|gif)$/i, '')}`
-                : `${previewImage.style} ${previewImage.itemType}`}
+              {(previewImage as any).baseImageName
+                ? `Modified ${previewImage.style} ${previewImage.itemType}`
+                : (previewImage as any).sourceFileName
+                  ? `${(previewImage as any).sourceFileName.replace(/\.(png|jpg|jpeg|gif)$/i, '')}`
+                  : `${previewImage.style} ${previewImage.itemType}`}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               <strong>Prompt:</strong> {previewImage.prompt}

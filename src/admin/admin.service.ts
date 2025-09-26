@@ -25,6 +25,11 @@ import {
 } from '../store/entities/transaction.entity';
 import { Vendor } from '../vendor/vendor.entity';
 import { Venue } from '../venue/venue.entity';
+import {
+  EnhancedVenueValidationService,
+  ValidationBatchResult,
+} from './enhanced-venue-validation.service';
+import { BatchTimeValidationResult, TimeValidationService } from './time-validation.service';
 
 export interface VenueVerificationResult {
   success: boolean;
@@ -73,6 +78,8 @@ export class AdminService {
     private userMicrophoneRepository: Repository<UserMicrophone>,
     private geocodingService: GeocodingService,
     private migrationService: ProductionMigrationService,
+    private enhancedVenueValidationService: EnhancedVenueValidationService,
+    private timeValidationService: TimeValidationService,
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -1870,6 +1877,20 @@ export class AdminService {
     } catch (error) {
       throw new Error(`Failed to validate venues: ${error.message}`);
     }
+  }
+
+  /**
+   * Enhanced venue validation using multiple Gemini threads with time detection
+   */
+  async validateAllVenuesEnhanced(): Promise<ValidationBatchResult> {
+    return await this.enhancedVenueValidationService.validateAllVenuesEnhanced();
+  }
+
+  /**
+   * Validate and fix all show times
+   */
+  async validateAllShowTimes(): Promise<BatchTimeValidationResult> {
+    return await this.timeValidationService.validateAllShowTimes();
   }
 
   /**
