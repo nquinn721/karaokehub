@@ -6,11 +6,11 @@ export class AddRockThemeAvatars1737454300000 implements MigrationInterface {
 
     const rockAvatars = [
       {
-        name: 'Rockstar Alexa',
-        description: 'Rock star Alexa with edgy attitude and leather jacket',
+        name: 'Rockstar Alex',
+        description: 'Rock star Alex with edgy attitude and leather jacket',
         type: 'character',
         rarity: 'rare',
-        imageUrl: '/images/avatar/avatars/alexa-rock.png',
+        imageUrl: '/images/avatar/avatars/alex-rock.png',
         price: 0.0,
         coinPrice: 1000,
         isAvailable: true,
@@ -124,7 +124,7 @@ export class AddRockThemeAvatars1737454300000 implements MigrationInterface {
     console.log('🔄 Removing rock-themed avatars...');
 
     const rockAvatarNames = [
-      'Rockstar Alexa',
+      'Rockstar Alex',
       'Rockstar Blake',
       'Rockstar Cameron',
       'Rockstar Joe',
