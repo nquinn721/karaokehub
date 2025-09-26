@@ -34,6 +34,46 @@ export const MicrophoneSelectionModal: React.FC<MicrophoneSelectionModalProps> =
     const theme = useTheme();
     const navigate = useNavigate();
 
+    // Helper function to get rarity colors (same as StorePage)
+    const getRarityColor = (rarity: string) => {
+      const lowerRarity = rarity.toLowerCase();
+      switch (lowerRarity) {
+        case 'legendary':
+          return '#FFD700';
+        case 'epic':
+          return theme.palette.secondary.main;
+        case 'rare':
+          return theme.palette.primary.main;
+        case 'uncommon':
+          return theme.palette.info.main;
+        default:
+          return theme.palette.divider;
+      }
+    };
+
+    const getRarityChipProps = (rarity: string) => {
+      const lowerRarity = rarity.toLowerCase();
+      return {
+        color: lowerRarity === 'legendary'
+          ? 'default' as const
+          : lowerRarity === 'epic'
+            ? 'secondary' as const
+            : lowerRarity === 'rare'
+              ? 'primary' as const
+              : lowerRarity === 'uncommon'
+                ? 'info' as const
+                : 'default' as const,
+        sx: {
+          textTransform: 'capitalize',
+          ...(lowerRarity === 'legendary' && {
+            backgroundColor: '#FFD700',
+            color: '#000',
+            fontWeight: 'bold',
+          }),
+        }
+      };
+    };
+
     useEffect(() => {
       if (open) {
         console.log('🎤 MicrophoneSelectionModal: Modal opened, fetching data...');
@@ -198,7 +238,7 @@ export const MicrophoneSelectionModal: React.FC<MicrophoneSelectionModalProps> =
                   const equippedMicrophone = userStore.getEquippedMicrophone();
                   const isCurrentlyEquipped = equippedMicrophone?.microphoneId === mic.id;
                   return (
-                    <Grid item xs={6} sm={3} key={mic.id}>
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={mic.id}>
                       <Card
                         sx={{
                           cursor: 'pointer',
@@ -207,7 +247,7 @@ export const MicrophoneSelectionModal: React.FC<MicrophoneSelectionModalProps> =
                             ? `2px solid ${theme.palette.primary.main}`
                             : isCurrentlyEquipped
                               ? `2px solid ${theme.palette.success.main}`
-                              : '2px solid transparent',
+                              : `2px solid ${getRarityColor(mic.rarity || 'common')}`,
                           background: isSelected
                             ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.primary.main, 0.05)})`
                             : isCurrentlyEquipped
@@ -278,6 +318,15 @@ export const MicrophoneSelectionModal: React.FC<MicrophoneSelectionModalProps> =
                           >
                             {mic.description}
                           </Typography>
+                          {mic.rarity && (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+                              <Chip
+                                label={mic.rarity}
+                                size="small"
+                                {...getRarityChipProps(mic.rarity)}
+                              />
+                            </Box>
+                          )}
                         </CardContent>
                       </Card>
                     </Grid>

@@ -271,7 +271,7 @@ export const SubmitMissingInfoModal: React.FC<SubmitMissingInfoModalProps> = obs
               disabled={loading}
               startIcon={<FontAwesomeIcon icon={faEdit} style={{ fontSize: '14px' }} />}
             >
-              {loading ? 'Updating...' : 'Update Show Info'}
+              {loading ? 'Submitting...' : 'Submit for Review'}
             </Button>
           </Box>
         </CustomModal>

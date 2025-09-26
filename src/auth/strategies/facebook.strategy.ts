@@ -39,13 +39,28 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     done: (error: any, user?: any) => void,
   ): Promise<any> {
     try {
+      console.log('🟢 [FACEBOOK_STRATEGY] Validating Facebook user:', {
+        profileId: profile?.id,
+        displayName: profile?.displayName,
+        email: profile?.emails?.[0]?.value,
+        hasAccessToken: !!accessToken,
+      });
+
       const user = await this.authService.validateOAuthUser(profile, 'facebook');
+      
+      console.log('🟢 [FACEBOOK_STRATEGY] Successfully validated user:', {
+        userId: user?.id,
+        email: user?.email,
+      });
+
       done(null, user);
     } catch (error) {
       console.error('🔴 Facebook OAuth validation error:', {
         error: error.message,
+        stack: error.stack,
         profileId: profile?.id,
         profileEmail: profile?.emails?.[0]?.value,
+        profileDisplayName: profile?.displayName,
       });
       done(error, false);
     }

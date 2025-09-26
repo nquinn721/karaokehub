@@ -177,16 +177,42 @@ export class AuthController {
     }
   }
 
+  // Debug endpoint for Facebook configuration
+  @Get('facebook/debug')
+  async facebookDebug() {
+    const config = {
+      appId: process.env.FACEBOOK_APP_ID ? 'SET' : 'NOT_SET',
+      appSecret: process.env.FACEBOOK_APP_SECRET ? 'SET' : 'NOT_SET',
+      callbackUrl: this.urlService.getOAuthUrls().facebookCallback,
+      nodeEnv: process.env.NODE_ENV,
+    };
+    
+    console.log('🟢 [FACEBOOK_DEBUG] Configuration check:', config);
+    
+    return {
+      success: true,
+      message: 'Facebook OAuth configuration',
+      config,
+    };
+  }
+
   @Get('facebook')
   @UseGuards(AuthGuard('facebook'))
   async facebookAuth(@Req() req) {
     // Initiates Facebook OAuth flow
+    console.log('🟢 [FACEBOOK_AUTH] Initiating Facebook OAuth flow');
   }
 
   @Get('facebook/callback')
   @UseGuards(AuthGuard('facebook'))
   async facebookAuthCallback(@Req() req, @Res() res: Response) {
     try {
+      console.log('🟢 [FACEBOOK_CALLBACK] Received callback from Facebook', {
+        hasUser: !!req.user,
+        userEmail: req.user?.email,
+        userId: req.user?.id,
+      });
+
       if (!req.user) {
         throw new Error('No user object in request after Facebook OAuth validation');
       }
@@ -194,13 +220,17 @@ export class AuthController {
       const user = req.user;
       const token = this.authService.generateToken(user);
 
+      console.log('🟢 [FACEBOOK_CALLBACK] Generated token, redirecting to success page');
+
       // Use UrlService for consistent URL management
       const redirectUrl = this.urlService.buildFrontendUrl(`/auth/success?token=${token}`);
       res.redirect(redirectUrl);
     } catch (error) {
       console.error('🔴 Facebook OAuth callback error:', {
         error: error.message,
+        stack: error.stack,
         userEmail: req.user?.email,
+        hasReqUser: !!req.user,
       });
 
       // Use UrlService for error redirect

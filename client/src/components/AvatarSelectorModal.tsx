@@ -37,6 +37,46 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = observer(
     const [availableAvatars, setAvailableAvatars] = useState<Avatar[]>([]);
     const [isLoadingAvatars, setIsLoadingAvatars] = useState<boolean>(false);
 
+    // Helper function to get rarity colors (same as StorePage)
+    const getRarityColor = (rarity: string) => {
+      const lowerRarity = rarity.toLowerCase();
+      switch (lowerRarity) {
+        case 'legendary':
+          return '#FFD700';
+        case 'epic':
+          return theme.palette.secondary.main;
+        case 'rare':
+          return theme.palette.primary.main;
+        case 'uncommon':
+          return theme.palette.info.main;
+        default:
+          return theme.palette.divider;
+      }
+    };
+
+    const getRarityChipProps = (rarity: string) => {
+      const lowerRarity = rarity.toLowerCase();
+      return {
+        color: lowerRarity === 'legendary'
+          ? 'default' as const
+          : lowerRarity === 'epic'
+            ? 'secondary' as const
+            : lowerRarity === 'rare'
+              ? 'primary' as const
+              : lowerRarity === 'uncommon'
+                ? 'info' as const
+                : 'default' as const,
+        sx: {
+          textTransform: 'capitalize',
+          ...(lowerRarity === 'legendary' && {
+            backgroundColor: '#FFD700',
+            color: '#000',
+            fontWeight: 'bold',
+          }),
+        }
+      };
+    };
+
     // Load available avatars when modal opens
     useEffect(() => {
       if (open) {
@@ -167,14 +207,16 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = observer(
                   const isSelected = selectedAvatar === avatar.id;
 
                   return (
-                    <Grid item xs={6} sm={4} md={4} lg={3} key={avatar.id}>
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={avatar.id}>
                       <Card
                         onClick={() => handleAvatarSelect(avatar.id)}
                         sx={{
                           cursor: 'pointer',
                           border: isSelected
                             ? `3px solid ${theme.palette.primary.main}`
-                            : '2px solid transparent',
+                            : isEquipped
+                              ? `2px solid ${theme.palette.success.main}`
+                              : `2px solid ${getRarityColor(avatar.rarity || 'common')}`,
                           borderRadius: '16px',
                           transition: 'all 0.3s ease',
                           position: 'relative',
@@ -226,9 +268,8 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = observer(
                                 sx={{ fontWeight: 'bold' }}
                               />
                             )}
-                            {avatar.price === 0 ? (
-                              <Chip label="Free" size="small" color="primary" variant="outlined" />
-                            ) : (
+                            {/* Only show cost for items user doesn't own yet */}
+                            {!isEquipped && avatar.price !== 0 && (
                               <Chip
                                 label={`${avatar.coinPrice} coins`}
                                 size="small"
@@ -239,8 +280,7 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = observer(
                             <Chip
                               label={avatar.rarity}
                               size="small"
-                              variant="outlined"
-                              sx={{ textTransform: 'capitalize' }}
+                              {...getRarityChipProps(avatar.rarity || 'common')}
                             />
                           </Box>
                         </CardContent>

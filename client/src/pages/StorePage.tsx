@@ -331,7 +331,7 @@ const StorePage: React.FC = observer(() => {
         },
       }}
     >
-      <Container maxWidth="lg" sx={{ py: 4, position: 'relative', zIndex: 1 }}>
+      <Container maxWidth="lg" sx={{ pt: 8, pb: 4, position: 'relative', zIndex: 1 }}>
         {/* Header */}
         <Box sx={{ textAlign: 'center', mb: 4 }}>
           <Typography
@@ -364,12 +364,17 @@ const StorePage: React.FC = observer(() => {
               value={tabValue}
               onChange={handleTabChange}
               aria-label="store tabs"
-              centered
+              variant="scrollable"
+              scrollButtons="auto"
+              allowScrollButtonsMobile
               sx={{
                 '& .MuiTab-root': {
                   fontSize: '1.1rem',
                   fontWeight: 600,
                   minWidth: 120,
+                },
+                '& .MuiTabs-scrollButtons': {
+                  display: { xs: 'flex', sm: 'none' },
                 },
               }}
             >

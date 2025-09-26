@@ -2760,9 +2760,12 @@ const AdminDataTables: React.FC = observer(() => {
               <Typography variant="body2" sx={{ mb: 0.5 }}>
                 <strong>Date:</strong> {new Date(reviewingShowReview.createdAt).toLocaleString()}
               </Typography>
-              <Typography variant="body2">
-                <strong>Status:</strong> <Chip label={reviewingShowReview.status} size="small" />
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="body2" component="span">
+                  <strong>Status:</strong>
+                </Typography>
+                <Chip label={reviewingShowReview.status} size="small" />
+              </Box>
             </Box>
 
             {/* Admin Notes (if taking action) */}
