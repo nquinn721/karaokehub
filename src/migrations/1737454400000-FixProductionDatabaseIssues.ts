@@ -74,12 +74,21 @@ export class FixProductionDatabaseIssues1737454400000 implements MigrationInterf
 
     // 6. Initialize API rate limit status for both providers
     console.log('Initializing API rate limit status...');
-    await queryRunner.query(`
-      INSERT IGNORE INTO api_rate_limit_status (provider, requestsToday, dailyLimit, lastResetDate, isLimitExceeded)
-      VALUES 
-        ('google', 0, 1000, CURDATE(), FALSE),
-        ('facebook', 0, 1000, CURDATE(), FALSE)
-    `);
+    
+    // Check if the table has any data before inserting
+    const existingRecords = await queryRunner.query(`SELECT COUNT(*) as count FROM api_rate_limit_status`);
+    const recordCount = existingRecords[0]?.count || 0;
+    
+    if (recordCount === 0) {
+      await queryRunner.query(`
+        INSERT INTO api_rate_limit_status (provider, requestsToday, dailyLimit, lastResetDate, isLimitExceeded)
+        VALUES 
+          ('google', 0, 1000, CURDATE(), FALSE),
+          ('facebook', 0, 1000, CURDATE(), FALSE)
+      `);
+    } else {
+      console.log('API rate limit status already has data, skipping initialization...');
+    }
 
     console.log('✅ Production database issues fixed successfully!');
   }
