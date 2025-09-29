@@ -28,7 +28,6 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [currentSnapIndex, setCurrentSnapIndex] = useState(initialSnap);
   const [isDragging, setIsDragging] = useState(false);
-  const [isPotentialDrag, setIsPotentialDrag] = useState(false);
   const [startY, setStartY] = useState(0);
   const [currentY, setCurrentY] = useState(0);
   const [translateY, setTranslateY] = useState(0);
@@ -118,22 +117,10 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     // Always allow dragging from drag handle or draggable area
     const canDragImmediately = isDragHandle || isDraggableArea;
 
-    // Only track touches on content area if we're at the top
-    if (!canDragImmediately && isContentArea && contentAreaRef.current) {
-      const isAtTop = contentAreaRef.current.scrollTop === 0;
-      
-      // ONLY track potential drag if we start at the top
-      if (isAtTop) {
-        setIsPotentialDrag(true);
-        setStartY(e.touches[0].clientY);
-        setCurrentY(e.touches[0].clientY);
-        setHasMoved(false);
-        contentAreaRef.current.dataset.prevScrollTop = contentAreaRef.current.scrollTop.toString();
-        contentAreaRef.current.dataset.initiallyAtTop = 'true';
-        return;
-      }
-      // If not at top, completely ignore the touch - let normal scrolling handle it
-      return;
+    // Don't track content area touches for bottom sheet dragging
+    // Just let normal scrolling work and only allow drag handle/draggable area to control sheet
+    if (!canDragImmediately && isContentArea) {
+      return; // Ignore content area touches completely
     }
 
     if (!canDragImmediately) return;
@@ -156,34 +143,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     (e: TouchEvent) => {
       const touchY = e.touches[0].clientY;
 
-      // Handle potential drag state (only for touches that started at top)
-      if (isPotentialDrag && !isDragging) {
-        const contentArea = contentAreaRef.current;
-        if (!contentArea) {
-          setIsPotentialDrag(false);
-          return;
-        }
-
-        const isAtTop = contentArea.scrollTop === 0;
-        const deltaY = touchY - startY;
-
-        // If still at top and dragging down, activate bottom sheet
-        if (isAtTop && deltaY > 10) {
-          setIsPotentialDrag(false);
-          setIsDragging(true);
-          if (sheetRef.current) {
-            sheetRef.current.style.transition = 'none';
-          }
-          // Continue to drag logic below
-        } else if (!isAtTop || deltaY < -10) {
-          // Either scrolled away from top or dragging up significantly - cancel
-          setIsPotentialDrag(false);
-          return;
-        } else {
-          // Still waiting for decisive movement
-          return;
-        }
-      }
+      // No content area touch handling - only drag handle and draggable area can control sheet
 
       if (!isDragging || !sheetRef.current) return;
 
@@ -223,27 +183,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         sheetRef.current.style.transform = `translateY(${constrainedTransform}px)`;
       }
     },
-    [isDragging, isPotentialDrag, startY, currentSnapIndex, getTransform, snapPoints],
+    [isDragging, startY, currentSnapIndex, getTransform, snapPoints],
   );
 
   // Handle touch end
   const handleTouchEnd = useCallback(() => {
-    // Clean up scroll tracking data
-    if (contentAreaRef.current) {
-      if (contentAreaRef.current.dataset.prevScrollTop) {
-        delete contentAreaRef.current.dataset.prevScrollTop;
-      }
-      if (contentAreaRef.current.dataset.initiallyAtTop) {
-        delete contentAreaRef.current.dataset.initiallyAtTop;
-      }
-    }
-
-    // Reset potential drag state
-    if (isPotentialDrag) {
-      setIsPotentialDrag(false);
-      return;
-    }
-
     if (!isDragging) return;
 
     setIsDragging(false);
@@ -390,49 +334,6 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     snapToPoint,
   ]);
 
-  // Handle content area touch events to allow bottom sheet drag but prevent browser pull-to-refresh
-  const handleContentTouchStart = useCallback((e: TouchEvent) => {
-    const contentArea = contentAreaRef.current;
-    if (!contentArea) return;
-
-    const isAtTop = contentArea.scrollTop === 0;
-    if (isAtTop) {
-      // Store initial touch position to allow bottom sheet dragging
-      contentArea.dataset.initialTouchY = e.touches[0].clientY.toString();
-      contentArea.dataset.allowBottomSheetDrag = 'true';
-    }
-  }, []);
-
-  const handleContentTouchMove = useCallback((e: TouchEvent) => {
-    const contentArea = contentAreaRef.current;
-    if (!contentArea || !contentArea.dataset.initialTouchY) return;
-
-    const isAtTop = contentArea.scrollTop === 0;
-    const currentTouchY = e.touches[0].clientY;
-    const initialTouchY = parseFloat(contentArea.dataset.initialTouchY);
-    const deltaY = currentTouchY - initialTouchY;
-
-    // If we're at the top and user is pulling down significantly, only prevent browser refresh
-    // but allow bottom sheet to handle the gesture
-    if (isAtTop && deltaY > 20) {
-      // Only prevent default to stop browser pull-to-refresh, but don't stop propagation
-      // This allows the bottom sheet touch handlers to still work
-      e.preventDefault();
-    }
-  }, []);
-
-  const handleContentTouchEnd = useCallback(() => {
-    const contentArea = contentAreaRef.current;
-    if (contentArea) {
-      if (contentArea.dataset.initialTouchY) {
-        delete contentArea.dataset.initialTouchY;
-      }
-      if (contentArea.dataset.allowBottomSheetDrag) {
-        delete contentArea.dataset.allowBottomSheetDrag;
-      }
-    }
-  }, []);
-
   // Set up event listeners
   useEffect(() => {
     if (!isOpen || !isMobile) return;
@@ -445,14 +346,6 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
 
-    // Add content area listeners to prevent pull-to-refresh
-    const contentArea = contentAreaRef.current;
-    if (contentArea) {
-      contentArea.addEventListener('touchstart', handleContentTouchStart, { passive: false });
-      contentArea.addEventListener('touchmove', handleContentTouchMove, { passive: false });
-      contentArea.addEventListener('touchend', handleContentTouchEnd, { passive: false });
-    }
-
     return () => {
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchmove', handleTouchMove);
@@ -461,13 +354,6 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       document.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-
-      // Clean up content area listeners
-      if (contentArea) {
-        contentArea.removeEventListener('touchstart', handleContentTouchStart);
-        contentArea.removeEventListener('touchmove', handleContentTouchMove);
-        contentArea.removeEventListener('touchend', handleContentTouchEnd);
-      }
     };
   }, [
     isOpen,
@@ -478,9 +364,6 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
-    handleContentTouchStart,
-    handleContentTouchMove,
-    handleContentTouchEnd,
   ]);
 
   // Initialize position when opened or when always visible (only once)
