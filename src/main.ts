@@ -2,13 +2,13 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import compression from 'compression';
-import cookieParser from 'cookie-parser';
 import * as express from 'express';
-import helmet from 'helmet';
 import { join } from 'path';
 import { AppModule } from './app.module';
 import { UrlService } from './config/url.service';
+const compression = require('compression');
+const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
 // import { CancellationService } from './services/cancellation.service';
 
 async function bootstrap() {
