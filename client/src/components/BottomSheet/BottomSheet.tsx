@@ -118,15 +118,19 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     // Always allow dragging from drag handle or draggable area
     const canDragImmediately = isDragHandle || isDraggableArea;
 
-    // If touching content area, always track the touch (for potential bottom sheet drag when reaching top)
+    // Track touches on content area for potential bottom sheet activation
     if (!canDragImmediately && isContentArea && contentAreaRef.current) {
+      const isAtTop = contentAreaRef.current.scrollTop === 0;
+      
+      // Always track the touch, but be smart about when to activate
       setIsPotentialDrag(true);
       setStartY(e.touches[0].clientY);
       setCurrentY(e.touches[0].clientY);
       setHasMoved(false);
-      // Initialize scroll position tracking
+      // Store initial scroll state
       contentAreaRef.current.dataset.prevScrollTop = contentAreaRef.current.scrollTop.toString();
-      return; // Don't start dragging yet, wait to see if we reach top + drag down
+      contentAreaRef.current.dataset.initiallyAtTop = isAtTop.toString();
+      return;
     }
 
     if (!canDragImmediately) return;
@@ -152,47 +156,45 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       // Handle potential drag state (when touching content area)
       if (isPotentialDrag && !isDragging) {
         const contentArea = contentAreaRef.current;
-        const isAtTop = contentArea && contentArea.scrollTop === 0;
+        if (!contentArea) {
+          setIsPotentialDrag(false);
+          return;
+        }
+
+        const isAtTop = contentArea.scrollTop === 0;
+        const wasInitiallyAtTop = contentArea.dataset.initiallyAtTop === 'true';
         const deltaY = touchY - startY;
         const absDeltaY = Math.abs(deltaY);
 
-        // If we're at the top and dragging down, activate bottom sheet drag
+        // Early exit: if we started NOT at top and we're still not at top, cancel immediately
+        if (!wasInitiallyAtTop && !isAtTop && absDeltaY > 3) {
+          setIsPotentialDrag(false);
+          return;
+        }
+
+        // If we're at the top (either initially or reached it) and dragging down
         if (isAtTop && deltaY > 5) {
           setIsPotentialDrag(false);
           setIsDragging(true);
-          // Reset start position to current position for smooth transition
+          // Reset start position for smooth transition
           setStartY(touchY);
           setCurrentY(touchY);
           if (sheetRef.current) {
             sheetRef.current.style.transition = 'none';
           }
-          // Don't return here - let it continue to the drag logic below
+          // Continue to drag logic below
+        } else if (wasInitiallyAtTop && !isAtTop && deltaY < -5) {
+          // Started at top but scrolled up - cancel potential drag
+          setIsPotentialDrag(false);
+          return;
+        } else if (!wasInitiallyAtTop && absDeltaY > 15) {
+          // Didn't start at top and moved significantly without reaching top - cancel
+          setIsPotentialDrag(false);
+          return;
         } else {
-          // Check if user is dragging down continuously and has hit the top
-          const prevScrollTop = contentArea?.dataset.prevScrollTop ? 
-            parseInt(contentArea.dataset.prevScrollTop) : null;
-          
-          if (isAtTop && deltaY > 0 && prevScrollTop !== null && prevScrollTop > 0) {
-            // User was scrolling and hit the top while dragging down - take over seamlessly
-            setIsPotentialDrag(false);
-            setIsDragging(true);
-            // Reset start position to create smooth transition
-            setStartY(touchY);
-            setCurrentY(touchY);
-            if (sheetRef.current) {
-              sheetRef.current.style.transition = 'none';
-            }
-          } else if (absDeltaY > 10 && !isAtTop) {
-            // If we're not at top and moved significantly, cancel potential drag
-            setIsPotentialDrag(false);
-            return;
-          } else {
-            // Store current scroll position for next check
-            if (contentArea) {
-              contentArea.dataset.prevScrollTop = contentArea.scrollTop.toString();
-            }
-            return;
-          }
+          // Update scroll tracking
+          contentArea.dataset.prevScrollTop = contentArea.scrollTop.toString();
+          return;
         }
       }
 
@@ -240,8 +242,13 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   // Handle touch end
   const handleTouchEnd = useCallback(() => {
     // Clean up scroll tracking data
-    if (contentAreaRef.current && contentAreaRef.current.dataset.prevScrollTop) {
-      delete contentAreaRef.current.dataset.prevScrollTop;
+    if (contentAreaRef.current) {
+      if (contentAreaRef.current.dataset.prevScrollTop) {
+        delete contentAreaRef.current.dataset.prevScrollTop;
+      }
+      if (contentAreaRef.current.dataset.initiallyAtTop) {
+        delete contentAreaRef.current.dataset.initiallyAtTop;
+      }
     }
 
     // Reset potential drag state
