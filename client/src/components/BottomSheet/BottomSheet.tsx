@@ -117,13 +117,15 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 
     // Always allow dragging from drag handle or draggable area
     const canDragImmediately = isDragHandle || isDraggableArea;
-    
+
     // If touching content area, always track the touch (for potential bottom sheet drag when reaching top)
     if (!canDragImmediately && isContentArea && contentAreaRef.current) {
       setIsPotentialDrag(true);
       setStartY(e.touches[0].clientY);
       setCurrentY(e.touches[0].clientY);
       setHasMoved(false);
+      // Initialize scroll position tracking
+      contentAreaRef.current.dataset.prevScrollTop = contentAreaRef.current.scrollTop.toString();
       return; // Don't start dragging yet, wait to see if we reach top + drag down
     }
 
@@ -146,30 +148,51 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
       const touchY = e.touches[0].clientY;
-      
+
       // Handle potential drag state (when touching content area)
       if (isPotentialDrag && !isDragging) {
         const contentArea = contentAreaRef.current;
         const isAtTop = contentArea && contentArea.scrollTop === 0;
         const deltaY = touchY - startY;
         const absDeltaY = Math.abs(deltaY);
-        
+
         // If we're at the top and dragging down, activate bottom sheet drag
-        if (isAtTop && deltaY > 10) {
+        if (isAtTop && deltaY > 5) {
           setIsPotentialDrag(false);
           setIsDragging(true);
+          // Reset start position to current position for smooth transition
+          setStartY(touchY);
+          setCurrentY(touchY);
           if (sheetRef.current) {
             sheetRef.current.style.transition = 'none';
           }
           // Don't return here - let it continue to the drag logic below
-        } else if (absDeltaY > 5) {
-          // If we're not at top or not dragging down enough, allow normal scrolling
-          // Cancel potential drag after small movement to avoid interfering
-          setIsPotentialDrag(false);
-          return;
         } else {
-          // Not enough movement yet, keep waiting
-          return;
+          // Check if user is dragging down continuously and has hit the top
+          const prevScrollTop = contentArea?.dataset.prevScrollTop ? 
+            parseInt(contentArea.dataset.prevScrollTop) : null;
+          
+          if (isAtTop && deltaY > 0 && prevScrollTop !== null && prevScrollTop > 0) {
+            // User was scrolling and hit the top while dragging down - take over seamlessly
+            setIsPotentialDrag(false);
+            setIsDragging(true);
+            // Reset start position to create smooth transition
+            setStartY(touchY);
+            setCurrentY(touchY);
+            if (sheetRef.current) {
+              sheetRef.current.style.transition = 'none';
+            }
+          } else if (absDeltaY > 10 && !isAtTop) {
+            // If we're not at top and moved significantly, cancel potential drag
+            setIsPotentialDrag(false);
+            return;
+          } else {
+            // Store current scroll position for next check
+            if (contentArea) {
+              contentArea.dataset.prevScrollTop = contentArea.scrollTop.toString();
+            }
+            return;
+          }
         }
       }
 
@@ -216,6 +239,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 
   // Handle touch end
   const handleTouchEnd = useCallback(() => {
+    // Clean up scroll tracking data
+    if (contentAreaRef.current && contentAreaRef.current.dataset.prevScrollTop) {
+      delete contentAreaRef.current.dataset.prevScrollTop;
+    }
+
     // Reset potential drag state
     if (isPotentialDrag) {
       setIsPotentialDrag(false);
