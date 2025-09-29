@@ -28,6 +28,8 @@ const ShowsScreen = observer(() => {
   const mapRef = useRef<any>(null);
   const snapPoints = ['25%', '50%', '90%'];
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isAtTop, setIsAtTop] = useState(true);
+  const [scrollOffset, setScrollOffset] = useState(0);
 
   useEffect(() => {
     // Initialize the screen when it loads - only once
@@ -92,6 +94,26 @@ const ShowsScreen = observer(() => {
     } finally {
       uiStore.setAppLoading(false);
     }
+  }, []);
+
+  // Handle scroll events to detect when user is at top of list
+  // This prevents pull-to-refresh behavior when user wants to pull down the bottom sheet
+  const handleScroll = useCallback((event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setScrollOffset(offsetY);
+    setIsAtTop(offsetY <= 0);
+  }, []);
+
+  // Handle scroll begin drag - when user starts dragging at top, allow bottom sheet to handle
+  // This fixes the issue where scrolling up at the top triggers pull-to-refresh instead of bottom sheet drag
+  const handleScrollBeginDrag = useCallback((event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    if (offsetY <= 0) {
+      // User is at top and starting to drag up - this should pull down the bottom sheet
+      // Prevent the FlatList from handling this gesture
+      return false;
+    }
+    return true;
   }, []);
 
   const handleGetLocation = useCallback(async () => {
@@ -204,6 +226,7 @@ const ShowsScreen = observer(() => {
         enablePanDownToClose={false}
         backgroundStyle={styles.bottomSheetBackground}
         handleIndicatorStyle={styles.bottomSheetIndicator}
+        enableContentPanningGesture={isAtTop}
       >
         <View style={styles.bottomSheetContent}>
           {/* Day Picker */}
@@ -222,6 +245,13 @@ const ShowsScreen = observer(() => {
             keyExtractor={(item: Show) => item.id}
             contentContainerStyle={styles.showsList}
             showsVerticalScrollIndicator={false}
+            // Scroll handling to prevent pull-to-refresh when dragging bottom sheet
+            onScroll={handleScroll}
+            onScrollBeginDrag={handleScrollBeginDrag}
+            scrollEventThrottle={16}
+            // Disable bouncing and over-scroll to prevent pull-to-refresh interference
+            bounces={false}
+            overScrollMode="never"
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="musical-notes" size={60} color="#666666" />
