@@ -28,6 +28,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [currentSnapIndex, setCurrentSnapIndex] = useState(initialSnap);
   const [isDragging, setIsDragging] = useState(false);
+  const [isPotentialDrag, setIsPotentialDrag] = useState(false);
   const [startY, setStartY] = useState(0);
   const [currentY, setCurrentY] = useState(0);
   const [translateY, setTranslateY] = useState(0);
@@ -114,17 +115,24 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     const isDraggableArea = draggableAreaRef.current?.contains(target);
     const isContentArea = contentAreaRef.current?.contains(target);
 
-    // Allow dragging if touching drag handle, draggable area, or content area when at top
-    let canDrag = isDragHandle || isDraggableArea;
+    // Always allow dragging from drag handle or draggable area
+    const canDragImmediately = isDragHandle || isDraggableArea;
     
-    // If touching content area, check if we're at the top of the scroll
-    if (!canDrag && isContentArea && contentAreaRef.current) {
+    // If touching content area at top of scroll, mark as potential drag (but don't start dragging yet)
+    if (!canDragImmediately && isContentArea && contentAreaRef.current) {
       const isAtTop = contentAreaRef.current.scrollTop === 0;
-      canDrag = isAtTop;
+      if (isAtTop) {
+        setIsPotentialDrag(true);
+        setStartY(e.touches[0].clientY);
+        setCurrentY(e.touches[0].clientY);
+        setHasMoved(false);
+        return; // Don't start dragging yet, wait for movement direction
+      }
     }
 
-    if (!canDrag) return;
+    if (!canDragImmediately) return;
 
+    // Start dragging immediately for drag handle and draggable area
     setIsDragging(true);
     setStartY(e.touches[0].clientY);
     setCurrentY(e.touches[0].clientY);
@@ -140,9 +148,35 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   // Handle touch move
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
+      const touchY = e.touches[0].clientY;
+      
+      // Handle potential drag state (when touching content area at top)
+      if (isPotentialDrag && !isDragging) {
+        const deltaY = touchY - startY;
+        const absDeltaY = Math.abs(deltaY);
+        
+        // If moved more than 10px, decide direction
+        if (absDeltaY > 10) {
+          if (deltaY > 0) {
+            // Moving down - start bottom sheet dragging
+            setIsPotentialDrag(false);
+            setIsDragging(true);
+            if (sheetRef.current) {
+              sheetRef.current.style.transition = 'none';
+            }
+          } else {
+            // Moving up - cancel potential drag, allow normal scroll
+            setIsPotentialDrag(false);
+            return;
+          }
+        } else {
+          // Not enough movement yet, keep waiting
+          return;
+        }
+      }
+
       if (!isDragging || !sheetRef.current) return;
 
-      const touchY = e.touches[0].clientY;
       const deltaY = Math.abs(touchY - startY);
 
       // Mark as moved if we've moved more than 5px (threshold for drag vs tap)
@@ -179,11 +213,17 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
         sheetRef.current.style.transform = `translateY(${constrainedTransform}px)`;
       }
     },
-    [isDragging, startY, currentSnapIndex, getTransform, snapPoints],
+    [isDragging, isPotentialDrag, startY, currentSnapIndex, getTransform, snapPoints],
   );
 
   // Handle touch end
   const handleTouchEnd = useCallback(() => {
+    // Reset potential drag state
+    if (isPotentialDrag) {
+      setIsPotentialDrag(false);
+      return;
+    }
+
     if (!isDragging) return;
 
     setIsDragging(false);
