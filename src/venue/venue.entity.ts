@@ -61,6 +61,9 @@ export class Venue {
   @Column({ default: false })
   isFlagged: boolean;
 
+  @Column({ default: false })
+  isAIValidated: boolean;
+
   @Column({ nullable: true })
   submittedBy: string;
 

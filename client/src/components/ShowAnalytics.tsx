@@ -48,8 +48,8 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
   const [isValidatingVenues, setIsValidatingVenues] = useState(false);
   const [isValidatingTimes, setIsValidatingTimes] = useState(false);
 
-  const [validationModalOpen, setValidationModalOpen] = useState(false);
-  const [validationResults, setValidationResults] = useState<any>(null);
+  const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
+  const [duplicateResults, setDuplicateResults] = useState<any>(null);
 
   // Handle cleaning duplicates
   const handleCleanDuplicates = async () => {
@@ -87,12 +87,12 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
       }
 
       const results = await response.json();
-      setValidationResults(results);
-      setValidationModalOpen(true);
+      setDuplicateResults(results);
+      setDuplicateModalOpen(true);
 
       const duplicateCount = results.summary.duplicatesFound;
       const deletionCount = results.summary.venuesMarkedForDeletion;
-      
+
       if (duplicateCount > 0) {
         uiStore.addNotification(
           `Duplicate detection complete! Found ${duplicateCount} duplicate groups affecting ${deletionCount} venues.`,
@@ -117,7 +117,7 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
     setIsValidatingVenues(true);
     try {
       uiStore.addNotification(
-        'Starting enhanced multi-threaded venue validation with time detection...',
+        'Starting enhanced address & geocoding validation with multi-threading...',
         'info',
       );
 
@@ -130,24 +130,62 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to validate venues with enhanced system');
+        throw new Error('Failed to validate addresses and geocoding');
       }
 
       const results = await response.json();
-      setValidationResults(results);
-      setValidationModalOpen(true);
+      // Don't open modal for address validation - just show notification
 
       const summary = results.summary;
       const processingTime = Math.round(results.processingTime / 1000);
       const threadsUsed = results.threadsUsed;
 
       uiStore.addNotification(
-        `Enhanced validation complete! ${summary.totalVenues} venues processed using ${threadsUsed} threads in ${processingTime}s. Fixed: ${summary.timeFixesCount} times, ${summary.geoFixesCount} locations, ${summary.conflictsFound} conflicts found.`,
+        `Address & geo validation complete! ${summary.totalVenues} venues processed using ${threadsUsed} threads in ${processingTime}s. Fixed: ${summary.timeFixesCount} times, ${summary.geoFixesCount} locations, ${summary.conflictsFound} conflicts found.`,
         'success',
       );
     } catch (error) {
       console.error('Failed to validate venues with enhanced system:', error);
-      uiStore.addNotification('Enhanced venue validation failed. Please try again.', 'error');
+      uiStore.addNotification('Address & geo validation failed. Please try again.', 'error');
+    } finally {
+      setIsValidatingVenues(false);
+    }
+  };
+
+  const handleValidateNewVenuesOnly = async () => {
+    setIsValidatingVenues(true);
+    try {
+      uiStore.addNotification(
+        'Starting address & geo validation for NEW venues only (not yet AI validated)...',
+        'info',
+      );
+
+      const response = await fetch('/api/admin/venues/validate-new-enhanced', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to validate new venues');
+      }
+
+      const results = await response.json();
+      // Don't open modal for address validation - just show notification
+
+      const summary = results.summary;
+      const processingTime = Math.round(results.processingTime / 1000);
+      const threadsUsed = results.threadsUsed;
+
+      uiStore.addNotification(
+        `New venue validation complete! ${summary.totalVenues} new venues processed using ${threadsUsed} threads in ${processingTime}s. Fixed: ${summary.timeFixesCount} times, ${summary.geoFixesCount} locations, ${summary.conflictsFound} conflicts found.`,
+        'success',
+      );
+    } catch (error) {
+      console.error('Failed to validate new venues:', error);
+      uiStore.addNotification('New venue validation failed. Please try again.', 'error');
     } finally {
       setIsValidatingVenues(false);
     }
@@ -184,8 +222,6 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
       setIsValidatingTimes(false);
     }
   };
-
-
 
   // Handle cleanup of detected duplicate venues
   const handleCleanupDuplicates = async (duplicateGroups: any[]) => {
@@ -780,13 +816,39 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
             <Button
               variant="contained"
               startIcon={<FontAwesomeIcon icon={faRocket} />}
+              onClick={handleValidateNewVenuesOnly}
+              disabled={isValidatingVenues}
+              sx={{
+                borderRadius: 2,
+                px: 2,
+                py: 1.5,
+                minWidth: 200,
+                background: 'linear-gradient(45deg, #4CAF50, #8BC34A)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #45a049, #7CB342)',
+                },
+              }}
+            >
+              {isValidatingVenues ? (
+                <>
+                  <CircularProgress size={16} sx={{ mr: 1, color: 'white' }} />
+                  Validating New...
+                </>
+              ) : (
+                'Validate New Venues Only'
+              )}
+            </Button>
+
+            <Button
+              variant="contained"
+              startIcon={<FontAwesomeIcon icon={faRocket} />}
               onClick={handleValidateVenuesEnhanced}
               disabled={isValidatingVenues}
               sx={{
                 borderRadius: 2,
-                px: 3,
+                px: 2,
                 py: 1.5,
-                minWidth: 220,
+                minWidth: 200,
                 background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4)',
                 '&:hover': {
                   background: 'linear-gradient(45deg, #FF5252, #26C6DA)',
@@ -796,10 +858,10 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
               {isValidatingVenues ? (
                 <>
                   <CircularProgress size={16} sx={{ mr: 1, color: 'white' }} />
-                  Enhanced Validating...
+                  Validating All...
                 </>
               ) : (
-                'Enhanced Multi-Thread Fix'
+                'Validate All Venues'
               )}
             </Button>
 
@@ -830,8 +892,6 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                 'Fix Show Times'
               )}
             </Button>
-
-
           </Box>
         </Box>
 
@@ -1087,26 +1147,33 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
 
       {/* Venue Validation Results Modal */}
       <CustomModal
-        open={validationModalOpen}
-        onClose={() => setValidationModalOpen(false)}
+        open={duplicateModalOpen}
+        onClose={() => setDuplicateModalOpen(false)}
         title="Duplicate Venue Detection Results"
         maxWidth="lg"
       >
         <Box sx={{ p: 2 }}>
-          {validationResults && (
+          {duplicateResults && (
             <>
               {/* Summary */}
               <Card sx={{ mb: 3, p: 2, bgcolor: 'background.paper' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 2,
+                  }}
+                >
                   <Typography variant="h6" sx={{ color: 'primary.main' }}>
                     � Duplicate Detection Summary
                   </Typography>
-                  {validationResults.summary?.duplicatesFound > 0 && (
+                  {duplicateResults.summary?.duplicatesFound > 0 && (
                     <Button
                       variant="contained"
                       color="error"
                       startIcon={<FontAwesomeIcon icon={faTrash} />}
-                      onClick={() => handleCleanupDuplicates(validationResults.duplicateGroups)}
+                      onClick={() => handleCleanupDuplicates(duplicateResults.duplicateGroups)}
                       sx={{ borderRadius: 2 }}
                     >
                       Clean Up Duplicates
@@ -1117,7 +1184,7 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                   <Grid item xs={6} md={3}>
                     <Box sx={{ textAlign: 'center' }}>
                       <Typography variant="h4" sx={{ color: 'text.primary', fontWeight: 'bold' }}>
-                        {validationResults.totalVenues || validationResults.summary?.totalVenues || 0}
+                        {duplicateResults.totalVenues || duplicateResults.summary?.totalVenues || 0}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Total Venues
@@ -1127,7 +1194,7 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                   <Grid item xs={6} md={3}>
                     <Box sx={{ textAlign: 'center' }}>
                       <Typography variant="h4" sx={{ color: 'warning.main', fontWeight: 'bold' }}>
-                        {validationResults.summary?.duplicatesFound || 0}
+                        {duplicateResults.summary?.duplicatesFound || 0}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Duplicate Groups
@@ -1137,7 +1204,7 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                   <Grid item xs={6} md={3}>
                     <Box sx={{ textAlign: 'center' }}>
                       <Typography variant="h4" sx={{ color: 'error.main', fontWeight: 'bold' }}>
-                        {validationResults.summary?.venuesMarkedForDeletion || 0}
+                        {duplicateResults.summary?.venuesMarkedForDeletion || 0}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         To Delete
@@ -1147,7 +1214,7 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                   <Grid item xs={6} md={3}>
                     <Box sx={{ textAlign: 'center' }}>
                       <Typography variant="h4" sx={{ color: 'info.main', fontWeight: 'bold' }}>
-                        {validationResults.summary?.conflictsRequiringManualReview || 0}
+                        {duplicateResults.summary?.conflictsRequiringManualReview || 0}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Manual Review
@@ -1159,10 +1226,12 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
 
               {/* Duplicate Groups List */}
               <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-                {validationResults.duplicateGroups?.length > 0 ? 'Duplicate Groups Found' : 'No Duplicates Found'}
+                {duplicateResults.duplicateGroups?.length > 0
+                  ? 'Duplicate Groups Found'
+                  : 'No Duplicates Found'}
               </Typography>
               <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
-                {(validationResults.duplicateGroups || []).map((group: any, groupIndex: number) => (
+                {(duplicateResults.duplicateGroups || []).map((group: any, groupIndex: number) => (
                   <Card
                     key={group.id || groupIndex}
                     sx={{
@@ -1185,20 +1254,23 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                         }}
                       >
                         <Box>
-                          <Typography 
-                            variant="h6" 
-                            sx={{ 
-                              fontWeight: 'bold', 
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              fontWeight: 'bold',
                               color: '#e65100',
                               mb: 1,
                               display: 'flex',
                               alignItems: 'center',
-                              gap: 1
+                              gap: 1,
                             }}
                           >
                             🔄 Duplicate Group {groupIndex + 1}
                           </Typography>
-                          <Typography variant="body1" sx={{ color: 'text.primary', fontWeight: 'medium' }}>
+                          <Typography
+                            variant="body1"
+                            sx={{ color: 'text.primary', fontWeight: 'medium' }}
+                          >
                             📍 {group.city}, {group.state}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
@@ -1211,7 +1283,7 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                             bgcolor: '#f57c00',
                             color: 'white',
                             fontWeight: 'bold',
-                            fontSize: '0.875rem'
+                            fontSize: '0.875rem',
                           }}
                         />
                       </Box>
@@ -1227,7 +1299,7 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                               py: 2,
                               px: 3,
                               mb: 2,
-                              bgcolor: duplicate.isCorrectName 
+                              bgcolor: duplicate.isCorrectName
                                 ? 'rgba(46, 125, 50, 0.15)' // Dark green background
                                 : 'rgba(211, 47, 47, 0.15)', // Dark red background
                               border: duplicate.isCorrectName
@@ -1238,12 +1310,12 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                           >
                             <Box sx={{ flex: 1 }}>
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                                <Typography 
-                                  variant="body1" 
-                                  sx={{ 
+                                <Typography
+                                  variant="body1"
+                                  sx={{
                                     fontWeight: 'bold',
                                     color: duplicate.isCorrectName ? '#1b5e20' : '#b71c1c',
-                                    mr: 1
+                                    mr: 1,
                                   }}
                                 >
                                   {duplicate.isCorrectName ? '✅ KEEP' : '❌ DELETE'}
@@ -1257,26 +1329,26 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                                     fontWeight: 'bold',
                                     '& .MuiChip-label': {
                                       px: 1.5,
-                                    }
+                                    },
                                   }}
                                 />
                               </Box>
-                              <Typography 
-                                variant="body1" 
-                                sx={{ 
+                              <Typography
+                                variant="body1"
+                                sx={{
                                   fontWeight: duplicate.isCorrectName ? 'bold' : 'medium',
                                   color: 'text.primary',
-                                  mb: duplicate.address ? 0.5 : 0
+                                  mb: duplicate.address ? 0.5 : 0,
                                 }}
                               >
                                 {duplicate.name}
                               </Typography>
                               {duplicate.address && (
-                                <Typography 
-                                  variant="body2" 
-                                  sx={{ 
+                                <Typography
+                                  variant="body2"
+                                  sx={{
                                     color: 'text.secondary',
-                                    fontStyle: 'italic'
+                                    fontStyle: 'italic',
                                   }}
                                 >
                                   📍 {duplicate.address}

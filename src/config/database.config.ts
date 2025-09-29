@@ -87,7 +87,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       Transaction,
     ],
     synchronize: false, // Disabled to prevent foreign key constraint issues
-    logging: false, // SQL logging disabled
+    logging: !isProduction, // Enable SQL logging in development only
 
     // Handle schema synchronization more gracefully
     dropSchema: false, // Never drop the entire schema
@@ -96,7 +96,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     autoLoadEntities: false, // Disable auto-loading to prevent unexpected schema changes
     retryAttempts: 0, // Don't retry failed connections that might trigger schema operations
 
-    // Completely disable schema validation
+    // Database connection options
     extra: {
       charset: 'utf8mb4_unicode_ci',
       // Disable foreign key checks during connection to prevent constraint errors
@@ -106,6 +106,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     // Migration configuration - enabled with all necessary migration files for production
     migrations: migrationsEnabled
       ? [
+          'dist/migrations/1727814000000-AddIsAIValidatedToVenues.js',
           'dist/migrations/1727906400000-RecordMicrophoneUuidConversion.js',
           'dist/migrations/1727906500000-ConvertMicrophonesToUuid.js',
           'dist/migrations/1727906600000-PopulateAvatarsTable.js',
@@ -127,7 +128,6 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
           'dist/migrations/1737453000000-StandardizeAvatarProperties.js',
           'dist/migrations/1737454000000-CreateRealTimeApiMetrics.js',
           'dist/migrations/1737454100000-AddSearchQueryToApiRecentCalls.js',
-          'dist/migrations/1737454200000-AddProfileImageUrlToUser.js',
           'dist/migrations/1737454300000-AddRockThemeAvatars.js',
           'dist/migrations/1737454400000-FixProductionDatabaseIssues.js',
           'dist/migrations/1737454500000-AddLocationToShowReviews.js',
@@ -135,7 +135,8 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
           'dist/migrations/1737462100000-FixUserAvatarData.js',
           'dist/migrations/1737462200000-SeedAllNewAvatars.js',
           'dist/migrations/1737462300000-EnsureProductionAvatarSystemReady.js',
-          'dist/migrations/1737462400000-AddProfileImageUrlToUsers.js',
+
+          'dist/migrations/1737810000000-FixRockstarAlexNameData.js',
         ]
       : [],
     migrationsTableName: 'migrations',

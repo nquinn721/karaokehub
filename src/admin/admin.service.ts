@@ -1882,8 +1882,8 @@ export class AdminService {
   /**
    * Enhanced venue validation using multiple Gemini threads with time detection
    */
-  async validateAllVenuesEnhanced(): Promise<ValidationBatchResult> {
-    return await this.enhancedVenueValidationService.validateAllVenuesEnhanced();
+  async validateAllVenuesEnhanced(onlyUnvalidated = false): Promise<ValidationBatchResult> {
+    return await this.enhancedVenueValidationService.validateAllVenuesEnhanced(onlyUnvalidated);
   }
 
   /**

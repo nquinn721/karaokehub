@@ -282,10 +282,16 @@ export class AdminController {
     return await this.venueGeocodingService.fixVenueGeocoordinates(venueId);
   }
 
-  // Enhanced multi-threaded venue validation with time fixes (kept for time validation)
+  // Enhanced multi-threaded venue validation - NEW VENUES ONLY
+  @Post('venues/validate-new-enhanced')
+  async validateNewVenuesEnhanced() {
+    return await this.adminService.validateAllVenuesEnhanced(true); // onlyUnvalidated = true
+  }
+
+  // Enhanced multi-threaded venue validation - ALL VENUES
   @Post('venues/validate-all-enhanced')
   async validateAllVenuesEnhanced() {
-    return await this.adminService.validateAllVenuesEnhanced();
+    return await this.adminService.validateAllVenuesEnhanced(false); // onlyUnvalidated = false
   }
 
   // Validate and fix show times

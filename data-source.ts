@@ -112,6 +112,7 @@ export default new DataSource({
     'src/migrations/1737462300000-EnsureProductionAvatarSystemReady.ts',
     'src/migrations/1737462400000-AddProfileImageUrlToUsers.ts',
     'src/migrations/1737810000000-FixRockstarAlexNameData.ts',
+    'src/migrations/1727814000000-AddIsAIValidatedToVenues.ts',
   ],
   synchronize: false,
   logging: true,

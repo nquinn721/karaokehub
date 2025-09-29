@@ -5,11 +5,11 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Venue } from '../venue/venue.entity';
 import { GeocodingService } from '../geocoding/geocoding.service';
-import { ConfigService } from '@nestjs/config';
+import { Venue } from '../venue/venue.entity';
 
 export interface VenueGeocodingResult {
   venueId: string;
@@ -67,23 +67,25 @@ export class VenueGeocodingValidationService {
 
       const results: VenueGeocodingResult[] = [];
       const batchSize = 10;
-      
+
       // Process in batches to respect API rate limits
       for (let i = 0; i < venues.length; i += batchSize) {
         const batch = venues.slice(i, i + batchSize);
-        const batchPromises = batch.map(venue => this.validateVenueGeocoordinates(venue));
+        const batchPromises = batch.map((venue) => this.validateVenueGeocoordinates(venue));
         const batchResults = await Promise.all(batchPromises);
         results.push(...batchResults);
 
         // Small delay between batches
         if (i + batchSize < venues.length) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
       }
 
       const summary = this.calculateSummary(results, Date.now() - startTime);
 
-      this.logger.log(`Geocoding validation completed. Fixed: ${summary.venuesFixed}, Verified: ${summary.venuesVerified}`);
+      this.logger.log(
+        `Geocoding validation completed. Fixed: ${summary.venuesFixed}, Verified: ${summary.venuesVerified}`,
+      );
 
       return {
         success: true,
@@ -101,7 +103,7 @@ export class VenueGeocodingValidationService {
    */
   private async validateVenueGeocoordinates(venue: any): Promise<VenueGeocodingResult> {
     const fullAddress = this.buildFullAddress(venue);
-    
+
     if (!fullAddress) {
       return {
         venueId: venue.id,
@@ -119,7 +121,7 @@ export class VenueGeocodingValidationService {
     try {
       // Try multiple geocoding methods for best accuracy
       const geocodingResults = await this.tryMultipleGeocodingMethods(fullAddress);
-      
+
       if (!geocodingResults || geocodingResults.length === 0) {
         return {
           venueId: venue.id,
@@ -144,12 +146,13 @@ export class VenueGeocodingValidationService {
       let needsUpdate = false;
 
       if (currentCoordinates) {
-        distanceMoved = this.geocodingService.calculateDistanceSync(
-          currentCoordinates.lat,
-          currentCoordinates.lng,
-          newCoordinates.lat,
-          newCoordinates.lng
-        ) * 1609.34; // Convert miles to meters
+        distanceMoved =
+          this.geocodingService.calculateDistanceSync(
+            currentCoordinates.lat,
+            currentCoordinates.lng,
+            newCoordinates.lat,
+            newCoordinates.lng,
+          ) * 1609.34; // Convert miles to meters
 
         // Consider it a fix if moved more than 100 meters (likely wrong location)
         needsUpdate = distanceMoved > 100;
@@ -176,11 +179,10 @@ export class VenueGeocodingValidationService {
         confidence: bestResult.confidence,
         source: bestResult.source,
         distanceMoved,
-        message: needsUpdate 
+        message: needsUpdate
           ? `Updated coordinates (moved ${Math.round(distanceMoved)}m)`
           : 'Coordinates verified as accurate',
       };
-
     } catch (error) {
       this.logger.error(`Geocoding validation failed for ${venue.name}:`, error);
       return {
@@ -200,12 +202,14 @@ export class VenueGeocodingValidationService {
   /**
    * Try multiple geocoding methods and return results sorted by confidence
    */
-  private async tryMultipleGeocodingMethods(address: string): Promise<Array<{
-    lat: number;
-    lng: number;
-    confidence: number;
-    source: 'google_geocoding' | 'gemini_geocoding' | 'places_api';
-  }>> {
+  private async tryMultipleGeocodingMethods(address: string): Promise<
+    Array<{
+      lat: number;
+      lng: number;
+      confidence: number;
+      source: 'google_geocoding' | 'gemini_geocoding' | 'places_api';
+    }>
+  > {
     const results: Array<{
       lat: number;
       lng: number;
@@ -255,7 +259,7 @@ export class VenueGeocodingValidationService {
    */
   private buildFullAddress(venue: any): string | null {
     const parts = [];
-    
+
     if (venue.address) parts.push(venue.address);
     if (venue.city) parts.push(venue.city);
     if (venue.state) parts.push(venue.state);
@@ -267,13 +271,16 @@ export class VenueGeocodingValidationService {
   /**
    * Calculate summary statistics
    */
-  private calculateSummary(results: VenueGeocodingResult[], processingTime: number): GeocodingValidationSummary {
+  private calculateSummary(
+    results: VenueGeocodingResult[],
+    processingTime: number,
+  ): GeocodingValidationSummary {
     const totalVenues = results.length;
-    const venuesFixed = results.filter(r => r.status === 'fixed').length;
-    const venuesVerified = results.filter(r => r.status === 'verified').length;
-    const venuesFailed = results.filter(r => r.status === 'failed').length;
-    const venuesWithoutAddress = results.filter(r => r.status === 'no_address').length;
-    
+    const venuesFixed = results.filter((r) => r.status === 'fixed').length;
+    const venuesVerified = results.filter((r) => r.status === 'verified').length;
+    const venuesFailed = results.filter((r) => r.status === 'failed').length;
+    const venuesWithoutAddress = results.filter((r) => r.status === 'no_address').length;
+
     const confidenceSum = results.reduce((sum, r) => sum + r.confidence, 0);
     const averageConfidence = totalVenues > 0 ? confidenceSum / totalVenues : 0;
 

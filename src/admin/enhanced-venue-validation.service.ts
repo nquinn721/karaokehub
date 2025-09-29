@@ -85,18 +85,24 @@ export class EnhancedVenueValidationService {
   /**
    * Validate all venues using multiple Gemini threads
    */
-  async validateAllVenuesEnhanced(): Promise<ValidationBatchResult> {
+  async validateAllVenuesEnhanced(onlyUnvalidated = false): Promise<ValidationBatchResult> {
     const startTime = Date.now();
 
     try {
-      // Get all active venues with their shows
+      // Get venues based on validation preference
+      const whereCondition: any = { isActive: true };
+      if (onlyUnvalidated) {
+        whereCondition.isAIValidated = false;
+      }
+
       const venues = await this.venueRepository.find({
-        where: { isActive: true },
+        where: whereCondition,
         relations: ['shows'],
       });
 
+      const validationType = onlyUnvalidated ? 'NEW/UNVALIDATED' : 'ALL';
       console.log(
-        `🚀 Starting enhanced venue validation for ${venues.length} venues using ${this.maxConcurrentThreads} threads`,
+        `🚀 Starting enhanced venue validation for ${venues.length} ${validationType} venues using ${this.maxConcurrentThreads} threads`,
       );
 
       // Split venues into batches for parallel processing
@@ -126,6 +132,24 @@ export class EnhancedVenueValidationService {
       console.error('❌ Enhanced venue validation failed:', error);
       throw new Error(`Enhanced venue validation failed: ${error.message}`);
     }
+  }
+
+  /**
+   * Calculate distance between two coordinates using Haversine formula
+   * Returns distance in kilometers
+   */
+  private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   }
 
   /**
@@ -331,9 +355,33 @@ export class EnhancedVenueValidationService {
         venue.website = result.suggestedData.website;
         hasChanges = true;
       }
-      if ((!venue.lat || !venue.lng) && result.suggestedData.lat && result.suggestedData.lng) {
-        venue.lat = result.suggestedData.lat;
-        venue.lng = result.suggestedData.lng;
+      // Update coordinates if missing OR if Google provided better ones (significant difference)
+      if (result.suggestedData.lat && result.suggestedData.lng) {
+        const shouldUpdateCoords =
+          !venue.lat ||
+          !venue.lng || // Missing coordinates
+          (venue.lat &&
+            venue.lng &&
+            this.calculateDistance(
+              venue.lat,
+              venue.lng,
+              result.suggestedData.lat,
+              result.suggestedData.lng,
+            ) > 0.05); // >50m difference
+
+        if (shouldUpdateCoords) {
+          console.log(
+            `🔧 Updating coordinates for ${venue.name}: (${venue.lat}, ${venue.lng}) → (${result.suggestedData.lat}, ${result.suggestedData.lng})`,
+          );
+          venue.lat = result.suggestedData.lat;
+          venue.lng = result.suggestedData.lng;
+          hasChanges = true;
+        }
+      }
+
+      // Mark venue as AI validated (regardless of whether data changed)
+      if (!venue.isAIValidated) {
+        venue.isAIValidated = true;
         hasChanges = true;
       }
 

@@ -91,9 +91,9 @@ function sendComplete(data: ValidationWorkerResult) {
 }
 
 /**
- * Validate coordinates using Google Geocoding API
+ * Get coordinates using Google Geocoding API (primary source for coordinates)
  */
-async function validateCoordinatesWithGoogle(
+async function getCoordinatesFromGoogle(
   venue: EnhancedVenueData,
   suggestedData: any,
   googleMapsApiKey?: string,
@@ -101,45 +101,44 @@ async function validateCoordinatesWithGoogle(
   try {
     // Build full address for Google API validation
     const addressParts = [];
-    if (suggestedData.address || venue.address) addressParts.push(suggestedData.address || venue.address);
+    if (suggestedData.address || venue.address)
+      addressParts.push(suggestedData.address || venue.address);
     if (suggestedData.city || venue.city) addressParts.push(suggestedData.city || venue.city);
     if (suggestedData.state || venue.state) addressParts.push(suggestedData.state || venue.state);
     if (suggestedData.zip || venue.zip) addressParts.push(suggestedData.zip || venue.zip);
-    
-    if (addressParts.length === 0) return null;
-    
-    const fullAddress = addressParts.join(', ');
-    const encodedAddress = encodeURIComponent(fullAddress);
-    
-    // Use Google Geocoding API
-    if (!googleMapsApiKey) return null;
-    
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${googleMapsApiKey}`;
-    const response = await fetch(url);
-    
-    if (!response.ok) return null;
-    
-    const data = await response.json();
-    
-    if (data.status === 'OK' && data.results && data.results.length > 0) {
-      const location = data.results[0].geometry.location;
-      
-      // Compare with Gemini coordinates and choose most accurate
-      const geminiCoords = { lat: suggestedData.lat, lng: suggestedData.lng };
-      const googleCoords = { lat: location.lat, lng: location.lng };
-      
-      // If coordinates are very close (within ~50 meters), trust Gemini
-      // If they're far apart, trust Google API
-      const distance = calculateDistance(geminiCoords.lat, geminiCoords.lng, googleCoords.lat, googleCoords.lng);
-      
-      if (distance > 0.05) { // More than ~50 meters difference
-        return googleCoords; // Use Google API coordinates
-      }
-      
-      // Close enough, keep Gemini coordinates (they might be more precise)
+
+    console.log(
+      `🔍 Validating coordinates for ${venue.name}: address parts = [${addressParts.join(', ')}]`,
+    );
+
+    if (addressParts.length === 0) {
+      console.log(`⚠️ No address information for ${venue.name}, skipping Google validation`);
       return null;
     }
-    
+
+    const fullAddress = addressParts.join(', ');
+    const encodedAddress = encodeURIComponent(fullAddress);
+
+    // Use Google Geocoding API
+    if (!googleMapsApiKey) return null;
+
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${googleMapsApiKey}`;
+    const response = await fetch(url);
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      const location = data.results[0].geometry.location;
+      const googleCoords = { lat: location.lat, lng: location.lng };
+
+      console.log(
+        `📍 Google geocoding for ${venue.name}: (${googleCoords.lat}, ${googleCoords.lng})`,
+      );
+      return googleCoords; // Always use Google API coordinates
+    }
+
     return null;
   } catch (error) {
     // If Google API fails, continue with Gemini coordinates
@@ -153,12 +152,15 @@ async function validateCoordinatesWithGoogle(
  */
 function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371; // Earth's radius in kilometers
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-           Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-           Math.sin(dLng/2) * Math.sin(dLng/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
 
@@ -195,16 +197,15 @@ ${showTimesInfo}
 
 RESEARCH INSTRUCTIONS:
 1. Find the EXACT business name, full address, and current contact information
-2. Verify the precise latitude/longitude coordinates for the exact business location
+2. Focus on address accuracy - coordinates will be handled separately via Google Geocoding
 3. Research typical karaoke/entertainment hours for this venue
 4. Identify any obvious time errors (karaoke rarely happens in morning hours like 8:00 AM - 12:00 AM)
 5. Look for the venue's actual operating hours and karaoke schedule
 
-CRITICAL COORDINATE VALIDATION:
-- Provide coordinates to at least 6 decimal places for maximum accuracy
-- Ensure coordinates match the EXACT business address, not nearby businesses
-- If current coordinates seem wrong (e.g., pointing to wrong business), provide corrected coordinates
-- Coordinates should place the marker directly on the business building
+FOCUS ON ADDRESS ACCURACY:
+- Ensure the complete, accurate street address
+- Verify correct city, state, and ZIP code
+- Address accuracy is critical for precise coordinate geocoding
 
 CRITICAL TIME VALIDATION:
 - Karaoke venues typically operate evenings (6:00 PM - 2:00 AM)
@@ -219,14 +220,12 @@ Return a JSON response with this exact structure:
   "confidence": 0.0-1.0,
   "suggestedData": {
     "name": "Exact business name",
-    "address": "Complete street address",
+    "address": "Complete street address", 
     "city": "City name",
     "state": "State abbreviation (2 letters)",
     "zip": "ZIP code",
     "phone": "Phone number with area code",
     "website": "Full website URL",
-    "lat": precise_latitude_number,
-    "lng": precise_longitude_number,
     "operatingHours": "Typical business hours",
     "karaokeHours": "Karaoke-specific hours if different"
   },
@@ -279,11 +278,20 @@ If venue cannot be found or confidence is low, set venueFound to false.`;
     const hasTimeIssues = timeIssues.length > 0;
     const hasShowUpdates = parsedData.showUpdates && parsedData.showUpdates.length > 0;
 
-    // Validate coordinates with Google Geocoding API as fallback
-    const validatedCoordinates = await validateCoordinatesWithGoogle(venue, parsedData.suggestedData, googleMapsApiKey);
-    if (validatedCoordinates) {
-      parsedData.suggestedData.lat = validatedCoordinates.lat;
-      parsedData.suggestedData.lng = validatedCoordinates.lng;
+    // Get coordinates from Google Geocoding API (primary source)
+    const googleCoordinates = await getCoordinatesFromGoogle(
+      venue,
+      parsedData.suggestedData,
+      googleMapsApiKey,
+    );
+    if (googleCoordinates) {
+      console.log(
+        `🔧 Setting coordinates for ${venue.name} from Google: (${googleCoordinates.lat}, ${googleCoordinates.lng})`,
+      );
+      parsedData.suggestedData.lat = googleCoordinates.lat;
+      parsedData.suggestedData.lng = googleCoordinates.lng;
+    } else {
+      console.log(`⚠️ No Google coordinates found for ${venue.name}, keeping existing coordinates`);
     }
 
     // Compare current data with suggested data
@@ -415,14 +423,13 @@ function compareVenueData(current: any, suggested: any): string[] {
     }
   }
 
-  // Compare coordinates (allow for small variations)
+  // Compare coordinates if Google provided new ones
   if (current.lat && current.lng && suggested.lat && suggested.lng) {
-    const latDiff = Math.abs(current.lat - suggested.lat);
-    const lngDiff = Math.abs(current.lng - suggested.lng);
-    if (latDiff > 0.01 || lngDiff > 0.01) {
-      // More than ~1km difference
+    const distanceKm = calculateDistance(current.lat, current.lng, suggested.lat, suggested.lng);
+    if (distanceKm > 0.05) {
+      // More than ~50m difference - worth updating for accuracy
       conflicts.push(
-        `Coordinates: '${current.lat}, ${current.lng}' vs '${suggested.lat}, ${suggested.lng}'`,
+        `Coordinates updated from Google: '${current.lat}, ${current.lng}' → '${suggested.lat}, ${suggested.lng}' (${(distanceKm * 1000).toFixed(0)}m improvement)`,
       );
     }
   }
@@ -476,7 +483,12 @@ async function processVenuesInThread(
       try {
         sendProgress(`Thread ${threadIndex}: Validating ${venue.name} (${i + 1}/${venues.length})`);
 
-        const result = await enhancedVenueLookupWithGemini(venue, model, threadIndex, googleMapsApiKey);
+        const result = await enhancedVenueLookupWithGemini(
+          venue,
+          model,
+          threadIndex,
+          googleMapsApiKey,
+        );
         results.push(result);
 
         // Update counters
