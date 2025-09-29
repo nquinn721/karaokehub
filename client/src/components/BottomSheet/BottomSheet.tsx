@@ -118,16 +118,13 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     // Always allow dragging from drag handle or draggable area
     const canDragImmediately = isDragHandle || isDraggableArea;
     
-    // If touching content area at top of scroll, mark as potential drag (but don't start dragging yet)
+    // If touching content area, always track the touch (for potential bottom sheet drag when reaching top)
     if (!canDragImmediately && isContentArea && contentAreaRef.current) {
-      const isAtTop = contentAreaRef.current.scrollTop === 0;
-      if (isAtTop) {
-        setIsPotentialDrag(true);
-        setStartY(e.touches[0].clientY);
-        setCurrentY(e.touches[0].clientY);
-        setHasMoved(false);
-        return; // Don't start dragging yet, wait for movement direction
-      }
+      setIsPotentialDrag(true);
+      setStartY(e.touches[0].clientY);
+      setCurrentY(e.touches[0].clientY);
+      setHasMoved(false);
+      return; // Don't start dragging yet, wait to see if we reach top + drag down
     }
 
     if (!canDragImmediately) return;
@@ -150,25 +147,26 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     (e: TouchEvent) => {
       const touchY = e.touches[0].clientY;
       
-      // Handle potential drag state (when touching content area at top)
+      // Handle potential drag state (when touching content area)
       if (isPotentialDrag && !isDragging) {
+        const contentArea = contentAreaRef.current;
+        const isAtTop = contentArea && contentArea.scrollTop === 0;
         const deltaY = touchY - startY;
         const absDeltaY = Math.abs(deltaY);
         
-        // If moved more than 10px, decide direction
-        if (absDeltaY > 10) {
-          if (deltaY > 0) {
-            // Moving down - start bottom sheet dragging
-            setIsPotentialDrag(false);
-            setIsDragging(true);
-            if (sheetRef.current) {
-              sheetRef.current.style.transition = 'none';
-            }
-          } else {
-            // Moving up - cancel potential drag, allow normal scroll
-            setIsPotentialDrag(false);
-            return;
+        // If we're at the top and dragging down, activate bottom sheet drag
+        if (isAtTop && deltaY > 10) {
+          setIsPotentialDrag(false);
+          setIsDragging(true);
+          if (sheetRef.current) {
+            sheetRef.current.style.transition = 'none';
           }
+          // Don't return here - let it continue to the drag logic below
+        } else if (absDeltaY > 5) {
+          // If we're not at top or not dragging down enough, allow normal scrolling
+          // Cancel potential drag after small movement to avoid interfering
+          setIsPotentialDrag(false);
+          return;
         } else {
           // Not enough movement yet, keep waiting
           return;
