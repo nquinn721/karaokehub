@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { observer } from 'mobx-react-lite';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -28,8 +29,7 @@ const ShowsScreen = observer(() => {
   const mapRef = useRef<any>(null);
   const snapPoints = ['25%', '50%', '90%'];
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isAtTop, setIsAtTop] = useState(true);
-  const [scrollOffset, setScrollOffset] = useState(0);
+  const flatListRef = useRef<any>(null);
 
   useEffect(() => {
     // Initialize the screen when it loads - only once
@@ -96,25 +96,7 @@ const ShowsScreen = observer(() => {
     }
   }, []);
 
-  // Handle scroll events to detect when user is at top of list
-  // This prevents pull-to-refresh behavior when user wants to pull down the bottom sheet
-  const handleScroll = useCallback((event: any) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    setScrollOffset(offsetY);
-    setIsAtTop(offsetY <= 0);
-  }, []);
 
-  // Handle scroll begin drag - when user starts dragging at top, allow bottom sheet to handle
-  // This fixes the issue where scrolling up at the top triggers pull-to-refresh instead of bottom sheet drag
-  const handleScrollBeginDrag = useCallback((event: any) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    if (offsetY <= 0) {
-      // User is at top and starting to drag up - this should pull down the bottom sheet
-      // Prevent the FlatList from handling this gesture
-      return false;
-    }
-    return true;
-  }, []);
 
   const handleGetLocation = useCallback(async () => {
     try {
@@ -226,7 +208,6 @@ const ShowsScreen = observer(() => {
         enablePanDownToClose={false}
         backgroundStyle={styles.bottomSheetBackground}
         handleIndicatorStyle={styles.bottomSheetIndicator}
-        enableContentPanningGesture={isAtTop}
       >
         <View style={styles.bottomSheetContent}>
           {/* Day Picker */}
@@ -240,15 +221,21 @@ const ShowsScreen = observer(() => {
           </View>
 
           <BottomSheetFlatList
+            ref={flatListRef}
             data={showStore.shows}
             renderItem={renderShowItem}
             keyExtractor={(item: Show) => item.id}
             contentContainerStyle={styles.showsList}
             showsVerticalScrollIndicator={false}
-            // Scroll handling to prevent pull-to-refresh when dragging bottom sheet
-            onScroll={handleScroll}
-            onScrollBeginDrag={handleScrollBeginDrag}
-            scrollEventThrottle={16}
+            // Disable pull-to-refresh by providing a disabled refresh control
+            // This prevents the native pull-to-refresh from interfering with bottom sheet dragging
+            refreshControl={
+              <RefreshControl
+                refreshing={false}
+                onRefresh={() => {}} // Empty function - prevents pull-to-refresh
+                enabled={false} // Explicitly disable refresh control
+              />
+            }
             // Disable bouncing and over-scroll to prevent pull-to-refresh interference
             bounces={false}
             overScrollMode="never"
