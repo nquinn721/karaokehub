@@ -1166,32 +1166,53 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                   <Card
                     key={group.id || groupIndex}
                     sx={{
-                      mb: 2,
-                      border: '1px solid',
-                      borderColor: 'warning.main',
+                      mb: 3,
+                      border: '2px solid',
+                      borderColor: '#f57c00',
+                      bgcolor: 'rgba(245, 124, 0, 0.05)',
                     }}
                   >
-                    <CardContent>
+                    <CardContent sx={{ pb: 2 }}>
                       <Box
                         sx={{
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'flex-start',
-                          mb: 2,
+                          mb: 3,
+                          p: 2,
+                          bgcolor: 'rgba(245, 124, 0, 0.1)',
+                          borderRadius: 1,
                         }}
                       >
                         <Box>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
+                          <Typography 
+                            variant="h6" 
+                            sx={{ 
+                              fontWeight: 'bold', 
+                              color: '#e65100',
+                              mb: 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1
+                            }}
+                          >
                             🔄 Duplicate Group {groupIndex + 1}
                           </Typography>
+                          <Typography variant="body1" sx={{ color: 'text.primary', fontWeight: 'medium' }}>
+                            📍 {group.city}, {group.state}
+                          </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            Location: {group.city}, {group.state} • Confidence: {Math.round((group.confidence || 0) * 100)}%
+                            AI Confidence: {Math.round((group.confidence || 0) * 100)}%
                           </Typography>
                         </Box>
                         <Chip
                           label={`${group.duplicates?.length || 0} venues`}
-                          size="small"
-                          color="warning"
+                          sx={{
+                            bgcolor: '#f57c00',
+                            color: 'white',
+                            fontWeight: 'bold',
+                            fontSize: '0.875rem'
+                          }}
                         />
                       </Box>
 
@@ -1203,29 +1224,65 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
-                              py: 1,
-                              px: 2,
-                              mb: 1,
-                              bgcolor: duplicate.isCorrectName ? 'success.light' : 'error.light',
-                              borderRadius: 1,
+                              py: 2,
+                              px: 3,
+                              mb: 2,
+                              bgcolor: duplicate.isCorrectName 
+                                ? 'rgba(46, 125, 50, 0.15)' // Dark green background
+                                : 'rgba(211, 47, 47, 0.15)', // Dark red background
+                              border: duplicate.isCorrectName
+                                ? '2px solid #2e7d32' // Dark green border
+                                : '2px solid #d32f2f', // Dark red border
+                              borderRadius: 2,
                             }}
                           >
-                            <Box>
-                              <Typography variant="body2" sx={{ fontWeight: duplicate.isCorrectName ? 'bold' : 'normal' }}>
-                                {duplicate.isCorrectName ? '✅ KEEP: ' : '❌ DELETE: '}
+                            <Box sx={{ flex: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                                <Typography 
+                                  variant="body1" 
+                                  sx={{ 
+                                    fontWeight: 'bold',
+                                    color: duplicate.isCorrectName ? '#1b5e20' : '#b71c1c',
+                                    mr: 1
+                                  }}
+                                >
+                                  {duplicate.isCorrectName ? '✅ KEEP' : '❌ DELETE'}
+                                </Typography>
+                                <Chip
+                                  label={duplicate.isCorrectName ? 'Keep' : 'Delete'}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: duplicate.isCorrectName ? '#2e7d32' : '#d32f2f',
+                                    color: 'white',
+                                    fontWeight: 'bold',
+                                    '& .MuiChip-label': {
+                                      px: 1.5,
+                                    }
+                                  }}
+                                />
+                              </Box>
+                              <Typography 
+                                variant="body1" 
+                                sx={{ 
+                                  fontWeight: duplicate.isCorrectName ? 'bold' : 'medium',
+                                  color: 'text.primary',
+                                  mb: duplicate.address ? 0.5 : 0
+                                }}
+                              >
                                 {duplicate.name}
                               </Typography>
                               {duplicate.address && (
-                                <Typography variant="caption" color="text.secondary">
-                                  {duplicate.address}
+                                <Typography 
+                                  variant="body2" 
+                                  sx={{ 
+                                    color: 'text.secondary',
+                                    fontStyle: 'italic'
+                                  }}
+                                >
+                                  📍 {duplicate.address}
                                 </Typography>
                               )}
                             </Box>
-                            <Chip
-                              label={duplicate.isCorrectName ? 'Keep' : 'Delete'}
-                              size="small"
-                              color={duplicate.isCorrectName ? 'success' : 'error'}
-                            />
                           </Box>
                         ))}
                       </Box>
