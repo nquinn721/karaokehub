@@ -22,7 +22,7 @@ DATABASE_HOST=your-cloud-sql-instance-ip
 DATABASE_PORT=3306
 DATABASE_USERNAME=your-db-username
 DATABASE_PASSWORD=your-secure-db-password
-DATABASE_NAME=karaoke-pal-prod
+DATABASE_NAME=karaoke-hub-prod
 
 # JWT Configuration
 JWT_SECRET=your-very-secure-jwt-secret-key

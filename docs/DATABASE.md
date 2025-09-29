@@ -75,7 +75,7 @@
 ```env
 DATABASE_HOST=localhost
 DATABASE_PORT=3306
-DATABASE_NAME=karaoke-pal
+DATABASE_NAME=karaoke-hub
 DATABASE_USERNAME=admin
 DATABASE_PASSWORD=password
 ```
@@ -85,7 +85,7 @@ DATABASE_PASSWORD=password
 ```env
 DATABASE_HOST=your-cloud-sql-ip
 DATABASE_PORT=3306
-DATABASE_NAME=karaoke-pal
+DATABASE_NAME=karaoke-hub
 DATABASE_USERNAME=your-production-user
 DATABASE_PASSWORD=your-production-password
 ```
@@ -128,7 +128,7 @@ docker-compose -f docker-compose.dev.yml logs mysql
 ### MySQL CLI
 
 ```bash
-docker-compose -f docker-compose.dev.yml exec mysql mysql -u admin -p karaoke-pal
+docker-compose -f docker-compose.dev.yml exec mysql mysql -u admin -p karaoke-hub
 ```
 
 ## Sample Data

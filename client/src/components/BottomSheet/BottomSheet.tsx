@@ -35,6 +35,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const sheetRef = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement>(null);
   const draggableAreaRef = useRef<HTMLDivElement>(null);
+  const contentAreaRef = useRef<HTMLDivElement>(null);
   const isInitializedRef = useRef(false);
 
   // Calculate sheet height based on current snap point
@@ -319,6 +320,42 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     snapToPoint,
   ]);
 
+  // Handle content area touch events to prevent pull-to-refresh
+  const handleContentTouchStart = useCallback((e: TouchEvent) => {
+    const contentArea = contentAreaRef.current;
+    if (!contentArea) return;
+    
+    // Check if we're at the top of the scroll and user is trying to scroll up
+    const isAtTop = contentArea.scrollTop === 0;
+    if (isAtTop) {
+      // Store initial touch position to detect pull-to-refresh gesture
+      contentArea.dataset.initialTouchY = e.touches[0].clientY.toString();
+    }
+  }, []);
+
+  const handleContentTouchMove = useCallback((e: TouchEvent) => {
+    const contentArea = contentAreaRef.current;
+    if (!contentArea || !contentArea.dataset.initialTouchY) return;
+    
+    const isAtTop = contentArea.scrollTop === 0;
+    const currentTouchY = e.touches[0].clientY;
+    const initialTouchY = parseFloat(contentArea.dataset.initialTouchY);
+    const deltaY = currentTouchY - initialTouchY;
+    
+    // If we're at the top and user is pulling down (positive deltaY), prevent default
+    if (isAtTop && deltaY > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, []);
+
+  const handleContentTouchEnd = useCallback(() => {
+    const contentArea = contentAreaRef.current;
+    if (contentArea && contentArea.dataset.initialTouchY) {
+      delete contentArea.dataset.initialTouchY;
+    }
+  }, []);
+
   // Set up event listeners
   useEffect(() => {
     if (!isOpen || !isMobile) return;
@@ -331,6 +368,14 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
 
+    // Add content area listeners to prevent pull-to-refresh
+    const contentArea = contentAreaRef.current;
+    if (contentArea) {
+      contentArea.addEventListener('touchstart', handleContentTouchStart, { passive: false });
+      contentArea.addEventListener('touchmove', handleContentTouchMove, { passive: false });
+      contentArea.addEventListener('touchend', handleContentTouchEnd, { passive: false });
+    }
+
     return () => {
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchmove', handleTouchMove);
@@ -339,6 +384,13 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       document.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+
+      // Clean up content area listeners
+      if (contentArea) {
+        contentArea.removeEventListener('touchstart', handleContentTouchStart);
+        contentArea.removeEventListener('touchmove', handleContentTouchMove);
+        contentArea.removeEventListener('touchend', handleContentTouchEnd);
+      }
     };
   }, [
     isOpen,
@@ -349,6 +401,9 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
+    handleContentTouchStart,
+    handleContentTouchMove,
+    handleContentTouchEnd,
   ]);
 
   // Initialize position when opened or when always visible (only once)
@@ -450,6 +505,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
           flexDirection: 'column',
           maxHeight: '95vh',
           overflow: 'hidden',
+          overscrollBehavior: 'contain', // Prevent overscroll from bubbling to document
+          touchAction: 'pan-y', // Allow vertical scrolling but prevent pull-to-refresh
           transform: `translateY(${getTransform(currentSnapIndex)}px)`, // Start at current position instead of off-screen
         }}
       >
@@ -486,6 +543,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             display: 'flex',
             flexDirection: 'column',
             minHeight: 0, // Important for flex scrolling
+            overscrollBehavior: 'contain', // Prevent overscroll from bubbling to parent
+            touchAction: 'pan-y', // Allow vertical scrolling but prevent pull-to-refresh
           }}
         >
           {/* Draggable Content Area */}
@@ -496,6 +555,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
                 touchAction: 'auto', // Allow normal touch interactions
                 position: 'relative',
                 zIndex: 1,
+                overscrollBehavior: 'contain', // Prevent overscroll from bubbling
               }}
             >
               {draggableContent}
@@ -504,12 +564,15 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
           
           {/* Regular Content */}
           <Box
+            ref={contentAreaRef}
             sx={{
               flex: 1,
               overflow: 'auto',
               display: 'flex',
               flexDirection: 'column',
               minHeight: 0,
+              overscrollBehavior: 'contain', // Prevent overscroll from bubbling to parent
+              touchAction: 'pan-y', // Allow vertical scrolling but prevent pull-to-refresh
             }}
           >
             {children}

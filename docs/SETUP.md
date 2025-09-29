@@ -124,7 +124,7 @@ cd client && npm run dev
 
 - **Host**: localhost
 - **Port**: 3306
-- **Database**: karaoke-pal
+- **Database**: karaoke-hub
 - **Username**: admin
 - **Password**: password
 

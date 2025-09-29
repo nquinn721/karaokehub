@@ -28,7 +28,7 @@
     "dev": "concurrently \"npm run start:dev\" \"cd client && npm run dev\"",
     "build:all": "npm run build:frontend && npm run build",
     "build:frontend": "cd client && npm run build",
-    "deploy": "gcloud run deploy karaoke-pal --source . --platform managed --region us-central1",
+    "deploy": "gcloud run deploy karaoke-hub --source . --platform managed --region us-central1",
     "data:export": "node scripts/safe-data-export.js",
     "data:import": "node scripts/safe-data-import-typeorm.js",
     "data:export-local": "node scripts/safe-data-export.js --output exports/local-safe-export.sql",

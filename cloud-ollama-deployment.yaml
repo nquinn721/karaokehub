@@ -41,12 +41,12 @@ spec:
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
-  name: karaoke-pal
+  name: karaoke-hub
 spec:
   template:
     spec:
       containers:
-        - image: gcr.io/YOUR_PROJECT_ID/karaoke-pal
+        - image: gcr.io/YOUR_PROJECT_ID/karaoke-hub
           env:
             - name: OLLAMA_HOST
               value: 'https://ollama-service-YOUR_HASH-uc.a.run.app'
