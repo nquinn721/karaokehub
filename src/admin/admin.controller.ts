@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common';
 import { AdminService, VenueVerificationResult } from './admin.service';
 import { DeduplicationService } from './deduplication.service';
+import { VenueDuplicateDetectionService } from './venue-duplicate-detection.service';
+import { VenueGeocodingValidationService } from './venue-geocoding-validation.service';
 
 @Controller('admin')
 // @UseGuards(AuthGuard('jwt'), AdminGuard)
@@ -19,6 +21,8 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly deduplicationService: DeduplicationService,
+    private readonly venueDuplicateService: VenueDuplicateDetectionService,
+    private readonly venueGeocodingService: VenueGeocodingValidationService,
   ) {}
 
   @Get('statistics')
@@ -254,13 +258,31 @@ export class AdminController {
     return await this.adminService.verifyVenueLocation(id);
   }
 
-  // Validate all venues with Gemini AI (original)
-  @Post('venues/validate-all')
-  async validateAllVenues() {
-    return await this.adminService.validateAllVenuesWithGemini();
+  // Detect duplicate venues using Gemini AI
+  @Post('venues/detect-duplicates')
+  async detectDuplicateVenues() {
+    return await this.venueDuplicateService.detectAllDuplicates();
   }
 
-  // Enhanced multi-threaded venue validation with time fixes
+  // Clean up duplicate venues (delete marked duplicates and merge relationships)
+  @Post('venues/cleanup-duplicates')
+  async cleanupDuplicateVenues(@Body() body: { duplicateGroups: any[] }) {
+    return await this.venueDuplicateService.cleanupDuplicateVenues(body.duplicateGroups);
+  }
+
+  // Validate and fix venue geocoding accuracy
+  @Post('venues/validate-geocoding')
+  async validateVenueGeocoordinates() {
+    return await this.venueGeocodingService.validateAllVenueGeocoordinates();
+  }
+
+  // Fix geocoding for specific venue
+  @Post('venues/:id/fix-geocoding')
+  async fixVenueGeocoordinates(@Param('id') venueId: string) {
+    return await this.venueGeocodingService.fixVenueGeocoordinates(venueId);
+  }
+
+  // Enhanced multi-threaded venue validation with time fixes (kept for time validation)
   @Post('venues/validate-all-enhanced')
   async validateAllVenuesEnhanced() {
     return await this.adminService.validateAllVenuesEnhanced();

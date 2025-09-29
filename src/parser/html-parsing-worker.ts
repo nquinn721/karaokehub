@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { parentPort, workerData } from 'worker_threads';
+import { getGeminiModel } from '../config/gemini.config';
 
 interface WorkerData {
   htmlContent: string;
@@ -18,7 +19,7 @@ async function parseHtmlWithGemini() {
 
     const genAI = new GoogleGenerativeAI(geminiApiKey);
     const geminiModel = genAI.getGenerativeModel({
-      model: model || 'gemini-1.5-flash',
+      model: getGeminiModel('worker'),
       generationConfig: {
         temperature: 0.1,
         topP: 0.8,

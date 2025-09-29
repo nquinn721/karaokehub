@@ -6,11 +6,13 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { parentPort } from 'worker_threads';
+import { getGeminiModel } from '../config/gemini.config';
 
 interface WorkerMessage {
   venues: EnhancedVenueData[];
   threadIndex: number;
   geminiApiKey: string;
+  googleMapsApiKey?: string;
 }
 
 interface EnhancedVenueData {
@@ -89,12 +91,85 @@ function sendComplete(data: ValidationWorkerResult) {
 }
 
 /**
+ * Validate coordinates using Google Geocoding API
+ */
+async function validateCoordinatesWithGoogle(
+  venue: EnhancedVenueData,
+  suggestedData: any,
+  googleMapsApiKey?: string,
+): Promise<{ lat: number; lng: number } | null> {
+  try {
+    // Build full address for Google API validation
+    const addressParts = [];
+    if (suggestedData.address || venue.address) addressParts.push(suggestedData.address || venue.address);
+    if (suggestedData.city || venue.city) addressParts.push(suggestedData.city || venue.city);
+    if (suggestedData.state || venue.state) addressParts.push(suggestedData.state || venue.state);
+    if (suggestedData.zip || venue.zip) addressParts.push(suggestedData.zip || venue.zip);
+    
+    if (addressParts.length === 0) return null;
+    
+    const fullAddress = addressParts.join(', ');
+    const encodedAddress = encodeURIComponent(fullAddress);
+    
+    // Use Google Geocoding API
+    if (!googleMapsApiKey) return null;
+    
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${googleMapsApiKey}`;
+    const response = await fetch(url);
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      const location = data.results[0].geometry.location;
+      
+      // Compare with Gemini coordinates and choose most accurate
+      const geminiCoords = { lat: suggestedData.lat, lng: suggestedData.lng };
+      const googleCoords = { lat: location.lat, lng: location.lng };
+      
+      // If coordinates are very close (within ~50 meters), trust Gemini
+      // If they're far apart, trust Google API
+      const distance = calculateDistance(geminiCoords.lat, geminiCoords.lng, googleCoords.lat, googleCoords.lng);
+      
+      if (distance > 0.05) { // More than ~50 meters difference
+        return googleCoords; // Use Google API coordinates
+      }
+      
+      // Close enough, keep Gemini coordinates (they might be more precise)
+      return null;
+    }
+    
+    return null;
+  } catch (error) {
+    // If Google API fails, continue with Gemini coordinates
+    return null;
+  }
+}
+
+/**
+ * Calculate distance between two coordinates (Haversine formula)
+ * Returns distance in kilometers
+ */
+function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+           Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+           Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+/**
  * Enhanced Gemini lookup with time validation
  */
 async function enhancedVenueLookupWithGemini(
   venue: EnhancedVenueData,
   model: any,
   threadIndex: number,
+  googleMapsApiKey?: string,
 ): Promise<VenueValidationResult> {
   try {
     const currentData = extractVenueData(venue);
@@ -120,10 +195,16 @@ ${showTimesInfo}
 
 RESEARCH INSTRUCTIONS:
 1. Find the EXACT business name, full address, and current contact information
-2. Verify the precise latitude/longitude coordinates
+2. Verify the precise latitude/longitude coordinates for the exact business location
 3. Research typical karaoke/entertainment hours for this venue
 4. Identify any obvious time errors (karaoke rarely happens in morning hours like 8:00 AM - 12:00 AM)
 5. Look for the venue's actual operating hours and karaoke schedule
+
+CRITICAL COORDINATE VALIDATION:
+- Provide coordinates to at least 6 decimal places for maximum accuracy
+- Ensure coordinates match the EXACT business address, not nearby businesses
+- If current coordinates seem wrong (e.g., pointing to wrong business), provide corrected coordinates
+- Coordinates should place the marker directly on the business building
 
 CRITICAL TIME VALIDATION:
 - Karaoke venues typically operate evenings (6:00 PM - 2:00 AM)
@@ -197,6 +278,13 @@ If venue cannot be found or confidence is low, set venueFound to false.`;
     const timeIssues = parsedData.timeIssues || [];
     const hasTimeIssues = timeIssues.length > 0;
     const hasShowUpdates = parsedData.showUpdates && parsedData.showUpdates.length > 0;
+
+    // Validate coordinates with Google Geocoding API as fallback
+    const validatedCoordinates = await validateCoordinatesWithGoogle(venue, parsedData.suggestedData, googleMapsApiKey);
+    if (validatedCoordinates) {
+      parsedData.suggestedData.lat = validatedCoordinates.lat;
+      parsedData.suggestedData.lng = validatedCoordinates.lng;
+    }
 
     // Compare current data with suggested data
     const conflicts = compareVenueData(currentData, parsedData.suggestedData);
@@ -366,10 +454,11 @@ async function processVenuesInThread(
   venues: EnhancedVenueData[],
   threadIndex: number,
   geminiApiKey: string,
+  googleMapsApiKey?: string,
 ): Promise<ValidationWorkerResult> {
   try {
     const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: getGeminiModel('worker') });
 
     const results: VenueValidationResult[] = [];
     let validatedCount = 0;
@@ -387,7 +476,7 @@ async function processVenuesInThread(
       try {
         sendProgress(`Thread ${threadIndex}: Validating ${venue.name} (${i + 1}/${venues.length})`);
 
-        const result = await enhancedVenueLookupWithGemini(venue, model, threadIndex);
+        const result = await enhancedVenueLookupWithGemini(venue, model, threadIndex, googleMapsApiKey);
         results.push(result);
 
         // Update counters
@@ -457,6 +546,7 @@ if (parentPort) {
         message.venues,
         message.threadIndex,
         message.geminiApiKey,
+        message.googleMapsApiKey,
       );
       sendComplete(result);
     } catch (error) {

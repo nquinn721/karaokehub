@@ -9,6 +9,7 @@ import {
   faRocket,
   faSearch,
   faShieldAlt,
+  faTrash,
   faUser,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -46,6 +47,7 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
   const [isCleaningDuplicates, setIsCleaningDuplicates] = useState(false);
   const [isValidatingVenues, setIsValidatingVenues] = useState(false);
   const [isValidatingTimes, setIsValidatingTimes] = useState(false);
+
   const [validationModalOpen, setValidationModalOpen] = useState(false);
   const [validationResults, setValidationResults] = useState<any>(null);
 
@@ -70,9 +72,9 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
   const handleValidateVenues = async () => {
     setIsValidatingVenues(true);
     try {
-      uiStore.addNotification('Starting venue validation with Gemini AI...', 'info');
+      uiStore.addNotification('Detecting duplicate venues with Gemini AI...', 'info');
 
-      const response = await fetch('/api/admin/venues/validate-all', {
+      const response = await fetch('/api/admin/venues/detect-duplicates', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,20 +83,30 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to validate venues');
+        throw new Error('Failed to detect venue duplicates');
       }
 
       const results = await response.json();
       setValidationResults(results);
       setValidationModalOpen(true);
 
-      uiStore.addNotification(
-        `Venue validation complete! Found ${results.summary.conflictsFound} conflicts out of ${results.summary.totalVenues} venues.`,
-        'success',
-      );
+      const duplicateCount = results.summary.duplicatesFound;
+      const deletionCount = results.summary.venuesMarkedForDeletion;
+      
+      if (duplicateCount > 0) {
+        uiStore.addNotification(
+          `Duplicate detection complete! Found ${duplicateCount} duplicate groups affecting ${deletionCount} venues.`,
+          'warning',
+        );
+      } else {
+        uiStore.addNotification(
+          `Duplicate detection complete! No duplicates found in ${results.totalVenues} venues.`,
+          'success',
+        );
+      }
     } catch (error) {
-      console.error('Failed to validate venues:', error);
-      uiStore.addNotification('Failed to validate venues. Please try again.', 'error');
+      console.error('Failed to detect venue duplicates:', error);
+      uiStore.addNotification('Failed to detect venue duplicates. Please try again.', 'error');
     } finally {
       setIsValidatingVenues(false);
     }
@@ -170,6 +182,47 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
       uiStore.addNotification('Show time validation failed. Please try again.', 'error');
     } finally {
       setIsValidatingTimes(false);
+    }
+  };
+
+
+
+  // Handle cleanup of detected duplicate venues
+  const handleCleanupDuplicates = async (duplicateGroups: any[]) => {
+    try {
+      uiStore.addNotification('Cleaning up duplicate venues...', 'info');
+
+      const response = await fetch('/api/admin/venues/cleanup-duplicates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ duplicateGroups }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to cleanup duplicate venues');
+      }
+
+      const results = await response.json();
+
+      if (results.success) {
+        uiStore.addNotification(
+          `Cleanup complete! Deleted ${results.deletedVenues} duplicate venues and merged ${results.mergedShows} shows.`,
+          'success',
+        );
+        // Refresh the page to show updated data
+        window.location.reload();
+      } else {
+        uiStore.addNotification(
+          `Cleanup completed with errors. Deleted ${results.deletedVenues} venues. Errors: ${results.errors.join(', ')}`,
+          'warning',
+        );
+      }
+    } catch (error) {
+      console.error('Failed to cleanup duplicates:', error);
+      uiStore.addNotification('Failed to cleanup duplicate venues. Please try again.', 'error');
     }
   };
 
@@ -717,10 +770,10 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
               {isValidatingVenues ? (
                 <>
                   <CircularProgress size={16} sx={{ mr: 1 }} />
-                  Validating Venues...
+                  Detecting Duplicates...
                 </>
               ) : (
-                'Validate Venue Data'
+                'Detect Duplicate Venues'
               )}
             </Button>
 
@@ -777,6 +830,8 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                 'Fix Show Times'
               )}
             </Button>
+
+
           </Box>
         </Box>
 
@@ -1034,7 +1089,7 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
       <CustomModal
         open={validationModalOpen}
         onClose={() => setValidationModalOpen(false)}
-        title="Venue Validation Results"
+        title="Duplicate Venue Detection Results"
         maxWidth="lg"
       >
         <Box sx={{ p: 2 }}>
@@ -1042,14 +1097,27 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
             <>
               {/* Summary */}
               <Card sx={{ mb: 3, p: 2, bgcolor: 'background.paper' }}>
-                <Typography variant="h6" gutterBottom sx={{ color: 'primary.main' }}>
-                  📊 Validation Summary
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" sx={{ color: 'primary.main' }}>
+                    � Duplicate Detection Summary
+                  </Typography>
+                  {validationResults.summary?.duplicatesFound > 0 && (
+                    <Button
+                      variant="contained"
+                      color="error"
+                      startIcon={<FontAwesomeIcon icon={faTrash} />}
+                      onClick={() => handleCleanupDuplicates(validationResults.duplicateGroups)}
+                      sx={{ borderRadius: 2 }}
+                    >
+                      Clean Up Duplicates
+                    </Button>
+                  )}
+                </Box>
                 <Grid container spacing={2}>
                   <Grid item xs={6} md={3}>
                     <Box sx={{ textAlign: 'center' }}>
                       <Typography variant="h4" sx={{ color: 'text.primary', fontWeight: 'bold' }}>
-                        {validationResults.summary.totalVenues}
+                        {validationResults.totalVenues || validationResults.summary?.totalVenues || 0}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Total Venues
@@ -1058,49 +1126,49 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                   </Grid>
                   <Grid item xs={6} md={3}>
                     <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h4" sx={{ color: 'success.main', fontWeight: 'bold' }}>
-                        {validationResults.summary.validatedCount}
+                      <Typography variant="h4" sx={{ color: 'warning.main', fontWeight: 'bold' }}>
+                        {validationResults.summary?.duplicatesFound || 0}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Validated
+                        Duplicate Groups
                       </Typography>
                     </Box>
                   </Grid>
                   <Grid item xs={6} md={3}>
                     <Box sx={{ textAlign: 'center' }}>
-                      <Typography variant="h4" sx={{ color: 'warning.main', fontWeight: 'bold' }}>
-                        {validationResults.summary.conflictsFound}
+                      <Typography variant="h4" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                        {validationResults.summary?.venuesMarkedForDeletion || 0}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Conflicts Found
+                        To Delete
                       </Typography>
                     </Box>
                   </Grid>
                   <Grid item xs={6} md={3}>
                     <Box sx={{ textAlign: 'center' }}>
                       <Typography variant="h4" sx={{ color: 'info.main', fontWeight: 'bold' }}>
-                        {validationResults.summary.updatedCount}
+                        {validationResults.summary?.conflictsRequiringManualReview || 0}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        Auto-Updated
+                        Manual Review
                       </Typography>
                     </Box>
                   </Grid>
                 </Grid>
               </Card>
 
-              {/* Results List */}
+              {/* Duplicate Groups List */}
               <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-                Detailed Results
+                {validationResults.duplicateGroups?.length > 0 ? 'Duplicate Groups Found' : 'No Duplicates Found'}
               </Typography>
               <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
-                {validationResults.results.map((result: any) => (
+                {(validationResults.duplicateGroups || []).map((group: any, groupIndex: number) => (
                   <Card
-                    key={result.venueId}
+                    key={group.id || groupIndex}
                     sx={{
                       mb: 2,
-                      border: result.status === 'conflict' ? '1px solid' : '1px solid transparent',
-                      borderColor: result.status === 'conflict' ? 'warning.main' : 'divider',
+                      border: '1px solid',
+                      borderColor: 'warning.main',
                     }}
                   >
                     <CardContent>
@@ -1109,58 +1177,58 @@ const ShowAnalytics: React.FC<ShowAnalyticsProps> = observer(() => {
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'flex-start',
-                          mb: 1,
+                          mb: 2,
                         }}
                       >
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                          {result.venueName}
-                        </Typography>
+                        <Box>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
+                            🔄 Duplicate Group {groupIndex + 1}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Location: {group.city}, {group.state} • Confidence: {Math.round((group.confidence || 0) * 100)}%
+                          </Typography>
+                        </Box>
                         <Chip
-                          label={result.status}
+                          label={`${group.duplicates?.length || 0} venues`}
                           size="small"
-                          color={
-                            result.status === 'conflict'
-                              ? 'warning'
-                              : result.status === 'validated'
-                                ? 'success'
-                                : result.status === 'error'
-                                  ? 'error'
-                                  : 'default'
-                          }
+                          color="warning"
                         />
                       </Box>
 
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        {result.message}
-                      </Typography>
-
-                      {result.conflicts && result.conflicts.length > 0 && (
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="subtitle2" sx={{ color: 'warning.main', mb: 1 }}>
-                            ⚠️ Conflicts Found:
-                          </Typography>
-                          {result.conflicts.map((conflict: string, conflictIndex: number) => (
-                            <Typography
-                              key={conflictIndex}
-                              variant="body2"
-                              sx={{
-                                ml: 2,
-                                mb: 0.5,
-                                color: 'text.secondary',
-                                '&:before': { content: '"• "' },
-                              }}
-                            >
-                              {conflict}
-                            </Typography>
-                          ))}
-                        </Box>
-                      )}
-
-                      {result.wasUpdated && (
-                        <Alert severity="info" sx={{ mt: 1 }}>
-                          This venue was automatically updated with missing information.
-                        </Alert>
-                      )}
+                      <Box sx={{ ml: 2 }}>
+                        {group.duplicates?.map((duplicate: any, dupIndex: number) => (
+                          <Box
+                            key={duplicate.id || dupIndex}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              py: 1,
+                              px: 2,
+                              mb: 1,
+                              bgcolor: duplicate.isCorrectName ? 'success.light' : 'error.light',
+                              borderRadius: 1,
+                            }}
+                          >
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: duplicate.isCorrectName ? 'bold' : 'normal' }}>
+                                {duplicate.isCorrectName ? '✅ KEEP: ' : '❌ DELETE: '}
+                                {duplicate.name}
+                              </Typography>
+                              {duplicate.address && (
+                                <Typography variant="caption" color="text.secondary">
+                                  {duplicate.address}
+                                </Typography>
+                              )}
+                            </Box>
+                            <Chip
+                              label={duplicate.isCorrectName ? 'Keep' : 'Delete'}
+                              size="small"
+                              color={duplicate.isCorrectName ? 'success' : 'error'}
+                            />
+                          </Box>
+                        ))}
+                      </Box>
                     </CardContent>
                   </Card>
                 ))}

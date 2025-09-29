@@ -215,6 +215,7 @@ export class EnhancedVenueValidationService {
         venues: venueBatch,
         threadIndex,
         geminiApiKey: this.configService.get('GEMINI_API_KEY'),
+        googleMapsApiKey: this.configService.get('GOOGLE_MAPS_API_KEY'),
       });
     });
   }

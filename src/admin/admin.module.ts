@@ -24,6 +24,8 @@ import { ApiLogsController } from './api-logs.controller';
 import { DeduplicationService } from './deduplication.service';
 import { EnhancedVenueValidationService } from './enhanced-venue-validation.service';
 import { TimeValidationService } from './time-validation.service';
+import { VenueDuplicateDetectionService } from './venue-duplicate-detection.service';
+import { VenueGeocodingValidationService } from './venue-geocoding-validation.service';
 
 @Module({
   imports: [
@@ -54,6 +56,8 @@ import { TimeValidationService } from './time-validation.service';
     ProductionMigrationService,
     EnhancedVenueValidationService,
     TimeValidationService,
+    VenueDuplicateDetectionService,
+    VenueGeocodingValidationService,
   ],
   exports: [AdminService, DeduplicationService],
 })
