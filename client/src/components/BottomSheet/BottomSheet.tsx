@@ -67,7 +67,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   const snapToPoint = useCallback(
     (snapIndex: number) => {
       if (!sheetRef.current) return;
-      
+
       // Prevent unnecessary snapping if already at the target position
       if (currentSnapIndex === snapIndex && !isDragging) {
         return;
@@ -112,8 +112,18 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     const target = e.target as Node;
     const isDragHandle = dragHandleRef.current?.contains(target);
     const isDraggableArea = draggableAreaRef.current?.contains(target);
+    const isContentArea = contentAreaRef.current?.contains(target);
+
+    // Allow dragging if touching drag handle, draggable area, or content area when at top
+    let canDrag = isDragHandle || isDraggableArea;
     
-    if (!isDragHandle && !isDraggableArea) return;
+    // If touching content area, check if we're at the top of the scroll
+    if (!canDrag && isContentArea && contentAreaRef.current) {
+      const isAtTop = contentAreaRef.current.scrollTop === 0;
+      canDrag = isAtTop;
+    }
+
+    if (!canDrag) return;
 
     setIsDragging(true);
     setStartY(e.touches[0].clientY);
@@ -134,7 +144,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
 
       const touchY = e.touches[0].clientY;
       const deltaY = Math.abs(touchY - startY);
-      
+
       // Mark as moved if we've moved more than 5px (threshold for drag vs tap)
       if (deltaY > 5) {
         setHasMoved(true);
@@ -320,39 +330,46 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
     snapToPoint,
   ]);
 
-  // Handle content area touch events to prevent pull-to-refresh
+  // Handle content area touch events to allow bottom sheet drag but prevent browser pull-to-refresh
   const handleContentTouchStart = useCallback((e: TouchEvent) => {
     const contentArea = contentAreaRef.current;
     if (!contentArea) return;
-    
-    // Check if we're at the top of the scroll and user is trying to scroll up
+
     const isAtTop = contentArea.scrollTop === 0;
     if (isAtTop) {
-      // Store initial touch position to detect pull-to-refresh gesture
+      // Store initial touch position to allow bottom sheet dragging
       contentArea.dataset.initialTouchY = e.touches[0].clientY.toString();
+      contentArea.dataset.allowBottomSheetDrag = 'true';
     }
   }, []);
 
   const handleContentTouchMove = useCallback((e: TouchEvent) => {
     const contentArea = contentAreaRef.current;
     if (!contentArea || !contentArea.dataset.initialTouchY) return;
-    
+
     const isAtTop = contentArea.scrollTop === 0;
     const currentTouchY = e.touches[0].clientY;
     const initialTouchY = parseFloat(contentArea.dataset.initialTouchY);
     const deltaY = currentTouchY - initialTouchY;
-    
-    // If we're at the top and user is pulling down (positive deltaY), prevent default
-    if (isAtTop && deltaY > 0) {
+
+    // If we're at the top and user is pulling down significantly, only prevent browser refresh
+    // but allow bottom sheet to handle the gesture
+    if (isAtTop && deltaY > 20) {
+      // Only prevent default to stop browser pull-to-refresh, but don't stop propagation
+      // This allows the bottom sheet touch handlers to still work
       e.preventDefault();
-      e.stopPropagation();
     }
   }, []);
 
   const handleContentTouchEnd = useCallback(() => {
     const contentArea = contentAreaRef.current;
-    if (contentArea && contentArea.dataset.initialTouchY) {
-      delete contentArea.dataset.initialTouchY;
+    if (contentArea) {
+      if (contentArea.dataset.initialTouchY) {
+        delete contentArea.dataset.initialTouchY;
+      }
+      if (contentArea.dataset.allowBottomSheetDrag) {
+        delete contentArea.dataset.allowBottomSheetDrag;
+      }
     }
   }, []);
 
@@ -505,8 +522,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
           flexDirection: 'column',
           maxHeight: '95vh',
           overflow: 'hidden',
-          overscrollBehavior: 'contain', // Prevent overscroll from bubbling to document
-          touchAction: 'pan-y', // Allow vertical scrolling but prevent pull-to-refresh
+          overscrollBehaviorY: 'none', // Only prevent vertical overscroll/pull-to-refresh
+          touchAction: 'auto', // Allow all touch interactions
           transform: `translateY(${getTransform(currentSnapIndex)}px)`, // Start at current position instead of off-screen
         }}
       >
@@ -543,8 +560,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             display: 'flex',
             flexDirection: 'column',
             minHeight: 0, // Important for flex scrolling
-            overscrollBehavior: 'contain', // Prevent overscroll from bubbling to parent
-            touchAction: 'pan-y', // Allow vertical scrolling but prevent pull-to-refresh
+            overscrollBehaviorY: 'none', // Prevent vertical overscroll/pull-to-refresh
+            touchAction: 'pan-y pinch-zoom', // Allow vertical scrolling and pinch zoom
           }}
         >
           {/* Draggable Content Area */}
@@ -555,13 +572,12 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
                 touchAction: 'auto', // Allow normal touch interactions
                 position: 'relative',
                 zIndex: 1,
-                overscrollBehavior: 'contain', // Prevent overscroll from bubbling
               }}
             >
               {draggableContent}
             </Box>
           )}
-          
+
           {/* Regular Content */}
           <Box
             ref={contentAreaRef}
@@ -571,8 +587,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
               display: 'flex',
               flexDirection: 'column',
               minHeight: 0,
-              overscrollBehavior: 'contain', // Prevent overscroll from bubbling to parent
-              touchAction: 'pan-y', // Allow vertical scrolling but prevent pull-to-refresh
+              overscrollBehaviorY: 'none', // Prevent vertical overscroll/pull-to-refresh only
+              touchAction: 'auto', // Allow all touch interactions including dragging
             }}
           >
             {children}

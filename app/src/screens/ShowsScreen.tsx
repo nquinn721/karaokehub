@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { observer } from 'mobx-react-lite';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -95,8 +95,6 @@ const ShowsScreen = observer(() => {
       uiStore.setAppLoading(false);
     }
   }, []);
-
-
 
   const handleGetLocation = useCallback(async () => {
     try {
