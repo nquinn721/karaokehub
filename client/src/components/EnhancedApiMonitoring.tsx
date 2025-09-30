@@ -232,7 +232,7 @@ const EnhancedApiMonitoring: React.FC = () => {
 
       // Load metrics with fallback
       try {
-        const metricsUrl = `/api-monitoring/metrics/daily?days=${daysFilter}&provider=itunes`;
+        const metricsUrl = `/api/api-monitoring/metrics/daily?days=${daysFilter}&provider=itunes`;
         const metricsRes = await fetch(metricsUrl);
         const metricsData = await metricsRes.json();
         setMetrics(metricsData);
@@ -243,7 +243,7 @@ const EnhancedApiMonitoring: React.FC = () => {
 
       // Load issues with fallback
       try {
-        const issuesRes = await fetch('/api-monitoring/issues/active?limit=100');
+        const issuesRes = await fetch('/api/api-monitoring/issues/active?limit=100');
         const issuesData = await issuesRes.json();
         setIssues(issuesData);
       } catch (error) {

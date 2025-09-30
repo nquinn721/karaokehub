@@ -623,40 +623,4 @@ export class DeduplicationService {
       throw new Error('Failed to deduplicate vendors: ' + error.message);
     }
   }
-
-  async executeDeletion(
-    type: 'venues' | 'shows' | 'djs' | 'vendors',
-    idsToDelete: string[],
-  ): Promise<{ deleted: number }> {
-    this.logger.log(`Executing deletion of ${idsToDelete.length} ${type} records...`);
-
-    try {
-      let deleteResult;
-
-      switch (type) {
-        case 'venues':
-          deleteResult = await this.venueRepository.delete(idsToDelete);
-          break;
-        case 'shows':
-          deleteResult = await this.showRepository.delete(idsToDelete);
-          break;
-        case 'djs':
-          deleteResult = await this.djRepository.delete(idsToDelete);
-          break;
-        case 'vendors':
-          deleteResult = await this.vendorRepository.delete(idsToDelete);
-          break;
-        default:
-          throw new Error(`Unknown type: ${type}`);
-      }
-
-      const deletedCount = deleteResult.affected || 0;
-      this.logger.log(`Successfully deleted ${deletedCount} ${type} records`);
-
-      return { deleted: deletedCount };
-    } catch (error) {
-      this.logger.error(`Error deleting ${type} records:`, error);
-      throw new Error(`Failed to delete ${type} records: ` + error.message);
-    }
-  }
 }

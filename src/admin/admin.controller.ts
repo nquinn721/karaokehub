@@ -244,14 +244,6 @@ export class AdminController {
     return await this.deduplicationService.deduplicateVendors();
   }
 
-  @Post('deduplicate/:type/execute')
-  async executeDuplicateDeletion(
-    @Param('type') type: 'venues' | 'shows' | 'djs' | 'vendors',
-    @Body() body: { idsToDelete: string[] },
-  ) {
-    return await this.deduplicationService.executeDeletion(type, body.idsToDelete);
-  }
-
   // Venue geo verification endpoint
   @Post('venues/:id/verify-location')
   async verifyVenueLocation(@Param('id') id: string): Promise<VenueVerificationResult> {
@@ -516,10 +508,6 @@ export class AdminController {
   }
 
   // Production Migration Endpoints
-  @Post('migrations/run-critical')
-  async runCriticalMigrations() {
-    return await this.adminService.runCriticalMigrations();
-  }
 
   @Get('migrations/status')
   async getMigrationStatus() {

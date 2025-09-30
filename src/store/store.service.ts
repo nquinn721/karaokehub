@@ -5,6 +5,7 @@ import { Avatar } from '../avatar/entities/avatar.entity';
 import { Microphone } from '../avatar/entities/microphone.entity';
 import { UserAvatar } from '../avatar/entities/user-avatar.entity';
 import { UserMicrophone } from '../avatar/entities/user-microphone.entity';
+import { GenericStoreService } from '../common/services/generic-store.service';
 import { User } from '../entities/user.entity';
 import { StripeService } from '../subscription/stripe.service';
 import { CoinPackage } from './entities/coin-package.entity';
@@ -38,13 +39,15 @@ export class StoreService {
   }
 
   async getStoreMicrophones() {
-    return this.microphoneRepository.find({
-      where: {
+    const config = {
+      filterConditions: {
         isAvailable: true,
-        isFree: false, // Exclude free items
+        isFree: false,
       },
-      order: { rarity: 'ASC', coinPrice: 'ASC' },
-    });
+      orderBy: { rarity: 'ASC', coinPrice: 'ASC' } as any,
+    };
+
+    return GenericStoreService.getPublicStoreItems(this.microphoneRepository, config);
   }
 
   async getUserMicrophones(userId: string) {
@@ -125,13 +128,15 @@ export class StoreService {
   }
 
   async getStoreAvatars() {
-    return this.avatarRepository.find({
-      where: {
+    const config = {
+      filterConditions: {
         isAvailable: true,
-        isFree: false, // Exclude free items
+        isFree: false,
       },
-      order: { rarity: 'ASC', coinPrice: 'ASC' },
-    });
+      orderBy: { rarity: 'ASC', coinPrice: 'ASC' } as any,
+    };
+
+    return GenericStoreService.getPublicStoreItems(this.avatarRepository, config);
   }
 
   async getUserAvatars(userId: string) {

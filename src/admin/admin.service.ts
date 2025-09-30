@@ -8,6 +8,12 @@ import { Avatar } from '../avatar/entities/avatar.entity';
 import { Microphone } from '../avatar/entities/microphone.entity';
 import { UserAvatar } from '../avatar/entities/user-avatar.entity';
 import { UserMicrophone } from '../avatar/entities/user-microphone.entity';
+import { PaginationOptions } from '../common/interfaces/pagination.interface';
+import { ActivityTransformService } from '../common/services/activity-transform.service';
+import { GenericCrudService } from '../common/services/generic-crud.service';
+import { GenericStoreService } from '../common/services/generic-store.service';
+import { PaginationService } from '../common/services/pagination.service';
+import { UpdateFieldsService } from '../common/services/update-fields.service';
 import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
@@ -155,89 +161,61 @@ export class AdminService {
   }
 
   async getRecentActivity() {
-    // Get recent users (last 10)
-    const recentUsers = await this.userRepository.find({
-      order: { createdAt: 'DESC' },
-      take: 5,
+    // Get recent data from various entities
+    const [recentUsers, recentVendors, recentShows, recentParserActivities] = await Promise.all([
+      this.userRepository.find({ order: { createdAt: 'DESC' }, take: 5 }),
+      this.vendorRepository.find({ order: { createdAt: 'DESC' }, take: 5 }),
+      this.showRepository.find({
+        relations: ['dj', 'dj.vendor'],
+        order: { createdAt: 'DESC' },
+        take: 5,
+      }),
+      this.parsedScheduleRepository.find({ order: { createdAt: 'DESC' }, take: 5 }),
+    ]);
+
+    // Transform each entity type to activities
+    const userActivities = ActivityTransformService.transformToActivities(recentUsers, {
+      type: 'user_registration',
+      action: 'New user registered',
+      severity: 'success',
+      getDetails: (user) => user.name || user.email,
     });
 
-    // Get recent venues (last 5)
-    const recentVendors = await this.vendorRepository.find({
-      order: { createdAt: 'DESC' },
-      take: 5,
+    const vendorActivities = ActivityTransformService.transformToActivities(recentVendors, {
+      type: 'venue_added',
+      action: 'New venue added',
+      severity: 'info',
+      getDetails: (vendor) => vendor.name,
     });
 
-    // Get recent shows (last 5)
-    const recentShows = await this.showRepository.find({
-      relations: ['dj', 'dj.vendor'],
-      order: { createdAt: 'DESC' },
-      take: 5,
+    const showActivities = ActivityTransformService.transformToActivities(recentShows, {
+      type: 'show_added',
+      action: 'New show scheduled',
+      severity: 'info',
+      getDetails: (show) =>
+        `${show.dj?.vendor?.name || 'Unknown Venue'} - ${show.day || 'No day specified'}`,
     });
 
-    // Get recent parser activities
-    const recentParserActivities = await this.parsedScheduleRepository.find({
-      order: { createdAt: 'DESC' },
-      take: 5,
-    });
-
-    const activities = [];
-
-    // Add user registrations
-    recentUsers.forEach((user) => {
-      activities.push({
-        id: `user-${user.id}`,
-        type: 'user_registration',
-        action: 'New user registered',
-        details: user.name || user.email,
-        timestamp: user.createdAt,
-        severity: 'success',
-      });
-    });
-
-    // Add venue additions
-    recentVendors.forEach((vendor) => {
-      activities.push({
-        id: `vendor-${vendor.id}`,
-        type: 'venue_added',
-        action: 'New venue added',
-        details: vendor.name,
-        timestamp: vendor.createdAt,
-        severity: 'info',
-      });
-    });
-
-    // Add show additions
-    recentShows.forEach((show) => {
-      activities.push({
-        id: `show-${show.id}`,
-        type: 'show_added',
-        action: 'New show scheduled',
-        details: `${show.dj?.vendor?.name || 'Unknown Venue'} - ${show.day || 'No day specified'}`,
-        timestamp: show.createdAt,
-        severity: 'info',
-      });
-    });
-
-    // Add parser activities
-    recentParserActivities.forEach((parsed) => {
-      activities.push({
-        id: `parser-${parsed.id}`,
+    const parserActivities = ActivityTransformService.transformToActivities(
+      recentParserActivities,
+      {
         type: 'parser_activity',
         action: 'Website parsed',
-        details: `${parsed.url} - ${parsed.status}`,
-        timestamp: parsed.createdAt,
-        severity: parsed.status === ParseStatus.APPROVED ? 'success' : 'warning',
-      });
-    });
+        severity: 'warning',
+        getDetails: (parsed) => `${parsed.url} - ${parsed.status}`,
+      },
+    );
 
-    // Sort by timestamp and return latest 20
-    return activities
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 20)
-      .map((activity) => ({
-        ...activity,
-        timeAgo: this.getTimeAgo(activity.timestamp),
-      }));
+    // Combine, sort, limit and add time ago
+    const allActivities = ActivityTransformService.combineActivities(
+      userActivities,
+      vendorActivities,
+      showActivities,
+      parserActivities,
+    );
+
+    const limitedActivities = ActivityTransformService.limitActivities(allActivities, 20);
+    return ActivityTransformService.addTimeAgo(limitedActivities);
   }
 
   async getSystemHealth() {
@@ -295,19 +273,6 @@ export class AdminService {
     }
   }
 
-  private getTimeAgo(date: Date): string {
-    const now = new Date();
-    const diffMs = now.getTime() - new Date(date).getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-  }
-
   // Data Table Methods
   async getUsers(
     page = 1,
@@ -316,20 +281,11 @@ export class AdminService {
     sortBy?: string,
     sortOrder: 'ASC' | 'DESC' = 'ASC',
   ) {
-    const query = this.userRepository
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.equippedAvatar', 'equippedAvatar');
-
-    if (search) {
-      query.where('user.name LIKE :search OR user.email LIKE :search', {
-        search: `%${search}%`,
-      });
-    }
-
-    // Default sorting
-    if (sortBy) {
-      // Map frontend column names to database field names
-      const sortMap: { [key: string]: string } = {
+    const options: PaginationOptions = { page, limit, search, sortBy, sortOrder };
+    const queryOptions = {
+      searchFields: ['name', 'email'],
+      relations: ['equippedAvatar'],
+      sortMappings: {
         name: 'user.name',
         stageName: 'user.stageName',
         email: 'user.email',
@@ -337,26 +293,11 @@ export class AdminService {
         isAdmin: 'user.isAdmin',
         isActive: 'user.isActive',
         createdAt: 'user.createdAt',
-      };
-
-      const dbField = sortMap[sortBy] || 'user.createdAt';
-      query.orderBy(dbField, sortOrder);
-    } else {
-      query.orderBy('user.createdAt', 'DESC');
-    }
-
-    const [items, total] = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
-
-    return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      },
+      defaultSort: 'user.createdAt',
     };
+
+    return PaginationService.paginate(this.userRepository, 'user', options, queryOptions);
   }
 
   // Avatar Management
@@ -630,32 +571,19 @@ export class AdminService {
   }
 
   async getFavorites(page = 1, limit = 10, search?: string) {
-    const query = this.favoriteShowRepository
-      .createQueryBuilder('favorite')
-      .leftJoinAndSelect('favorite.user', 'user')
-      .leftJoinAndSelect('favorite.show', 'show')
-      .leftJoinAndSelect('show.dj', 'dj')
-      .leftJoinAndSelect('dj.vendor', 'vendor');
-
-    if (search) {
-      query.where('user.name LIKE :search OR user.email LIKE :search OR vendor.name LIKE :search', {
-        search: `%${search}%`,
-      });
-    }
-
-    const [items, total] = await query
-      .orderBy('favorite.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
-
-    return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+    const options: PaginationOptions = { page, limit, search };
+    const queryOptions = {
+      searchFields: ['user.name', 'user.email', 'vendor.name'],
+      relations: ['user', 'show', 'show.dj', 'show.dj.vendor'],
+      defaultSort: 'favorite.createdAt',
     };
+
+    return PaginationService.paginate(
+      this.favoriteShowRepository,
+      'favorite',
+      options,
+      queryOptions,
+    );
   }
 
   async getSongs(page = 1, limit = 10, search?: string) {
@@ -712,13 +640,19 @@ export class AdminService {
         rejected,
         successRate: totalParsed > 0 ? Math.round((approved / totalParsed) * 100) : 0,
       },
-      recentActivity: recentActivity.map((item) => ({
-        id: item.id,
-        url: item.url,
-        status: item.status,
-        createdAt: item.createdAt,
-        timeAgo: this.getTimeAgo(item.createdAt),
-      })),
+      recentActivity: ActivityTransformService.addTimeAgo(
+        recentActivity.map((item) => ({
+          id: item.id,
+          url: item.url,
+          status: item.status,
+          createdAt: item.createdAt,
+          timestamp: item.createdAt,
+          type: 'parser_activity',
+          action: 'Website parsed',
+          details: `${item.url} - ${item.status}`,
+          severity: 'info' as const,
+        })),
+      ),
     };
   }
 
@@ -891,45 +825,21 @@ export class AdminService {
     });
 
     // Build the update object with only provided fields
-    const updateFields: any = {};
+    const allowedFields = [
+      'day',
+      'startTime',
+      'endTime',
+      'time',
+      'description',
+      'address',
+      'kjId',
+      'vendorId',
+    ];
+    const updateFields = UpdateFieldsService.buildUpdateFields(updateData, allowedFields);
 
-    if (updateData.day !== undefined) {
-      updateFields.day = updateData.day;
-    }
-
-    // Handle time fields with validation
-    let timeFieldsProvided = false;
-    if (updateData.startTime !== undefined) {
-      updateFields.startTime = updateData.startTime;
-      timeFieldsProvided = true;
-    }
-
-    if (updateData.endTime !== undefined) {
-      updateFields.endTime = updateData.endTime;
-      timeFieldsProvided = true;
-    }
-
-    if (updateData.time !== undefined) {
-      // Handle legacy time field by parsing it into startTime/endTime if needed
-      updateFields.time = updateData.time;
-      timeFieldsProvided = true;
-    }
-
-    if (updateData.description !== undefined) {
-      updateFields.description = updateData.description;
-    }
-
-    if (updateData.address !== undefined) {
-      updateFields.address = updateData.address;
-    }
-
-    if (updateData.kjId !== undefined) {
-      updateFields.kjId = updateData.kjId;
-    }
-
-    if (updateData.vendorId !== undefined) {
-      updateFields.vendorId = updateData.vendorId;
-    }
+    // Check if time fields were provided for validation
+    const timeFields = ['startTime', 'endTime', 'time'];
+    const timeFieldsProvided = UpdateFieldsService.hasUpdateFields(updateData, timeFields);
 
     // If time fields were updated, apply time validation
     if (timeFieldsProvided) {
@@ -939,7 +849,7 @@ export class AdminService {
       const showForValidation = {
         ...show,
         ...updateFields,
-      };
+      } as Show;
 
       console.log('📋 Show for validation:', {
         id: showForValidation.id,
@@ -987,35 +897,27 @@ export class AdminService {
   }
 
   async updateDj(id: string, updateData: any) {
-    const dj = await this.djRepository.findOne({ where: { id } });
+    const config = {
+      entityName: 'DJ',
+      allowedUpdateFields: ['name'] as (keyof DJ)[],
+    };
 
-    if (!dj) {
-      throw new Error('DJ not found');
-    }
-
-    await this.djRepository.update(id, {
-      name: updateData.name,
-    });
-
-    return { message: 'DJ updated successfully' };
+    return GenericCrudService.updateEntity(this.djRepository, id, updateData, config);
   }
 
   async updateVendor(id: string, updateData: any) {
-    const vendor = await this.vendorRepository.findOne({ where: { id } });
+    const config = {
+      entityName: 'Vendor',
+      allowedUpdateFields: [
+        'name',
+        'website',
+        'instagram',
+        'facebook',
+        'isActive',
+      ] as (keyof Vendor)[],
+    };
 
-    if (!vendor) {
-      throw new Error('Vendor not found');
-    }
-
-    await this.vendorRepository.update(id, {
-      name: updateData.name,
-      website: updateData.website,
-      instagram: updateData.instagram,
-      facebook: updateData.facebook,
-      isActive: updateData.isActive,
-    });
-
-    return { message: 'Vendor updated successfully' };
+    return GenericCrudService.updateEntity(this.vendorRepository, id, updateData, config);
   }
 
   // Relationship methods
@@ -1047,31 +949,14 @@ export class AdminService {
   }
 
   async getFeedback(page: number = 1, limit: number = 10, search?: string) {
-    const queryBuilder = this.feedbackRepository
-      .createQueryBuilder('feedback')
-      .leftJoinAndSelect('feedback.user', 'user');
-
-    if (search) {
-      queryBuilder.where(
-        '(feedback.subject LIKE :search OR feedback.message LIKE :search OR feedback.email LIKE :search OR feedback.name LIKE :search)',
-        { search: `%${search}%` },
-      );
-    }
-
-    queryBuilder
-      .orderBy('feedback.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
-
-    const [items, total] = await queryBuilder.getManyAndCount();
-
-    return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+    const options: PaginationOptions = { page, limit, search };
+    const queryOptions = {
+      searchFields: ['subject', 'message', 'email', 'name'],
+      relations: ['user'],
+      defaultSort: 'feedback.createdAt',
     };
+
+    return PaginationService.paginate(this.feedbackRepository, 'feedback', options, queryOptions);
   }
 
   async updateFeedback(id: string, updateData: any) {
@@ -1091,35 +976,14 @@ export class AdminService {
   }
 
   async getShowReviews(page: number = 1, limit: number = 10, search?: string) {
-    const queryBuilder = this.showReviewRepository
-      .createQueryBuilder('review')
-      .leftJoinAndSelect('review.show', 'show')
-      .leftJoinAndSelect('show.dj', 'dj')
-      .leftJoinAndSelect('dj.vendor', 'vendor')
-      .leftJoinAndSelect('review.submittedByUser', 'submittedBy')
-      .leftJoinAndSelect('review.reviewedByUser', 'reviewedBy');
-
-    if (search) {
-      queryBuilder.where(
-        '(review.djName LIKE :search OR review.vendorName LIKE :search OR review.venueName LIKE :search OR review.comments LIKE :search OR show.venue LIKE :search)',
-        { search: `%${search}%` },
-      );
-    }
-
-    queryBuilder
-      .orderBy('review.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
-
-    const [items, total] = await queryBuilder.getManyAndCount();
-
-    return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+    const options: PaginationOptions = { page, limit, search };
+    const queryOptions = {
+      searchFields: ['djName', 'vendorName', 'venueName', 'comments', 'show.venue'],
+      relations: ['show', 'show.dj', 'show.dj.vendor', 'submittedByUser', 'reviewedByUser'],
+      defaultSort: 'review.createdAt',
     };
+
+    return PaginationService.paginate(this.showReviewRepository, 'review', options, queryOptions);
   }
 
   async updateShowReview(id: string, updateData: any) {
@@ -1338,80 +1202,43 @@ export class AdminService {
 
   // Store item listing methods for admin interface
   async getStoreAvatars(page: number = 1, limit: number = 50, search?: string) {
-    const queryBuilder = this.avatarRepository.createQueryBuilder('avatar');
-
-    if (search) {
-      queryBuilder.where(
-        'avatar.name LIKE :search OR avatar.description LIKE :search OR avatar.type LIKE :search',
-        { search: `%${search}%` },
-      );
-    }
-
-    queryBuilder
-      .orderBy('avatar.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
-
-    const [items, total] = await queryBuilder.getManyAndCount();
-
-    return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+    const options = { page, limit, search };
+    const config = {
+      searchFields: ['name', 'description', 'type'],
+      defaultLimit: 50,
     };
+
+    return GenericStoreService.getStoreItems(this.avatarRepository, 'avatar', options, config);
   }
 
   async getStoreMicrophones(page: number = 1, limit: number = 50, search?: string) {
-    const queryBuilder = this.microphoneRepository.createQueryBuilder('microphone');
-
-    if (search) {
-      queryBuilder.where(
-        'microphone.name LIKE :search OR microphone.description LIKE :search OR microphone.type LIKE :search',
-        { search: `%${search}%` },
-      );
-    }
-
-    queryBuilder
-      .orderBy('microphone.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
-
-    const [items, total] = await queryBuilder.getManyAndCount();
-
-    return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+    const options = { page, limit, search };
+    const config = {
+      searchFields: ['name', 'description', 'type'],
+      defaultLimit: 50,
     };
+
+    return GenericStoreService.getStoreItems(
+      this.microphoneRepository,
+      'microphone',
+      options,
+      config,
+    );
   }
 
   async getStoreCoinPackages(page: number = 1, limit: number = 50, search?: string) {
-    const queryBuilder = this.coinPackageRepository.createQueryBuilder('coinPackage');
-
-    if (search) {
-      queryBuilder.where('coinPackage.name LIKE :search OR coinPackage.description LIKE :search', {
-        search: `%${search}%`,
-      });
-    }
-
-    queryBuilder
-      .orderBy('coinPackage.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
-
-    const [items, total] = await queryBuilder.getManyAndCount();
-
-    return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+    const options = { page, limit, search };
+    const config = {
+      searchFields: ['name', 'description'],
+      defaultLimit: 50,
     };
+
+    return GenericStoreService.getStoreItems(
+      this.coinPackageRepository,
+      'coinPackage',
+      options,
+      config,
+    );
   }
 
   async updateStoreAvatar(id: string, updateData: any) {
@@ -2715,23 +2542,6 @@ If the venue cannot be found or you're not confident in the information, set ven
   }
 
   // Production Migration Methods
-  async runCriticalMigrations(): Promise<any> {
-    try {
-      await this.migrationService.runCriticalMigrations();
-      return {
-        success: true,
-        message: 'Critical migrations completed successfully',
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Migration failed',
-        error: error.message,
-        timestamp: new Date().toISOString(),
-      };
-    }
-  }
 
   async getMigrationStatus(): Promise<any> {
     try {
