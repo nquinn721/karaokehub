@@ -300,6 +300,12 @@ export class AdminController {
     return await this.adminService.validateAllShowTimes();
   }
 
+  // Validate and fix a specific show's time issues
+  @Post('shows/:id/fix-times')
+  async fixShowTimes(@Param('id') id: string, @Body() body: { applyFix?: boolean }) {
+    return await this.adminService.validateAndFixShowTime(id, body.applyFix ?? true);
+  }
+
   // Transaction Management Endpoints
   @Get('transactions')
   async getTransactions(

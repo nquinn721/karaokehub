@@ -33,19 +33,16 @@ import { Venue } from '../venue/venue.entity';
 
 export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => {
   const isProduction = configService.get('NODE_ENV') === 'production';
-  const socketPath = configService.get('DATABASE_SOCKET_PATH');
-
-  // Only enable migrations in production
-  const migrationsEnabled = isProduction;
 
   console.log('🗃️  Database Config:', {
     NODE_ENV: configService.get('NODE_ENV'),
     isProduction,
-    synchronize: false, // Always false for safety
-    migrationsEnabled: migrationsEnabled,
+    synchronize: configService.get('DATABASE_SYNCHRONIZE', 'false') === 'true',
+    migrationsEnabled: isProduction,
   });
 
-  const baseConfig = {
+  // Base configuration shared between environments
+  const baseConfig: Partial<TypeOrmModuleOptions> = {
     type: 'mysql',
     username: configService.get('DATABASE_USERNAME', 'admin'),
     password: configService.get('DATABASE_PASSWORD', 'password'),
@@ -86,8 +83,8 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       CoinPackage,
       Transaction,
     ],
-    synchronize: !isProduction, // Enable sync in development, disable in production
-    logging: !isProduction, // Enable SQL logging in development only
+    synchronize: configService.get('DATABASE_SYNCHRONIZE', 'false') === 'true', // Use environment variable
+    logging: false, // SQL logging disabled
 
     // Handle schema synchronization more gracefully
     dropSchema: false, // Never drop the entire schema
@@ -104,7 +101,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     },
 
     // Migration configuration - enabled with all necessary migration files for production
-    migrations: migrationsEnabled
+    migrations: isProduction
       ? [
           'dist/migrations/1727814000000-AddIsAIValidatedToVenues.js',
           'dist/migrations/1727906400000-RecordMicrophoneUuidConversion.js',
@@ -140,7 +137,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
         ]
       : [],
     migrationsTableName: 'migrations',
-    migrationsRun: migrationsEnabled,
+    migrationsRun: isProduction,
 
     // Connection pool options for TypeORM
     ...(isProduction && {
@@ -151,6 +148,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     }),
   };
 
+  const socketPath = configService.get('DATABASE_SOCKET_PATH');
   if (socketPath) {
     // For Unix socket connection via Cloud SQL Proxy
     return {
@@ -169,28 +167,20 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
         }),
       },
     } as TypeOrmModuleOptions;
-  } else {
-    // For regular TCP connection
-    return {
-      ...baseConfig,
-      host: configService.get('DATABASE_HOST', 'localhost'),
-      port: parseInt(configService.get('DATABASE_PORT', '3306')),
-      extra: {
-        connectionLimit: 5,
-        connectTimeout: 30000, // Reduced from 60000
-        acquireTimeout: 30000,
-        timeout: 30000,
-        queueLimit: 0,
-        // Only add SSL in production
-        ...(isProduction && {
-          ssl: {
-            rejectUnauthorized: true,
-            ca: configService.get('DATABASE_SSL_CA'),
-          },
-          charset: 'utf8mb4',
-          timezone: '+00:00',
-        }),
-      },
-    } as TypeOrmModuleOptions;
   }
+
+  // Local development configuration
+  return {
+    ...baseConfig,
+    host: configService.get('DATABASE_HOST', 'localhost'),
+    port: parseInt(configService.get('DATABASE_PORT', '3306')),
+    extra: {
+      connectionLimit: 5,
+      connectTimeout: 30000,
+      acquireTimeout: 30000,
+      timeout: 30000,
+      queueLimit: 0,
+      charset: 'utf8mb4_unicode_ci',
+    },
+  } as TypeOrmModuleOptions;
 };

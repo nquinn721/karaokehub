@@ -498,6 +498,22 @@ const AdminParserPage: React.FC = observer(() => {
   const isCurrentUrlFacebook = currentUrl ? isFacebookUrl(currentUrl) : false;
   const isCurrentUrlInstagram = currentUrl ? isInstagramUrl(currentUrl) : false;
 
+  // Helper functions for Puppeteer stream management
+  const joinPuppeteerStream = () => {
+    if (webSocketStore.socket && !puppeteerConnected) {
+      console.log('🔗 Joining Puppeteer stream for parsing...');
+      webSocketStore.socket.emit('join-puppeteer-stream');
+    }
+  };
+
+  const leavePuppeteerStream = () => {
+    if (webSocketStore.socket && puppeteerConnected) {
+      console.log('🔌 Leaving Puppeteer stream after parsing...');
+      webSocketStore.socket.emit('leave-puppeteer-stream');
+      setPuppeteerConnected(false);
+    }
+  };
+
   // Redirect non-admin users
   if (!authStore.isAdmin) {
     return <Navigate to="/dashboard" replace />;
@@ -543,9 +559,6 @@ const AdminParserPage: React.FC = observer(() => {
       if (webSocketStore.socket) {
         console.log('Setting up Puppeteer stream WebSocket listeners');
 
-        // Join the stream when connecting
-        webSocketStore.socket.emit('join-puppeteer-stream');
-
         webSocketStore.socket.on('puppeteer-stream-joined', (data: any) => {
           console.log('📺 Joined Puppeteer stream:', data);
           setPuppeteerConnected(true);
@@ -574,6 +587,11 @@ const AdminParserPage: React.FC = observer(() => {
           if (data.progress !== undefined) {
             setCurrentProgress(data.progress);
           }
+        });
+
+        webSocketStore.socket.on('puppeteer-stream-left', (data: any) => {
+          console.log('📺 Left Puppeteer stream:', data);
+          setPuppeteerConnected(false);
         });
       }
     };
@@ -607,6 +625,7 @@ const AdminParserPage: React.FC = observer(() => {
         // Clean up Puppeteer stream listeners
         webSocketStore.socket.emit('leave-puppeteer-stream');
         webSocketStore.socket.off('puppeteer-stream-joined');
+        webSocketStore.socket.off('puppeteer-stream-left');
         webSocketStore.socket.off('puppeteer-screenshot');
         webSocketStore.socket.off('puppeteer-status');
       }
@@ -693,10 +712,16 @@ const AdminParserPage: React.FC = observer(() => {
     setIsParsingUrl(true);
     setParseResult(null);
 
+    // Determine if we need Puppeteer stream
+    const needsPuppeteer = parseMethod === 'deepseek';
+
     try {
       let result;
 
       if (parseMethod === 'deepseek') {
+        // Join Puppeteer stream before starting DeepSeek parsing
+        joinPuppeteerStream();
+
         // Use comprehensive DeepSeek website parsing
         result = await parserStore.parseWithDeepSeek(urlToParse, {
           usePuppeteer: true,
@@ -718,6 +743,10 @@ const AdminParserPage: React.FC = observer(() => {
       console.error('Error parsing URL:', error);
       // The error will be shown via parserStore.error from the store
     } finally {
+      // Always leave Puppeteer stream after parsing (whether successful or not)
+      if (needsPuppeteer) {
+        leavePuppeteerStream();
+      }
       setIsParsingUrl(false);
     }
   };

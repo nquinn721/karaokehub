@@ -41,7 +41,7 @@ export class ApiIssue {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamp', precision: 6 })
   timestamp: Date;
 
   @Column({
@@ -80,7 +80,7 @@ export class ApiIssue {
   @Column({ type: 'boolean', default: false })
   isResolved: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp', precision: 6, nullable: true })
   resolvedAt: Date;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -89,9 +89,9 @@ export class ApiIssue {
   @Column({ type: 'text', nullable: true })
   resolutionNotes: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamp', precision: 6 })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamp', precision: 6 })
   updatedAt: Date;
 }

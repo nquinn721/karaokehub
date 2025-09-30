@@ -872,17 +872,116 @@ export class AdminService {
   }
 
   async updateShow(id: string, updateData: any) {
-    const show = await this.showRepository.findOne({ where: { id } });
+    console.log('🔄 Admin updateShow called:', { id, updateData });
+
+    const show = await this.showRepository.findOne({
+      where: { id },
+      relations: ['venue'],
+    });
 
     if (!show) {
       throw new Error('Show not found');
     }
 
-    await this.showRepository.update(id, {
-      day: updateData.day,
-      time: updateData.time,
-      description: updateData.description,
+    console.log('📊 Original show data:', {
+      id: show.id,
+      startTime: show.startTime,
+      endTime: show.endTime,
+      venue: show.venue?.name,
     });
+
+    // Build the update object with only provided fields
+    const updateFields: any = {};
+
+    if (updateData.day !== undefined) {
+      updateFields.day = updateData.day;
+    }
+
+    // Handle time fields with validation
+    let timeFieldsProvided = false;
+    if (updateData.startTime !== undefined) {
+      updateFields.startTime = updateData.startTime;
+      timeFieldsProvided = true;
+    }
+
+    if (updateData.endTime !== undefined) {
+      updateFields.endTime = updateData.endTime;
+      timeFieldsProvided = true;
+    }
+
+    if (updateData.time !== undefined) {
+      // Handle legacy time field by parsing it into startTime/endTime if needed
+      updateFields.time = updateData.time;
+      timeFieldsProvided = true;
+    }
+
+    if (updateData.description !== undefined) {
+      updateFields.description = updateData.description;
+    }
+
+    if (updateData.address !== undefined) {
+      updateFields.address = updateData.address;
+    }
+
+    if (updateData.kjId !== undefined) {
+      updateFields.kjId = updateData.kjId;
+    }
+
+    if (updateData.vendorId !== undefined) {
+      updateFields.vendorId = updateData.vendorId;
+    }
+
+    // If time fields were updated, apply time validation
+    if (timeFieldsProvided) {
+      console.log('⏰ Time fields provided, running validation...');
+
+      // Create a temporary show object with the updated values for validation
+      const showForValidation = {
+        ...show,
+        ...updateFields,
+      };
+
+      console.log('📋 Show for validation:', {
+        id: showForValidation.id,
+        startTime: showForValidation.startTime,
+        endTime: showForValidation.endTime,
+        venue: showForValidation.venue?.name,
+      });
+
+      const timeValidation = this.timeValidationService.validateShowTime(showForValidation);
+
+      console.log('🔍 Time validation result:', {
+        wasFixed: timeValidation.wasFixed,
+        confidence: timeValidation.confidence,
+        issues: timeValidation.issues,
+        originalStartTime: timeValidation.originalStartTime,
+        originalEndTime: timeValidation.originalEndTime,
+        correctedStartTime: timeValidation.correctedStartTime,
+        correctedEndTime: timeValidation.correctedEndTime,
+      });
+
+      // If validation found issues and fixed them, use the corrected times
+      if (timeValidation.wasFixed && timeValidation.confidence >= 0.8) {
+        if (timeValidation.correctedStartTime) {
+          updateFields.startTime = timeValidation.correctedStartTime;
+        }
+        if (timeValidation.correctedEndTime) {
+          updateFields.endTime = timeValidation.correctedEndTime;
+        }
+        console.log(`🕐 Time validation applied for show ${id}:`, {
+          original: { startTime: show.startTime, endTime: show.endTime },
+          corrected: { startTime: updateFields.startTime, endTime: updateFields.endTime },
+        });
+      } else {
+        console.log('⚠️ No time correction applied:', {
+          wasFixed: timeValidation.wasFixed,
+          confidence: timeValidation.confidence,
+          reason: timeValidation.wasFixed ? 'Low confidence' : 'No issues detected',
+        });
+      }
+    }
+
+    await this.showRepository.update(id, updateFields);
 
     return { message: 'Show updated successfully' };
   }
@@ -1891,6 +1990,60 @@ export class AdminService {
    */
   async validateAllShowTimes(): Promise<BatchTimeValidationResult> {
     return await this.timeValidationService.validateAllShowTimes();
+  }
+
+  /**
+   * Validate and optionally fix a specific show's time issues
+   */
+  async validateAndFixShowTime(id: string, applyFix: boolean = true) {
+    try {
+      const show = await this.showRepository.findOne({
+        where: { id },
+        relations: ['venue'],
+      });
+
+      if (!show) {
+        throw new Error('Show not found');
+      }
+
+      // Use the time validation service to check this specific show
+      const result = this.timeValidationService.validateShowTime(show);
+
+      if (applyFix && result.wasFixed && result.confidence >= 0.8) {
+        // Apply the fix by updating the show
+        const updateFields: any = {};
+        if (result.correctedStartTime) {
+          updateFields.startTime = result.correctedStartTime;
+        }
+        if (result.correctedEndTime) {
+          updateFields.endTime = result.correctedEndTime;
+        }
+
+        if (Object.keys(updateFields).length > 0) {
+          await this.showRepository.update(id, updateFields);
+          result.wasFixed = true;
+        }
+      }
+
+      return {
+        success: true,
+        show: {
+          id: show.id,
+          venue: show.venue?.name || 'Unknown Venue',
+          originalStartTime: result.originalStartTime,
+          originalEndTime: result.originalEndTime,
+          correctedStartTime: result.correctedStartTime,
+          correctedEndTime: result.correctedEndTime,
+        },
+        validation: result,
+        applied: applyFix && result.wasFixed,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
   }
 
   /**

@@ -9,7 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Show } from '../show/show.entity';
 
-interface TimeValidationResult {
+export interface TimeValidationResult {
   showId: string;
   venueName: string;
   day: string;

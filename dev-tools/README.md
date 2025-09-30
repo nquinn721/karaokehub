@@ -59,7 +59,6 @@ dev-tools/
 - **`quick-analysis.js`** - Quick diagnostic analysis tool
 - **`upload_to_production.js`** - Production deployment utility
 - **`update-facebook-cookies.js`** - Facebook authentication helper
-- **`data-source.js/ts`** - Database connection debugging
 
 ## �️ Database Scripts (`/database`)
 

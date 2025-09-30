@@ -23,13 +23,13 @@ export class ApiRateLimitStatus {
   @Column({ name: 'circuit_breaker_open', default: false })
   circuitBreakerOpen: boolean;
 
-  @Column({ name: 'last_request_at', type: 'timestamp', precision: 6, nullable: true })
+  @Column({ name: 'last_request_at', type: 'timestamp', precision: 3, nullable: true })
   lastRequestAt?: Date;
 
-  @Column({ name: 'last_success_at', type: 'timestamp', precision: 6, nullable: true })
+  @Column({ name: 'last_success_at', type: 'timestamp', precision: 3, nullable: true })
   lastSuccessAt?: Date;
 
-  @Column({ name: 'last_error_at', type: 'timestamp', precision: 6, nullable: true })
+  @Column({ name: 'last_error_at', type: 'timestamp', precision: 3, nullable: true })
   lastErrorAt?: Date;
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp', precision: 6 })

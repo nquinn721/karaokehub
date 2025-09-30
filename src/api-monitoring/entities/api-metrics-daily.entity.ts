@@ -62,9 +62,9 @@ export class ApiMetricsDaily {
   @Column({ type: 'bigint', default: 0 })
   totalResponseTime: number; // for calculating avg
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamp', precision: 6 })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamp', precision: 6 })
   updatedAt: Date;
 }

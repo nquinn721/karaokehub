@@ -2891,6 +2891,24 @@ ${htmlContent}`;
           friday: 'friday',
           saturday: 'saturday',
           sunday: 'sunday',
+          // Handle plural forms
+          mondays: 'monday',
+          tuesdays: 'tuesday',
+          wednesdays: 'wednesday',
+          thursdays: 'thursday',
+          fridays: 'friday',
+          saturdays: 'saturday',
+          sundays: 'sunday',
+          // Handle abbreviated forms
+          mon: 'monday',
+          tue: 'tuesday',
+          tues: 'tuesday',
+          wed: 'wednesday',
+          thu: 'thursday',
+          thurs: 'thursday',
+          fri: 'friday',
+          sat: 'saturday',
+          sun: 'sunday',
         };
 
         // Check both day and dayOfWeek fields for compatibility
