@@ -253,6 +253,10 @@ export class MusicService {
     query: string,
     entity: 'song' | 'musicArtist',
     limit: number = 20,
+    searchContext?: {
+      searchType?: string;
+      searchContext?: string;
+    },
   ): Promise<any> {
     const startTime = Date.now();
     const endpointType = entity === 'song' ? ApiEndpointType.SEARCH : ApiEndpointType.SEARCH; // Both use SEARCH
@@ -285,6 +289,8 @@ export class MusicService {
           responseTime,
           errorMessage: `iTunes API error: ${response.status} - ${response.statusText}`,
           isSuccess: false,
+          searchType: searchContext?.searchType,
+          searchContext: searchContext?.searchContext,
         });
 
         // Log API error (existing logging)
@@ -324,6 +330,8 @@ export class MusicService {
         },
         responseTime,
         isSuccess: true,
+        searchType: searchContext?.searchType,
+        searchContext: searchContext?.searchContext,
       });
 
       // Log successful API call (existing logging)
@@ -528,6 +536,10 @@ export class MusicService {
     query: string,
     limit: number = 20,
     offset: number = 0,
+    searchContext?: {
+      searchType?: string;
+      searchContext?: string;
+    },
   ): Promise<MusicSearchResult[]> {
     if (!query?.trim()) return [];
 
@@ -538,7 +550,7 @@ export class MusicService {
       // iTunes has excellent preview availability
       for (const variant of variants) {
         try {
-          const itunesData = await this.fetchItunes(variant, 'song', limit);
+          const itunesData = await this.fetchItunes(variant, 'song', limit, searchContext);
           const itunesResults = this.mapItunesTracks(itunesData);
           if (itunesResults.length > 0) {
             this.rateLimiter.recordSuccess('itunes');
@@ -563,6 +575,10 @@ export class MusicService {
     query: string,
     limit: number = 20,
     offset: number = 0,
+    searchContext?: {
+      searchType?: string;
+      searchContext?: string;
+    },
   ): Promise<ArtistSearchResult[]> {
     if (!query?.trim()) return [];
 
@@ -572,7 +588,7 @@ export class MusicService {
       // Use iTunes exclusively for consistency
       for (const variant of variants) {
         try {
-          const itunesData = await this.fetchItunes(variant, 'musicArtist', limit);
+          const itunesData = await this.fetchItunes(variant, 'musicArtist', limit, searchContext);
           const itunesResults = this.mapItunesArtists(itunesData);
           if (itunesResults.length > 0) {
             this.rateLimiter.recordSuccess('itunes');

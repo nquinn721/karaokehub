@@ -136,18 +136,7 @@ interface RecentApiCall {
   timestamp: string;
 }
 
-interface RateLimitStatus {
-  provider: string;
-  maxRequestsPerMinute: number;
-  currentMinuteCount: number;
-  currentMinuteStart: string | null;
-  isRateLimited: boolean;
-  circuitBreakerOpen: boolean;
-  lastRequestAt: string | null;
-  lastSuccessAt: string | null;
-  lastErrorAt: string | null;
-  updatedAt: string;
-}
+
 
 const EnhancedApiMonitoring: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
@@ -157,7 +146,7 @@ const EnhancedApiMonitoring: React.FC = () => {
   const [chartData, setChartData] = useState<any>(null);
   const [itunesStats, setItunesStats] = useState<ItunesRateLimitStats | null>(null);
   const [recentCalls, setRecentCalls] = useState<RecentApiCall[]>([]);
-  const [rateLimits, setRateLimits] = useState<RateLimitStatus[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [selectedIssue, setSelectedIssue] = useState<ApiIssue | null>(null);
   const [resolutionDialog, setResolutionDialog] = useState(false);
@@ -261,15 +250,7 @@ const EnhancedApiMonitoring: React.FC = () => {
         setRecentCalls([]);
       }
 
-      // Load rate limit status from new real-time endpoint
-      try {
-        const rateLimitsRes = await fetch('/api/api-monitoring/realtime/rate-limits');
-        const rateLimitsData = await rateLimitsRes.json();
-        setRateLimits(rateLimitsData);
-      } catch (error) {
-        console.warn('Rate limits not available, using empty data');
-        setRateLimits([]);
-      }
+
 
       // Load chart data with fallback
       loadChartData();
@@ -748,7 +729,7 @@ const EnhancedApiMonitoring: React.FC = () => {
                   variant="h5"
                   color={summary.successRateToday > 95 ? 'success.main' : 'warning.main'}
                 >
-                  {summary.successRateToday.toFixed(1)}%
+                  {Number(summary.successRateToday || 0).toFixed(1)}%
                 </Typography>
               </CardContent>
             </Card>
@@ -825,7 +806,6 @@ const EnhancedApiMonitoring: React.FC = () => {
       <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} sx={{ mb: 3 }}>
         <Tab label="Charts & Analytics" />
         <Tab label="Recent Calls" />
-        <Tab label="Rate Limits" />
         <Tab label="Active Issues" />
         <Tab label="Metrics Table" />
       </Tabs>
@@ -1043,98 +1023,8 @@ const EnhancedApiMonitoring: React.FC = () => {
         </Card>
       )}
 
-      {/* Rate Limits Tab */}
-      {activeTab === 2 && (
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Rate Limit Status by Provider
-            </Typography>
-            <Grid container spacing={3}>
-              {rateLimits.map((rateLimitStatus) => (
-                <Grid item xs={12} md={6} lg={4} key={rateLimitStatus.provider}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        {rateLimitStatus.provider.toUpperCase()}
-                      </Typography>
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Rate Limit: {rateLimitStatus.currentMinuteCount} /{' '}
-                          {rateLimitStatus.maxRequestsPerMinute} per minute
-                        </Typography>
-                        <Box sx={{ mt: 1, mb: 1 }}>
-                          {/* Progress bar for rate limit usage */}
-                          <Box
-                            sx={{
-                              width: '100%',
-                              height: 8,
-                              bgcolor: 'grey.300',
-                              borderRadius: 1,
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                width: `${(rateLimitStatus.currentMinuteCount / rateLimitStatus.maxRequestsPerMinute) * 100}%`,
-                                height: '100%',
-                                bgcolor: rateLimitStatus.isRateLimited
-                                  ? 'error.main'
-                                  : rateLimitStatus.currentMinuteCount /
-                                        rateLimitStatus.maxRequestsPerMinute >
-                                      0.8
-                                    ? 'warning.main'
-                                    : 'success.main',
-                                borderRadius: 1,
-                              }}
-                            />
-                          </Box>
-                        </Box>
-                      </Box>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2">Status:</Typography>
-                          <Chip
-                            label={rateLimitStatus.isRateLimited ? 'RATE LIMITED' : 'HEALTHY'}
-                            size="small"
-                            color={rateLimitStatus.isRateLimited ? 'error' : 'success'}
-                          />
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2">Circuit Breaker:</Typography>
-                          <Chip
-                            label={rateLimitStatus.circuitBreakerOpen ? 'OPEN' : 'CLOSED'}
-                            size="small"
-                            color={rateLimitStatus.circuitBreakerOpen ? 'error' : 'success'}
-                          />
-                        </Box>
-                        {rateLimitStatus.lastRequestAt && (
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="body2">Last Request:</Typography>
-                            <Typography variant="body2">
-                              {new Date(rateLimitStatus.lastRequestAt).toLocaleTimeString()}
-                            </Typography>
-                          </Box>
-                        )}
-                        {rateLimitStatus.lastErrorAt && (
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="body2">Last Error:</Typography>
-                            <Typography variant="body2" color="error">
-                              {new Date(rateLimitStatus.lastErrorAt).toLocaleTimeString()}
-                            </Typography>
-                          </Box>
-                        )}
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Issues Tab */}
-      {activeTab === 3 && (
+      {activeTab === 2 && (
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
@@ -1222,7 +1112,7 @@ const EnhancedApiMonitoring: React.FC = () => {
       )}
 
       {/* Metrics Table Tab */}
-      {activeTab === 4 && (
+      {activeTab === 3 && (
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
@@ -1257,8 +1147,8 @@ const EnhancedApiMonitoring: React.FC = () => {
                               : 'warning.main'
                           }
                         >
-                          {metric.totalCalls > 0
-                            ? ((metric.successCount / metric.totalCalls) * 100).toFixed(1)
+                          {Number(metric.totalCalls) > 0
+                            ? ((Number(metric.successCount) / Number(metric.totalCalls)) * 100).toFixed(1)
                             : 0}
                           %
                         </Typography>
@@ -1270,7 +1160,7 @@ const EnhancedApiMonitoring: React.FC = () => {
                           <Chip label="0" color="success" size="small" />
                         )}
                       </TableCell>
-                      <TableCell>{metric.avgResponseTime.toFixed(0)}ms</TableCell>
+                      <TableCell>{Number(metric.avgResponseTime || 0).toFixed(0)}ms</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

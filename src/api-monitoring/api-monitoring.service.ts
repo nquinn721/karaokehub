@@ -20,6 +20,8 @@ export interface ApiCallData {
   errorCode?: string;
   errorMessage?: string;
   isSuccess: boolean;
+  searchType?: string;
+  searchContext?: string;
 }
 
 @Injectable()
@@ -105,11 +107,19 @@ export class ApiMonitoringService {
 
     // Update response time metrics
     metrics.totalResponseTime += data.responseTime;
-    metrics.avgResponseTime = metrics.totalResponseTime / metrics.totalCalls;
+    const calculatedAvg = metrics.totalResponseTime / metrics.totalCalls;
+    
+    // Cap avgResponseTime to prevent database overflow (DECIMAL(15,4) max is 99999999999.9999)
+    metrics.avgResponseTime = Math.min(calculatedAvg, 99999999999.9999);
     metrics.minResponseTime = Math.min(metrics.minResponseTime, data.responseTime);
     metrics.maxResponseTime = Math.max(metrics.maxResponseTime, data.responseTime);
 
-    await this.metricsRepository.save(metrics);
+    try {
+      await this.metricsRepository.save(metrics);
+    } catch (error) {
+      console.error('Error saving API metrics:', error);
+      // Don't throw - log the error but continue processing
+    }
   }
 
   private async logApiIssue(data: ApiCallData): Promise<void> {
@@ -159,6 +169,8 @@ export class ApiMonitoringService {
       rateLimited: this.isRateLimit(data.responseStatus),
       errorType: data.errorCode || (!data.isSuccess ? 'API_ERROR' : undefined),
       searchQuery,
+      searchType: data.searchType,
+      searchContext: data.searchContext,
       requestUrl: data.requestUrl,
       timestamp: new Date(),
     });
@@ -168,17 +180,17 @@ export class ApiMonitoringService {
     await this.recentCallRepository.save(recentCall);
     console.log('✅ Saved recent call to database');
 
-    // Keep only the last 20 records to avoid table bloat
+    // Keep only the last 100 records to avoid table bloat
     await this.trimRecentCalls();
   }
 
   private async trimRecentCalls(): Promise<void> {
     try {
-      // Keep only the most recent 20 records
+      // Keep only the most recent 100 records
       const oldestToKeep = await this.recentCallRepository
         .createQueryBuilder('call')
         .orderBy('call.timestamp', 'DESC')
-        .offset(20)
+        .offset(100)
         .limit(1)
         .getOne();
 
@@ -283,6 +295,7 @@ export class ApiMonitoringService {
     avgResponseTimeToday: number;
   }> {
     const today = new Date().toISOString().split('T')[0];
+    console.log(`📊 Dashboard Summary - Looking for metrics on date: ${today}`);
 
     const todayMetrics = await this.metricsRepository
       .createQueryBuilder('metrics')
@@ -292,6 +305,8 @@ export class ApiMonitoringService {
       .where('metrics.date = :today', { today })
       .getRawOne();
 
+    console.log('📊 Raw metrics query result:', todayMetrics);
+
     const activeIssuesCount = await this.issueRepository.count({
       where: { isResolved: false },
     });
@@ -300,11 +315,46 @@ export class ApiMonitoringService {
     const successCount = parseInt(todayMetrics.successCount) || 0;
     const successRate = totalCalls > 0 ? (successCount / totalCalls) * 100 : 100;
 
-    return {
+    const result = {
       totalCallsToday: totalCalls,
       successRateToday: Math.round(successRate * 100) / 100,
       activeIssues: activeIssuesCount,
       avgResponseTimeToday: Math.round(parseFloat(todayMetrics.avgResponseTime) || 0),
+    };
+    
+    console.log('📊 Final dashboard summary result:', result);
+    return result;
+  }
+
+  async debugMetricsTable() {
+    const today = new Date().toISOString().split('T')[0];
+    const allMetrics = await this.metricsRepository.find({
+      order: { date: 'DESC' },
+      take: 10,
+    });
+    
+    const todayMetrics = await this.metricsRepository.find({
+      where: { date: today },
+    });
+
+    return {
+      todayDate: today,
+      todayMetricsCount: todayMetrics.length,
+      todayMetrics,
+      recentMetrics: allMetrics,
+    };
+  }
+
+  async debugRecentCallsCount() {
+    const totalCount = await this.recentCallRepository.count();
+    const recentCalls = await this.recentCallRepository.find({
+      order: { timestamp: 'DESC' },
+      take: 5,
+    });
+
+    return {
+      totalRecentCalls: totalCount,
+      sampleRecentCalls: recentCalls,
     };
   }
 
@@ -381,7 +431,7 @@ export class ApiMonitoringService {
     };
   }
 
-  async getRecentCalls(limit: number = 20) {
+  async getRecentCalls(limit: number = 50) {
     return this.recentCallRepository.find({
       order: { timestamp: 'DESC' },
       take: limit,

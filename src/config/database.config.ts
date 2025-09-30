@@ -4,6 +4,8 @@ import { ApiLog } from '../api-logging/api-log.entity';
 import { ApiRateLimitStatus } from '../api-logging/entities/api-rate-limit-status.entity';
 import { ApiRealtimeMetric } from '../api-logging/entities/api-realtime-metric.entity';
 import { ApiRecentCall } from '../api-logging/entities/api-recent-call.entity';
+import { ApiIssue } from '../api-monitoring/entities/api-issue.entity';
+import { ApiMetricsDaily } from '../api-monitoring/entities/api-metrics-daily.entity';
 import { Avatar } from '../avatar/entities/avatar.entity';
 import { Microphone } from '../avatar/entities/microphone.entity';
 import { Outfit } from '../avatar/entities/outfit.entity';
@@ -70,6 +72,9 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       ApiRecentCall,
       ApiRealtimeMetric,
       ApiRateLimitStatus,
+      // API monitoring entities
+      ApiMetricsDaily,
+      ApiIssue,
       // Avatar system entities
       Avatar,
       UserAvatar,
@@ -132,8 +137,8 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
           'dist/migrations/1737462100000-FixUserAvatarData.js',
           'dist/migrations/1737462200000-SeedAllNewAvatars.js',
           'dist/migrations/1737462300000-EnsureProductionAvatarSystemReady.js',
-
           'dist/migrations/1737810000000-FixRockstarAlexNameData.js',
+          'dist/migrations/1737820000000-AddSearchContextToApiRecentCalls.js',
         ]
       : [],
     migrationsTableName: 'migrations',

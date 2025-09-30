@@ -11,10 +11,15 @@ export class MusicController {
     @Query('q') query: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('searchType') searchType?: string,
+    @Query('searchContext') searchContext?: string,
   ): Promise<MusicSearchResult[]> {
     const searchLimit = limit ? parseInt(limit, 10) : 10;
     const searchOffset = offset ? parseInt(offset, 10) : 0;
-    return this.musicService.searchSongs(query, searchLimit, searchOffset);
+    return this.musicService.searchSongs(query, searchLimit, searchOffset, {
+      searchType,
+      searchContext,
+    });
   }
 
   @Get('artists/search')
@@ -22,10 +27,15 @@ export class MusicController {
     @Query('q') query: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('searchType') searchType?: string,
+    @Query('searchContext') searchContext?: string,
   ): Promise<ArtistSearchResult[]> {
     const searchLimit = limit ? parseInt(limit, 10) : 10;
     const searchOffset = offset ? parseInt(offset, 10) : 0;
-    return this.musicService.searchArtists(query, searchLimit, searchOffset);
+    return this.musicService.searchArtists(query, searchLimit, searchOffset, {
+      searchType,
+      searchContext,
+    });
   }
 
   @Get('search/combined')

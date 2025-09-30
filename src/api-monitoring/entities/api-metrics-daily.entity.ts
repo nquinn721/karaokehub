@@ -50,7 +50,16 @@ export class ApiMetricsDaily {
   @Column({ type: 'int', default: 0 })
   rateLimitHits: number;
 
-  @Column({ type: 'decimal', precision: 8, scale: 2, default: 0 })
+  @Column({ 
+    type: 'decimal', 
+    precision: 15, 
+    scale: 4, 
+    default: 0,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string | number) => parseFloat(value as string) || 0,
+    }
+  })
   avgResponseTime: number; // milliseconds
 
   @Column({ type: 'int', default: 0 })

@@ -238,4 +238,14 @@ export class ApiMonitoringController {
     const hoursNum = hours ? parseInt(hours) : 24;
     return this.apiMonitoringService.getProviderRealtimeMetrics(provider as ApiProvider, hoursNum);
   }
+
+  @Get('debug/metrics-table')
+  async debugMetricsTable() {
+    return this.apiMonitoringService.debugMetricsTable();
+  }
+
+  @Get('debug/recent-calls-count')
+  async debugRecentCallsCount() {
+    return this.apiMonitoringService.debugRecentCallsCount();
+  }
 }

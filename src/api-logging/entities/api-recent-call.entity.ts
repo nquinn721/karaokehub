@@ -38,6 +38,12 @@ export class ApiRecentCall {
   @Column({ name: 'search_query', nullable: true, length: 500 })
   searchQuery?: string;
 
+  @Column({ name: 'search_type', nullable: true, length: 50 })
+  searchType?: string; // 'user_typed', 'featured_category', 'artist_browse', 'auto_complete', etc.
+
+  @Column({ name: 'search_context', nullable: true, length: 200 })
+  searchContext?: string; // e.g., 'Rock Hits', 'Top 40', or category name
+
   @Column({ name: 'request_url', nullable: true, length: 1000 })
   requestUrl?: string;
 
