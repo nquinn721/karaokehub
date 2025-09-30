@@ -44,10 +44,10 @@ export class ApiRealtimeMetric {
   @Column({ name: 'max_response_time_ms', nullable: true })
   maxResponseTimeMs?: number;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamp', precision: 3 })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp', precision: 6 })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp', precision: 3 })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp', precision: 6 })
   updatedAt: Date;
 
   // Computed property for average response time

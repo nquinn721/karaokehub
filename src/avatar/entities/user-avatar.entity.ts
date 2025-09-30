@@ -5,11 +5,13 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  Unique,
 } from 'typeorm';
 import { User } from '../../entities/user.entity';
 import { Avatar } from './avatar.entity';
 
 @Entity('user_avatars')
+@Unique('unique_user_avatar_combo', ['userId', 'avatarId'])
 export class UserAvatar {
   @PrimaryGeneratedColumn('uuid')
   id: string;

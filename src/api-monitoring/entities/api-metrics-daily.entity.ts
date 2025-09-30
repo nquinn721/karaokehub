@@ -4,6 +4,7 @@ import {
   Entity,
   Index,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
 } from 'typeorm';
 
@@ -17,6 +18,7 @@ export enum ApiEndpointType {
 
 @Entity('api_metrics_daily')
 @Index(['date', 'provider', 'endpointType'])
+@Unique('unique_date_provider_endpoint', ['date', 'provider', 'endpointType'])
 export class ApiMetricsDaily {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -86,7 +86,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       CoinPackage,
       Transaction,
     ],
-    synchronize: false, // Disabled to prevent foreign key constraint issues
+    synchronize: !isProduction, // Enable sync in development, disable in production
     logging: !isProduction, // Enable SQL logging in development only
 
     // Handle schema synchronization more gracefully
