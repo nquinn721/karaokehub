@@ -4,28 +4,40 @@ export class AddDjCancellationTracking1737830000000 implements MigrationInterfac
   name = 'AddDjCancellationTracking1737830000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Add cancellation tracking fields to users table
-    await queryRunner.query(`
-      ALTER TABLE \`users\` 
-      ADD COLUMN \`djSubscriptionCancelledAt\` datetime(6) NULL
-    `);
+    // Check if columns already exist before adding them
+    const table = await queryRunner.getTable('users');
+    
+    if (!table.findColumnByName('djSubscriptionCancelledAt')) {
+      await queryRunner.query(`
+        ALTER TABLE \`users\` 
+        ADD COLUMN \`djSubscriptionCancelledAt\` datetime(6) NULL
+      `);
+    }
 
-    await queryRunner.query(`
-      ALTER TABLE \`users\` 
-      ADD COLUMN \`djSubscriptionExpiresAt\` datetime(6) NULL
-    `);
+    if (!table.findColumnByName('djSubscriptionExpiresAt')) {
+      await queryRunner.query(`
+        ALTER TABLE \`users\` 
+        ADD COLUMN \`djSubscriptionExpiresAt\` datetime(6) NULL
+      `);
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Remove the cancellation tracking fields
-    await queryRunner.query(`
-      ALTER TABLE \`users\` 
-      DROP COLUMN \`djSubscriptionExpiresAt\`
-    `);
+    // Check if columns exist before removing them
+    const table = await queryRunner.getTable('users');
+    
+    if (table.findColumnByName('djSubscriptionExpiresAt')) {
+      await queryRunner.query(`
+        ALTER TABLE \`users\` 
+        DROP COLUMN \`djSubscriptionExpiresAt\`
+      `);
+    }
 
-    await queryRunner.query(`
-      ALTER TABLE \`users\` 
-      DROP COLUMN \`djSubscriptionCancelledAt\`
-    `);
+    if (table.findColumnByName('djSubscriptionCancelledAt')) {
+      await queryRunner.query(`
+        ALTER TABLE \`users\` 
+        DROP COLUMN \`djSubscriptionCancelledAt\`
+      `);
+    }
   }
 }
