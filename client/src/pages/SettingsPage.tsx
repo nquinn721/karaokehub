@@ -15,10 +15,13 @@ import {
   Settings as SettingsIcon,
   PhoneIphone,
   Payment,
+  CreditCard,
 } from '@mui/icons-material';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import CustomModal from '../components/CustomModal';
+import StripeProvider from '../components/StripeProvider';
+import InAppPaymentModal from '../components/InAppPaymentModal';
 import { apiStore, authStore, uiStore } from '../stores';
 
 const SettingsPage: React.FC = observer(() => {
@@ -30,6 +33,9 @@ const SettingsPage: React.FC = observer(() => {
     plan: 'free' | 'ad_free';
     message: string;
   } | null>(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentClientSecret, setPaymentClientSecret] = useState<string | null>(null);
+  const [paymentPlan, setPaymentPlan] = useState<'ad_free' | 'premium' | null>(null);
 
   const loadSubscriptionStatus = async () => {
     if (!authStore.isAuthenticated) return;
@@ -69,8 +75,21 @@ const SettingsPage: React.FC = observer(() => {
     }
   };
 
-  const upgradeToSubscription = async (plan: 'ad_free' | 'premium') => {
+  const upgradeToSubscription = async (plan: 'ad_free' | 'premium', useInApp = false) => {
     try {
+      if (useInApp) {
+        // Create payment intent for in-app payment
+        console.log('Creating in-app payment for plan:', plan);
+        const response = await apiStore.post('/subscription/create-payment-intent', { plan });
+        
+        if (response.clientSecret) {
+          setPaymentClientSecret(response.clientSecret);
+          setPaymentPlan(plan);
+          setPaymentModalOpen(true);
+        }
+        return;
+      }
+
       // Detect mobile device for optimized payment experience
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
@@ -90,6 +109,14 @@ const SettingsPage: React.FC = observer(() => {
       console.error('Error creating checkout session:', error);
       uiStore.addNotification('Error starting upgrade process. Please try again.', 'error');
     }
+  };
+
+  const handleInAppPaymentSuccess = () => {
+    // Reload subscription status after successful payment
+    loadSubscriptionStatus();
+    setPaymentModalOpen(false);
+    setPaymentClientSecret(null);
+    setPaymentPlan(null);
   };
 
   const handleDowngrade = async (plan: 'free' | 'ad_free') => {
@@ -320,22 +347,73 @@ const SettingsPage: React.FC = observer(() => {
                       <Button variant="outlined" onClick={syncSubscription} disabled={syncing}>
                         {syncing ? <CircularProgress size={20} /> : 'Check for Subscription'}
                       </Button>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => upgradeToSubscription('ad_free')}
-                        sx={{ minWidth: 140 }}
-                      >
-                        Upgrade to Ad-Free ($0.99/mo)
-                      </Button>
-                      <Button
-                        variant="contained"
-                        color="secondary"
-                        onClick={() => upgradeToSubscription('premium')}
-                        sx={{ minWidth: 140 }}
-                      >
-                        Upgrade to Premium ($1.99/mo)
-                      </Button>
+                    </Box>
+                    
+                    {/* In-App Payment Options */}
+                    <Box sx={{ mt: 3 }}>
+                      <Typography variant="subtitle1" gutterBottom sx={{ color: 'white', fontWeight: 600 }}>
+                        Choose Your Payment Method
+                      </Typography>
+                      
+                      {/* Ad-Free Plan */}
+                      <Box sx={{ mb: 2, p: 2, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 2 }}>
+                        <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>
+                          Ad-Free Plan - $0.99/month
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => upgradeToSubscription('ad_free', true)}
+                            size="small"
+                            startIcon={<CreditCard />}
+                          >
+                            Pay In-App
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            onClick={() => upgradeToSubscription('ad_free')}
+                            size="small"
+                            sx={{ 
+                              borderColor: 'rgba(255,255,255,0.3)', 
+                              color: 'white',
+                              '&:hover': { borderColor: 'primary.main' }
+                            }}
+                          >
+                            Stripe Checkout
+                          </Button>
+                        </Box>
+                      </Box>
+                      
+                      {/* Premium Plan */}
+                      <Box sx={{ p: 2, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 2 }}>
+                        <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>
+                          Premium Plan - $1.99/month
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                          <Button
+                            variant="contained"
+                            color="secondary"
+                            onClick={() => upgradeToSubscription('premium', true)}
+                            size="small"
+                            startIcon={<CreditCard />}
+                          >
+                            Pay In-App
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            onClick={() => upgradeToSubscription('premium')}
+                            size="small"
+                            sx={{ 
+                              borderColor: 'rgba(255,255,255,0.3)', 
+                              color: 'white',
+                              '&:hover': { borderColor: 'secondary.main' }
+                            }}
+                          >
+                            Stripe Checkout
+                          </Button>
+                        </Box>
+                      </Box>
                     </Box>
                   </Box>
                 )}
@@ -649,6 +727,23 @@ const SettingsPage: React.FC = observer(() => {
           </Box>
         </Box>
       </CustomModal>
+
+      {/* In-App Payment Modal */}
+      {paymentClientSecret && paymentPlan && (
+        <StripeProvider clientSecret={paymentClientSecret}>
+          <InAppPaymentModal
+            open={paymentModalOpen}
+            onClose={() => {
+              setPaymentModalOpen(false);
+              setPaymentClientSecret(null);
+              setPaymentPlan(null);
+            }}
+            clientSecret={paymentClientSecret}
+            plan={paymentPlan}
+            onSuccess={handleInAppPaymentSuccess}
+          />
+        </StripeProvider>
+      )}
       </Container>
     </Box>
   );

@@ -194,6 +194,68 @@ export class SubscriptionService {
     return session;
   }
 
+  async createPaymentIntent(userId: string, plan: SubscriptionPlan) {
+    try {
+      console.log('💳 [SUBSCRIPTION_SERVICE] Creating payment intent:', { userId, plan });
+
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+      if (!user) {
+        console.error('❌ [SUBSCRIPTION_SERVICE] User not found:', userId);
+        throw new NotFoundException('User not found');
+      }
+
+      // Create Stripe customer if not exists or validate existing customer
+      let stripeCustomerId = user.stripeCustomerId;
+      if (!stripeCustomerId) {
+        console.log('🆕 [SUBSCRIPTION_SERVICE] Creating new Stripe customer...');
+        const customer = await this.stripeService.createCustomer(user.email, user.name);
+        stripeCustomerId = customer.id;
+        await this.userRepository.update(userId, { stripeCustomerId });
+        console.log('✅ [SUBSCRIPTION_SERVICE] Stripe customer created:', stripeCustomerId);
+      } else {
+        // Validate existing customer ID
+        try {
+          await this.stripeService.getCustomer(stripeCustomerId);
+          console.log('✅ [SUBSCRIPTION_SERVICE] Existing customer validated:', stripeCustomerId);
+        } catch (error) {
+          // Create new customer if invalid
+          const customer = await this.stripeService.createCustomer(user.email, user.name);
+          stripeCustomerId = customer.id;
+          await this.userRepository.update(userId, { stripeCustomerId });
+          console.log('✅ [SUBSCRIPTION_SERVICE] Replaced invalid customer:', stripeCustomerId);
+        }
+      }
+
+      const priceId = this.stripeService.getPriceId(plan);
+
+      console.log('💳 [SUBSCRIPTION_SERVICE] Creating Stripe payment intent...');
+      const paymentIntent = await this.stripeService.createSubscriptionPaymentIntent(
+        stripeCustomerId,
+        priceId,
+        {
+          userId: user.id,
+          subscriptionType: 'premium_or_ad_free',
+          plan: plan,
+          inApp: 'true',
+        },
+      );
+
+      console.log('✅ [SUBSCRIPTION_SERVICE] Payment intent created:', {
+        paymentIntentId: paymentIntent.id,
+        clientSecret: paymentIntent.client_secret?.substring(0, 20) + '...',
+      });
+
+      return paymentIntent;
+    } catch (error) {
+      console.error('❌ [SUBSCRIPTION_SERVICE] Error creating payment intent:', {
+        userId,
+        plan,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
   async handleWebhook(event: any) {
     switch (event.type) {
       case 'checkout.session.completed':

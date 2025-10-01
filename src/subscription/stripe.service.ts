@@ -239,6 +239,8 @@ export class StripeService {
     return mobileRegex.test(userAgent);
   }
 
+
+
   async getSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
     return this.stripe.subscriptions.retrieve(subscriptionId);
   }
@@ -302,6 +304,53 @@ export class StripeService {
         enabled: true,
       },
     });
+  }
+
+  async createSubscriptionPaymentIntent(
+    customerId: string,
+    priceId: string,
+    metadata?: Record<string, string>,
+  ): Promise<Stripe.PaymentIntent> {
+    try {
+      console.log('💳 [STRIPE_SERVICE] Creating subscription payment intent:', {
+        customerId,
+        priceId,
+      });
+
+      // Get the price to determine the amount
+      const price = await this.stripe.prices.retrieve(priceId);
+      
+      if (!price.unit_amount) {
+        throw new Error('Price must have a unit amount for payment intent');
+      }
+
+      const paymentIntent = await this.stripe.paymentIntents.create({
+        amount: price.unit_amount,
+        currency: price.currency || 'usd',
+        customer: customerId,
+        payment_method_types: ['card'],
+        setup_future_usage: 'off_session', // Allow saving payment method for future subscriptions
+        metadata: {
+          priceId: priceId,
+          subscription_setup: 'true',
+          ...(metadata || {}),
+        },
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+
+      console.log('✅ [STRIPE_SERVICE] Subscription payment intent created:', {
+        paymentIntentId: paymentIntent.id,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+      });
+
+      return paymentIntent;
+    } catch (error) {
+      console.error('❌ [STRIPE_SERVICE] Subscription payment intent creation failed:', error);
+      throw error;
+    }
   }
 
   async createOneTimeCheckoutSession(

@@ -109,6 +109,46 @@ export class SubscriptionController {
     return { url: session.url };
   }
 
+  @Post('create-payment-intent')
+  @UseGuards(JwtAuthGuard)
+  async createPaymentIntent(@CurrentUser() user: User, @Body() body: CreateCheckoutSessionDto) {
+    try {
+      console.log('💳 [SUBSCRIPTION] Create payment intent request:', {
+        userId: user.id,
+        userEmail: user.email,
+        plan: body.plan,
+      });
+
+      // Validate the plan
+      if (!Object.values(SubscriptionPlan).includes(body.plan)) {
+        console.error('❌ [SUBSCRIPTION] Invalid subscription plan:', body.plan);
+        throw new Error(
+          `Invalid subscription plan: ${body.plan}. Valid plans: ${Object.values(SubscriptionPlan).join(', ')}`,
+        );
+      }
+
+      const paymentIntent = await this.subscriptionService.createPaymentIntent(user.id, body.plan);
+
+      console.log('✅ [SUBSCRIPTION] Payment intent created:', {
+        paymentIntentId: paymentIntent.id,
+        clientSecret: paymentIntent.client_secret?.substring(0, 20) + '...',
+      });
+
+      return { 
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id
+      };
+    } catch (error) {
+      console.error('❌ [SUBSCRIPTION] Payment intent creation failed:', {
+        userId: user.id,
+        plan: body.plan,
+        error: error.message,
+        stack: error.stack,
+      });
+      throw error;
+    }
+  }
+
   @Post('sync')
   @UseGuards(JwtAuthGuard)
   async syncSubscription(@CurrentUser() user: User) {
