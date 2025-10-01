@@ -57,11 +57,17 @@ spec:
             - name: PUPPETEER_EXECUTABLE_PATH
               value: '/usr/bin/chromium-browser'
             
-            # Stripe Configuration (Product IDs - not sensitive)
+            # Stripe Configuration (Product IDs as secrets for consistency)
             - name: STRIPE_AD_FREE_PRICE_ID
-              value: 'price_1S08ls2lgQyeTycPCNCNAdxD'
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_STRIPE_AD_FREE_PRICE_ID
+                  key: latest
             - name: STRIPE_PREMIUM_PRICE_ID
-              value: 'price_1S08lu2lgQyeTycPfKtS3gAp'
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_STRIPE_PREMIUM_PRICE_ID
+                  key: latest
             
             # iTunes API Configuration
             - name: ITUNES_API_BASE_URL
