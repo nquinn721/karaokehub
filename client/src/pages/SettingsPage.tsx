@@ -1,3 +1,4 @@
+import { CreditCard, Payment, PhoneIphone, Settings as SettingsIcon } from '@mui/icons-material';
 import {
   Alert,
   Avatar,
@@ -11,17 +12,11 @@ import {
   Divider,
   Typography,
 } from '@mui/material';
-import {
-  Settings as SettingsIcon,
-  PhoneIphone,
-  Payment,
-  CreditCard,
-} from '@mui/icons-material';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import CustomModal from '../components/CustomModal';
-import StripeProvider from '../components/StripeProvider';
 import InAppPaymentModal from '../components/InAppPaymentModal';
+import StripeProvider from '../components/StripeProvider';
 import { apiStore, authStore, uiStore } from '../stores';
 
 const SettingsPage: React.FC = observer(() => {
@@ -81,7 +76,7 @@ const SettingsPage: React.FC = observer(() => {
         // Create payment intent for in-app payment
         console.log('Creating in-app payment for plan:', plan);
         const response = await apiStore.post('/subscription/create-payment-intent', { plan });
-        
+
         if (response.clientSecret) {
           setPaymentClientSecret(response.clientSecret);
           setPaymentPlan(plan);
@@ -91,17 +86,19 @@ const SettingsPage: React.FC = observer(() => {
       }
 
       // Detect mobile device for optimized payment experience
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent,
+      );
+
       if (isMobile) {
         uiStore.addNotification('Optimizing checkout for mobile...', 'info');
       }
-      
-      const response = await apiStore.post('/subscription/create-checkout-session', { 
+
+      const response = await apiStore.post('/subscription/create-checkout-session', {
         plan,
-        mobileOptimized: isMobile 
+        mobileOptimized: isMobile,
       });
-      
+
       if (response.url) {
         window.location.href = response.url;
       }
@@ -193,7 +190,9 @@ const SettingsPage: React.FC = observer(() => {
     }
   };
 
-  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent,
+  );
   const isAppleDevice = /iPhone|iPad|iPod|Mac/i.test(navigator.userAgent);
   const isAndroidDevice = /Android/i.test(navigator.userAgent);
 
@@ -208,7 +207,8 @@ const SettingsPage: React.FC = observer(() => {
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(51, 51, 51, 0.9) 100%)',
+        background:
+          'linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(51, 51, 51, 0.9) 100%)',
         backgroundImage: `
           radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
           radial-gradient(circle at 80% 20%, rgba(255, 99, 132, 0.3) 0%, transparent 50%)
@@ -244,506 +244,537 @@ const SettingsPage: React.FC = observer(() => {
             </Typography>
           </Box>
 
-        {/* Subscription Section */}
-        <Card
-          sx={{
-            mb: 3,
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 3,
-          }}
-        >
-          <CardContent sx={{ p: 4 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-              <Avatar
-                sx={{
-                  bgcolor: 'primary.main',
-                  width: 48,
-                  height: 48,
-                }}
-              >
-                <SettingsIcon />
-              </Avatar>
+          {/* Subscription Section */}
+          <Card
+            sx={{
+              mb: 3,
+              background:
+                'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 3,
+            }}
+          >
+            <CardContent sx={{ p: 4 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                <Avatar
+                  sx={{
+                    bgcolor: 'primary.main',
+                    width: 48,
+                    height: 48,
+                  }}
+                >
+                  <SettingsIcon />
+                </Avatar>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 600,
+                    color: 'white',
+                  }}
+                >
+                  Subscription Management
+                </Typography>
+              </Box>
+
+              {!authStore.isAuthenticated ? (
+                <Alert severity="info">Please log in to view your subscription status.</Alert>
+              ) : loading ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <CircularProgress size={24} />
+                  <Typography>Loading subscription status...</Typography>
+                </Box>
+              ) : (
+                <>
+                  {subscriptionStatus?.subscription ? (
+                    <Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Typography variant="h6">
+                          Current Plan: {getPlanName(subscriptionStatus.subscription.plan)}
+                        </Typography>
+                        <Chip
+                          label={subscriptionStatus.subscription.status}
+                          color={getStatusColor(subscriptionStatus.subscription.status) as any}
+                          size="small"
+                        />
+                      </Box>
+
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        ${subscriptionStatus.subscription.pricePerMonth}/month
+                      </Typography>
+
+                      {subscriptionStatus.subscription.currentPeriodEnd && (
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          Next billing date:{' '}
+                          {new Date(
+                            subscriptionStatus.subscription.currentPeriodEnd,
+                          ).toLocaleDateString()}
+                        </Typography>
+                      )}
+
+                      <Box sx={{ display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap' }}>
+                        <Button variant="outlined" onClick={openBillingPortal}>
+                          Manage Billing
+                        </Button>
+                        <Button variant="outlined" onClick={syncSubscription} disabled={syncing}>
+                          {syncing ? <CircularProgress size={20} /> : 'Sync Status'}
+                        </Button>
+                        {subscriptionStatus.subscription.plan !== 'PREMIUM' &&
+                          subscriptionStatus.subscription.plan !== 'premium' && (
+                            <Button
+                              variant="contained"
+                              color="secondary"
+                              onClick={() => upgradeToSubscription('premium')}
+                              size="small"
+                            >
+                              {subscriptionStatus.subscription.plan === 'AD_FREE' ||
+                              subscriptionStatus.subscription.plan === 'ad_free'
+                                ? 'Upgrade to Premium'
+                                : 'Upgrade to Premium ($1.99/mo)'}
+                            </Button>
+                          )}
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Box>
+                      <Typography variant="h6" gutterBottom>
+                        Current Plan: Free
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        No active subscription found.
+                      </Typography>
+
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
+                        <Button variant="outlined" onClick={syncSubscription} disabled={syncing}>
+                          {syncing ? <CircularProgress size={20} /> : 'Check for Subscription'}
+                        </Button>
+                      </Box>
+
+                      {/* In-App Payment Options */}
+                      <Box sx={{ mt: 3 }}>
+                        <Typography
+                          variant="subtitle1"
+                          gutterBottom
+                          sx={{ color: 'white', fontWeight: 600 }}
+                        >
+                          Choose Your Payment Method
+                        </Typography>
+
+                        {/* Ad-Free Plan */}
+                        <Box
+                          sx={{
+                            mb: 2,
+                            p: 2,
+                            backgroundColor: 'rgba(255,255,255,0.05)',
+                            borderRadius: 2,
+                          }}
+                        >
+                          <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>
+                            Ad-Free Plan - $0.99/month
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              onClick={() => upgradeToSubscription('ad_free', true)}
+                              size="small"
+                              startIcon={<CreditCard />}
+                            >
+                              Pay In-App
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              onClick={() => upgradeToSubscription('ad_free')}
+                              size="small"
+                              sx={{
+                                borderColor: 'rgba(255,255,255,0.3)',
+                                color: 'white',
+                                '&:hover': { borderColor: 'primary.main' },
+                              }}
+                            >
+                              Stripe Checkout
+                            </Button>
+                          </Box>
+                        </Box>
+
+                        {/* Premium Plan */}
+                        <Box
+                          sx={{ p: 2, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 2 }}
+                        >
+                          <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>
+                            Premium Plan - $1.99/month
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            <Button
+                              variant="contained"
+                              color="secondary"
+                              onClick={() => upgradeToSubscription('premium', true)}
+                              size="small"
+                              startIcon={<CreditCard />}
+                            >
+                              Pay In-App
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              onClick={() => upgradeToSubscription('premium')}
+                              size="small"
+                              sx={{
+                                borderColor: 'rgba(255,255,255,0.3)',
+                                color: 'white',
+                                '&:hover': { borderColor: 'secondary.main' },
+                              }}
+                            >
+                              Stripe Checkout
+                            </Button>
+                          </Box>
+                        </Box>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* Features Status */}
+                  <Divider sx={{ my: 3 }} />
+                  <Typography variant="h6" gutterBottom>
+                    Features
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Typography variant="body2">Ad-Free Experience:</Typography>
+                      <Chip
+                        label={subscriptionStatus?.features?.adFree ? 'Active' : 'Not Active'}
+                        color={subscriptionStatus?.features?.adFree ? 'success' : 'default'}
+                        size="small"
+                      />
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Typography variant="body2">Premium Features:</Typography>
+                      <Chip
+                        label={subscriptionStatus?.features?.premium ? 'Active' : 'Not Active'}
+                        color={subscriptionStatus?.features?.premium ? 'success' : 'default'}
+                        size="small"
+                      />
+                    </Box>
+                  </Box>
+
+                  {/* Billing Management */}
+                  {subscriptionStatus?.subscription && (
+                    <>
+                      <Divider sx={{ my: 3, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                        <Button
+                          variant="outlined"
+                          onClick={openBillingPortal}
+                          sx={{
+                            borderColor: 'rgba(255,255,255,0.3)',
+                            color: 'white',
+                            px: 4,
+                            py: 1.5,
+                            borderRadius: 2,
+                            fontWeight: 600,
+                            '&:hover': {
+                              borderColor: 'primary.main',
+                              backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                            },
+                          }}
+                        >
+                          Manage Billing & Payment Methods
+                        </Button>
+                      </Box>
+                    </>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Plan Comparison */}
+          <Card
+            sx={{
+              mb: 3,
+              background:
+                'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 3,
+            }}
+          >
+            <CardContent sx={{ p: 4 }}>
               <Typography
                 variant="h5"
+                gutterBottom
                 sx={{
                   fontWeight: 600,
                   color: 'white',
                 }}
               >
-                Subscription Management
+                Available Plans
               </Typography>
-            </Box>
 
-            {!authStore.isAuthenticated ? (
-              <Alert severity="info">Please log in to view your subscription status.</Alert>
-            ) : loading ? (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <CircularProgress size={24} />
-                <Typography>Loading subscription status...</Typography>
-              </Box>
-            ) : (
-              <>
-                {subscriptionStatus?.subscription ? (
-                  <Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                      <Typography variant="h6">
-                        Current Plan: {getPlanName(subscriptionStatus.subscription.plan)}
-                      </Typography>
-                      <Chip
-                        label={subscriptionStatus.subscription.status}
-                        color={getStatusColor(subscriptionStatus.subscription.status) as any}
-                        size="small"
-                      />
-                    </Box>
-
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                      ${subscriptionStatus.subscription.pricePerMonth}/month
+              <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
+                {/* Free Plan */}
+                <Box
+                  sx={{
+                    flex: 1,
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography variant="h6" gutterBottom>
+                    Free
+                  </Typography>
+                  <Typography variant="h4" gutterBottom>
+                    $0
+                    <Typography component="span" variant="body2">
+                      /month
                     </Typography>
-
-                    {subscriptionStatus.subscription.currentPeriodEnd && (
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Next billing date:{' '}
-                        {new Date(
-                          subscriptionStatus.subscription.currentPeriodEnd,
-                        ).toLocaleDateString()}
-                      </Typography>
-                    )}
-
-                    <Box sx={{ display: 'flex', gap: 2, mt: 2, flexWrap: 'wrap' }}>
-                      <Button variant="outlined" onClick={openBillingPortal}>
-                        Manage Billing
-                      </Button>
-                      <Button variant="outlined" onClick={syncSubscription} disabled={syncing}>
-                        {syncing ? <CircularProgress size={20} /> : 'Sync Status'}
-                      </Button>
-                      {subscriptionStatus.subscription.plan !== 'PREMIUM' &&
-                        subscriptionStatus.subscription.plan !== 'premium' && (
-                          <Button
-                            variant="contained"
-                            color="secondary"
-                            onClick={() => upgradeToSubscription('premium')}
-                            size="small"
-                          >
-                            {subscriptionStatus.subscription.plan === 'AD_FREE' ||
-                            subscriptionStatus.subscription.plan === 'ad_free'
-                              ? 'Upgrade to Premium'
-                              : 'Upgrade to Premium ($1.99/mo)'}
-                          </Button>
-                        )}
-                    </Box>
-                  </Box>
-                ) : (
-                  <Box>
-                    <Typography variant="h6" gutterBottom>
-                      Current Plan: Free
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    • Basic music search
+                    <br />
+                    • View karaoke shows
+                    <br />
+                    • Ads included
+                    <br />
+                    • 5 song favorites
+                    <br />• 10 song previews
+                  </Typography>
+                  {!subscriptionStatus?.subscription ||
+                  subscriptionStatus?.subscription?.plan === 'free' ? (
+                    <Typography variant="body2" color="primary" sx={{ fontWeight: 600 }}>
+                      Current Plan
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                      No active subscription found.
-                    </Typography>
-
-                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
-                      <Button variant="outlined" onClick={syncSubscription} disabled={syncing}>
-                        {syncing ? <CircularProgress size={20} /> : 'Check for Subscription'}
-                      </Button>
-                    </Box>
-                    
-                    {/* In-App Payment Options */}
-                    <Box sx={{ mt: 3 }}>
-                      <Typography variant="subtitle1" gutterBottom sx={{ color: 'white', fontWeight: 600 }}>
-                        Choose Your Payment Method
-                      </Typography>
-                      
-                      {/* Ad-Free Plan */}
-                      <Box sx={{ mb: 2, p: 2, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 2 }}>
-                        <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>
-                          Ad-Free Plan - $0.99/month
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => upgradeToSubscription('ad_free', true)}
-                            size="small"
-                            startIcon={<CreditCard />}
-                          >
-                            Pay In-App
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            onClick={() => upgradeToSubscription('ad_free')}
-                            size="small"
-                            sx={{ 
-                              borderColor: 'rgba(255,255,255,0.3)', 
-                              color: 'white',
-                              '&:hover': { borderColor: 'primary.main' }
-                            }}
-                          >
-                            Stripe Checkout
-                          </Button>
-                        </Box>
-                      </Box>
-                      
-                      {/* Premium Plan */}
-                      <Box sx={{ p: 2, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 2 }}>
-                        <Typography variant="subtitle2" sx={{ color: 'white', mb: 1 }}>
-                          Premium Plan - $1.99/month
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                          <Button
-                            variant="contained"
-                            color="secondary"
-                            onClick={() => upgradeToSubscription('premium', true)}
-                            size="small"
-                            startIcon={<CreditCard />}
-                          >
-                            Pay In-App
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            onClick={() => upgradeToSubscription('premium')}
-                            size="small"
-                            sx={{ 
-                              borderColor: 'rgba(255,255,255,0.3)', 
-                              color: 'white',
-                              '&:hover': { borderColor: 'secondary.main' }
-                            }}
-                          >
-                            Stripe Checkout
-                          </Button>
-                        </Box>
-                      </Box>
-                    </Box>
-                  </Box>
-                )}
-
-                {/* Features Status */}
-                <Divider sx={{ my: 3 }} />
-                <Typography variant="h6" gutterBottom>
-                  Features
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Typography variant="body2">Ad-Free Experience:</Typography>
-                    <Chip
-                      label={subscriptionStatus?.features?.adFree ? 'Active' : 'Not Active'}
-                      color={subscriptionStatus?.features?.adFree ? 'success' : 'default'}
+                  ) : (
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      onClick={() => handleDowngrade('free')}
                       size="small"
-                    />
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Typography variant="body2">Premium Features:</Typography>
-                    <Chip
-                      label={subscriptionStatus?.features?.premium ? 'Active' : 'Not Active'}
-                      color={subscriptionStatus?.features?.premium ? 'success' : 'default'}
-                      size="small"
-                    />
-                  </Box>
+                      color="warning"
+                    >
+                      Downgrade to Free
+                    </Button>
+                  )}
                 </Box>
 
-                {/* Billing Management */}
-                {subscriptionStatus?.subscription && (
-                  <>
-                    <Divider sx={{ my: 3, backgroundColor: 'rgba(255,255,255,0.1)' }} />
-                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-                      <Button
-                        variant="outlined"
-                        onClick={openBillingPortal}
-                        sx={{ 
-                          borderColor: 'rgba(255,255,255,0.3)', 
-                          color: 'white',
-                          px: 4,
-                          py: 1.5,
-                          borderRadius: 2,
-                          fontWeight: 600,
-                          '&:hover': {
-                            borderColor: 'primary.main',
-                            backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                          }
-                        }}
-                      >
-                        Manage Billing & Payment Methods
-                      </Button>
-                    </Box>
-                  </>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Plan Comparison */}
-        <Card
-          sx={{
-            mb: 3,
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 3,
-          }}
-        >
-          <CardContent sx={{ p: 4 }}>
-            <Typography
-              variant="h5"
-              gutterBottom
-              sx={{
-                fontWeight: 600,
-                color: 'white',
-              }}
-            >
-              Available Plans
-            </Typography>
-
-            <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
-              {/* Free Plan */}
-              <Box
-                sx={{ flex: 1, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
-              >
-                <Typography variant="h6" gutterBottom>
-                  Free
-                </Typography>
-                <Typography variant="h4" gutterBottom>
-                  $0
-                  <Typography component="span" variant="body2">
-                    /month
+                {/* Ad-Free Plan */}
+                <Box
+                  sx={{
+                    flex: 1,
+                    p: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography variant="h6" gutterBottom>
+                    Ad-Free
                   </Typography>
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  • Basic music search
-                  <br />
-                  • View karaoke shows
-                  <br />
-                  • Ads included
-                  <br />
-                  • 5 song favorites
-                  <br />• 10 song previews
-                </Typography>
-                {!subscriptionStatus?.subscription ||
-                subscriptionStatus?.subscription?.plan === 'free' ? (
-                  <Typography variant="body2" color="primary" sx={{ fontWeight: 600 }}>
-                    Current Plan
+                  <Typography variant="h4" gutterBottom>
+                    $0.99
+                    <Typography component="span" variant="body2">
+                      /month
+                    </Typography>
                   </Typography>
-                ) : (
-                  <Button
-                    variant="outlined"
-                    fullWidth
-                    onClick={() => handleDowngrade('free')}
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    • All free features
+                    <br />
+                    • No advertisements
+                    <br />
+                    • Clean browsing experience
+                    <br />• Support development
+                  </Typography>
+                  {subscriptionStatus?.subscription?.plan === 'AD_FREE' ||
+                  subscriptionStatus?.subscription?.plan === 'ad_free' ? (
+                    <Typography variant="body2" color="primary" sx={{ fontWeight: 600 }}>
+                      Current Plan
+                    </Typography>
+                  ) : subscriptionStatus?.subscription?.plan === 'PREMIUM' ||
+                    subscriptionStatus?.subscription?.plan === 'premium' ? (
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      onClick={() => handleDowngrade('ad_free')}
+                      size="small"
+                      color="warning"
+                    >
+                      Downgrade to Ad-Free
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      onClick={() => upgradeToSubscription('ad_free')}
+                      size="small"
+                      startIcon={isMobileDevice ? <Payment /> : undefined}
+                    >
+                      Upgrade
+                    </Button>
+                  )}
+                  {isMobileDevice && (
+                    <Typography
+                      variant="caption"
+                      sx={{ mt: 1, color: 'success.main', textAlign: 'center' }}
+                    >
+                      <PhoneIphone sx={{ fontSize: 12, mr: 0.5 }} />
+                      {getMobilePaymentText()}
+                    </Typography>
+                  )}
+                </Box>
+
+                {/* Premium Plan */}
+                <Box
+                  sx={{
+                    flex: 1,
+                    p: 2,
+                    border: '2px solid',
+                    borderColor: 'secondary.main',
+                    borderRadius: 1,
+                    position: 'relative',
+                  }}
+                >
+                  <Chip
+                    label="Most Popular"
+                    color="secondary"
                     size="small"
-                    color="warning"
-                  >
-                    Downgrade to Free
-                  </Button>
-                )}
-              </Box>
-
-              {/* Ad-Free Plan */}
-              <Box
-                sx={{ flex: 1, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
-              >
-                <Typography variant="h6" gutterBottom>
-                  Ad-Free
-                </Typography>
-                <Typography variant="h4" gutterBottom>
-                  $0.99
-                  <Typography component="span" variant="body2">
-                    /month
+                    sx={{ position: 'absolute', top: -8, right: 8 }}
+                  />
+                  <Typography variant="h6" gutterBottom>
+                    Premium
                   </Typography>
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  • All free features
-                  <br />
-                  • No advertisements
-                  <br />
-                  • Clean browsing experience
-                  <br />• Support development
-                </Typography>
-                {subscriptionStatus?.subscription?.plan === 'AD_FREE' ||
-                subscriptionStatus?.subscription?.plan === 'ad_free' ? (
-                  <Typography variant="body2" color="primary" sx={{ fontWeight: 600 }}>
-                    Current Plan
+                  <Typography variant="h4" gutterBottom>
+                    $1.99
+                    <Typography component="span" variant="body2">
+                      /month
+                    </Typography>
                   </Typography>
-                ) : subscriptionStatus?.subscription?.plan === 'PREMIUM' ||
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    • All ad-free features
+                    <br />
+                    • Unlimited song favorites
+                    <br />
+                    • Unlimited show favorites
+                    <br />
+                    • Unlimited song previews
+                    <br />• Priority support
+                  </Typography>
+                  {subscriptionStatus?.subscription?.plan === 'PREMIUM' ||
                   subscriptionStatus?.subscription?.plan === 'premium' ? (
-                  <Button
-                    variant="outlined"
-                    fullWidth
-                    onClick={() => handleDowngrade('ad_free')}
-                    size="small"
-                    color="warning"
-                  >
-                    Downgrade to Ad-Free
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outlined"
-                    fullWidth
-                    onClick={() => upgradeToSubscription('ad_free')}
-                    size="small"
-                    startIcon={isMobileDevice ? <Payment /> : undefined}
-                  >
-                    Upgrade
-                  </Button>
-                )}
-                {isMobileDevice && (
-                  <Typography variant="caption" sx={{ mt: 1, color: 'success.main', textAlign: 'center' }}>
-                    <PhoneIphone sx={{ fontSize: 12, mr: 0.5 }} />
-                    {getMobilePaymentText()}
-                  </Typography>
-                )}
+                    <Typography variant="body2" color="primary" sx={{ fontWeight: 600 }}>
+                      Current Plan
+                    </Typography>
+                  ) : subscriptionStatus?.subscription ? (
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      fullWidth
+                      onClick={() => upgradeToSubscription('premium')}
+                      size="small"
+                    >
+                      Upgrade
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      fullWidth
+                      onClick={() => upgradeToSubscription('premium')}
+                      size="small"
+                    >
+                      Upgrade
+                    </Button>
+                  )}
+                </Box>
               </Box>
+            </CardContent>
+          </Card>
 
-              {/* Premium Plan */}
-              <Box
+          {/* Other Settings */}
+          <Card
+            sx={{
+              background:
+                'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 3,
+            }}
+          >
+            <CardContent sx={{ p: 4 }}>
+              <Typography
+                variant="h5"
+                gutterBottom
                 sx={{
-                  flex: 1,
-                  p: 2,
-                  border: '2px solid',
-                  borderColor: 'secondary.main',
-                  borderRadius: 1,
-                  position: 'relative',
+                  fontWeight: 600,
+                  color: 'white',
                 }}
               >
-                <Chip
-                  label="Most Popular"
-                  color="secondary"
-                  size="small"
-                  sx={{ position: 'absolute', top: -8, right: 8 }}
-                />
-                <Typography variant="h6" gutterBottom>
-                  Premium
-                </Typography>
-                <Typography variant="h4" gutterBottom>
-                  $1.99
-                  <Typography component="span" variant="body2">
-                    /month
-                  </Typography>
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  • All ad-free features
-                  <br />
-                  • Unlimited song favorites
-                  <br />
-                  • Unlimited show favorites
-                  <br />
-                  • Unlimited song previews
-                  <br />• Priority support
-                </Typography>
-                {subscriptionStatus?.subscription?.plan === 'PREMIUM' ||
-                subscriptionStatus?.subscription?.plan === 'premium' ? (
-                  <Typography variant="body2" color="primary" sx={{ fontWeight: 600 }}>
-                    Current Plan
-                  </Typography>
-                ) : subscriptionStatus?.subscription ? (
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    fullWidth
-                    onClick={() => upgradeToSubscription('premium')}
-                    size="small"
-                  >
-                    Upgrade
-                  </Button>
-                ) : (
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    fullWidth
-                    onClick={() => upgradeToSubscription('premium')}
-                    size="small"
-                  >
-                    Upgrade
-                  </Button>
-                )}
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
-
-        {/* Other Settings */}
-        <Card
-          sx={{
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 3,
-          }}
-        >
-          <CardContent sx={{ p: 4 }}>
-            <Typography
-              variant="h5"
-              gutterBottom
-              sx={{
-                fontWeight: 600,
-                color: 'white',
-              }}
-            >
-              Other Settings
-            </Typography>
-            <Typography 
-              sx={{ 
-                color: 'rgba(255,255,255,0.7)',
-                fontStyle: 'italic',
-              }}
-            >
-              Additional settings coming soon...
-            </Typography>
-          </CardContent>
-        </Card>
-      </Box>
-
-      {/* Confirmation Modal */}
-      <CustomModal
-        open={confirmModalOpen}
-        onClose={() => {
-          setConfirmModalOpen(false);
-          setPendingAction(null);
-        }}
-        title="Confirm Subscription Change"
-        maxWidth="sm"
-      >
-        <Box sx={{ p: 2 }}>
-          <Typography variant="body1" sx={{ mb: 3 }}>
-            {pendingAction?.message}
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setConfirmModalOpen(false);
-                setPendingAction(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={executeDowngrade}
-              disabled={loading}
-            >
-              {loading ? <CircularProgress size={20} /> : 'Confirm'}
-            </Button>
-          </Box>
+                Other Settings
+              </Typography>
+              <Typography
+                sx={{
+                  color: 'rgba(255,255,255,0.7)',
+                  fontStyle: 'italic',
+                }}
+              >
+                Additional settings coming soon...
+              </Typography>
+            </CardContent>
+          </Card>
         </Box>
-      </CustomModal>
 
-      {/* In-App Payment Modal */}
-      {paymentClientSecret && paymentPlan && (
-        <StripeProvider clientSecret={paymentClientSecret}>
-          <InAppPaymentModal
-            open={paymentModalOpen}
-            onClose={() => {
-              setPaymentModalOpen(false);
-              setPaymentClientSecret(null);
-              setPaymentPlan(null);
-            }}
-            clientSecret={paymentClientSecret}
-            plan={paymentPlan}
-            onSuccess={handleInAppPaymentSuccess}
-          />
-        </StripeProvider>
-      )}
+        {/* Confirmation Modal */}
+        <CustomModal
+          open={confirmModalOpen}
+          onClose={() => {
+            setConfirmModalOpen(false);
+            setPendingAction(null);
+          }}
+          title="Confirm Subscription Change"
+          maxWidth="sm"
+        >
+          <Box sx={{ p: 2 }}>
+            <Typography variant="body1" sx={{ mb: 3 }}>
+              {pendingAction?.message}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setConfirmModalOpen(false);
+                  setPendingAction(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={executeDowngrade}
+                disabled={loading}
+              >
+                {loading ? <CircularProgress size={20} /> : 'Confirm'}
+              </Button>
+            </Box>
+          </Box>
+        </CustomModal>
+
+        {/* In-App Payment Modal */}
+        {paymentClientSecret && paymentPlan && (
+          <StripeProvider clientSecret={paymentClientSecret}>
+            <InAppPaymentModal
+              open={paymentModalOpen}
+              onClose={() => {
+                setPaymentModalOpen(false);
+                setPaymentClientSecret(null);
+                setPaymentPlan(null);
+              }}
+              clientSecret={paymentClientSecret}
+              plan={paymentPlan}
+              onSuccess={handleInAppPaymentSuccess}
+            />
+          </StripeProvider>
+        )}
       </Container>
     </Box>
   );

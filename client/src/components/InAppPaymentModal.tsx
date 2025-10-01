@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import { Check, Close, CreditCard, Security } from '@mui/icons-material';
 import {
+  Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogContent,
@@ -10,15 +12,9 @@ import {
   IconButton,
   Stack,
   Typography,
-  Alert,
-  Chip,
 } from '@mui/material';
-import { Close, CreditCard, Security, Check } from '@mui/icons-material';
-import {
-  PaymentElement,
-  useStripe,
-  useElements,
-} from '@stripe/react-stripe-js';
+import { PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import React, { useState } from 'react';
 import { uiStore } from '../stores';
 
 interface InAppPaymentModalProps {
@@ -46,11 +42,7 @@ const InAppPaymentModal: React.FC<InAppPaymentModalProps> = ({
       name: 'Ad-Free',
       price: '$0.99',
       description: 'Remove ads and enjoy a clean experience',
-      features: [
-        'No advertisements',
-        'Clean browsing experience',
-        'Support development',
-      ],
+      features: ['No advertisements', 'Clean browsing experience', 'Support development'],
     },
     premium: {
       name: 'Premium',
@@ -59,7 +51,7 @@ const InAppPaymentModal: React.FC<InAppPaymentModalProps> = ({
       features: [
         'All ad-free features',
         'Unlimited song favorites',
-        'Unlimited show favorites', 
+        'Unlimited show favorites',
         'Unlimited song previews',
         'Priority support',
       ],
@@ -106,18 +98,19 @@ const InAppPaymentModal: React.FC<InAppPaymentModalProps> = ({
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="sm" 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
       fullWidth
       PaperProps={{
         sx: {
-          background: 'linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(51, 51, 51, 0.9) 100%)',
+          background:
+            'linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(51, 51, 51, 0.9) 100%)',
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: 3,
-        }
+        },
       }}
     >
       <DialogTitle sx={{ pb: 1 }}>
@@ -140,20 +133,19 @@ const InAppPaymentModal: React.FC<InAppPaymentModalProps> = ({
           <Box
             sx={{
               p: 3,
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+              background:
+                'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
               borderRadius: 2,
               border: '1px solid rgba(255,255,255,0.1)',
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Box
+              sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}
+            >
               <Typography variant="h6" sx={{ color: 'white', fontWeight: 600 }}>
                 {currentPlan.name} Plan
               </Typography>
-              <Chip 
-                label={`${currentPlan.price}/month`}
-                color="primary"
-                sx={{ fontWeight: 600 }}
-              />
+              <Chip label={`${currentPlan.price}/month`} color="primary" sx={{ fontWeight: 600 }} />
             </Box>
             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mb: 2 }}>
               {currentPlan.description}
@@ -204,13 +196,13 @@ const InAppPaymentModal: React.FC<InAppPaymentModalProps> = ({
                   onClick={onClose}
                   variant="outlined"
                   fullWidth
-                  sx={{ 
-                    borderColor: 'rgba(255,255,255,0.3)', 
+                  sx={{
+                    borderColor: 'rgba(255,255,255,0.3)',
                     color: 'white',
                     '&:hover': {
                       borderColor: 'rgba(255,255,255,0.5)',
                       backgroundColor: 'rgba(255,255,255,0.1)',
-                    }
+                    },
                   }}
                 >
                   Cancel
@@ -220,11 +212,11 @@ const InAppPaymentModal: React.FC<InAppPaymentModalProps> = ({
                   variant="contained"
                   fullWidth
                   disabled={!stripe || isProcessing}
-                  sx={{ 
+                  sx={{
                     fontWeight: 600,
                     '&:disabled': {
                       backgroundColor: 'rgba(25, 118, 210, 0.3)',
-                    }
+                    },
                   }}
                 >
                   {isProcessing ? (

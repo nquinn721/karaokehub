@@ -112,12 +112,16 @@ export class SubscriptionService {
     }
   }
 
-  async createMobileOptimizedCheckoutSession(userId: string, plan: SubscriptionPlan, userAgent?: string) {
+  async createMobileOptimizedCheckoutSession(
+    userId: string,
+    plan: SubscriptionPlan,
+    userAgent?: string,
+  ) {
     try {
-      console.log('📱 [SUBSCRIPTION_SERVICE] Creating mobile-optimized checkout session:', { 
-        userId, 
+      console.log('📱 [SUBSCRIPTION_SERVICE] Creating mobile-optimized checkout session:', {
+        userId,
         plan,
-        userAgent: userAgent?.substring(0, 50) + '...'
+        userAgent: userAgent?.substring(0, 50) + '...',
       });
 
       const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -282,9 +286,7 @@ export class SubscriptionService {
   private isDjSubscription(subscription: any): boolean {
     const metadata = subscription.metadata || {};
     return (
-      metadata.subscriptionType === 'dj_access' ||
-      !!metadata.djId ||
-      !!metadata.isDjSubscription
+      metadata.subscriptionType === 'dj_access' || !!metadata.djId || !!metadata.isDjSubscription
     );
   }
 
@@ -293,7 +295,7 @@ export class SubscriptionService {
    */
   private async isInvoiceForDjSubscription(invoice: any): Promise<boolean> {
     if (!invoice.subscription) return false;
-    
+
     try {
       const subscription = await this.stripeService.getSubscription(invoice.subscription);
       return this.isDjSubscription(subscription);
@@ -314,7 +316,7 @@ export class SubscriptionService {
     if (!user) return;
 
     const stripeSubscription = await this.stripeService.getSubscription(subscriptionId);
-    
+
     // Skip DJ subscriptions - they're handled by the DJ webhook
     if (this.isDjSubscription(stripeSubscription)) {
       console.log(`⏭️ Skipping DJ subscription in general webhook: ${subscriptionId}`);
@@ -363,7 +365,9 @@ export class SubscriptionService {
   private async handlePaymentSucceeded(invoice: any) {
     // Skip DJ subscription invoices - they're handled by the DJ webhook
     if (await this.isInvoiceForDjSubscription(invoice)) {
-      console.log(`⏭️ Skipping DJ subscription payment in general webhook: ${invoice.subscription}`);
+      console.log(
+        `⏭️ Skipping DJ subscription payment in general webhook: ${invoice.subscription}`,
+      );
       return;
     }
 
@@ -381,7 +385,9 @@ export class SubscriptionService {
   private async handlePaymentFailed(invoice: any) {
     // Skip DJ subscription invoices - they're handled by the DJ webhook
     if (await this.isInvoiceForDjSubscription(invoice)) {
-      console.log(`⏭️ Skipping DJ subscription payment failure in general webhook: ${invoice.subscription}`);
+      console.log(
+        `⏭️ Skipping DJ subscription payment failure in general webhook: ${invoice.subscription}`,
+      );
       return;
     }
 

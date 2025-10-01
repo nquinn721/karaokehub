@@ -50,7 +50,11 @@ export class SubscriptionController {
 
   @Post('create-checkout-session')
   @UseGuards(JwtAuthGuard)
-  async createCheckoutSession(@CurrentUser() user: User, @Body() body: CreateCheckoutSessionDto, @Req() req) {
+  async createCheckoutSession(
+    @CurrentUser() user: User,
+    @Body() body: CreateCheckoutSessionDto,
+    @Req() req,
+  ) {
     try {
       console.log('🛒 [SUBSCRIPTION] Create checkout session request:', {
         userId: user.id,
@@ -70,10 +74,14 @@ export class SubscriptionController {
       // Check for mobile optimization preference
       const userAgent = req.headers['user-agent'];
       const isMobile = this.detectMobileDevice(userAgent);
-      
+
       if (isMobile || body.mobileOptimized) {
         console.log('📱 [SUBSCRIPTION] Using mobile-optimized checkout');
-        const session = await this.subscriptionService.createMobileOptimizedCheckoutSession(user.id, body.plan, userAgent);
+        const session = await this.subscriptionService.createMobileOptimizedCheckoutSession(
+          user.id,
+          body.plan,
+          userAgent,
+        );
         return { url: session.url };
       }
 
@@ -134,9 +142,9 @@ export class SubscriptionController {
         clientSecret: paymentIntent.client_secret?.substring(0, 20) + '...',
       });
 
-      return { 
+      return {
         clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id
+        paymentIntentId: paymentIntent.id,
       };
     } catch (error) {
       console.error('❌ [SUBSCRIPTION] Payment intent creation failed:', {

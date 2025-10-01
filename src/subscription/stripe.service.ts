@@ -167,7 +167,8 @@ export class StripeService {
 
       // Detect mobile device for optimized configuration
       const isMobile = this.detectMobileDevice(userAgent);
-      const isAppleDevice = userAgent?.toLowerCase().includes('iphone') || userAgent?.toLowerCase().includes('ipad');
+      const isAppleDevice =
+        userAgent?.toLowerCase().includes('iphone') || userAgent?.toLowerCase().includes('ipad');
       const isAndroidDevice = userAgent?.toLowerCase().includes('android');
 
       const sessionConfig: Stripe.Checkout.SessionCreateParams = {
@@ -238,8 +239,6 @@ export class StripeService {
     const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
     return mobileRegex.test(userAgent);
   }
-
-
 
   async getSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
     return this.stripe.subscriptions.retrieve(subscriptionId);
@@ -319,7 +318,7 @@ export class StripeService {
 
       // Get the price to determine the amount
       const price = await this.stripe.prices.retrieve(priceId);
-      
+
       if (!price.unit_amount) {
         throw new Error('Price must have a unit amount for payment intent');
       }
