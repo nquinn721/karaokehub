@@ -160,25 +160,33 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
   const socketPath = configService.get('DATABASE_SOCKET_PATH');
   if (socketPath) {
     console.log('🔌 Using socket path for database connection:', socketPath);
-    // For Unix socket connection via Cloud SQL Proxy
-    return {
-      ...baseConfig,
-      host: undefined, // Don't set host when using socket
-      port: undefined, // Don't set port when using socket
+    // For Unix socket connection via Cloud SQL Proxy - create a complete config without host/port
+    const socketConfig: TypeOrmModuleOptions = {
+      type: 'mysql',
+      username: configService.get('DATABASE_USERNAME', 'admin'),
+      password: configService.get('DATABASE_PASSWORD', 'password'), 
+      database: configService.get('DATABASE_NAME', 'karaoke-hub'),
+      entities: baseConfig.entities,
+      synchronize: configService.get('DATABASE_SYNCHRONIZE', 'false') === 'true',
+      logging: false,
+      dropSchema: false,
+      autoLoadEntities: false,
+      retryAttempts: 0,
+      migrations: baseConfig.migrations,
+      migrationsTableName: 'migrations',
+      migrationsRun: isProduction,
+      maxQueryExecutionTime: 5000,
       extra: {
+        socketPath: socketPath,
         connectionLimit: 5,
         connectTimeout: 30000,
-        acquireTimeout: 30000,
-        timeout: 30000,
+        acquireTimeout: 30000, 
         queueLimit: 0,
-        socketPath: socketPath,
-        // Additional MySQL settings for Cloud SQL
-        ...(isProduction && {
-          charset: 'utf8mb4',
-          timezone: '+00:00',
-        }),
+        charset: 'utf8mb4',
+        timezone: '+00:00',
       },
-    } as TypeOrmModuleOptions;
+    };
+    return socketConfig;
   }
 
   // Local development configuration
