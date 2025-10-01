@@ -159,16 +159,19 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
 
   const socketPath = configService.get('DATABASE_SOCKET_PATH');
   if (socketPath) {
+    console.log('🔌 Using socket path for database connection:', socketPath);
     // For Unix socket connection via Cloud SQL Proxy
     return {
       ...baseConfig,
-      host: socketPath,
+      host: undefined, // Don't set host when using socket
+      port: undefined, // Don't set port when using socket
       extra: {
         connectionLimit: 5,
-        connectTimeout: 30000, // Reduced from 60000
+        connectTimeout: 30000,
         acquireTimeout: 30000,
         timeout: 30000,
         queueLimit: 0,
+        socketPath: socketPath,
         // Additional MySQL settings for Cloud SQL
         ...(isProduction && {
           charset: 'utf8mb4',
