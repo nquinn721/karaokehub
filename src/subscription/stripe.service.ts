@@ -52,10 +52,8 @@ export class StripeService {
       const sessionConfig: Stripe.Checkout.SessionCreateParams = {
         customer: customerId,
         payment_method_types: [
-          'card', // Credit/debit cards
+          'card', // Credit/debit cards (includes Apple Pay, Google Pay, Samsung Pay when available)
           'link', // Stripe Link (1-click payments)
-          // Note: Apple Pay and Google Pay are automatically enabled for 'card'
-          // when the browser/device supports them
         ],
         line_items: [
           {
@@ -68,6 +66,9 @@ export class StripeService {
         cancel_url: cancelUrl,
         allow_promotion_codes: true,
         billing_address_collection: 'auto',
+        // Mobile-optimized settings
+        payment_method_configuration: undefined, // Use default config which includes mobile wallets
+        ui_mode: 'hosted', // Use hosted checkout for better mobile support
         // Configure automatic tax calculation
         automatic_tax: {
           enabled: true,
@@ -76,6 +77,10 @@ export class StripeService {
         customer_update: {
           address: 'auto', // Automatically save the address entered in checkout
           shipping: 'auto', // Automatically save the shipping address
+        },
+        // Enhanced mobile experience
+        phone_number_collection: {
+          enabled: false, // Keep checkout simple for mobile
         },
         // Add metadata to the subscription that will be created
         subscription_data: metadata
@@ -143,6 +148,95 @@ export class StripeService {
       customer: customerId,
       return_url: returnUrl,
     });
+  }
+
+  async createMobileOptimizedCheckoutSession(
+    customerId: string,
+    priceId: string,
+    successUrl: string,
+    cancelUrl: string,
+    userAgent?: string,
+    metadata?: Record<string, string>,
+  ): Promise<Stripe.Checkout.Session> {
+    try {
+      console.log('📱 [STRIPE_SERVICE] Creating mobile-optimized checkout session:', {
+        customerId,
+        priceId,
+        userAgent: userAgent?.substring(0, 50) + '...',
+      });
+
+      // Detect mobile device for optimized configuration
+      const isMobile = this.detectMobileDevice(userAgent);
+      const isAppleDevice = userAgent?.toLowerCase().includes('iphone') || userAgent?.toLowerCase().includes('ipad');
+      const isAndroidDevice = userAgent?.toLowerCase().includes('android');
+
+      const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+        customer: customerId,
+        payment_method_types: [
+          'card', // Always include card (includes mobile wallets)
+          'link', // Stripe Link for fast checkout
+        ],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        allow_promotion_codes: true,
+        billing_address_collection: isMobile ? 'required' : 'auto', // Simplified for mobile
+        ui_mode: 'hosted',
+        // Mobile-specific optimizations
+        phone_number_collection: {
+          enabled: false, // Keep mobile checkout streamlined
+        },
+        // Configure automatic tax calculation
+        automatic_tax: {
+          enabled: true,
+        },
+        customer_update: {
+          address: 'auto',
+          shipping: 'never', // Simplified for digital products
+        },
+        // Add device metadata for analytics
+        subscription_data: {
+          metadata: {
+            ...(metadata || {}),
+            device_type: isMobile ? 'mobile' : 'desktop',
+            platform: isAppleDevice ? 'ios' : isAndroidDevice ? 'android' : 'web',
+            checkout_optimized: 'true',
+            created_at: new Date().toISOString(),
+          },
+        },
+      };
+
+      console.log('📱 [STRIPE_SERVICE] Mobile checkout config:', {
+        isMobile,
+        isAppleDevice,
+        isAndroidDevice,
+        billingCollection: sessionConfig.billing_address_collection,
+      });
+
+      const session = await this.stripe.checkout.sessions.create(sessionConfig);
+
+      console.log('✅ [STRIPE_SERVICE] Mobile-optimized checkout session created:', {
+        sessionId: session.id,
+        url: session.url?.substring(0, 80) + '...',
+      });
+
+      return session;
+    } catch (error) {
+      console.error('❌ [STRIPE_SERVICE] Mobile checkout session creation failed:', error);
+      throw error;
+    }
+  }
+
+  private detectMobileDevice(userAgent?: string): boolean {
+    if (!userAgent) return false;
+    const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+    return mobileRegex.test(userAgent);
   }
 
   async getSubscription(subscriptionId: string): Promise<Stripe.Subscription> {

@@ -5,6 +5,9 @@ export interface User {
   stageName?: string;
   avatar?: string;
   isAdmin?: boolean;
+  djId?: string;
+  isDjSubscriptionActive?: boolean;
+  coins?: number;
 }
 
 export interface LoginCredentials {

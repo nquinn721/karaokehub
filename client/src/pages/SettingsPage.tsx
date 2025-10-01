@@ -1,5 +1,6 @@
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Card,
@@ -10,6 +11,11 @@ import {
   Divider,
   Typography,
 } from '@mui/material';
+import {
+  Settings as SettingsIcon,
+  PhoneIphone,
+  Payment,
+} from '@mui/icons-material';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useState } from 'react';
 import CustomModal from '../components/CustomModal';
@@ -65,7 +71,18 @@ const SettingsPage: React.FC = observer(() => {
 
   const upgradeToSubscription = async (plan: 'ad_free' | 'premium') => {
     try {
-      const response = await apiStore.post('/subscription/create-checkout-session', { plan });
+      // Detect mobile device for optimized payment experience
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        uiStore.addNotification('Optimizing checkout for mobile...', 'info');
+      }
+      
+      const response = await apiStore.post('/subscription/create-checkout-session', { 
+        plan,
+        mobileOptimized: isMobile 
+      });
+      
       if (response.url) {
         window.location.href = response.url;
       }
@@ -149,19 +166,88 @@ const SettingsPage: React.FC = observer(() => {
     }
   };
 
+  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isAppleDevice = /iPhone|iPad|iPod|Mac/i.test(navigator.userAgent);
+  const isAndroidDevice = /Android/i.test(navigator.userAgent);
+
+  const getMobilePaymentText = () => {
+    if (isAppleDevice) return 'Includes Apple Pay';
+    if (isAndroidDevice) return 'Includes Google Pay';
+    if (isMobileDevice) return 'Mobile payments supported';
+    return 'Secure payments';
+  };
+
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ py: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Settings
-        </Typography>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(51, 51, 51, 0.9) 100%)',
+        backgroundImage: `
+          radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+          radial-gradient(circle at 80% 20%, rgba(255, 99, 132, 0.3) 0%, transparent 50%)
+        `,
+      }}
+    >
+      <Container maxWidth="lg">
+        <Box sx={{ py: 6 }}>
+          {/* Header Section */}
+          <Box sx={{ mb: 4, textAlign: 'center' }}>
+            <Avatar
+              sx={{
+                width: 60,
+                height: 60,
+                bgcolor: 'primary.main',
+                mx: 'auto',
+                mb: 2,
+              }}
+            >
+              <SettingsIcon sx={{ fontSize: 30 }} />
+            </Avatar>
+            <Typography
+              variant="h3"
+              component="h1"
+              gutterBottom
+              sx={{
+                fontWeight: 700,
+                color: 'white',
+                textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+              }}
+            >
+              Settings
+            </Typography>
+          </Box>
 
         {/* Subscription Section */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h5" gutterBottom>
-              Subscription Management
-            </Typography>
+        <Card
+          sx={{
+            mb: 3,
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 3,
+          }}
+        >
+          <CardContent sx={{ p: 4 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              <Avatar
+                sx={{
+                  bgcolor: 'primary.main',
+                  width: 48,
+                  height: 48,
+                }}
+              >
+                <SettingsIcon />
+              </Avatar>
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: 600,
+                  color: 'white',
+                }}
+              >
+                Subscription Management
+              </Typography>
+            </Box>
 
             {!authStore.isAuthenticated ? (
               <Alert severity="info">Please log in to view your subscription status.</Alert>
@@ -277,15 +363,57 @@ const SettingsPage: React.FC = observer(() => {
                     />
                   </Box>
                 </Box>
+
+                {/* Billing Management */}
+                {subscriptionStatus?.subscription && (
+                  <>
+                    <Divider sx={{ my: 3, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                      <Button
+                        variant="outlined"
+                        onClick={openBillingPortal}
+                        sx={{ 
+                          borderColor: 'rgba(255,255,255,0.3)', 
+                          color: 'white',
+                          px: 4,
+                          py: 1.5,
+                          borderRadius: 2,
+                          fontWeight: 600,
+                          '&:hover': {
+                            borderColor: 'primary.main',
+                            backgroundColor: 'rgba(25, 118, 210, 0.1)',
+                          }
+                        }}
+                      >
+                        Manage Billing & Payment Methods
+                      </Button>
+                    </Box>
+                  </>
+                )}
               </>
             )}
           </CardContent>
         </Card>
 
         {/* Plan Comparison */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Typography variant="h5" gutterBottom>
+        <Card
+          sx={{
+            mb: 3,
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 3,
+          }}
+        >
+          <CardContent sx={{ p: 4 }}>
+            <Typography
+              variant="h5"
+              gutterBottom
+              sx={{
+                fontWeight: 600,
+                color: 'white',
+              }}
+            >
               Available Plans
             </Typography>
 
@@ -374,9 +502,16 @@ const SettingsPage: React.FC = observer(() => {
                     fullWidth
                     onClick={() => upgradeToSubscription('ad_free')}
                     size="small"
+                    startIcon={isMobileDevice ? <Payment /> : undefined}
                   >
                     Upgrade
                   </Button>
+                )}
+                {isMobileDevice && (
+                  <Typography variant="caption" sx={{ mt: 1, color: 'success.main', textAlign: 'center' }}>
+                    <PhoneIphone sx={{ fontSize: 12, mr: 0.5 }} />
+                    {getMobilePaymentText()}
+                  </Typography>
                 )}
               </Box>
 
@@ -448,12 +583,33 @@ const SettingsPage: React.FC = observer(() => {
         </Card>
 
         {/* Other Settings */}
-        <Card>
-          <CardContent>
-            <Typography variant="h5" gutterBottom>
+        <Card
+          sx={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 3,
+          }}
+        >
+          <CardContent sx={{ p: 4 }}>
+            <Typography
+              variant="h5"
+              gutterBottom
+              sx={{
+                fontWeight: 600,
+                color: 'white',
+              }}
+            >
               Other Settings
             </Typography>
-            <Typography color="text.secondary">Additional settings coming soon...</Typography>
+            <Typography 
+              sx={{ 
+                color: 'rgba(255,255,255,0.7)',
+                fontStyle: 'italic',
+              }}
+            >
+              Additional settings coming soon...
+            </Typography>
           </CardContent>
         </Card>
       </Box>
@@ -493,7 +649,8 @@ const SettingsPage: React.FC = observer(() => {
           </Box>
         </Box>
       </CustomModal>
-    </Container>
+      </Container>
+    </Box>
   );
 });
 

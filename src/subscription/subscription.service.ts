@@ -112,6 +112,76 @@ export class SubscriptionService {
     }
   }
 
+  async createMobileOptimizedCheckoutSession(userId: string, plan: SubscriptionPlan, userAgent?: string) {
+    try {
+      console.log('📱 [SUBSCRIPTION_SERVICE] Creating mobile-optimized checkout session:', { 
+        userId, 
+        plan,
+        userAgent: userAgent?.substring(0, 50) + '...'
+      });
+
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+      if (!user) {
+        console.error('❌ [SUBSCRIPTION_SERVICE] User not found:', userId);
+        throw new NotFoundException('User not found');
+      }
+
+      // Create Stripe customer if not exists or validate existing customer (same logic as regular checkout)
+      let stripeCustomerId = user.stripeCustomerId;
+      if (!stripeCustomerId) {
+        console.log('🆕 [SUBSCRIPTION_SERVICE] Creating new Stripe customer...');
+        const customer = await this.stripeService.createCustomer(user.email, user.name);
+        stripeCustomerId = customer.id;
+        await this.userRepository.update(userId, { stripeCustomerId });
+        console.log('✅ [SUBSCRIPTION_SERVICE] Stripe customer created:', stripeCustomerId);
+      } else {
+        // Validate existing customer ID
+        try {
+          await this.stripeService.getCustomer(stripeCustomerId);
+          console.log('✅ [SUBSCRIPTION_SERVICE] Existing customer validated:', stripeCustomerId);
+        } catch (error) {
+          // Create new customer if invalid
+          const customer = await this.stripeService.createCustomer(user.email, user.name);
+          stripeCustomerId = customer.id;
+          await this.userRepository.update(userId, { stripeCustomerId });
+          console.log('✅ [SUBSCRIPTION_SERVICE] Replaced invalid customer:', stripeCustomerId);
+        }
+      }
+
+      const priceId = this.stripeService.getPriceId(plan);
+      const subscriptionUrls = this.urlService.getSubscriptionUrls();
+
+      console.log('📱 [SUBSCRIPTION_SERVICE] Creating mobile-optimized Stripe checkout session...');
+      const session = await this.stripeService.createMobileOptimizedCheckoutSession(
+        stripeCustomerId,
+        priceId,
+        subscriptionUrls.success,
+        subscriptionUrls.cancel,
+        userAgent,
+        {
+          userId: user.id,
+          subscriptionType: 'premium_or_ad_free',
+          plan: plan,
+          mobileOptimized: 'true',
+        },
+      );
+
+      console.log('✅ [SUBSCRIPTION_SERVICE] Mobile checkout session created:', {
+        sessionId: session.id,
+        url: session.url?.substring(0, 50) + '...',
+      });
+
+      return session;
+    } catch (error) {
+      console.error('❌ [SUBSCRIPTION_SERVICE] Error creating mobile checkout session:', {
+        userId,
+        plan,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
   async createPortalSession(userId: string) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user || !user.stripeCustomerId) {

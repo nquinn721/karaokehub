@@ -50,7 +50,7 @@ export class SubscriptionController {
 
   @Post('create-checkout-session')
   @UseGuards(JwtAuthGuard)
-  async createCheckoutSession(@CurrentUser() user: User, @Body() body: CreateCheckoutSessionDto) {
+  async createCheckoutSession(@CurrentUser() user: User, @Body() body: CreateCheckoutSessionDto, @Req() req) {
     try {
       console.log('🛒 [SUBSCRIPTION] Create checkout session request:', {
         userId: user.id,
@@ -65,6 +65,16 @@ export class SubscriptionController {
         throw new Error(
           `Invalid subscription plan: ${body.plan}. Valid plans: ${Object.values(SubscriptionPlan).join(', ')}`,
         );
+      }
+
+      // Check for mobile optimization preference
+      const userAgent = req.headers['user-agent'];
+      const isMobile = this.detectMobileDevice(userAgent);
+      
+      if (isMobile || body.mobileOptimized) {
+        console.log('📱 [SUBSCRIPTION] Using mobile-optimized checkout');
+        const session = await this.subscriptionService.createMobileOptimizedCheckoutSession(user.id, body.plan, userAgent);
+        return { url: session.url };
       }
 
       const session = await this.subscriptionService.createCheckoutSession(user.id, body.plan);
@@ -84,6 +94,12 @@ export class SubscriptionController {
       });
       throw error;
     }
+  }
+
+  private detectMobileDevice(userAgent?: string): boolean {
+    if (!userAgent) return false;
+    const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+    return mobileRegex.test(userAgent);
   }
 
   @Post('create-portal-session')
