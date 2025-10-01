@@ -136,8 +136,6 @@ interface RecentApiCall {
   timestamp: string;
 }
 
-
-
 const EnhancedApiMonitoring: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -249,8 +247,6 @@ const EnhancedApiMonitoring: React.FC = () => {
         console.warn('Recent calls not available, using empty data');
         setRecentCalls([]);
       }
-
-
 
       // Load chart data with fallback
       loadChartData();
@@ -1148,7 +1144,10 @@ const EnhancedApiMonitoring: React.FC = () => {
                           }
                         >
                           {Number(metric.totalCalls) > 0
-                            ? ((Number(metric.successCount) / Number(metric.totalCalls)) * 100).toFixed(1)
+                            ? (
+                                (Number(metric.successCount) / Number(metric.totalCalls)) *
+                                100
+                              ).toFixed(1)
                             : 0}
                           %
                         </Typography>

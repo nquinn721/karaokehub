@@ -8,7 +8,7 @@ module.exports = new DataSource({
   password: 'password',
   database: 'karaoke-hub',
   entities: ['dist/**/*.entity.js'],
-  migrations: ['dist/migrations/*.js'],
+  migrations: ['dist/migrations/[0-9]*-*.js'],
   synchronize: false,
   logging: true,
 });

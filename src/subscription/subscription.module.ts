@@ -18,6 +18,6 @@ import { SubscriptionService } from './subscription.service';
   ],
   controllers: [SubscriptionController],
   providers: [SubscriptionService, StripeService],
-  exports: [SubscriptionService],
+  exports: [SubscriptionService, StripeService],
 })
 export class SubscriptionModule {}

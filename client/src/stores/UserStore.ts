@@ -69,6 +69,10 @@ export interface User {
   equippedAvatar?: Avatar;
   equippedMicrophone?: Microphone;
   coins?: number;
+  // DJ subscription fields
+  djId?: string;
+  isDjSubscriptionActive?: boolean;
+  djStripeSubscriptionId?: string;
 }
 
 export interface UpdateAvatarRequest {

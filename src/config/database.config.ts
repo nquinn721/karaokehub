@@ -139,6 +139,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
           'dist/migrations/1737462300000-EnsureProductionAvatarSystemReady.js',
           'dist/migrations/1737810000000-FixRockstarAlexNameData.js',
           'dist/migrations/1737820000000-AddSearchContextToApiRecentCalls.js',
+          'dist/migrations/1737825000000-AddDjSubscriptionToUsers.js',
         ]
       : [],
     migrationsTableName: 'migrations',

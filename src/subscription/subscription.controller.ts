@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  RawBodyRequest,
-  Req,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -112,14 +102,29 @@ export class SubscriptionController {
   }
 
   @Post('webhook')
-  async handleWebhook(@Req() req: RawBodyRequest<Request>, @Res() res: Response) {
+  async handleWebhook(@Req() req: Request & { body: Buffer }, @Res() res: Response) {
     const signature = req.headers['stripe-signature'] as string;
     let event;
 
+    console.log('🎯 [WEBHOOK] General subscription webhook received');
+    console.log('🎯 [WEBHOOK] Headers:', JSON.stringify(req.headers, null, 2));
+    console.log('🎯 [WEBHOOK] Body type:', typeof req.body);
+    console.log('🎯 [WEBHOOK] Body length:', req.body?.length || 'undefined');
+    console.log('🎯 [WEBHOOK] Signature present:', !!signature);
+
     try {
-      event = this.stripeService.constructWebhookEvent(req.rawBody, signature);
+      // req.body is now the raw buffer due to express.raw() middleware
+      event = this.stripeService.constructWebhookEvent(req.body, signature);
+      console.log('✅ [WEBHOOK] Event verified successfully:', event.type);
+      console.log('✅ [WEBHOOK] Event ID:', event.id);
     } catch (err) {
-      console.log(`Webhook signature verification failed.`, err.message);
+      console.error('❌ [WEBHOOK] Signature verification failed:', err.message);
+      console.error('❌ [WEBHOOK] Request details:', {
+        bodyType: typeof req.body,
+        bodyLength: req.body?.length,
+        hasSignature: !!signature,
+        signature: signature?.substring(0, 20) + '...',
+      });
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 

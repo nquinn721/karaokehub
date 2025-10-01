@@ -28,6 +28,7 @@ async function bootstrap() {
         process.env.NODE_ENV === 'production'
           ? ['error', 'warn', 'log']
           : ['log', 'error', 'warn', 'debug', 'verbose'],
+      bodyParser: false, // Disable automatic body parsing so we can handle webhooks properly
     });
 
     console.error('NESTJS APP CREATED - ABOUT TO CHECK MIGRATIONS');
@@ -262,8 +263,14 @@ async function bootstrap() {
     // Cookie parser
     app.use(cookieParser());
 
-    // Increase payload size limits for image uploads
+    // Raw body middleware for Stripe webhooks ONLY
+    app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
+    app.use('/api/dj-webhooks/stripe', express.raw({ type: 'application/json' }));
+
+    // JSON body parsing for all other routes
     app.use(express.json({ limit: '50mb' }));
+
+    // URL encoded middleware (for form submissions)
     app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
     // CORS

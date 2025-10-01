@@ -36,6 +36,9 @@
     "data:workflow": "./scripts/example-workflow.sh",
     "data:help": "cat SAFE-DATA-MANAGEMENT.md",
     "migration:create": "npx typeorm migration:create",
+    "migration:run": "npx typeorm migration:run -d data-source.js",
+    "migration:revert": "npx typeorm migration:revert -d data-source.js",
+    "migration:show": "npx typeorm migration:show -d data-source.js",
     "avatars:export": "node scripts/export-avatar-store-data.js",
     "avatars:import": "node scripts/import-avatar-store-data.js",
     "avatars:import-direct": "node scripts/direct-sql-import.js"
@@ -69,6 +72,7 @@
     "cookie-parser": "^1.4.6",
     "expo": "^54.0.7",
     "expo-dev-client": "^6.0.12",
+    "fuse.js": "^7.1.0",
     "google-auth-library": "^10.2.1",
     "helmet": "^7.1.0",
     "moment": "^2.30.1",

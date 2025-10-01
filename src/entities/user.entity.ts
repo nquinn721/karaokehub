@@ -12,6 +12,7 @@ import { Avatar } from '../avatar/entities/avatar.entity';
 import { Microphone } from '../avatar/entities/microphone.entity';
 import { UserAvatar } from '../avatar/entities/user-avatar.entity';
 import { UserMicrophone } from '../avatar/entities/user-microphone.entity';
+import { DJ } from '../dj/dj.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
 import { FriendRequest } from '../friends/friend-request.entity';
 import { Friendship } from '../friends/friendship.entity';
@@ -58,6 +59,22 @@ export class User {
   @Column({ type: 'int', default: 0 })
   coins: number;
 
+  // DJ subscription
+  @Column({ nullable: true })
+  djId: string;
+
+  @Column({ default: false })
+  isDjSubscriptionActive: boolean;
+
+  @Column({ nullable: true })
+  djStripeSubscriptionId: string;
+
+  @Column({ nullable: true })
+  djSubscriptionCancelledAt: Date;
+
+  @Column({ nullable: true })
+  djSubscriptionExpiresAt: Date;
+
   // Equipped items (can be free or owned)
   @Column({ nullable: true })
   equippedAvatarId: string;
@@ -86,6 +103,11 @@ export class User {
   @ManyToOne(() => Microphone, { nullable: true })
   @JoinColumn({ name: 'equippedMicrophoneId' })
   equippedMicrophone: Microphone;
+
+  // DJ relationship
+  @ManyToOne(() => DJ, { nullable: true })
+  @JoinColumn({ name: 'djId' })
+  dj: DJ;
 
   @OneToMany(() => FavoriteShow, (favoriteShow) => favoriteShow.user)
   favoriteShows: FavoriteShow[];

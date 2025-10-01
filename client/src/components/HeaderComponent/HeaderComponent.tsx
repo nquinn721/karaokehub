@@ -787,6 +787,17 @@ export const HeaderComponent: React.FC<HeaderComponentProps> = observer(
                           Admin Dashboard
                         </MenuItem>
                       )}
+                      {authStore.user?.isDjSubscriptionActive && (
+                        <MenuItem
+                          onClick={() => {
+                            navigate('/manage-shows');
+                            handleMenuClose();
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faMusic} style={{ marginRight: '8px' }} />
+                          Manage Shows
+                        </MenuItem>
+                      )}
                       <MenuItem onClick={handleFeedback}>
                         <FontAwesomeIcon icon={faComments} style={{ marginRight: '8px' }} />
                         Send Feedback

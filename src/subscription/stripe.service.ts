@@ -39,6 +39,7 @@ export class StripeService {
     priceId: string,
     successUrl: string,
     cancelUrl: string,
+    metadata?: Record<string, string>,
   ): Promise<Stripe.Checkout.Session> {
     try {
       console.log('🛒 [STRIPE_SERVICE] Creating checkout session with parameters:', {
@@ -76,6 +77,12 @@ export class StripeService {
           address: 'auto', // Automatically save the address entered in checkout
           shipping: 'auto', // Automatically save the shipping address
         },
+        // Add metadata to the subscription that will be created
+        subscription_data: metadata
+          ? {
+              metadata: metadata,
+            }
+          : undefined,
       };
 
       // Add test mode enhancements for development
@@ -87,12 +94,16 @@ export class StripeService {
 
         // Add metadata for test tracking
         sessionConfig.metadata = {
+          ...(metadata || {}),
           environment: 'development',
           test_mode: 'true',
           created_at: new Date().toISOString(),
         };
 
         console.log('✅ [STRIPE_SERVICE] Test mode enhancements added');
+      } else if (metadata) {
+        // Add metadata for production
+        sessionConfig.metadata = metadata;
       }
 
       console.log(
@@ -305,11 +316,42 @@ export class StripeService {
     return this.stripe.checkout.sessions.retrieve(sessionId);
   }
 
-  constructWebhookEvent(payload: string | Buffer, signature: string): Stripe.Event {
-    const endpointSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+  // DJ Subscription Methods
+  async attachPaymentMethod(
+    paymentMethodId: string,
+    customerId: string,
+  ): Promise<Stripe.PaymentMethod> {
+    return this.stripe.paymentMethods.attach(paymentMethodId, {
+      customer: customerId,
+    });
+  }
+
+  async createSubscription(params: Stripe.SubscriptionCreateParams): Promise<Stripe.Subscription> {
+    return this.stripe.subscriptions.create(params);
+  }
+
+  async createCustomerWithMetadata(params: Stripe.CustomerCreateParams): Promise<Stripe.Customer> {
+    return this.stripe.customers.create(params);
+  }
+
+  constructWebhookEvent(
+    payload: string | Buffer,
+    signature: string,
+    secretKey?: string,
+  ): Stripe.Event {
+    const endpointSecret = secretKey || this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
     if (!endpointSecret) {
-      throw new Error('STRIPE_WEBHOOK_SECRET is required');
+      throw new Error('Webhook secret is required');
     }
     return this.stripe.webhooks.constructEvent(payload, signature, endpointSecret);
+  }
+
+  // Method specifically for DJ webhooks
+  constructDjWebhookEvent(payload: string | Buffer, signature: string): Stripe.Event {
+    const djEndpointSecret = this.configService.get<string>('STRIPE_DJ_WEBHOOK_SECRET');
+    if (!djEndpointSecret) {
+      throw new Error('STRIPE_DJ_WEBHOOK_SECRET is required');
+    }
+    return this.stripe.webhooks.constructEvent(payload, signature, djEndpointSecret);
   }
 }

@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { CreateDJDto, DJService, UpdateDJDto } from './dj.service';
 
@@ -10,6 +20,12 @@ export class DJController {
   @Post()
   create(@Body() createDJDto: CreateDJDto) {
     return this.djService.create(createDJDto);
+  }
+
+  @Get('search')
+  searchDjs(@Query('q') query: string, @Query('limit') limit?: string) {
+    const searchLimit = limit ? parseInt(limit, 10) : 10;
+    return this.djService.searchDjs(query, searchLimit);
   }
 
   @Get()

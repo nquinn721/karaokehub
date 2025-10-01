@@ -108,7 +108,7 @@ export class ApiMonitoringService {
     // Update response time metrics
     metrics.totalResponseTime += data.responseTime;
     const calculatedAvg = metrics.totalResponseTime / metrics.totalCalls;
-    
+
     // Cap avgResponseTime to prevent database overflow (DECIMAL(15,4) max is 99999999999.9999)
     metrics.avgResponseTime = Math.min(calculatedAvg, 99999999999.9999);
     metrics.minResponseTime = Math.min(metrics.minResponseTime, data.responseTime);
@@ -321,7 +321,7 @@ export class ApiMonitoringService {
       activeIssues: activeIssuesCount,
       avgResponseTimeToday: Math.round(parseFloat(todayMetrics.avgResponseTime) || 0),
     };
-    
+
     console.log('📊 Final dashboard summary result:', result);
     return result;
   }
@@ -332,7 +332,7 @@ export class ApiMonitoringService {
       order: { date: 'DESC' },
       take: 10,
     });
-    
+
     const todayMetrics = await this.metricsRepository.find({
       where: { date: today },
     });

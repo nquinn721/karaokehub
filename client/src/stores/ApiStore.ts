@@ -546,6 +546,22 @@ class ApiStore {
       base: '/djs',
       byId: (id: string) => `/djs/${id}`,
       byVendor: (vendorId: string) => `/djs/vendor/${vendorId}`,
+      search: (query: string, limit: number = 10) =>
+        `/djs/search?q=${encodeURIComponent(query)}&limit=${limit}`,
+    },
+
+    // DJ Shows endpoints
+    djShows: {
+      base: '/dj-shows',
+      byId: (id: string) => `/dj-shows/${id}`,
+    },
+
+    // DJ Registration endpoints
+    djRegistration: {
+      register: '/dj-registration/register',
+      status: '/dj-registration/status',
+      cancel: '/dj-registration/cancel',
+      checkoutSession: '/dj-registration/checkout-session',
     },
 
     // Show endpoints

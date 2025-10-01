@@ -30,6 +30,7 @@ import DashboardPage from './pages/DashboardPage';
 import FeedbackManagementPage from './pages/FeedbackManagementPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+import ManageShowsPage from './pages/ManageShowsPage';
 import MusicPage from './pages/MusicPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import ProfilePage from './pages/ProfilePage';
@@ -314,6 +315,14 @@ const AppContent: React.FC = observer(() => {
               }
             />
             <Route
+              path="/manage-shows"
+              element={
+                <ProtectedRoute>
+                  <ManageShowsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/avatar-customizer"
               element={
                 <ProtectedRoute>
@@ -334,6 +343,14 @@ const AppContent: React.FC = observer(() => {
               element={
                 <ProtectedRoute>
                   <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/manage-shows"
+              element={
+                <ProtectedRoute>
+                  <ManageShowsPage />
                 </ProtectedRoute>
               }
             />

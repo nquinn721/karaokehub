@@ -22,14 +22,6 @@ export interface Avatar {
   isAvailable: boolean;
 }
 
-export interface User {
-  id: string;
-  baseAvatarId: string;
-  microphoneId?: string;
-  outfitId?: string;
-  shoesId?: string;
-}
-
 export interface Avatar {
   id: string;
   name: string;
@@ -46,6 +38,10 @@ export interface User {
   userAvatar?: UserAvatar; // New avatar system
   equippedAvatar?: Avatar; // Currently equipped avatar
   isAdmin?: boolean;
+  // DJ subscription fields
+  djId?: string;
+  isDjSubscriptionActive?: boolean;
+  djStripeSubscriptionId?: string;
 }
 
 export interface LoginCredentials {

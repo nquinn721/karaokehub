@@ -204,4 +204,35 @@ export class UserService {
   async remove(id: string): Promise<void> {
     await this.userRepository.update(id, { isActive: false });
   }
+
+  // DJ-related methods
+  async isDjWithActiveSubscription(userId: string): Promise<boolean> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['isDjSubscriptionActive', 'djId'],
+    });
+
+    return !!(user?.isDjSubscriptionActive && user?.djId);
+  }
+
+  async getDjInfo(
+    userId: string,
+  ): Promise<{ isDj: boolean; djId?: string; djName?: string; subscriptionActive?: boolean }> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['dj'],
+      select: ['isDjSubscriptionActive', 'djId', 'djStripeSubscriptionId'],
+    });
+
+    if (!user) {
+      return { isDj: false };
+    }
+
+    return {
+      isDj: !!(user.djId && user.isDjSubscriptionActive),
+      djId: user.djId,
+      djName: user.dj?.name,
+      subscriptionActive: user.isDjSubscriptionActive,
+    };
+  }
 }

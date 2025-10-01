@@ -1,0 +1,31 @@
+import { MigrationInterface, QueryRunner } from 'typeorm';
+
+export class AddDjCancellationTracking1737830000000 implements MigrationInterface {
+  name = 'AddDjCancellationTracking1737830000000';
+
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Add cancellation tracking fields to users table
+    await queryRunner.query(`
+      ALTER TABLE \`users\` 
+      ADD COLUMN \`djSubscriptionCancelledAt\` datetime(6) NULL
+    `);
+
+    await queryRunner.query(`
+      ALTER TABLE \`users\` 
+      ADD COLUMN \`djSubscriptionExpiresAt\` datetime(6) NULL
+    `);
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Remove the cancellation tracking fields
+    await queryRunner.query(`
+      ALTER TABLE \`users\` 
+      DROP COLUMN \`djSubscriptionExpiresAt\`
+    `);
+
+    await queryRunner.query(`
+      ALTER TABLE \`users\` 
+      DROP COLUMN \`djSubscriptionCancelledAt\`
+    `);
+  }
+}
