@@ -1,15 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
 import { observer } from 'mobx-react-lite';
+import React, { useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { authStore } from '../stores';
 
 const SettingsScreen = observer(() => {
@@ -21,18 +13,14 @@ const SettingsScreen = observer(() => {
   const [darkMode, setDarkMode] = useState(true);
 
   const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Sign Out', 
-          style: 'destructive',
-          onPress: () => authStore.logout()
-        }
-      ]
-    );
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: () => authStore.logout(),
+      },
+    ]);
   };
 
   const handleDeleteAccount = () => {
@@ -41,14 +29,14 @@ const SettingsScreen = observer(() => {
       'This will permanently delete your account and all data. This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: () => {
             Alert.alert('Coming Soon', 'Account deletion will be implemented soon.');
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -59,13 +47,13 @@ const SettingsScreen = observer(() => {
     </View>
   );
 
-  const SettingsItem = ({ 
-    icon, 
-    title, 
-    subtitle, 
-    onPress, 
+  const SettingsItem = ({
+    icon,
+    title,
+    subtitle,
+    onPress,
     showArrow = true,
-    rightComponent 
+    rightComponent,
   }: {
     icon: string;
     title: string;
@@ -74,11 +62,7 @@ const SettingsScreen = observer(() => {
     showArrow?: boolean;
     rightComponent?: React.ReactNode;
   }) => (
-    <TouchableOpacity 
-      style={styles.settingsItem} 
-      onPress={onPress}
-      disabled={!onPress}
-    >
+    <TouchableOpacity style={styles.settingsItem} onPress={onPress} disabled={!onPress}>
       <View style={styles.settingsItemLeft}>
         <View style={styles.iconContainer}>
           <Ionicons name={icon as any} size={20} color="#007AFF" />
@@ -90,19 +74,17 @@ const SettingsScreen = observer(() => {
       </View>
       <View style={styles.settingsItemRight}>
         {rightComponent}
-        {showArrow && onPress && (
-          <Ionicons name="chevron-forward" size={20} color="#666666" />
-        )}
+        {showArrow && onPress && <Ionicons name="chevron-forward" size={20} color="#666666" />}
       </View>
     </TouchableOpacity>
   );
 
-  const ToggleItem = ({ 
-    icon, 
-    title, 
-    subtitle, 
-    value, 
-    onValueChange 
+  const ToggleItem = ({
+    icon,
+    title,
+    subtitle,
+    value,
+    onValueChange,
   }: {
     icon: string;
     title: string;
@@ -145,14 +127,16 @@ const SettingsScreen = observer(() => {
           subtitle="Edit your profile information"
           onPress={() => Alert.alert('Coming Soon', 'Profile editing will be implemented soon.')}
         />
-        
+
         <SettingsItem
           icon="card-outline"
           title="Subscription"
           subtitle={authStore.user?.isDjSubscriptionActive ? 'DJ Plan Active' : 'Free Plan'}
-          onPress={() => Alert.alert('Coming Soon', 'Subscription management will be implemented soon.')}
+          onPress={() =>
+            Alert.alert('Coming Soon', 'Subscription management will be implemented soon.')
+          }
         />
-        
+
         <SettingsItem
           icon="wallet-outline"
           title="Payment Methods"
@@ -170,7 +154,7 @@ const SettingsScreen = observer(() => {
           value={pushNotifications}
           onValueChange={setPushNotifications}
         />
-        
+
         <ToggleItem
           icon="mail-outline"
           title="Email Notifications"
@@ -189,7 +173,7 @@ const SettingsScreen = observer(() => {
           value={locationServices}
           onValueChange={setLocationServices}
         />
-        
+
         <ToggleItem
           icon="log-in-outline"
           title="Stay Signed In"
@@ -197,7 +181,7 @@ const SettingsScreen = observer(() => {
           value={autoLogin}
           onValueChange={setAutoLogin}
         />
-        
+
         <SettingsItem
           icon="shield-checkmark-outline"
           title="Privacy Policy"
@@ -215,19 +199,21 @@ const SettingsScreen = observer(() => {
           value={darkMode}
           onValueChange={setDarkMode}
         />
-        
+
         <SettingsItem
           icon="language-outline"
           title="Language"
           subtitle="English (US)"
           onPress={() => Alert.alert('Coming Soon', 'Language selection will be implemented soon.')}
         />
-        
+
         <SettingsItem
           icon="download-outline"
           title="Auto-Update"
           subtitle="Automatically download app updates"
-          onPress={() => Alert.alert('Coming Soon', 'Auto-update settings will be implemented soon.')}
+          onPress={() =>
+            Alert.alert('Coming Soon', 'Auto-update settings will be implemented soon.')
+          }
         />
       </SettingsSection>
 
@@ -239,14 +225,14 @@ const SettingsScreen = observer(() => {
           subtitle="Get answers to common questions"
           onPress={() => Alert.alert('Coming Soon', 'Help center will be implemented soon.')}
         />
-        
+
         <SettingsItem
           icon="chatbubble-outline"
           title="Contact Support"
           subtitle="Get help from our support team"
           onPress={() => Alert.alert('Coming Soon', 'Contact support will be implemented soon.')}
         />
-        
+
         <SettingsItem
           icon="star-outline"
           title="Rate the App"
@@ -263,7 +249,7 @@ const SettingsScreen = observer(() => {
           subtitle="Sign out of your account"
           onPress={handleLogout}
         />
-        
+
         <SettingsItem
           icon="trash-outline"
           title="Delete Account"

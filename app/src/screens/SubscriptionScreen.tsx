@@ -1,14 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
 import { observer } from 'mobx-react-lite';
+import { useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { authStore } from '../stores';
 
 const SubscriptionScreen = observer(() => {
@@ -29,11 +22,7 @@ const SubscriptionScreen = observer(() => {
         'Basic music search',
         'Community features',
       ],
-      limitations: [
-        'Limited show submissions per month',
-        'Basic search only',
-        'No DJ tools',
-      ],
+      limitations: ['Limited show submissions per month', 'Basic search only', 'No DJ tools'],
       current: !isDJ,
       recommended: false,
     },
@@ -83,13 +72,13 @@ const SubscriptionScreen = observer(() => {
     if (!selectedPlan) return;
 
     setIsLoading(true);
-    
+
     try {
       // TODO: Implement actual Stripe subscription flow
       Alert.alert(
         'Coming Soon',
         'Subscription management will be implemented with Stripe integration soon!',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
       );
     } catch (error) {
       Alert.alert('Error', 'Failed to process subscription. Please try again.');
@@ -104,8 +93,11 @@ const SubscriptionScreen = observer(() => {
       'You can manage your subscription, update payment methods, or cancel anytime.',
       [
         { text: 'Cancel' },
-        { text: 'Manage', onPress: () => Alert.alert('Coming Soon', 'Subscription management portal coming soon!') }
-      ]
+        {
+          text: 'Manage',
+          onPress: () => Alert.alert('Coming Soon', 'Subscription management portal coming soon!'),
+        },
+      ],
     );
   };
 
@@ -126,7 +118,7 @@ const SubscriptionScreen = observer(() => {
           <Text style={styles.recommendedText}>Recommended</Text>
         </View>
       )}
-      
+
       {plan.current && (
         <View style={styles.currentBadge}>
           <Ionicons name="checkmark-circle" size={12} color="#FFFFFF" />
@@ -139,13 +131,9 @@ const SubscriptionScreen = observer(() => {
         <View style={styles.priceContainer}>
           <Text style={styles.planPrice}>{plan.price}</Text>
           <Text style={styles.planPeriod}>{plan.period}</Text>
-          {plan.originalPrice && (
-            <Text style={styles.originalPrice}>{plan.originalPrice}</Text>
-          )}
+          {plan.originalPrice && <Text style={styles.originalPrice}>{plan.originalPrice}</Text>}
         </View>
-        {plan.savings && (
-          <Text style={styles.savingsText}>{plan.savings}</Text>
-        )}
+        {plan.savings && <Text style={styles.savingsText}>{plan.savings}</Text>}
       </View>
 
       <View style={styles.featuresContainer}>
@@ -156,7 +144,7 @@ const SubscriptionScreen = observer(() => {
             <Text style={styles.featureText}>{feature}</Text>
           </View>
         ))}
-        
+
         {plan.limitations.length > 0 && (
           <>
             <Text style={[styles.featuresTitle, { marginTop: 12 }]}>Limitations:</Text>
@@ -188,10 +176,9 @@ const SubscriptionScreen = observer(() => {
         <View>
           <Text style={styles.title}>DJ Subscription</Text>
           <Text style={styles.subtitle}>
-            {isDJ 
+            {isDJ
               ? 'Manage your DJ subscription and unlock powerful tools'
-              : 'Unlock powerful tools to manage your karaoke shows'
-            }
+              : 'Unlock powerful tools to manage your karaoke shows'}
           </Text>
         </View>
       </View>
@@ -218,7 +205,7 @@ const SubscriptionScreen = observer(() => {
         <Text style={styles.plansSubtitle}>
           Select the plan that best fits your karaoke hosting needs
         </Text>
-        
+
         {plans.map((plan) => (
           <PlanCard key={plan.id} plan={plan} />
         ))}
@@ -226,13 +213,15 @@ const SubscriptionScreen = observer(() => {
 
       {/* Subscribe Button */}
       {selectedPlan && selectedPlan !== 'free' && !isDJ && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.subscribeButton, isLoading && styles.subscribeButtonDisabled]}
           onPress={handleSubscribe}
           disabled={isLoading}
         >
           <Text style={styles.subscribeButtonText}>
-            {isLoading ? 'Processing...' : `Subscribe to ${plans.find(p => p.id === selectedPlan)?.name}`}
+            {isLoading
+              ? 'Processing...'
+              : `Subscribe to ${plans.find((p) => p.id === selectedPlan)?.name}`}
           </Text>
         </TouchableOpacity>
       )}
@@ -240,25 +229,28 @@ const SubscriptionScreen = observer(() => {
       {/* FAQ Section */}
       <View style={styles.faqSection}>
         <Text style={styles.faqTitle}>Frequently Asked Questions</Text>
-        
+
         <View style={styles.faqItem}>
           <Text style={styles.faqQuestion}>Can I cancel anytime?</Text>
           <Text style={styles.faqAnswer}>
-            Yes, you can cancel your subscription at any time. You'll continue to have access until the end of your billing period.
+            Yes, you can cancel your subscription at any time. You'll continue to have access until
+            the end of your billing period.
           </Text>
         </View>
-        
+
         <View style={styles.faqItem}>
           <Text style={styles.faqQuestion}>What happens to my shows if I cancel?</Text>
           <Text style={styles.faqAnswer}>
-            Your shows will remain visible to users, but you won't be able to edit or manage them until you resubscribe.
+            Your shows will remain visible to users, but you won't be able to edit or manage them
+            until you resubscribe.
           </Text>
         </View>
-        
+
         <View style={styles.faqItem}>
           <Text style={styles.faqQuestion}>Do you offer refunds?</Text>
           <Text style={styles.faqAnswer}>
-            We offer a 30-day money-back guarantee for new subscriptions. Contact support for assistance.
+            We offer a 30-day money-back guarantee for new subscriptions. Contact support for
+            assistance.
           </Text>
         </View>
       </View>

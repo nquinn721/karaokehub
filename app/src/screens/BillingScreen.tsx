@@ -1,16 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import {
-  Alert,
-  FlatList,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
 import { observer } from 'mobx-react-lite';
+import { useState } from 'react';
+import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { authStore } from '../stores';
 
 // Mock billing data - in real app this would come from Stripe API
@@ -82,7 +73,7 @@ const BillingScreen = observer(() => {
   const isDJ = authStore.user?.djId && authStore.user?.isDjSubscriptionActive;
   const nextBillingDate = '2025-01-01';
   const currentPlan = 'DJ Monthly';
-  const currentAmount = 29.00;
+  const currentAmount = 29.0;
 
   const formatAmount = (amount: number, currency: string = 'usd') => {
     return new Intl.NumberFormat('en-US', {
@@ -105,50 +96,55 @@ const BillingScreen = observer(() => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'paid': return '#4CAF50';
-      case 'pending': return '#FF9800';
-      case 'failed': return '#F44336';
-      default: return '#AAAAAA';
+      case 'paid':
+        return '#4CAF50';
+      case 'pending':
+        return '#FF9800';
+      case 'failed':
+        return '#F44336';
+      default:
+        return '#AAAAAA';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'paid': return 'checkmark-circle';
-      case 'pending': return 'time';
-      case 'failed': return 'close-circle';
-      default: return 'help-circle';
+      case 'paid':
+        return 'checkmark-circle';
+      case 'pending':
+        return 'time';
+      case 'failed':
+        return 'close-circle';
+      default:
+        return 'help-circle';
     }
   };
 
   const handleAddPaymentMethod = () => {
-    Alert.alert(
-      'Add Payment Method',
-      'This will open Stripe payment method setup',
-      [{ text: 'OK' }]
-    );
+    Alert.alert('Add Payment Method', 'This will open Stripe payment method setup', [
+      { text: 'OK' },
+    ]);
   };
 
   const handleSetDefaultPaymentMethod = (methodId: string) => {
-    Alert.alert(
-      'Set as Default',
-      'Set this payment method as your default for future billing?',
-      [
-        { text: 'Cancel' },
-        { text: 'Set Default', onPress: () => Alert.alert('Success', 'Default payment method updated') }
-      ]
-    );
+    Alert.alert('Set as Default', 'Set this payment method as your default for future billing?', [
+      { text: 'Cancel' },
+      {
+        text: 'Set Default',
+        onPress: () => Alert.alert('Success', 'Default payment method updated'),
+      },
+    ]);
   };
 
   const handleRemovePaymentMethod = (methodId: string) => {
-    Alert.alert(
-      'Remove Payment Method',
-      'Are you sure you want to remove this payment method?',
-      [
-        { text: 'Cancel' },
-        { text: 'Remove', style: 'destructive', onPress: () => Alert.alert('Success', 'Payment method removed') }
-      ]
-    );
+    Alert.alert('Remove Payment Method', 'Are you sure you want to remove this payment method?', [
+      { text: 'Cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => Alert.alert('Success', 'Payment method removed'),
+      },
+    ]);
   };
 
   const handleDownloadInvoice = (invoiceUrl: string) => {
@@ -156,11 +152,9 @@ const BillingScreen = observer(() => {
   };
 
   const handleUpdateBilling = () => {
-    Alert.alert(
-      'Update Billing Info',
-      'This will open billing information update form',
-      [{ text: 'OK' }]
-    );
+    Alert.alert('Update Billing Info', 'This will open billing information update form', [
+      { text: 'OK' },
+    ]);
   };
 
   const handleCancelSubscription = () => {
@@ -169,12 +163,16 @@ const BillingScreen = observer(() => {
       'Are you sure you want to cancel your DJ subscription? You will lose access to all DJ features at the end of your current billing period.',
       [
         { text: 'Keep Subscription' },
-        { 
-          text: 'Cancel Subscription', 
-          style: 'destructive', 
-          onPress: () => Alert.alert('Subscription Cancelled', 'Your subscription will end on ' + nextBillingDate) 
-        }
-      ]
+        {
+          text: 'Cancel Subscription',
+          style: 'destructive',
+          onPress: () =>
+            Alert.alert(
+              'Subscription Cancelled',
+              'Your subscription will end on ' + nextBillingDate,
+            ),
+        },
+      ],
     );
   };
 
@@ -210,7 +208,8 @@ const BillingScreen = observer(() => {
           <View style={styles.noSubscriptionCard}>
             <Ionicons name="information-circle" size={24} color="#007AFF" />
             <Text style={styles.noSubscriptionText}>
-              You don't have an active DJ subscription. Upgrade to access powerful DJ tools and features.
+              You don't have an active DJ subscription. Upgrade to access powerful DJ tools and
+              features.
             </Text>
             <TouchableOpacity style={styles.upgradeButton}>
               <Text style={styles.upgradeButtonText}>Upgrade to DJ</Text>
@@ -228,22 +227,22 @@ const BillingScreen = observer(() => {
             <Text style={styles.quickActionText}>Update Billing Info</Text>
             <Ionicons name="chevron-forward" size={16} color="#AAAAAA" />
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.quickActionButton} onPress={handleAddPaymentMethod}>
             <Ionicons name="add" size={20} color="#007AFF" />
             <Text style={styles.quickActionText}>Add Payment Method</Text>
             <Ionicons name="chevron-forward" size={16} color="#AAAAAA" />
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.quickActionButton}>
             <Ionicons name="download" size={20} color="#007AFF" />
             <Text style={styles.quickActionText}>Download Recent Invoice</Text>
             <Ionicons name="chevron-forward" size={16} color="#AAAAAA" />
           </TouchableOpacity>
-          
+
           {isDJ && (
-            <TouchableOpacity 
-              style={[styles.quickActionButton, styles.dangerAction]} 
+            <TouchableOpacity
+              style={[styles.quickActionButton, styles.dangerAction]}
               onPress={handleCancelSubscription}
             >
               <Ionicons name="close-circle" size={20} color="#FF6B6B" />
@@ -285,7 +284,7 @@ const BillingScreen = observer(() => {
             <Text style={styles.addButtonText}>Add</Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.paymentMethodsList}>
           {mockPaymentMethods.map((method) => (
             <View key={method.id} style={styles.paymentMethodCard}>
@@ -306,17 +305,17 @@ const BillingScreen = observer(() => {
                   Expires {method.card.exp_month.toString().padStart(2, '0')}/{method.card.exp_year}
                 </Text>
               </View>
-              
+
               <View style={styles.paymentMethodActions}>
                 {!method.isDefault && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.methodActionButton}
                     onPress={() => handleSetDefaultPaymentMethod(method.id)}
                   >
                     <Text style={styles.methodActionText}>Set Default</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.methodActionButton, styles.dangerAction]}
                   onPress={() => handleRemovePaymentMethod(method.id)}
                 >
@@ -343,27 +342,32 @@ const BillingScreen = observer(() => {
                   <Text style={styles.invoiceDate}>{formatDate(invoice.created)}</Text>
                 </View>
                 <View style={styles.invoiceAmount}>
-                  <Text style={styles.invoicePrice}>{formatAmount(invoice.amount, invoice.currency)}</Text>
+                  <Text style={styles.invoicePrice}>
+                    {formatAmount(invoice.amount, invoice.currency)}
+                  </Text>
                   <View style={styles.invoiceStatus}>
-                    <Ionicons 
-                      name={getStatusIcon(invoice.status)} 
-                      size={16} 
-                      color={getStatusColor(invoice.status)} 
+                    <Ionicons
+                      name={getStatusIcon(invoice.status)}
+                      size={16}
+                      color={getStatusColor(invoice.status)}
                     />
-                    <Text style={[styles.invoiceStatusText, { color: getStatusColor(invoice.status) }]}>
+                    <Text
+                      style={[styles.invoiceStatusText, { color: getStatusColor(invoice.status) }]}
+                    >
                       {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                     </Text>
                   </View>
                 </View>
               </View>
-              
+
               <View style={styles.invoicePeriod}>
                 <Text style={styles.invoicePeriodText}>
-                  Billing period: {formatDate(invoice.period_start)} - {formatDate(invoice.period_end)}
+                  Billing period: {formatDate(invoice.period_start)} -{' '}
+                  {formatDate(invoice.period_end)}
                 </Text>
               </View>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.downloadButton}
                 onPress={() => handleDownloadInvoice(invoice.invoice_pdf)}
               >
@@ -400,15 +404,12 @@ const BillingScreen = observer(() => {
             style={[styles.tab, activeTab === tab.key && styles.activeTab]}
             onPress={() => setActiveTab(tab.key as any)}
           >
-            <Ionicons 
-              name={tab.icon as any} 
-              size={18} 
-              color={activeTab === tab.key ? '#FFFFFF' : '#AAAAAA'} 
+            <Ionicons
+              name={tab.icon as any}
+              size={18}
+              color={activeTab === tab.key ? '#FFFFFF' : '#AAAAAA'}
             />
-            <Text style={[
-              styles.tabText,
-              activeTab === tab.key && styles.activeTabText
-            ]}>
+            <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>
               {tab.label}
             </Text>
           </TouchableOpacity>

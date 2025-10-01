@@ -17,20 +17,20 @@ export class DisableSynchronizationAndFixConstraints1759300000000 implements Mig
       `);
 
       const hasTypeORMNamedConstraints = foreignKeys.some(
-        (fk: any) => 
-          fk.CONSTRAINT_NAME === 'FK_user_microphones_userId' || 
-          fk.CONSTRAINT_NAME === 'FK_user_microphones_microphoneId'
+        (fk: any) =>
+          fk.CONSTRAINT_NAME === 'FK_user_microphones_userId' ||
+          fk.CONSTRAINT_NAME === 'FK_user_microphones_microphoneId',
       );
 
       if (!hasTypeORMNamedConstraints) {
         console.log('🔄 Renaming foreign key constraints to match TypeORM expectations...');
-        
+
         // Drop existing constraints with different names
         await queryRunner.query(`
           ALTER TABLE user_microphones 
           DROP FOREIGN KEY FK_d94ec577b3b053f5fc156c4a947
         `);
-        
+
         await queryRunner.query(`
           ALTER TABLE user_microphones 
           DROP FOREIGN KEY FK_ee42573aa4979186d4d18db9475
@@ -53,7 +53,6 @@ export class DisableSynchronizationAndFixConstraints1759300000000 implements Mig
       } else {
         console.log('ℹ️  Foreign key constraints already have correct names');
       }
-
     } catch (error) {
       console.log('⚠️  Error fixing constraints:', error.message);
     }
@@ -63,7 +62,7 @@ export class DisableSynchronizationAndFixConstraints1759300000000 implements Mig
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     console.log('🔄 Reverting schema alignment...');
-    
+
     // This is a no-op since we're just aligning naming, not changing functionality
     console.log('ℹ️  No reversion needed for constraint naming alignment');
   }

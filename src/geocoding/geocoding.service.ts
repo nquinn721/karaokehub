@@ -20,7 +20,10 @@ export class GeocodingService {
   private readonly genAI: GoogleGenerativeAI;
 
   constructor(private configService: ConfigService) {
-    this.googleMapsApiKey = this.configService.get<string>('GOOGLE_MAPS_API_KEY');
+    // Use server-specific API key for backend geocoding services
+    this.googleMapsApiKey =
+      this.configService.get<string>('GOOGLE_MAPS_SERVER_API_KEY') ||
+      this.configService.get<string>('GOOGLE_MAPS_API_KEY'); // fallback
     const geminiApiKey = this.configService.get<string>('GEMINI_API_KEY');
     this.genAI = new GoogleGenerativeAI(geminiApiKey);
   }

@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { observer } from 'mobx-react-lite';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Modal,
-  Pressable,
   StyleSheet,
   Switch,
   Text,
@@ -13,8 +13,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { observer } from 'mobx-react-lite';
-import { authStore } from '../stores';
 
 // Mock music data - in real app this would come from the API
 const mockMusic = [
@@ -52,7 +50,7 @@ const mockMusic = [
   },
   {
     id: '3',
-    title: 'Don\'t Stop Believin\'',
+    title: "Don't Stop Believin'",
     artist: 'Journey',
     genre: 'Rock',
     decade: '1980s',
@@ -84,7 +82,7 @@ const mockMusic = [
   },
   {
     id: '5',
-    title: 'Livin\' on a Prayer',
+    title: "Livin' on a Prayer",
     artist: 'Bon Jovi',
     genre: 'Rock',
     decade: '1980s',
@@ -107,7 +105,7 @@ const MusicScreen = observer(() => {
   const [music, setMusic] = useState(mockMusic);
   const [sortBy, setSortBy] = useState<'title' | 'artist' | 'popularity' | 'difficulty'>('title');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  
+
   // Filter states
   const [filters, setFilters] = useState({
     genres: [] as string[],
@@ -120,16 +118,28 @@ const MusicScreen = observer(() => {
     maxDuration: 600,
   });
 
-  const allGenres = ['Rock', 'Pop', 'Country', 'Hip Hop', 'R&B', 'Jazz', 'Blues', 'Disco', 'Electronic', 'Classical'];
+  const allGenres = [
+    'Rock',
+    'Pop',
+    'Country',
+    'Hip Hop',
+    'R&B',
+    'Jazz',
+    'Blues',
+    'Disco',
+    'Electronic',
+    'Classical',
+  ];
   const allDecades = ['1950s', '1960s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s'];
   const allDifficulties = ['Easy', 'Medium', 'Hard'];
   const allLanguages = ['English', 'Spanish', 'French', 'German', 'Italian', 'Japanese', 'Korean'];
 
   // Filter and sort music
   const filteredMusic = useMemo(() => {
-    let result = music.filter(song => {
+    let result = music.filter((song) => {
       // Search query filter
-      const matchesSearch = !searchQuery || 
+      const matchesSearch =
+        !searchQuery ||
         song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         song.artist.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -143,20 +153,32 @@ const MusicScreen = observer(() => {
       const matchesDecade = filters.decades.length === 0 || filters.decades.includes(song.decade);
 
       // Difficulty filter
-      const matchesDifficulty = filters.difficulties.length === 0 || filters.difficulties.includes(song.difficulty);
+      const matchesDifficulty =
+        filters.difficulties.length === 0 || filters.difficulties.includes(song.difficulty);
 
       // Language filter
-      const matchesLanguage = filters.languages.length === 0 || filters.languages.includes(song.language);
+      const matchesLanguage =
+        filters.languages.length === 0 || filters.languages.includes(song.language);
 
       // Video/Lyrics filters
       const matchesVideo = !filters.hasVideo || song.hasVideo;
       const matchesLyrics = !filters.hasLyrics || song.hasLyrics;
 
       // Duration filter
-      const matchesDuration = song.duration >= filters.minDuration && song.duration <= filters.maxDuration;
+      const matchesDuration =
+        song.duration >= filters.minDuration && song.duration <= filters.maxDuration;
 
-      return matchesSearch && matchesFavorites && matchesGenre && matchesDecade && 
-             matchesDifficulty && matchesLanguage && matchesVideo && matchesLyrics && matchesDuration;
+      return (
+        matchesSearch &&
+        matchesFavorites &&
+        matchesGenre &&
+        matchesDecade &&
+        matchesDifficulty &&
+        matchesLanguage &&
+        matchesVideo &&
+        matchesLyrics &&
+        matchesDuration
+      );
     });
 
     // Sort results
@@ -169,8 +191,11 @@ const MusicScreen = observer(() => {
         case 'popularity':
           return b.popularity - a.popularity;
         case 'difficulty':
-          const diffOrder = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
-          return diffOrder[a.difficulty as keyof typeof diffOrder] - diffOrder[b.difficulty as keyof typeof diffOrder];
+          const diffOrder = { Easy: 1, Medium: 2, Hard: 3 };
+          return (
+            diffOrder[a.difficulty as keyof typeof diffOrder] -
+            diffOrder[b.difficulty as keyof typeof diffOrder]
+          );
         default:
           return 0;
       }
@@ -180,9 +205,9 @@ const MusicScreen = observer(() => {
   }, [music, searchQuery, showFavoritesOnly, filters, sortBy]);
 
   const toggleFavorite = useCallback((songId: string) => {
-    setMusic(prev => prev.map(song => 
-      song.id === songId ? { ...song, isFavorite: !song.isFavorite } : song
-    ));
+    setMusic((prev) =>
+      prev.map((song) => (song.id === songId ? { ...song, isFavorite: !song.isFavorite } : song)),
+    );
   }, []);
 
   const formatDuration = (seconds: number) => {
@@ -193,10 +218,14 @@ const MusicScreen = observer(() => {
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'Easy': return '#4CAF50';
-      case 'Medium': return '#FF9800';
-      case 'Hard': return '#F44336';
-      default: return '#AAAAAA';
+      case 'Easy':
+        return '#4CAF50';
+      case 'Medium':
+        return '#FF9800';
+      case 'Hard':
+        return '#F44336';
+      default:
+        return '#AAAAAA';
     }
   };
 
@@ -215,25 +244,27 @@ const MusicScreen = observer(() => {
   };
 
   const getActiveFiltersCount = () => {
-    return filters.genres.length + filters.decades.length + filters.difficulties.length + 
-           filters.languages.length + (filters.hasVideo ? 1 : 0) + (filters.hasLyrics ? 1 : 0) +
-           (showFavoritesOnly ? 1 : 0);
+    return (
+      filters.genres.length +
+      filters.decades.length +
+      filters.difficulties.length +
+      filters.languages.length +
+      (filters.hasVideo ? 1 : 0) +
+      (filters.hasLyrics ? 1 : 0) +
+      (showFavoritesOnly ? 1 : 0)
+    );
   };
 
   const handlePlayPreview = (song: any) => {
-    Alert.alert(
-      'Preview',
-      `Playing preview of "${song.title}" by ${song.artist}`,
-      [{ text: 'OK' }]
-    );
+    Alert.alert('Preview', `Playing preview of "${song.title}" by ${song.artist}`, [
+      { text: 'OK' },
+    ]);
   };
 
   const handleAddToQueue = (song: any) => {
-    Alert.alert(
-      'Added to Queue',
-      `"${song.title}" has been added to your karaoke queue!`,
-      [{ text: 'OK' }]
-    );
+    Alert.alert('Added to Queue', `"${song.title}" has been added to your karaoke queue!`, [
+      { text: 'OK' },
+    ]);
   };
 
   const FilterModal = () => (
@@ -266,25 +297,29 @@ const MusicScreen = observer(() => {
             <View style={styles.filterSection}>
               <Text style={styles.filterSectionTitle}>{item.title}</Text>
               <View style={styles.filterOptions}>
-                {item.options.map(option => (
+                {item.options.map((option) => (
                   <TouchableOpacity
                     key={option}
                     style={[
                       styles.filterOption,
-                      (filters[item.key as keyof typeof filters] as string[]).includes(option) && styles.filterOptionSelected
+                      (filters[item.key as keyof typeof filters] as string[]).includes(option) &&
+                        styles.filterOptionSelected,
                     ]}
                     onPress={() => {
                       const currentValues = filters[item.key as keyof typeof filters] as string[];
                       const newValues = currentValues.includes(option)
-                        ? currentValues.filter(v => v !== option)
+                        ? currentValues.filter((v) => v !== option)
                         : [...currentValues, option];
-                      setFilters(prev => ({ ...prev, [item.key]: newValues }));
+                      setFilters((prev) => ({ ...prev, [item.key]: newValues }));
                     }}
                   >
-                    <Text style={[
-                      styles.filterOptionText,
-                      (filters[item.key as keyof typeof filters] as string[]).includes(option) && styles.filterOptionTextSelected
-                    ]}>
+                    <Text
+                      style={[
+                        styles.filterOptionText,
+                        (filters[item.key as keyof typeof filters] as string[]).includes(option) &&
+                          styles.filterOptionTextSelected,
+                      ]}
+                    >
                       {option}
                     </Text>
                   </TouchableOpacity>
@@ -299,7 +334,7 @@ const MusicScreen = observer(() => {
                 <Text style={styles.switchLabel}>Has Video</Text>
                 <Switch
                   value={filters.hasVideo}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, hasVideo: value }))}
+                  onValueChange={(value) => setFilters((prev) => ({ ...prev, hasVideo: value }))}
                   trackColor={{ false: '#333333', true: '#007AFF' }}
                   thumbColor="#FFFFFF"
                 />
@@ -308,7 +343,7 @@ const MusicScreen = observer(() => {
                 <Text style={styles.switchLabel}>Has Lyrics Display</Text>
                 <Switch
                   value={filters.hasLyrics}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, hasLyrics: value }))}
+                  onValueChange={(value) => setFilters((prev) => ({ ...prev, hasLyrics: value }))}
                   trackColor={{ false: '#333333', true: '#007AFF' }}
                   thumbColor="#FFFFFF"
                 />
@@ -326,10 +361,7 @@ const MusicScreen = observer(() => {
           )}
         />
 
-        <TouchableOpacity
-          style={styles.applyFiltersButton}
-          onPress={() => setShowFilters(false)}
-        >
+        <TouchableOpacity style={styles.applyFiltersButton} onPress={() => setShowFilters(false)}>
           <Text style={styles.applyFiltersButtonText}>Apply Filters</Text>
         </TouchableOpacity>
       </View>
@@ -340,23 +372,29 @@ const MusicScreen = observer(() => {
     <View style={styles.songItem}>
       <View style={styles.songHeader}>
         <View style={styles.songInfo}>
-          <Text style={styles.songTitle} numberOfLines={1}>{item.title}</Text>
-          <Text style={styles.songArtist} numberOfLines={1}>{item.artist}</Text>
+          <Text style={styles.songTitle} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <Text style={styles.songArtist} numberOfLines={1}>
+            {item.artist}
+          </Text>
           <View style={styles.songMeta}>
             <Text style={styles.songGenre}>{item.genre}</Text>
             <Text style={styles.songDot}>•</Text>
             <Text style={styles.songDuration}>{formatDuration(item.duration)}</Text>
             <Text style={styles.songDot}>•</Text>
             <View style={styles.difficultyContainer}>
-              <View style={[styles.difficultyDot, { backgroundColor: getDifficultyColor(item.difficulty) }]} />
+              <View
+                style={[
+                  styles.difficultyDot,
+                  { backgroundColor: getDifficultyColor(item.difficulty) },
+                ]}
+              />
               <Text style={styles.songDifficulty}>{item.difficulty}</Text>
             </View>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.favoriteButton}
-          onPress={() => toggleFavorite(item.id)}
-        >
+        <TouchableOpacity style={styles.favoriteButton} onPress={() => toggleFavorite(item.id)}>
           <Ionicons
             name={item.isFavorite ? 'heart' : 'heart-outline'}
             size={24}
@@ -385,10 +423,7 @@ const MusicScreen = observer(() => {
       </View>
 
       <View style={styles.songActions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => handlePlayPreview(item)}
-        >
+        <TouchableOpacity style={styles.actionButton} onPress={() => handlePlayPreview(item)}>
           <Ionicons name="play" size={16} color="#007AFF" />
           <Text style={styles.actionButtonText}>Preview</Text>
         </TouchableOpacity>
@@ -426,7 +461,11 @@ const MusicScreen = observer(() => {
           style={[styles.filterButton, getActiveFiltersCount() > 0 && styles.filterButtonActive]}
           onPress={() => setShowFilters(true)}
         >
-          <Ionicons name="filter" size={20} color={getActiveFiltersCount() > 0 ? '#FFFFFF' : '#AAAAAA'} />
+          <Ionicons
+            name="filter"
+            size={20}
+            color={getActiveFiltersCount() > 0 ? '#FFFFFF' : '#AAAAAA'}
+          />
           {getActiveFiltersCount() > 0 && (
             <View style={styles.filterBadge}>
               <Text style={styles.filterBadgeText}>{getActiveFiltersCount()}</Text>
@@ -438,16 +477,13 @@ const MusicScreen = observer(() => {
       {/* Sort Options */}
       <View style={styles.sortContainer}>
         <Text style={styles.sortLabel}>Sort by:</Text>
-        {['title', 'artist', 'popularity', 'difficulty'].map(option => (
+        {['title', 'artist', 'popularity', 'difficulty'].map((option) => (
           <TouchableOpacity
             key={option}
             style={[styles.sortOption, sortBy === option && styles.sortOptionActive]}
             onPress={() => setSortBy(option as any)}
           >
-            <Text style={[
-              styles.sortOptionText,
-              sortBy === option && styles.sortOptionTextActive
-            ]}>
+            <Text style={[styles.sortOptionText, sortBy === option && styles.sortOptionTextActive]}>
               {option.charAt(0).toUpperCase() + option.slice(1)}
             </Text>
           </TouchableOpacity>
@@ -477,7 +513,7 @@ const MusicScreen = observer(() => {
         <FlatList
           data={filteredMusic}
           renderItem={SongItem}
-          keyExtractor={item => item.id}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={() => (

@@ -89,6 +89,8 @@ jobs:
             --set-env-vars FRONTEND_URL=https://karaoke-hub.com \
             --set-env-vars INSTANCE_CONNECTION_NAME=heroic-footing-460117-k8:us-central1:accountant \
             --update-secrets GOOGLE_MAPS_API_KEY=KARAOKE_HUB_GOOGLE_MAPS_API_KEY:latest \
+            --update-secrets GOOGLE_MAPS_SERVER_API_KEY=KARAOKE_HUB_GOOGLE_MAPS_SERVER_KEY:latest \
+            --update-secrets VITE_GOOGLE_MAPS_CLIENT_KEY=KARAOKE_HUB_GOOGLE_MAPS_CLIENT_KEY:latest \
             --update-secrets DATABASE_HOST=KARAOKE_HUB_DB_HOST:latest \
             --update-secrets DATABASE_PORT=KARAOKE_HUB_DB_PORT:latest \
             --update-secrets DATABASE_NAME=KARAOKE_HUB_DB_NAME:latest \

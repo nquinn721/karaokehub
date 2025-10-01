@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import { observer } from 'mobx-react-lite';
+import { useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -14,8 +15,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { observer } from 'mobx-react-lite';
-import { authStore } from '../stores';
 
 const { width } = Dimensions.get('window');
 
@@ -23,7 +22,8 @@ const { width } = Dimensions.get('window');
 const mockEvent = {
   id: 'event_1',
   title: 'Friday Night Karaoke Blast',
-  description: 'Join us for the best karaoke night in town! Professional sound system, huge song library, and great drink specials. Perfect for beginners and seasoned performers alike.',
+  description:
+    'Join us for the best karaoke night in town! Professional sound system, huge song library, and great drink specials. Perfect for beginners and seasoned performers alike.',
   venue: {
     name: 'The Blue Moon Tavern',
     address: '123 Music Street, Downtown, CA 90210',
@@ -127,17 +127,17 @@ const EventDetailsScreen = observer(() => {
   };
 
   const handleToggleAttending = () => {
-    setEvent(prev => ({ ...prev, isAttending: !prev.isAttending }));
+    setEvent((prev) => ({ ...prev, isAttending: !prev.isAttending }));
     Alert.alert(
       event.isAttending ? 'Removed from Calendar' : 'Added to Calendar',
-      event.isAttending 
-        ? 'Event removed from your calendar' 
-        : 'Event added to your calendar with notifications'
+      event.isAttending
+        ? 'Event removed from your calendar'
+        : 'Event added to your calendar with notifications',
     );
   };
 
   const handleToggleFavorite = () => {
-    setEvent(prev => ({ ...prev, isFavorite: !prev.isFavorite }));
+    setEvent((prev) => ({ ...prev, isFavorite: !prev.isFavorite }));
   };
 
   const handleCallVenue = () => {
@@ -154,14 +154,13 @@ const EventDetailsScreen = observer(() => {
   };
 
   const handleContactDJ = () => {
-    Alert.alert(
-      'Contact DJ',
-      `Send a message to ${event.dj.name}?`,
-      [
-        { text: 'Cancel' },
-        { text: 'Send Message', onPress: () => Alert.alert('Message', 'Message feature coming soon!') }
-      ]
-    );
+    Alert.alert('Contact DJ', `Send a message to ${event.dj.name}?`, [
+      { text: 'Cancel' },
+      {
+        text: 'Send Message',
+        onPress: () => Alert.alert('Message', 'Message feature coming soon!'),
+      },
+    ]);
   };
 
   const handleShareEvent = async () => {
@@ -197,7 +196,7 @@ const EventDetailsScreen = observer(() => {
           name={i <= rating ? 'star' : 'star-outline'}
           size={size}
           color="#FFD700"
-        />
+        />,
       );
     }
     return <View style={styles.starsContainer}>{stars}</View>;
@@ -231,10 +230,7 @@ const EventDetailsScreen = observer(() => {
               <Text style={styles.shareOptionText}>More</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity 
-            style={styles.shareCancel}
-            onPress={() => setShowShareModal(false)}
-          >
+          <TouchableOpacity style={styles.shareCancel} onPress={() => setShowShareModal(false)}>
             <Text style={styles.shareCancelText}>Cancel</Text>
           </TouchableOpacity>
         </View>
@@ -263,11 +259,8 @@ const EventDetailsScreen = observer(() => {
         <ScrollView style={styles.reviewContent}>
           <Text style={styles.reviewLabel}>Rating</Text>
           <View style={styles.ratingSelector}>
-            {[1, 2, 3, 4, 5].map(rating => (
-              <TouchableOpacity
-                key={rating}
-                onPress={() => setReviewRating(rating)}
-              >
+            {[1, 2, 3, 4, 5].map((rating) => (
+              <TouchableOpacity key={rating} onPress={() => setReviewRating(rating)}>
                 <Ionicons
                   name={rating <= reviewRating ? 'star' : 'star-outline'}
                   size={32}
@@ -302,20 +295,17 @@ const EventDetailsScreen = observer(() => {
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.heroActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.heroActionButton}
               onPress={() => setShowShareModal(true)}
             >
               <Ionicons name="share" size={20} color="#FFFFFF" />
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.heroActionButton}
-              onPress={handleToggleFavorite}
-            >
-              <Ionicons 
-                name={event.isFavorite ? 'heart' : 'heart-outline'} 
-                size={20} 
-                color={event.isFavorite ? '#FF6B6B' : '#FFFFFF'} 
+            <TouchableOpacity style={styles.heroActionButton} onPress={handleToggleFavorite}>
+              <Ionicons
+                name={event.isFavorite ? 'heart' : 'heart-outline'}
+                size={20}
+                color={event.isFavorite ? '#FF6B6B' : '#FFFFFF'}
               />
             </TouchableOpacity>
           </View>
@@ -350,14 +340,14 @@ const EventDetailsScreen = observer(() => {
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.actionButton, styles.primaryButton]}
           onPress={handleToggleAttending}
         >
-          <Ionicons 
-            name={event.isAttending ? 'calendar' : 'calendar-outline'} 
-            size={20} 
-            color="#FFFFFF" 
+          <Ionicons
+            name={event.isAttending ? 'calendar' : 'calendar-outline'}
+            size={20}
+            color="#FFFFFF"
           />
           <Text style={styles.primaryButtonText}>
             {event.isAttending ? 'Remove from Calendar' : 'Add to Calendar'}
@@ -368,16 +358,11 @@ const EventDetailsScreen = observer(() => {
       {/* Description */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>About This Event</Text>
-        <Text 
-          style={styles.description}
-          numberOfLines={expandedDescription ? undefined : 3}
-        >
+        <Text style={styles.description} numberOfLines={expandedDescription ? undefined : 3}>
           {event.description}
         </Text>
         <TouchableOpacity onPress={() => setExpandedDescription(!expandedDescription)}>
-          <Text style={styles.expandText}>
-            {expandedDescription ? 'Show Less' : 'Show More'}
-          </Text>
+          <Text style={styles.expandText}>{expandedDescription ? 'Show Less' : 'Show More'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -481,14 +466,14 @@ const EventDetailsScreen = observer(() => {
       <View style={styles.section}>
         <View style={styles.reviewsHeader}>
           <Text style={styles.sectionTitle}>Reviews</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.writeReviewButton}
             onPress={() => setShowReviewModal(true)}
           >
             <Text style={styles.writeReviewText}>Write Review</Text>
           </TouchableOpacity>
         </View>
-        
+
         {event.reviews.map((review) => (
           <View key={review.id} style={styles.reviewItem}>
             <View style={styles.reviewHeader}>

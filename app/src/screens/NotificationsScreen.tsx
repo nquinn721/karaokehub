@@ -1,15 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
 import { observer } from 'mobx-react-lite';
+import { useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { authStore } from '../stores';
 
 interface NotificationSetting {
@@ -40,7 +32,7 @@ const NotificationsScreen = observer(() => {
     {
       id: 'show-reminders',
       title: 'Show Reminders',
-      description: 'Reminders about upcoming shows you\'re interested in',
+      description: "Reminders about upcoming shows you're interested in",
       enabled: true,
       category: 'shows',
     },
@@ -58,7 +50,7 @@ const NotificationsScreen = observer(() => {
       enabled: false,
       category: 'shows',
     },
-    
+
     // DJ-specific notifications
     {
       id: 'show-submissions',
@@ -87,7 +79,7 @@ const NotificationsScreen = observer(() => {
       requiresAuth: true,
       isPremium: true,
     },
-    
+
     // Account notifications
     {
       id: 'login-alerts',
@@ -112,7 +104,7 @@ const NotificationsScreen = observer(() => {
       category: 'account',
       requiresAuth: true,
     },
-    
+
     // Marketing notifications
     {
       id: 'promotions',
@@ -135,7 +127,7 @@ const NotificationsScreen = observer(() => {
       enabled: false,
       category: 'marketing',
     },
-    
+
     // System notifications
     {
       id: 'maintenance',
@@ -156,40 +148,37 @@ const NotificationsScreen = observer(() => {
   const isDJ = authStore.user?.djId && authStore.user?.isDjSubscriptionActive;
 
   const handleToggleNotification = (id: string) => {
-    const setting = notificationSettings.find(s => s.id === id);
-    
+    const setting = notificationSettings.find((s) => s.id === id);
+
     if (setting?.isPremium && !isDJ) {
       Alert.alert(
         'Premium Feature',
         'This notification setting is available for DJ subscribers only.',
         [
           { text: 'Cancel' },
-          { text: 'Upgrade to DJ', onPress: () => Alert.alert('Redirect', 'Would redirect to subscription screen') }
-        ]
+          {
+            text: 'Upgrade to DJ',
+            onPress: () => Alert.alert('Redirect', 'Would redirect to subscription screen'),
+          },
+        ],
       );
       return;
     }
 
-    setNotificationSettings(prev => 
-      prev.map(setting => 
-        setting.id === id 
-          ? { ...setting, enabled: !setting.enabled }
-          : setting
-      )
+    setNotificationSettings((prev) =>
+      prev.map((setting) =>
+        setting.id === id ? { ...setting, enabled: !setting.enabled } : setting,
+      ),
     );
   };
 
   const handleTogglePushNotifications = async (enabled: boolean) => {
     if (enabled) {
       // Request permission for notifications
-      Alert.alert(
-        'Enable Notifications',
-        'Allow KaraokeHub to send you push notifications?',
-        [
-          { text: 'Don\'t Allow', onPress: () => setPushEnabled(false) },
-          { text: 'Allow', onPress: () => setPushEnabled(true) }
-        ]
-      );
+      Alert.alert('Enable Notifications', 'Allow KaraokeHub to send you push notifications?', [
+        { text: "Don't Allow", onPress: () => setPushEnabled(false) },
+        { text: 'Allow', onPress: () => setPushEnabled(true) },
+      ]);
     } else {
       setPushEnabled(false);
     }
@@ -213,37 +202,50 @@ const NotificationsScreen = observer(() => {
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'shows': return 'musical-note';
-      case 'account': return 'person';
-      case 'marketing': return 'megaphone';
-      case 'system': return 'settings';
-      default: return 'notifications';
+      case 'shows':
+        return 'musical-note';
+      case 'account':
+        return 'person';
+      case 'marketing':
+        return 'megaphone';
+      case 'system':
+        return 'settings';
+      default:
+        return 'notifications';
     }
   };
 
   const getCategoryTitle = (category: string) => {
     switch (category) {
-      case 'shows': return 'Shows & Events';
-      case 'account': return 'Account & Security';
-      case 'marketing': return 'Marketing & Updates';
-      case 'system': return 'System Notifications';
-      default: return 'Other';
+      case 'shows':
+        return 'Shows & Events';
+      case 'account':
+        return 'Account & Security';
+      case 'marketing':
+        return 'Marketing & Updates';
+      case 'system':
+        return 'System Notifications';
+      default:
+        return 'Other';
     }
   };
 
-  const groupedSettings = notificationSettings.reduce((groups, setting) => {
-    const category = setting.category;
-    if (!groups[category]) {
-      groups[category] = [];
-    }
-    groups[category].push(setting);
-    return groups;
-  }, {} as Record<string, NotificationSetting[]>);
+  const groupedSettings = notificationSettings.reduce(
+    (groups, setting) => {
+      const category = setting.category;
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push(setting);
+      return groups;
+    },
+    {} as Record<string, NotificationSetting[]>,
+  );
 
   const NotificationItem = ({ setting }: { setting: NotificationSetting }) => {
     const isDisabled = setting.requiresAuth && !authStore.user;
     const isPremiumLocked = setting.isPremium && !isDJ;
-    
+
     return (
       <View style={[styles.notificationItem, isDisabled && styles.disabledItem]}>
         <View style={styles.notificationContent}>
@@ -354,7 +356,7 @@ const NotificationsScreen = observer(() => {
             <Text style={styles.categoryTitle}>{getCategoryTitle(category)}</Text>
           </View>
           <View style={styles.notificationsList}>
-            {settings.map(setting => (
+            {settings.map((setting) => (
               <NotificationItem key={setting.id} setting={setting} />
             ))}
           </View>
@@ -365,16 +367,14 @@ const NotificationsScreen = observer(() => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.quickActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.quickActionButton}
             onPress={() => {
               // Enable all show notifications
-              setNotificationSettings(prev => 
-                prev.map(setting => 
-                  setting.category === 'shows' 
-                    ? { ...setting, enabled: true }
-                    : setting
-                )
+              setNotificationSettings((prev) =>
+                prev.map((setting) =>
+                  setting.category === 'shows' ? { ...setting, enabled: true } : setting,
+                ),
               );
             }}
           >
@@ -382,16 +382,14 @@ const NotificationsScreen = observer(() => {
             <Text style={styles.quickActionText}>Enable All Show Notifications</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.quickActionButton}
             onPress={() => {
               // Disable marketing notifications
-              setNotificationSettings(prev => 
-                prev.map(setting => 
-                  setting.category === 'marketing' 
-                    ? { ...setting, enabled: false }
-                    : setting
-                )
+              setNotificationSettings((prev) =>
+                prev.map((setting) =>
+                  setting.category === 'marketing' ? { ...setting, enabled: false } : setting,
+                ),
               );
             }}
           >
@@ -399,7 +397,7 @@ const NotificationsScreen = observer(() => {
             <Text style={styles.quickActionText}>Disable Marketing</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.quickActionButton, styles.dangerAction]}
             onPress={() => {
               Alert.alert(
@@ -407,31 +405,33 @@ const NotificationsScreen = observer(() => {
                 'This will turn off all notifications except critical system alerts. Are you sure?',
                 [
                   { text: 'Cancel' },
-                  { 
-                    text: 'Disable All', 
+                  {
+                    text: 'Disable All',
                     style: 'destructive',
                     onPress: () => {
-                      setNotificationSettings(prev => 
-                        prev.map(setting => 
-                          setting.category === 'system' 
-                            ? setting  // Keep system notifications
-                            : { ...setting, enabled: false }
-                        )
+                      setNotificationSettings((prev) =>
+                        prev.map((setting) =>
+                          setting.category === 'system'
+                            ? setting // Keep system notifications
+                            : { ...setting, enabled: false },
+                        ),
                       );
-                    }
-                  }
-                ]
+                    },
+                  },
+                ],
               );
             }}
           >
             <Ionicons name="notifications-off" size={20} color="#FF6B6B" />
-            <Text style={[styles.quickActionText, styles.dangerText]}>Disable All (except system)</Text>
+            <Text style={[styles.quickActionText, styles.dangerText]}>
+              Disable All (except system)
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Save Button */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
         onPress={handleSaveSettings}
         disabled={isLoading}
@@ -444,7 +444,8 @@ const NotificationsScreen = observer(() => {
       {/* Info Footer */}
       <View style={styles.infoFooter}>
         <Text style={styles.infoText}>
-          You can change these settings anytime. Critical security and system notifications cannot be disabled.
+          You can change these settings anytime. Critical security and system notifications cannot
+          be disabled.
         </Text>
       </View>
     </ScrollView>

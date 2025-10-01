@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import { observer } from 'mobx-react-lite';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -7,14 +8,12 @@ import {
   FlatList,
   Image,
   Modal,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { observer } from 'mobx-react-lite';
 import { authStore } from '../stores';
 
 const { width } = Dimensions.get('window');
@@ -122,19 +121,28 @@ const AvatarSelectionScreen = observer(() => {
   const [showPreview, setShowPreview] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const categories = ['All', 'Music Icons', 'Retro', 'Alternative', 'Classical', 'Fantasy', 'Seasonal'];
+  const categories = [
+    'All',
+    'Music Icons',
+    'Retro',
+    'Alternative',
+    'Classical',
+    'Fantasy',
+    'Seasonal',
+  ];
 
   // Get current user's selected avatar
   const currentAvatarId = authStore.user?.avatar || '1';
 
   // Filter and sort avatars
   const filteredAvatars = React.useMemo(() => {
-    let result = avatars.filter(avatar => {
+    let result = avatars.filter((avatar) => {
       // Search filter
-      const matchesSearch = !searchQuery || 
+      const matchesSearch =
+        !searchQuery ||
         avatar.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         avatar.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        avatar.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+        avatar.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
 
       // Category filter
       const matchesCategory = selectedCategory === 'All' || avatar.category === selectedCategory;
@@ -171,8 +179,8 @@ const AvatarSelectionScreen = observer(() => {
         `"${avatar.name}" costs ${avatar.price} coins. Would you like to unlock it?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: `Unlock for ${avatar.price} coins`, onPress: () => handlePurchaseAvatar(avatar) }
-        ]
+          { text: `Unlock for ${avatar.price} coins`, onPress: () => handlePurchaseAvatar(avatar) },
+        ],
       );
       return;
     }
@@ -181,7 +189,7 @@ const AvatarSelectionScreen = observer(() => {
     try {
       // TODO: Implement actual avatar selection API call
       Alert.alert('Avatar Selected', `You are now using "${avatar.name}"!`);
-      
+
       // Update local state
       if (authStore.user) {
         authStore.user.avatar = avatar.id;
@@ -198,11 +206,9 @@ const AvatarSelectionScreen = observer(() => {
     try {
       // TODO: Implement actual purchase API call
       Alert.alert('Purchase Successful', `You have unlocked "${avatar.name}"!`);
-      
+
       // Update local state
-      setAvatars(prev => prev.map(a => 
-        a.id === avatar.id ? { ...a, unlocked: true } : a
-      ));
+      setAvatars((prev) => prev.map((a) => (a.id === avatar.id ? { ...a, unlocked: true } : a)));
     } catch (error) {
       Alert.alert('Purchase Failed', 'Not enough coins or purchase failed.');
     } finally {
@@ -222,7 +228,7 @@ const AvatarSelectionScreen = observer(() => {
 
   const AvatarCard = ({ item }: { item: any }) => {
     const isSelected = currentAvatarId === item.id;
-    
+
     return (
       <TouchableOpacity
         style={[styles.avatarCard, isSelected && styles.selectedAvatarCard]}
@@ -234,7 +240,7 @@ const AvatarSelectionScreen = observer(() => {
             <Ionicons name="checkmark" size={16} color="#FFFFFF" />
           </View>
         )}
-        
+
         <View style={styles.avatarImageContainer}>
           <Image source={{ uri: item.imageUrl }} style={styles.avatarImage} />
           {!item.unlocked && (
@@ -245,27 +251,25 @@ const AvatarSelectionScreen = observer(() => {
         </View>
 
         <View style={styles.avatarInfo}>
-          <Text style={styles.avatarName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.avatarCategory} numberOfLines={1}>{item.category}</Text>
-          
+          <Text style={styles.avatarName} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={styles.avatarCategory} numberOfLines={1}>
+            {item.category}
+          </Text>
+
           <View style={styles.avatarMeta}>
             <View style={styles.popularityContainer}>
               <Ionicons name="star" size={12} color="#FFD700" />
               <Text style={styles.popularityText}>{item.popularity}%</Text>
             </View>
-            <Text style={[
-              styles.priceText,
-              item.unlocked ? styles.freeText : styles.paidText
-            ]}>
+            <Text style={[styles.priceText, item.unlocked ? styles.freeText : styles.paidText]}>
               {formatPrice(item.price)}
             </Text>
           </View>
         </View>
 
-        <TouchableOpacity
-          style={styles.previewButton}
-          onPress={() => handlePreviewAvatar(item)}
-        >
+        <TouchableOpacity style={styles.previewButton} onPress={() => handlePreviewAvatar(item)}>
           <Ionicons name="eye" size={16} color="#007AFF" />
         </TouchableOpacity>
       </TouchableOpacity>
@@ -313,7 +317,11 @@ const AvatarSelectionScreen = observer(() => {
                   <Text style={styles.statText}>{selectedAvatar.popularity}% popularity</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Ionicons name={selectedAvatar.unlocked ? 'checkmark-circle' : 'lock-closed'} size={16} color={selectedAvatar.unlocked ? '#4CAF50' : '#FF6B6B'} />
+                  <Ionicons
+                    name={selectedAvatar.unlocked ? 'checkmark-circle' : 'lock-closed'}
+                    size={16}
+                    color={selectedAvatar.unlocked ? '#4CAF50' : '#FF6B6B'}
+                  />
                   <Text style={styles.statText}>
                     {selectedAvatar.unlocked ? 'Unlocked' : formatPrice(selectedAvatar.price)}
                   </Text>
@@ -333,12 +341,11 @@ const AvatarSelectionScreen = observer(() => {
                 disabled={isLoading || currentAvatarId === selectedAvatar.id}
               >
                 <Text style={styles.selectAvatarButtonText}>
-                  {currentAvatarId === selectedAvatar.id 
+                  {currentAvatarId === selectedAvatar.id
                     ? 'Currently Selected'
-                    : selectedAvatar.unlocked 
-                      ? 'Select Avatar' 
-                      : `Unlock for ${selectedAvatar.price} coins`
-                  }
+                    : selectedAvatar.unlocked
+                      ? 'Select Avatar'
+                      : `Unlock for ${selectedAvatar.price} coins`}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -387,14 +394,16 @@ const AvatarSelectionScreen = observer(() => {
             <TouchableOpacity
               style={[
                 styles.categoryChip,
-                selectedCategory === item && styles.selectedCategoryChip
+                selectedCategory === item && styles.selectedCategoryChip,
               ]}
               onPress={() => setSelectedCategory(item)}
             >
-              <Text style={[
-                styles.categoryChipText,
-                selectedCategory === item && styles.selectedCategoryChipText
-              ]}>
+              <Text
+                style={[
+                  styles.categoryChipText,
+                  selectedCategory === item && styles.selectedCategoryChipText,
+                ]}
+              >
                 {item}
               </Text>
             </TouchableOpacity>
@@ -407,35 +416,33 @@ const AvatarSelectionScreen = observer(() => {
       <View style={styles.filtersContainer}>
         <View style={styles.filterRow}>
           <Text style={styles.filterLabel}>Sort by:</Text>
-          {['popularity', 'name', 'price'].map(option => (
+          {['popularity', 'name', 'price'].map((option) => (
             <TouchableOpacity
               key={option}
               style={[styles.sortOption, sortBy === option && styles.sortOptionActive]}
               onPress={() => setSortBy(option as any)}
             >
-              <Text style={[
-                styles.sortOptionText,
-                sortBy === option && styles.sortOptionTextActive
-              ]}>
+              <Text
+                style={[styles.sortOptionText, sortBy === option && styles.sortOptionTextActive]}
+              >
                 {option.charAt(0).toUpperCase() + option.slice(1)}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
-        
+
         <TouchableOpacity
           style={[styles.filterToggle, showUnlockedOnly && styles.filterToggleActive]}
           onPress={() => setShowUnlockedOnly(!showUnlockedOnly)}
         >
-          <Ionicons 
-            name={showUnlockedOnly ? 'checkmark-circle' : 'checkmark-circle-outline'} 
-            size={16} 
-            color={showUnlockedOnly ? '#FFFFFF' : '#AAAAAA'} 
+          <Ionicons
+            name={showUnlockedOnly ? 'checkmark-circle' : 'checkmark-circle-outline'}
+            size={16}
+            color={showUnlockedOnly ? '#FFFFFF' : '#AAAAAA'}
           />
-          <Text style={[
-            styles.filterToggleText,
-            showUnlockedOnly && styles.filterToggleTextActive
-          ]}>
+          <Text
+            style={[styles.filterToggleText, showUnlockedOnly && styles.filterToggleTextActive]}
+          >
             Unlocked only
           </Text>
         </TouchableOpacity>
@@ -458,7 +465,7 @@ const AvatarSelectionScreen = observer(() => {
         <FlatList
           data={filteredAvatars}
           renderItem={AvatarCard}
-          keyExtractor={item => item.id}
+          keyExtractor={(item) => item.id}
           numColumns={2}
           contentContainerStyle={styles.avatarsGrid}
           columnWrapperStyle={styles.avatarRow}

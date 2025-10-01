@@ -27,24 +27,46 @@ spec:
               cpu: 2000m
               memory: 2Gi
           env:
+            # Application Configuration
             - name: NODE_ENV
               value: 'production'
             - name: NODE_OPTIONS
               value: '--max-old-space-size=1536'
+            
+            # URL Configuration
             - name: FRONTEND_URL
               value: 'https://karaoke-hub.com'
             - name: BACKEND_URL
               value: 'https://karaoke-hub.com'
             - name: ALLOWED_ORIGINS
               value: 'https://karaoke-hub.com'
+            
+            # Database Configuration (Production Cloud SQL)
             - name: DATABASE_SOCKET_PATH
               value: '/cloudsql/heroic-footing-460117-k8:us-central1:accountant'
-            - name: DEPLOYMENT_TIME
-              value: '2025-08-16-19-30'
             - name: DATABASE_NAME
               value: 'karaoke-hub'
             - name: DATABASE_SYNCHRONIZE
-              value: 'true'
+              value: 'false'
+            
+            # Production Features
+            - name: PRODUCTION_UPLOAD_TOKEN
+              value: 'karaoke-hub-data-integration-system'
+            
+            # Puppeteer Configuration
+            - name: PUPPETEER_EXECUTABLE_PATH
+              value: '/usr/bin/chromium-browser'
+            
+            # Stripe Configuration (Product IDs - not sensitive)
+            - name: STRIPE_AD_FREE_PRICE_ID
+              value: 'price_1S08ls2lgQyeTycPCNCNAdxD'
+            - name: STRIPE_PREMIUM_PRICE_ID
+              value: 'price_1S08lu2lgQyeTycPfKtS3gAp'
+            
+            # iTunes API Configuration
+            - name: ITUNES_API_BASE_URL
+              value: 'https://itunes.apple.com'
+            # Database Credentials (Secrets)
             - name: DATABASE_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -55,11 +77,15 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_DB_PASSWORD
                   key: latest
+            
+            # JWT Secret
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: KARAOKE_HUB_JWT_SECRET
                   key: latest
+            
+            # Google OAuth Credentials (Secrets)
             - name: GOOGLE_CLIENT_ID
               valueFrom:
                 secretKeyRef:
@@ -70,11 +96,15 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_GOOGLE_CLIENT_SECRET
                   key: latest
-            - name: GEMINI_API_KEY
+            
+            # Google Maps API Keys (Secrets)
+            - name: GOOGLE_MAPS_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: KARAOKE_HUB_GEMINI_API_KEY
+                  name: KARAOKE_HUB_GOOGLE_MAPS_API_KEY
                   key: latest
+            
+            # Facebook OAuth Credentials (Secrets)
             - name: FACEBOOK_APP_ID
               valueFrom:
                 secretKeyRef:
@@ -100,20 +130,20 @@ spec:
                 secretKeyRef:
                   name: fb-session-cookies
                   key: latest
+            
+            # AI/ML API Keys (Secrets)
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: KARAOKE_HUB_GEMINI_API_KEY
+                  key: latest
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: KARAOKE_HUB_OPENAI_API_KEY
                   key: latest
-            - name: GOOGLE_MAPS_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: KARAOKE_HUB_GOOGLE_MAPS_API_KEY
-                  key: latest
-            # Music API Configuration
-            # iTunes API is used for music search
-            - name: ITUNES_API_BASE_URL
-              value: 'https://itunes.apple.com'
+            
+            # Stripe Credentials (Secrets)
             - name: STRIPE_SECRET_KEY
               valueFrom:
                 secretKeyRef:
@@ -129,10 +159,6 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_STRIPE_WEBHOOK_SECRET
                   key: latest
-            - name: STRIPE_AD_FREE_PRICE_ID
-              value: 'price_1S08ls2lgQyeTycPCNCNAdxD'
-            - name: STRIPE_PREMIUM_PRICE_ID
-              value: 'price_1S08lu2lgQyeTycPfKtS3gAp'
             - name: STRIPE_DJ_SUBSCRIPTION_PRICE_ID
               valueFrom:
                 secretKeyRef:
@@ -143,8 +169,6 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_STRIPE_DJ_WEBHOOK_SECRET
                   key: latest
-            - name: PUPPETEER_EXECUTABLE_PATH
-              value: '/usr/bin/chromium-browser'
             # Ollama configuration (disabled in Cloud Run by default)
             # Uncomment and set these if you deploy a separate Ollama service:
             # - name: ENABLE_OLLAMA

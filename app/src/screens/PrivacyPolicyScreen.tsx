@@ -1,13 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import {
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const PrivacyPolicyScreen = () => {
   const handleContactSupport = () => {
@@ -21,9 +14,7 @@ const PrivacyPolicyScreen = () => {
   const PolicySection = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionContent}>
-        {children}
-      </View>
+      <View style={styles.sectionContent}>{children}</View>
     </View>
   );
 
@@ -56,16 +47,19 @@ const PrivacyPolicyScreen = () => {
           <Text style={styles.summaryTitle}>Quick Summary</Text>
         </View>
         <Text style={styles.summaryText}>
-          We respect your privacy and are committed to protecting your personal data. We only collect information necessary to provide our karaoke services and never sell your data to third parties.
+          We respect your privacy and are committed to protecting your personal data. We only
+          collect information necessary to provide our karaoke services and never sell your data to
+          third parties.
         </Text>
       </View>
 
       {/* Policy Content */}
       <PolicySection title="1. Information We Collect">
         <PolicyText>
-          We collect information you provide directly to us and information we obtain automatically when you use our services.
+          We collect information you provide directly to us and information we obtain automatically
+          when you use our services.
         </PolicyText>
-        
+
         <Text style={styles.subsectionTitle}>Information You Provide:</Text>
         <BulletPoint>Account information (email, username, profile details)</BulletPoint>
         <BulletPoint>Karaoke show details you submit</BulletPoint>
@@ -83,7 +77,7 @@ const PrivacyPolicyScreen = () => {
         <PolicyText>
           We use the information we collect to provide, maintain, and improve our services:
         </PolicyText>
-        
+
         <BulletPoint>Provide and personalize the KaraokeHub experience</BulletPoint>
         <BulletPoint>Process DJ subscriptions and payments</BulletPoint>
         <BulletPoint>Send important service updates and notifications</BulletPoint>
@@ -94,10 +88,13 @@ const PrivacyPolicyScreen = () => {
 
       <PolicySection title="3. Information Sharing">
         <PolicyText>
-          We do not sell, trade, or rent your personal information to third parties. We may share information in limited circumstances:
+          We do not sell, trade, or rent your personal information to third parties. We may share
+          information in limited circumstances:
         </PolicyText>
-        
-        <BulletPoint>With service providers who help operate our app (hosting, analytics, payment processing)</BulletPoint>
+
+        <BulletPoint>
+          With service providers who help operate our app (hosting, analytics, payment processing)
+        </BulletPoint>
         <BulletPoint>When required by law or to protect rights and safety</BulletPoint>
         <BulletPoint>With your consent for specific purposes</BulletPoint>
         <BulletPoint>In connection with a business transfer or merger</BulletPoint>
@@ -107,7 +104,7 @@ const PrivacyPolicyScreen = () => {
         <PolicyText>
           We implement appropriate security measures to protect your information:
         </PolicyText>
-        
+
         <BulletPoint>Encryption of data in transit and at rest</BulletPoint>
         <BulletPoint>Regular security audits and monitoring</BulletPoint>
         <BulletPoint>Limited access to personal data on need-to-know basis</BulletPoint>
@@ -115,10 +112,8 @@ const PrivacyPolicyScreen = () => {
       </PolicySection>
 
       <PolicySection title="5. Your Privacy Rights">
-        <PolicyText>
-          You have rights regarding your personal information:
-        </PolicyText>
-        
+        <PolicyText>You have rights regarding your personal information:</PolicyText>
+
         <BulletPoint>Access: Request a copy of your personal data</BulletPoint>
         <BulletPoint>Correction: Update or correct inaccurate information</BulletPoint>
         <BulletPoint>Deletion: Request deletion of your account and data</BulletPoint>
@@ -127,10 +122,8 @@ const PrivacyPolicyScreen = () => {
       </PolicySection>
 
       <PolicySection title="6. Cookies and Tracking">
-        <PolicyText>
-          Our app uses various technologies to enhance your experience:
-        </PolicyText>
-        
+        <PolicyText>Our app uses various technologies to enhance your experience:</PolicyText>
+
         <BulletPoint>Essential cookies for app functionality</BulletPoint>
         <BulletPoint>Analytics cookies to understand usage patterns</BulletPoint>
         <BulletPoint>Performance cookies to optimize app speed</BulletPoint>
@@ -139,21 +132,25 @@ const PrivacyPolicyScreen = () => {
 
       <PolicySection title="7. Children's Privacy">
         <PolicyText>
-          Our services are not intended for children under 13. We do not knowingly collect personal information from children under 13. If you believe we have collected such information, please contact us immediately.
+          Our services are not intended for children under 13. We do not knowingly collect personal
+          information from children under 13. If you believe we have collected such information,
+          please contact us immediately.
         </PolicyText>
       </PolicySection>
 
       <PolicySection title="8. International Data Transfers">
         <PolicyText>
-          Your information may be processed and stored in countries other than your own. We ensure appropriate safeguards are in place to protect your data during international transfers.
+          Your information may be processed and stored in countries other than your own. We ensure
+          appropriate safeguards are in place to protect your data during international transfers.
         </PolicyText>
       </PolicySection>
 
       <PolicySection title="9. Data Retention">
         <PolicyText>
-          We retain your information only as long as necessary to provide services and comply with legal obligations:
+          We retain your information only as long as necessary to provide services and comply with
+          legal obligations:
         </PolicyText>
-        
+
         <BulletPoint>Account data: Until you delete your account</BulletPoint>
         <BulletPoint>Show information: As long as publicly visible</BulletPoint>
         <BulletPoint>Analytics data: Up to 26 months</BulletPoint>
@@ -162,9 +159,10 @@ const PrivacyPolicyScreen = () => {
 
       <PolicySection title="10. Changes to This Policy">
         <PolicyText>
-          We may update this Privacy Policy from time to time. We will notify you of any material changes by:
+          We may update this Privacy Policy from time to time. We will notify you of any material
+          changes by:
         </PolicyText>
-        
+
         <BulletPoint>Posting the new policy in the app</BulletPoint>
         <BulletPoint>Sending email notifications for significant changes</BulletPoint>
         <BulletPoint>Requiring acceptance for major updates</BulletPoint>
@@ -174,15 +172,16 @@ const PrivacyPolicyScreen = () => {
       <View style={styles.contactSection}>
         <Text style={styles.contactTitle}>Questions About Privacy?</Text>
         <Text style={styles.contactDescription}>
-          If you have any questions about this Privacy Policy or our data practices, we're here to help.
+          If you have any questions about this Privacy Policy or our data practices, we're here to
+          help.
         </Text>
-        
+
         <View style={styles.contactOptions}>
           <TouchableOpacity style={styles.contactButton} onPress={handleContactSupport}>
             <Ionicons name="mail" size={20} color="#007AFF" />
             <Text style={styles.contactButtonText}>Email Privacy Team</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.contactButton} onPress={handleOpenWebPolicy}>
             <Ionicons name="globe" size={20} color="#007AFF" />
             <Text style={styles.contactButtonText}>View Web Version</Text>

@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import { observer } from 'mobx-react-lite';
+import { useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -13,9 +14,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { observer } from 'mobx-react-lite';
-import { authStore, uiStore } from '../stores';
 import CustomHeader from '../components/CustomHeader';
+import { authStore, uiStore } from '../stores';
 
 const { width } = Dimensions.get('window');
 
@@ -130,22 +130,33 @@ const ProfileScreen = observer(() => {
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
-      case 'common': return '#AAAAAA';
-      case 'uncommon': return '#4CAF50';
-      case 'rare': return '#2196F3';
-      case 'epic': return '#9C27B0';
-      case 'legendary': return '#FF6B6B';
-      default: return '#AAAAAA';
+      case 'common':
+        return '#AAAAAA';
+      case 'uncommon':
+        return '#4CAF50';
+      case 'rare':
+        return '#2196F3';
+      case 'epic':
+        return '#9C27B0';
+      case 'legendary':
+        return '#FF6B6B';
+      default:
+        return '#AAAAAA';
     }
   };
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'performance': return 'musical-note';
-      case 'review': return 'star';
-      case 'friend': return 'person-add';
-      case 'achievement': return 'trophy';
-      default: return 'information-circle';
+      case 'performance':
+        return 'musical-note';
+      case 'review':
+        return 'star';
+      case 'friend':
+        return 'person-add';
+      case 'achievement':
+        return 'trophy';
+      default:
+        return 'information-circle';
     }
   };
 
@@ -154,7 +165,7 @@ const ProfileScreen = observer(() => {
   };
 
   const handleSaveProfile = () => {
-    setProfile(prev => ({
+    setProfile((prev) => ({
       ...prev,
       bio: editedBio,
       displayName: editedDisplayName,
@@ -189,14 +200,16 @@ const ProfileScreen = observer(() => {
   const AchievementItem = ({ achievement }: { achievement: any }) => (
     <TouchableOpacity style={styles.achievementItem}>
       <View style={[styles.achievementIcon, { borderColor: getRarityColor(achievement.rarity) }]}>
-        <Ionicons name={achievement.icon as any} size={24} color={getRarityColor(achievement.rarity)} />
+        <Ionicons
+          name={achievement.icon as any}
+          size={24}
+          color={getRarityColor(achievement.rarity)}
+        />
       </View>
       <View style={styles.achievementInfo}>
         <Text style={styles.achievementName}>{achievement.name}</Text>
         <Text style={styles.achievementDescription}>{achievement.description}</Text>
-        <Text style={styles.achievementDate}>
-          Unlocked {formatDate(achievement.unlockedDate)}
-        </Text>
+        <Text style={styles.achievementDate}>Unlocked {formatDate(achievement.unlockedDate)}</Text>
       </View>
       <View style={[styles.rarityBadge, { backgroundColor: getRarityColor(achievement.rarity) }]}>
         <Text style={styles.rarityText}>{achievement.rarity}</Text>
@@ -302,7 +315,10 @@ const ProfileScreen = observer(() => {
             <Ionicons name="heart-outline" size={20} color="#FFFFFF" />
             <Text style={styles.quickActionText}>Favorites</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionItem} onPress={() => uiStore.openSubscriptionModal()}>
+          <TouchableOpacity
+            style={styles.quickActionItem}
+            onPress={() => uiStore.openSubscriptionModal()}
+          >
             <Ionicons name="card-outline" size={20} color="#FFFFFF" />
             <Text style={styles.quickActionText}>Subscription</Text>
           </TouchableOpacity>
@@ -316,9 +332,7 @@ const ProfileScreen = observer(() => {
       {/* Member Since */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Member Since</Text>
-        <Text style={styles.memberSinceText}>
-          {formatDate(profile.joinDate)}
-        </Text>
+        <Text style={styles.memberSinceText}>{formatDate(profile.joinDate)}</Text>
       </View>
 
       {/* App Version */}
@@ -341,7 +355,7 @@ const ProfileScreen = observer(() => {
     <FlatList
       data={profile.recentActivity}
       renderItem={({ item }) => <ActivityItem activity={item} />}
-      keyExtractor={item => item.id}
+      keyExtractor={(item) => item.id}
       contentContainerStyle={styles.tabContent}
       showsVerticalScrollIndicator={false}
       ListEmptyComponent={() => (
@@ -360,7 +374,7 @@ const ProfileScreen = observer(() => {
     <FlatList
       data={profile.achievements}
       renderItem={({ item }) => <AchievementItem achievement={item} />}
-      keyExtractor={item => item.id}
+      keyExtractor={(item) => item.id}
       contentContainerStyle={styles.tabContent}
       showsVerticalScrollIndicator={false}
       ListEmptyComponent={() => (
@@ -378,7 +392,7 @@ const ProfileScreen = observer(() => {
   return (
     <View style={styles.container}>
       <CustomHeader title="Profile" showMenu={false} />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.profileImageContainer}>
@@ -440,15 +454,12 @@ const ProfileScreen = observer(() => {
             style={[styles.tab, activeTab === tab.key && styles.activeTab]}
             onPress={() => setActiveTab(tab.key as any)}
           >
-            <Ionicons 
-              name={tab.icon as any} 
-              size={16} 
-              color={activeTab === tab.key ? '#FFFFFF' : '#AAAAAA'} 
+            <Ionicons
+              name={tab.icon as any}
+              size={16}
+              color={activeTab === tab.key ? '#FFFFFF' : '#AAAAAA'}
             />
-            <Text style={[
-              styles.tabText,
-              activeTab === tab.key && styles.activeTabText
-            ]}>
+            <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>
               {tab.label}
             </Text>
           </TouchableOpacity>

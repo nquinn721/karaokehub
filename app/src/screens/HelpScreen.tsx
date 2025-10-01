@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import { observer } from 'mobx-react-lite';
+import { useState } from 'react';
 import {
   FlatList,
   Linking,
@@ -11,7 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { observer } from 'mobx-react-lite';
 
 interface FAQItem {
   id: string;
@@ -35,7 +35,8 @@ const mockFAQs: FAQItem[] = [
   {
     id: '1',
     question: 'How do I find karaoke shows near me?',
-    answer: 'Use the Shows tab to browse nearby karaoke events. You can filter by date, distance, and venue type. Make sure to enable location permissions for the most accurate results.',
+    answer:
+      'Use the Shows tab to browse nearby karaoke events. You can filter by date, distance, and venue type. Make sure to enable location permissions for the most accurate results.',
     category: 'general',
     tags: ['search', 'location', 'shows'],
     helpful: 45,
@@ -43,8 +44,9 @@ const mockFAQs: FAQItem[] = [
   },
   {
     id: '2',
-    question: 'What\'s the difference between free and DJ subscriptions?',
-    answer: 'Free users can browse shows and submit basic information. DJ subscribers ($29/month) can manage their own shows, access analytics, get priority support, and use advanced DJ tools.',
+    question: "What's the difference between free and DJ subscriptions?",
+    answer:
+      'Free users can browse shows and submit basic information. DJ subscribers ($29/month) can manage their own shows, access analytics, get priority support, and use advanced DJ tools.',
     category: 'billing',
     tags: ['subscription', 'pricing', 'features'],
     helpful: 67,
@@ -53,7 +55,8 @@ const mockFAQs: FAQItem[] = [
   {
     id: '3',
     question: 'How do I submit information about a karaoke show?',
-    answer: 'Tap the "+" button on the Shows screen, then fill out the show details including venue, time, and any special information. Your submission helps the community stay informed!',
+    answer:
+      'Tap the "+" button on the Shows screen, then fill out the show details including venue, time, and any special information. Your submission helps the community stay informed!',
     category: 'general',
     tags: ['submit', 'shows', 'community'],
     helpful: 32,
@@ -62,7 +65,8 @@ const mockFAQs: FAQItem[] = [
   {
     id: '4',
     question: 'Can I manage multiple karaoke venues as a DJ?',
-    answer: 'Yes! DJ subscribers can manage shows at multiple venues. Add each venue from your DJ dashboard and manage all your shows from one place.',
+    answer:
+      'Yes! DJ subscribers can manage shows at multiple venues. Add each venue from your DJ dashboard and manage all your shows from one place.',
     category: 'dj',
     tags: ['venues', 'management', 'multiple'],
     helpful: 28,
@@ -70,8 +74,9 @@ const mockFAQs: FAQItem[] = [
   },
   {
     id: '5',
-    question: 'Why can\'t I see the DJ features?',
-    answer: 'DJ features are only available with an active DJ subscription. Upgrade your account in Settings > Subscription to access show management, analytics, and other DJ tools.',
+    question: "Why can't I see the DJ features?",
+    answer:
+      'DJ features are only available with an active DJ subscription. Upgrade your account in Settings > Subscription to access show management, analytics, and other DJ tools.',
     category: 'dj',
     tags: ['subscription', 'features', 'access'],
     helpful: 51,
@@ -80,7 +85,8 @@ const mockFAQs: FAQItem[] = [
   {
     id: '6',
     question: 'How do I change my notification settings?',
-    answer: 'Go to Settings > Notifications to customize which notifications you receive. You can enable/disable push notifications, email alerts, and SMS updates.',
+    answer:
+      'Go to Settings > Notifications to customize which notifications you receive. You can enable/disable push notifications, email alerts, and SMS updates.',
     category: 'technical',
     tags: ['notifications', 'settings', 'customize'],
     helpful: 23,
@@ -89,7 +95,8 @@ const mockFAQs: FAQItem[] = [
   {
     id: '7',
     question: 'Is my payment information secure?',
-    answer: 'Yes! We use Stripe for secure payment processing. Your card information is encrypted and never stored on our servers. All transactions are protected by industry-standard security.',
+    answer:
+      'Yes! We use Stripe for secure payment processing. Your card information is encrypted and never stored on our servers. All transactions are protected by industry-standard security.',
     category: 'billing',
     tags: ['security', 'payments', 'stripe'],
     helpful: 89,
@@ -98,7 +105,8 @@ const mockFAQs: FAQItem[] = [
   {
     id: '8',
     question: 'How do I cancel my DJ subscription?',
-    answer: 'Go to Settings > Billing > Subscription and tap "Cancel Subscription". You\'ll keep access until the end of your current billing period.',
+    answer:
+      'Go to Settings > Billing > Subscription and tap "Cancel Subscription". You\'ll keep access until the end of your current billing period.',
     category: 'billing',
     tags: ['cancel', 'subscription', 'billing'],
     helpful: 34,
@@ -107,7 +115,8 @@ const mockFAQs: FAQItem[] = [
   {
     id: '9',
     question: 'The app is crashing or running slowly. What should I do?',
-    answer: 'Try restarting the app first. If issues persist, go to Settings > Help > Report a Bug to send us crash logs, or contact support with your device information.',
+    answer:
+      'Try restarting the app first. If issues persist, go to Settings > Help > Report a Bug to send us crash logs, or contact support with your device information.',
     category: 'technical',
     tags: ['crash', 'performance', 'troubleshooting'],
     helpful: 42,
@@ -116,7 +125,8 @@ const mockFAQs: FAQItem[] = [
   {
     id: '10',
     question: 'Can I use KaraokeHub on multiple devices?',
-    answer: 'Yes! Your account syncs across all your devices. Log in with the same email and password on any device to access your shows, favorites, and settings.',
+    answer:
+      'Yes! Your account syncs across all your devices. Log in with the same email and password on any device to access your shows, favorites, and settings.',
     category: 'technical',
     tags: ['sync', 'devices', 'account'],
     helpful: 38,
@@ -186,11 +196,12 @@ const HelpScreen = observer(() => {
   ];
 
   // Filter FAQs based on search and category
-  const filteredFAQs = mockFAQs.filter(faq => {
-    const matchesSearch = !searchQuery || 
+  const filteredFAQs = mockFAQs.filter((faq) => {
+    const matchesSearch =
+      !searchQuery ||
       faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
       faq.answer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      faq.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      faq.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesCategory = selectedCategory === 'all' || faq.category === selectedCategory;
 
@@ -256,7 +267,9 @@ const HelpScreen = observer(() => {
               <Ionicons name="call" size={20} color="#007AFF" />
               <View style={styles.contactOptionText}>
                 <Text style={styles.contactOptionTitle}>Call Support</Text>
-                <Text style={styles.contactOptionDescription}>1-800-KARAOKE (Mon-Fri 9am-5pm PST)</Text>
+                <Text style={styles.contactOptionDescription}>
+                  1-800-KARAOKE (Mon-Fri 9am-5pm PST)
+                </Text>
               </View>
             </TouchableOpacity>
 
@@ -264,7 +277,9 @@ const HelpScreen = observer(() => {
               <Ionicons name="chatbubble" size={20} color="#007AFF" />
               <View style={styles.contactOptionText}>
                 <Text style={styles.contactOptionTitle}>Live Chat</Text>
-                <Text style={styles.contactOptionDescription}>Available 24/7 for urgent issues</Text>
+                <Text style={styles.contactOptionDescription}>
+                  Available 24/7 for urgent issues
+                </Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -275,7 +290,7 @@ const HelpScreen = observer(() => {
 
   const FAQItem = ({ item }: { item: FAQItem }) => {
     const isExpanded = expandedFAQ === item.id;
-    
+
     return (
       <View style={styles.faqItem}>
         <TouchableOpacity
@@ -283,17 +298,13 @@ const HelpScreen = observer(() => {
           onPress={() => setExpandedFAQ(isExpanded ? null : item.id)}
         >
           <Text style={styles.faqQuestionText}>{item.question}</Text>
-          <Ionicons 
-            name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-            size={20} 
-            color="#AAAAAA" 
-          />
+          <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#AAAAAA" />
         </TouchableOpacity>
-        
+
         {isExpanded && (
           <View style={styles.faqAnswer}>
             <Text style={styles.faqAnswerText}>{item.answer}</Text>
-            
+
             <View style={styles.faqTags}>
               {item.tags.map((tag, index) => (
                 <View key={index} style={styles.faqTag}>
@@ -369,7 +380,7 @@ const HelpScreen = observer(() => {
       {/* FAQ Search */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
-        
+
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#AAAAAA" style={styles.searchIcon} />
           <TextInput
@@ -387,8 +398,8 @@ const HelpScreen = observer(() => {
         </View>
 
         {/* Category Filter */}
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesContainer}
         >
@@ -397,14 +408,16 @@ const HelpScreen = observer(() => {
               key={category.key}
               style={[
                 styles.categoryChip,
-                selectedCategory === category.key && styles.selectedCategoryChip
+                selectedCategory === category.key && styles.selectedCategoryChip,
               ]}
               onPress={() => setSelectedCategory(category.key)}
             >
-              <Text style={[
-                styles.categoryChipText,
-                selectedCategory === category.key && styles.selectedCategoryChipText
-              ]}>
+              <Text
+                style={[
+                  styles.categoryChipText,
+                  selectedCategory === category.key && styles.selectedCategoryChipText,
+                ]}
+              >
                 {category.label}
               </Text>
             </TouchableOpacity>
@@ -421,7 +434,7 @@ const HelpScreen = observer(() => {
       <FlatList
         data={filteredFAQs}
         renderItem={FAQItem}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.faqList}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={() => (
