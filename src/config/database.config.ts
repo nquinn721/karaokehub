@@ -41,6 +41,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     isProduction,
     synchronize: configService.get('DATABASE_SYNCHRONIZE', 'false') === 'true',
     migrationsEnabled: isProduction,
+    socketPath: configService.get('DATABASE_SOCKET_PATH'),
   });
 
   // Base configuration shared between environments
@@ -164,7 +165,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     const socketConfig: TypeOrmModuleOptions = {
       type: 'mysql',
       username: configService.get('DATABASE_USERNAME', 'admin'),
-      password: configService.get('DATABASE_PASSWORD', 'password'), 
+      password: configService.get('DATABASE_PASSWORD', 'password'),
       database: configService.get('DATABASE_NAME', 'karaoke-hub'),
       entities: baseConfig.entities,
       synchronize: configService.get('DATABASE_SYNCHRONIZE', 'false') === 'true',
@@ -180,7 +181,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
         socketPath: socketPath,
         connectionLimit: 5,
         connectTimeout: 30000,
-        acquireTimeout: 30000, 
+        acquireTimeout: 30000,
         queueLimit: 0,
         charset: 'utf8mb4',
         timezone: '+00:00',
