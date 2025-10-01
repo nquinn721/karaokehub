@@ -162,13 +162,13 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     // For Unix socket connection via Cloud SQL Proxy
     return {
       ...baseConfig,
+      host: socketPath,
       extra: {
         connectionLimit: 5,
         connectTimeout: 30000, // Reduced from 60000
         acquireTimeout: 30000,
         timeout: 30000,
         queueLimit: 0,
-        socketPath,
         // Additional MySQL settings for Cloud SQL
         ...(isProduction && {
           charset: 'utf8mb4',
