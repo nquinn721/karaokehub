@@ -32,7 +32,7 @@ spec:
               value: 'production'
             - name: NODE_OPTIONS
               value: '--max-old-space-size=1536'
-            
+
             # URL Configuration
             - name: FRONTEND_URL
               value: 'https://karaoke-hub.com'
@@ -40,7 +40,7 @@ spec:
               value: 'https://karaoke-hub.com'
             - name: ALLOWED_ORIGINS
               value: 'https://karaoke-hub.com'
-            
+
             # Database Configuration (Production Cloud SQL)
             - name: DATABASE_SOCKET_PATH
               value: '/cloudsql/heroic-footing-460117-k8:us-central1:accountant'
@@ -48,15 +48,15 @@ spec:
               value: 'karaoke-hub'
             - name: DATABASE_SYNCHRONIZE
               value: 'false'
-            
+
             # Production Features
             - name: PRODUCTION_UPLOAD_TOKEN
               value: 'karaoke-hub-data-integration-system'
-            
+
             # Puppeteer Configuration
             - name: PUPPETEER_EXECUTABLE_PATH
               value: '/usr/bin/chromium-browser'
-            
+
             # Stripe Configuration (Product IDs as secrets for consistency)
             - name: STRIPE_AD_FREE_PRICE_ID
               valueFrom:
@@ -68,7 +68,7 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_STRIPE_PREMIUM_PRICE_ID
                   key: latest
-            
+
             # iTunes API Configuration
             - name: ITUNES_API_BASE_URL
               value: 'https://itunes.apple.com'
@@ -83,14 +83,14 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_DB_PASSWORD
                   key: latest
-            
+
             # JWT Secret
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: KARAOKE_HUB_JWT_SECRET
                   key: latest
-            
+
             # Google OAuth Credentials (Secrets)
             - name: GOOGLE_CLIENT_ID
               valueFrom:
@@ -102,14 +102,14 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_GOOGLE_CLIENT_SECRET
                   key: latest
-            
+
             # Google Maps API Keys (Secrets)
             - name: GOOGLE_MAPS_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: KARAOKE_HUB_GOOGLE_MAPS_API_KEY
                   key: latest
-            
+
             # Facebook OAuth Credentials (Secrets)
             - name: FACEBOOK_APP_ID
               valueFrom:
@@ -136,7 +136,7 @@ spec:
                 secretKeyRef:
                   name: fb-session-cookies
                   key: latest
-            
+
             # AI/ML API Keys (Secrets)
             - name: GEMINI_API_KEY
               valueFrom:
@@ -148,7 +148,7 @@ spec:
                 secretKeyRef:
                   name: KARAOKE_HUB_OPENAI_API_KEY
                   key: latest
-            
+
             # Stripe Credentials (Secrets)
             - name: STRIPE_SECRET_KEY
               valueFrom:

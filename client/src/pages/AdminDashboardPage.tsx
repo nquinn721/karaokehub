@@ -18,6 +18,7 @@ import {
   faGlobe,
   faHome,
   faLocationArrow,
+  faMicrophone,
   faPalette,
   faPlus,
   faRobot,
@@ -691,6 +692,30 @@ const AdminDashboardPageTabbed = observer(() => {
                     Store
                   </Button>
                 </Grid>
+                <Grid item xs={6}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    fullWidth
+                    startIcon={<FontAwesomeIcon icon={faMicrophone} />}
+                    onClick={() => {
+                      navigate('/admin/live-show-test');
+                      setMobileDrawerOpen(false);
+                    }}
+                    sx={{
+                      py: 1.5,
+                      fontSize: '0.75rem',
+                      borderColor: '#00d4ff',
+                      color: '#00d4ff',
+                      '&:hover': {
+                        borderColor: '#00b8d4',
+                        backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                      },
+                    }}
+                  >
+                    Live Test
+                  </Button>
+                </Grid>
               </Grid>
             </Box>
           </Drawer>
@@ -839,76 +864,22 @@ const AdminDashboardPageTabbed = observer(() => {
                     </Typography>
                   </Box>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<FontAwesomeIcon icon={faSync} />}
-                    onClick={() => {
-                      adminStore.fetchStatistics();
-                      fetchUrlApprovalCount();
-                    }}
-                    disabled={adminStore.isLoading}
-                    sx={{
-                      borderRadius: 2,
-                      px: 3,
-                      py: 1.5,
-                    }}
-                  >
-                    Refresh
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<FontAwesomeIcon icon={faLocationArrow} />}
-                    onClick={() => setLocationTrackingModalOpen(true)}
-                    sx={{
-                      borderRadius: 2,
-                      px: 3,
-                      py: 1.5,
-                    }}
-                  >
-                    Location Tracking
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<FontAwesomeIcon icon={faUpload} />}
-                    onClick={() => setUploadModalOpen(true)}
-                    sx={{
-                      borderRadius: 2,
-                      px: 3,
-                      py: 1.5,
-                    }}
-                  >
-                    Upload Data
-                  </Button>
-                  <Button
-                    variant="contained"
-                    startIcon={<FontAwesomeIcon icon={faPlus} />}
-                    onClick={() => navigate('/admin/parser')}
-                    sx={{
-                      borderRadius: 2,
-                      px: 3,
-                      py: 1.5,
-                      background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                      '&:hover': {
-                        background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
-                      },
-                    }}
-                  >
-                    Use Parser
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<FontAwesomeIcon icon={faCoins} />}
-                    onClick={() => navigate('/admin/store')}
-                    sx={{
-                      borderRadius: 2,
-                      px: 3,
-                      py: 1.5,
-                    }}
-                  >
-                    Store Management
-                  </Button>
-                </Box>
+                <Button
+                  variant="outlined"
+                  startIcon={<FontAwesomeIcon icon={faSync} />}
+                  onClick={() => {
+                    adminStore.fetchStatistics();
+                    fetchUrlApprovalCount();
+                  }}
+                  disabled={adminStore.isLoading}
+                  sx={{
+                    borderRadius: 2,
+                    px: 3,
+                    py: 1.5,
+                  }}
+                >
+                  Refresh
+                </Button>
               </Box>
 
               {adminStore.error && (
@@ -916,6 +887,219 @@ const AdminDashboardPageTabbed = observer(() => {
                   {adminStore.error}
                 </Alert>
               )}
+
+              {/* Admin Action Cards */}
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                <Grid item xs={12} sm={6} md={4}>
+                  <Card
+                    sx={{
+                      background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                      borderRadius: 3,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.15)}`,
+                      },
+                    }}
+                    onClick={() => setLocationTrackingModalOpen(true)}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Box
+                          sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 2,
+                            background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faLocationArrow} />
+                        </Box>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                          Location Tracking
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Monitor and manage user location data and venue proximity detection
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={4}>
+                  <Card
+                    sx={{
+                      background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.1)}, ${alpha(theme.palette.primary.main, 0.05)})`,
+                      border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
+                      borderRadius: 3,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 8px 25px ${alpha(theme.palette.secondary.main, 0.15)}`,
+                      },
+                    }}
+                    onClick={() => setUploadModalOpen(true)}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Box
+                          sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 2,
+                            background: `linear-gradient(135deg, ${theme.palette.secondary.main}, ${theme.palette.primary.main})`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faUpload} />
+                        </Box>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                          Upload Data
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Import venue data, show information, and bulk content uploads
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={4}>
+                  <Card
+                    sx={{
+                      background: `linear-gradient(135deg, ${alpha('#00d4ff', 0.1)}, ${alpha('#ff4081', 0.05)})`,
+                      border: `1px solid ${alpha('#00d4ff', 0.2)}`,
+                      borderRadius: 3,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 8px 25px ${alpha('#00d4ff', 0.15)}`,
+                      },
+                    }}
+                    onClick={() => navigate('/admin/live-show-test')}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Box
+                          sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 2,
+                            background: 'linear-gradient(135deg, #00d4ff, #ff4081)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faMicrophone} />
+                        </Box>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                          Live Show Test
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Test location-based live shows with fake users and proximity simulation
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={4}>
+                  <Card
+                    sx={{
+                      background: `linear-gradient(135deg, ${alpha('#ff4081', 0.1)}, ${alpha(theme.palette.primary.main, 0.05)})`,
+                      border: `1px solid ${alpha('#ff4081', 0.2)}`,
+                      borderRadius: 3,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 8px 25px ${alpha('#ff4081', 0.15)}`,
+                      },
+                    }}
+                    onClick={() => navigate('/admin/parser')}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Box
+                          sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 2,
+                            background: 'linear-gradient(135deg, #ff4081, #f50057)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faPlus} />
+                        </Box>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                          Use Parser
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Parse and process show data from external sources and venues
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={4}>
+                  <Card
+                    sx={{
+                      background: `linear-gradient(135deg, ${alpha('#ffa726', 0.1)}, ${alpha('#ff7043', 0.05)})`,
+                      border: `1px solid ${alpha('#ffa726', 0.2)}`,
+                      borderRadius: 3,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 8px 25px ${alpha('#ffa726', 0.15)}`,
+                      },
+                    }}
+                    onClick={() => navigate('/admin/store')}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Box
+                          sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 2,
+                            background: 'linear-gradient(135deg, #ffa726, #ff7043)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faCoins} />
+                        </Box>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                          Store Management
+                        </Typography>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Manage avatar items, pricing, and store content generation
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
 
               {/* Tab Navigation */}
               <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>

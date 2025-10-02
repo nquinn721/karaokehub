@@ -6,7 +6,7 @@ export class AddDjCancellationTracking1737830000000 implements MigrationInterfac
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Check if columns already exist before adding them
     const table = await queryRunner.getTable('users');
-    
+
     if (!table.findColumnByName('djSubscriptionCancelledAt')) {
       await queryRunner.query(`
         ALTER TABLE \`users\` 
@@ -25,7 +25,7 @@ export class AddDjCancellationTracking1737830000000 implements MigrationInterfac
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Check if columns exist before removing them
     const table = await queryRunner.getTable('users');
-    
+
     if (table.findColumnByName('djSubscriptionExpiresAt')) {
       await queryRunner.query(`
         ALTER TABLE \`users\` 

@@ -6,6 +6,7 @@ import { AuthStore } from './AuthStore';
 import { FavoriteStore } from './FavoriteStore';
 import { FeedbackStore, feedbackStore as feedbackStoreInstance } from './FeedbackStore';
 import { FriendsStore, friendsStore as friendsStoreInstance } from './FriendsStore';
+// import { LiveShowStore, liveShowStore as liveShowStoreInstance } from './LiveShowStore';
 import { MapStore, mapStore as mapStoreInstance } from './MapStore';
 import { MusicStore, musicStore as musicStoreInstance } from './MusicStore';
 import { ParserStore } from './ParserStore';
@@ -135,6 +136,7 @@ export const {
 
 // Export individual stores
 export { adminStore } from './AdminStore';
+export { liveShowStore } from './LiveShowStore';
 export { localSubscriptionStore } from './LocalSubscriptionStore';
 export { storeStore } from './StoreStore';
 export { themeStore } from './ThemeStore';

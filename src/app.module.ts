@@ -17,6 +17,7 @@ import { DJModule } from './dj/dj.module';
 import { FavoriteModule } from './favorite/favorite.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { FriendsModule } from './friends/friends.module';
+import { LiveShowModule } from './live-show/live-show.module';
 import { LocationModule } from './location/location.module';
 import { MusicModule } from './music/music.module';
 import { ParserModule } from './parser/parser.module';
@@ -82,6 +83,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     FeedbackModule,
     FriendsModule,
     LocationModule,
+    LiveShowModule,
     ApiLoggingModule,
     ApiMonitoringModule,
     ParserModule,

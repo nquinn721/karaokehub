@@ -19,6 +19,7 @@ import { VenueProximity } from './services/GeolocationService';
 // Pages
 import AboutPage from './pages/AboutPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import { AdminLiveShowTestPage } from './pages/AdminLiveShowTestPage';
 import AdminParserPage from './pages/AdminParserPage';
 import AdminStoreManagementPage from './pages/AdminStoreManagementPage';
 import AdTestPage from './pages/AdTestPage';
@@ -29,6 +30,7 @@ import AvatarSelectionPage from './pages/AvatarSelectionPage';
 import DashboardPage from './pages/DashboardPage';
 import FeedbackManagementPage from './pages/FeedbackManagementPage';
 import HomePage from './pages/HomePage';
+import LiveShowPage from './pages/LiveShowPage';
 import LoginPage from './pages/LoginPage';
 import ManageShowsPage from './pages/ManageShowsPage';
 import MusicPage from './pages/MusicPage';
@@ -391,6 +393,22 @@ const AppContent: React.FC = observer(() => {
               element={
                 <ProtectedRoute>
                   <FeedbackManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/live-show-test"
+              element={
+                <ProtectedRoute>
+                  <AdminLiveShowTestPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/live-shows/:showId"
+              element={
+                <ProtectedRoute>
+                  <LiveShowPage />
                 </ProtectedRoute>
               }
             />
