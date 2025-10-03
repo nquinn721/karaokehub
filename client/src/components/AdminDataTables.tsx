@@ -3219,7 +3219,10 @@ const AdminDataTables: React.FC = observer(() => {
                   <Typography variant="body2" color="text.secondary">
                     User ID
                   </Typography>
-                  <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                  <Typography
+                    variant="body1"
+                    sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
+                  >
                     {userForDetail.id}
                   </Typography>
                 </Box>
@@ -3256,7 +3259,10 @@ const AdminDataTables: React.FC = observer(() => {
                   <Typography variant="body2" color="text.secondary">
                     Provider ID
                   </Typography>
-                  <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                  <Typography
+                    variant="body1"
+                    sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
+                  >
                     {userForDetail.providerId || 'N/A'}
                   </Typography>
                 </Box>
@@ -3281,7 +3287,10 @@ const AdminDataTables: React.FC = observer(() => {
                   <Typography variant="body2" color="text.secondary">
                     Stripe Customer ID
                   </Typography>
-                  <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                  <Typography
+                    variant="body1"
+                    sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
+                  >
                     {userForDetail.stripeCustomerId || 'N/A'}
                   </Typography>
                 </Box>
@@ -3320,10 +3329,7 @@ const AdminDataTables: React.FC = observer(() => {
               >
                 Manage Features
               </Button>
-              <Button
-                variant="contained"
-                onClick={() => setUserDetailModalOpen(false)}
-              >
+              <Button variant="contained" onClick={() => setUserDetailModalOpen(false)}>
                 Close
               </Button>
             </Box>

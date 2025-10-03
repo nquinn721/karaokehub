@@ -429,9 +429,7 @@ class LocationService {
   /**
    * Update user location (city/state) based on current coordinates
    */
-  async updateUserLocation(
-    userId: string,
-  ): Promise<{
+  async updateUserLocation(userId: string): Promise<{
     success: boolean;
     location?: { city: string; state: string; address: string };
     error?: string;

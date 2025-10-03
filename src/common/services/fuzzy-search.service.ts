@@ -23,13 +23,9 @@ export class FuzzySearchService {
    * @param options Fuzzy search configuration
    * @returns Array of matching items with scores
    */
-  search<T>(
-    items: T[],
-    searchTerm: string,
-    options: FuzzySearchOptions,
-  ): FuzzySearchResult<T>[] {
+  search<T>(items: T[], searchTerm: string, options: FuzzySearchOptions): FuzzySearchResult<T>[] {
     if (!searchTerm || !items.length) {
-      return items.map(item => ({ item, score: 0 }));
+      return items.map((item) => ({ item, score: 0 }));
     }
 
     const fuseOptions = {
@@ -47,7 +43,7 @@ export class FuzzySearchService {
     const fuse = new Fuse(items, fuseOptions);
     const results = fuse.search(searchTerm);
 
-    return results.map(result => ({
+    return results.map((result) => ({
       item: result.item,
       score: result.score || 0,
       matches: result.matches,
@@ -61,13 +57,9 @@ export class FuzzySearchService {
    * @param options Fuzzy search configuration
    * @returns Array of matching items
    */
-  filter<T>(
-    items: T[],
-    searchTerm: string,
-    options: FuzzySearchOptions,
-  ): T[] {
+  filter<T>(items: T[], searchTerm: string, options: FuzzySearchOptions): T[] {
     const results = this.search(items, searchTerm, options);
-    return results.map(result => result.item);
+    return results.map((result) => result.item);
   }
 
   /**
@@ -81,16 +73,16 @@ export class FuzzySearchService {
 
     const cleanTerm = searchTerm.trim().toLowerCase();
     const patterns: string[] = [];
-    
+
     // Always add the full term
     patterns.push(`%${cleanTerm}%`);
-    
+
     // Only split into words if there are multiple words
     if (cleanTerm.includes(' ')) {
-      const words = cleanTerm.split(/\s+/).filter(word => word.length >= 2);
-      
+      const words = cleanTerm.split(/\s+/).filter((word) => word.length >= 2);
+
       // Add each word individually (only if 2+ characters)
-      words.forEach(word => {
+      words.forEach((word) => {
         if (word.length >= 2) {
           patterns.push(`%${word}%`);
         }

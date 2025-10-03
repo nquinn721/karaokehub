@@ -10,6 +10,8 @@ import { UserAvatar } from '../avatar/entities/user-avatar.entity';
 import { UserMicrophone } from '../avatar/entities/user-microphone.entity';
 import { PaginationOptions } from '../common/interfaces/pagination.interface';
 import { ActivityTransformService } from '../common/services/activity-transform.service';
+import { FuzzyPaginationService } from '../common/services/fuzzy-pagination.service';
+import { FuzzySearchService } from '../common/services/fuzzy-search.service';
 import { GenericCrudService } from '../common/services/generic-crud.service';
 import { GenericStoreService } from '../common/services/generic-store.service';
 import { PaginationService } from '../common/services/pagination.service';
@@ -36,8 +38,6 @@ import {
   ValidationBatchResult,
 } from './enhanced-venue-validation.service';
 import { BatchTimeValidationResult, TimeValidationService } from './time-validation.service';
-import { FuzzySearchService } from '../common/services/fuzzy-search.service';
-import { FuzzyPaginationService } from '../common/services/fuzzy-pagination.service';
 
 export interface VenueVerificationResult {
   success: boolean;
@@ -421,7 +421,7 @@ export class AdminService {
     const totalQuery = this.venueRepository
       .createQueryBuilder('venue')
       .where('venue.isActive = :venueActive', { venueActive: true });
-    
+
     if (search) {
       this.fuzzyPaginationService.applyFuzzySearch(
         totalQuery,
@@ -483,12 +483,7 @@ export class AdminService {
 
     // Apply fuzzy search if search term provided
     if (search) {
-      this.fuzzyPaginationService.applyFuzzySearch(
-        query,
-        'vendor',
-        ['name'],
-        search,
-      );
+      this.fuzzyPaginationService.applyFuzzySearch(query, 'vendor', ['name'], search);
     }
 
     const result = await query
@@ -507,14 +502,9 @@ export class AdminService {
     const totalQuery = this.vendorRepository
       .createQueryBuilder('vendor')
       .where('vendor.isActive = :vendorActive', { vendorActive: true });
-    
+
     if (search) {
-      this.fuzzyPaginationService.applyFuzzySearch(
-        totalQuery,
-        'vendor',
-        ['name'],
-        search,
-      );
+      this.fuzzyPaginationService.applyFuzzySearch(totalQuery, 'vendor', ['name'], search);
     }
     const totalCount = await totalQuery.getCount();
 

@@ -32,7 +32,7 @@ export class FuzzyPaginationService {
 
     // Create SQL patterns for fuzzy matching
     const patterns = this.fuzzySearchService.createSqlPatterns(search);
-    
+
     if (patterns.length === 0) {
       return query;
     }

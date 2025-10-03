@@ -223,7 +223,12 @@ const AppContent: React.FC = observer(() => {
   // Refresh subscription when user returns to tab (page becomes visible)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (!document.hidden && authStore.isAuthenticated && authStore.user && !authStore.isInitializing) {
+      if (
+        !document.hidden &&
+        authStore.isAuthenticated &&
+        authStore.user &&
+        !authStore.isInitializing
+      ) {
         // Import subscriptionStore dynamically to avoid circular dependencies
         import('@stores/index').then(({ subscriptionStore }) => {
           // Sync subscription when user returns to the tab

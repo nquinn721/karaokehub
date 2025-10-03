@@ -319,7 +319,7 @@ export class GeocodingService {
       if (data.status === 'OK' && data.results && data.results.length > 0) {
         const result = data.results[0];
         const addressComponents = result.address_components || [];
-        
+
         let city = '';
         let state = '';
 

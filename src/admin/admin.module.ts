@@ -5,6 +5,8 @@ import { Avatar } from '../avatar/entities/avatar.entity';
 import { Microphone } from '../avatar/entities/microphone.entity';
 import { UserAvatar } from '../avatar/entities/user-avatar.entity';
 import { UserMicrophone } from '../avatar/entities/user-microphone.entity';
+import { FuzzyPaginationService } from '../common/services/fuzzy-pagination.service';
+import { FuzzySearchService } from '../common/services/fuzzy-search.service';
 import { DJ } from '../dj/dj.entity';
 import { User } from '../entities/user.entity';
 import { FavoriteShow } from '../favorite/favorite.entity';
@@ -26,8 +28,6 @@ import { EnhancedVenueValidationService } from './enhanced-venue-validation.serv
 import { TimeValidationService } from './time-validation.service';
 import { VenueDuplicateDetectionService } from './venue-duplicate-detection.service';
 import { VenueGeocodingValidationService } from './venue-geocoding-validation.service';
-import { FuzzySearchService } from '../common/services/fuzzy-search.service';
-import { FuzzyPaginationService } from '../common/services/fuzzy-pagination.service';
 
 @Module({
   imports: [
