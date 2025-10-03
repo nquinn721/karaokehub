@@ -18,22 +18,7 @@ import {
   CardContent,
   Chip,
   Container,
-  FormCo      // Step 3: Populate show with test users
-      addTestResult(`🎭 Adding test users to the show...`);
-      
-      try {
-        const populateResponse = await apiStore.post(`/live-shows/${showId}/populate-test-users`);
-        if (populateResponse.success) {
-          addTestResult(`✅ Successfully added test users: DJ Mike, Sarah Star, Rock Andy`);
-          addTestResult(`🎤 Test users are now in the participant list and queue`);
-        } else {
-          addTestResult(`⚠️ Warning: Could not populate test users: ${populateResponse.message}`);
-        }
-      } catch (populateError) {
-        addTestResult(
-          `⚠️ Could not populate test users: ${populateError instanceof Error ? populateError.message : String(populateError)}`,
-        );
-      }
+  FormControl,
   Grid,
   IconButton,
   InputLabel,
