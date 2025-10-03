@@ -13,10 +13,6 @@ import {
   Box,
   Button,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   IconButton,
   List,
   ListItem,
@@ -24,7 +20,6 @@ import {
   ListItemSecondaryAction,
   ListItemText,
   Paper,
-  TextField,
   Tooltip,
   Typography,
   useTheme,
@@ -32,6 +27,7 @@ import {
 import React, { useState } from 'react';
 import { QueueEntry } from '../../types/live-show.types';
 import { LiveShowUtils } from '../../utils/live-show.utils';
+import SongRequestModal from './SongRequestModal';
 
 interface QueueManagementProps {
   queue: QueueEntry[];
@@ -53,17 +49,62 @@ export const QueueManagement: React.FC<QueueManagementProps> = ({
   isUserInQueue,
   onJoinQueue,
   onLeaveQueue,
+  onReorderQueue,
   onRemoveFromQueue,
   onSetCurrentSinger,
 }) => {
   const theme = useTheme();
-  const [joinDialogOpen, setJoinDialogOpen] = useState(false);
-  const [songRequest, setSongRequest] = useState('');
+  const [songRequestModalOpen, setSongRequestModalOpen] = useState(false);
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
 
-  const handleJoinQueue = () => {
-    onJoinQueue(songRequest.trim() || undefined);
-    setSongRequest('');
-    setJoinDialogOpen(false);
+  const handleJoinQueue = (songRequest: string) => {
+    onJoinQueue(songRequest);
+    setSongRequestModalOpen(false);
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, userId: string) => {
+    setDraggedItem(userId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', userId);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetUserId: string) => {
+    e.preventDefault();
+
+    if (!draggedItem || draggedItem === targetUserId) {
+      setDraggedItem(null);
+      return;
+    }
+
+    // Reorder the queue
+    const newQueue = [...sortedQueue];
+    const draggedIndex = newQueue.findIndex((entry) => entry.userId === draggedItem);
+    const targetIndex = newQueue.findIndex((entry) => entry.userId === targetUserId);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedItem(null);
+      return;
+    }
+
+    // Move the dragged item to the target position
+    const [draggedEntry] = newQueue.splice(draggedIndex, 1);
+    newQueue.splice(targetIndex, 0, draggedEntry);
+
+    // Update positions and call onReorderQueue
+    const reorderedIds = newQueue.map((entry) => entry.userId);
+    onReorderQueue(reorderedIds);
+
+    setDraggedItem(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
   };
 
   const sortedQueue = LiveShowUtils.sortQueueByPosition(queue);
@@ -94,7 +135,7 @@ export const QueueManagement: React.FC<QueueManagementProps> = ({
               <Button
                 variant="contained"
                 startIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => setJoinDialogOpen(true)}
+                onClick={() => setSongRequestModalOpen(true)}
               >
                 Join Queue
               </Button>
@@ -125,8 +166,12 @@ export const QueueManagement: React.FC<QueueManagementProps> = ({
             icon={faMusic}
             style={{ fontSize: '2rem', marginBottom: 16, opacity: 0.5 }}
           />
-          <Typography variant="body1">No one in queue yet</Typography>
-          <Typography variant="body2">Be the first to join and start singing!</Typography>
+          <Typography variant="body1" component="div">
+            No one in queue yet
+          </Typography>
+          <Typography variant="body2" component="div">
+            Be the first to join and start singing!
+          </Typography>
         </Box>
       ) : (
         <List sx={{ '& .MuiListItem-root': { mb: 1 } }}>
@@ -138,6 +183,11 @@ export const QueueManagement: React.FC<QueueManagementProps> = ({
             return (
               <ListItem
                 key={entry.id}
+                draggable={isDJ && !isCurrentSinger}
+                onDragStart={(e) => handleDragStart(e, entry.userId)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, entry.userId)}
+                onDragEnd={handleDragEnd}
                 sx={{
                   border: `1px solid ${theme.palette.divider}`,
                   borderRadius: 2,
@@ -147,6 +197,7 @@ export const QueueManagement: React.FC<QueueManagementProps> = ({
                       ? `${theme.palette.secondary.main}10`
                       : 'transparent',
                   borderColor: isCurrentSinger ? theme.palette.primary.main : theme.palette.divider,
+                  opacity: draggedItem === entry.userId ? 0.5 : 1,
                   '&:hover': {
                     backgroundColor: isCurrentSinger
                       ? `${theme.palette.primary.main}20`
@@ -155,8 +206,15 @@ export const QueueManagement: React.FC<QueueManagementProps> = ({
                 }}
               >
                 {/* Drag Handle (DJ only) */}
-                {isDJ && (
-                  <Box sx={{ mr: 1, cursor: 'grab', color: 'text.secondary' }}>
+                {isDJ && !isCurrentSinger && (
+                  <Box
+                    sx={{
+                      mr: 1,
+                      cursor: draggedItem === entry.userId ? 'grabbing' : 'grab',
+                      color: 'text.secondary',
+                      opacity: draggedItem === entry.userId ? 0.7 : 1,
+                    }}
+                  >
                     <FontAwesomeIcon icon={faGripVertical} />
                   </Box>
                 )}
@@ -283,11 +341,11 @@ export const QueueManagement: React.FC<QueueManagementProps> = ({
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
             <FontAwesomeIcon icon={faCrown} style={{ color: theme.palette.info.main }} />
-            <Typography variant="body2" fontWeight={600}>
+            <Typography variant="body2" component="span" fontWeight={600}>
               DJ Controls
             </Typography>
           </Box>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" component="div" color="text.secondary">
             • Drag items to reorder the queue
             <br />
             • Click play button to set current singer
@@ -296,54 +354,13 @@ export const QueueManagement: React.FC<QueueManagementProps> = ({
         </Box>
       )}
 
-      {/* Join Queue Dialog */}
-      <Dialog
-        open={joinDialogOpen}
-        onClose={() => setJoinDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Join the Queue</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Add yourself to the singing queue. Optionally, let everyone know what song you're
-            planning to sing!
-          </Typography>
-
-          <TextField
-            fullWidth
-            label="Song Request (Optional)"
-            placeholder="e.g., Bohemian Rhapsody - Queen"
-            value={songRequest}
-            onChange={(e) => setSongRequest(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <FontAwesomeIcon
-                  icon={faMusic}
-                  style={{ marginRight: 8, color: theme.palette.text.secondary }}
-                />
-              ),
-            }}
-          />
-
-          {queueStats && (
-            <Box sx={{ mt: 2, p: 1, backgroundColor: 'action.hover', borderRadius: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                You'll be position #{queueStats.totalInQueue + 1} in the queue
-                {queueStats.totalInQueue > 0 && (
-                  <> • Estimated wait: ~{Math.ceil(queueStats.totalInQueue * 3.5)} minutes</>
-                )}
-              </Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setJoinDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleJoinQueue}>
-            Join Queue
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Song Request Modal */}
+      <SongRequestModal
+        open={songRequestModalOpen}
+        onClose={() => setSongRequestModalOpen(false)}
+        onSubmit={handleJoinQueue}
+        isForQueue={true}
+      />
     </Paper>
   );
 };

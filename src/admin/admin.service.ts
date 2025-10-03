@@ -36,6 +36,8 @@ import {
   ValidationBatchResult,
 } from './enhanced-venue-validation.service';
 import { BatchTimeValidationResult, TimeValidationService } from './time-validation.service';
+import { FuzzySearchService } from '../common/services/fuzzy-search.service';
+import { FuzzyPaginationService } from '../common/services/fuzzy-pagination.service';
 
 export interface VenueVerificationResult {
   success: boolean;
@@ -86,6 +88,8 @@ export class AdminService {
     private migrationService: ProductionMigrationService,
     private enhancedVenueValidationService: EnhancedVenueValidationService,
     private timeValidationService: TimeValidationService,
+    private fuzzySearchService: FuzzySearchService,
+    private fuzzyPaginationService: FuzzyPaginationService,
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -283,8 +287,11 @@ export class AdminService {
   ) {
     const options: PaginationOptions = { page, limit, search, sortBy, sortOrder };
     const queryOptions = {
-      searchFields: ['name', 'email'],
+      searchFields: ['name', 'email', 'stageName'],
+      fuzzyFields: ['name', 'stageName', 'email'],
       relations: ['equippedAvatar'],
+      enableFuzzySearch: true,
+      fuzzyThreshold: 0.5, // More lenient threshold for better matching
       sortMappings: {
         name: 'user.name',
         stageName: 'user.stageName',
@@ -297,7 +304,12 @@ export class AdminService {
       defaultSort: 'user.createdAt',
     };
 
-    return PaginationService.paginate(this.userRepository, 'user', options, queryOptions);
+    return this.fuzzyPaginationService.paginateWithFuzzySearch(
+      this.userRepository,
+      'user',
+      options,
+      queryOptions,
+    );
   }
 
   // Avatar Management
@@ -366,10 +378,14 @@ export class AdminService {
       .where('venue.isActive = :venueActive', { venueActive: true })
       .groupBy('venue.id');
 
+    // Apply fuzzy search if search term provided
     if (search) {
-      query.andWhere('venue.name LIKE :search OR venue.address LIKE :search', {
-        search: `%${search}%`,
-      });
+      this.fuzzyPaginationService.applyFuzzySearch(
+        query,
+        'venue',
+        ['name', 'address', 'city', 'state'],
+        search,
+      );
     }
 
     // Handle sorting
@@ -401,14 +417,18 @@ export class AdminService {
       showCount: parseInt(result.raw[index].showCount) || 0,
     }));
 
-    // Get total count separately for pagination
+    // Get total count separately for pagination with fuzzy search
     const totalQuery = this.venueRepository
       .createQueryBuilder('venue')
       .where('venue.isActive = :venueActive', { venueActive: true });
+    
     if (search) {
-      totalQuery.andWhere('venue.name LIKE :search OR venue.address LIKE :search', {
-        search: `%${search}%`,
-      });
+      this.fuzzyPaginationService.applyFuzzySearch(
+        totalQuery,
+        'venue',
+        ['name', 'address', 'city', 'state'],
+        search,
+      );
     }
     const totalCount = await totalQuery.getCount();
 
@@ -428,42 +448,27 @@ export class AdminService {
     sortBy?: string,
     sortOrder: 'ASC' | 'DESC' = 'ASC',
   ) {
-    const query = this.djRepository
-      .createQueryBuilder('dj')
-      .leftJoinAndSelect('dj.vendor', 'vendor');
-
-    if (search) {
-      query.where('dj.name LIKE :search OR vendor.name LIKE :search', {
-        search: `%${search}%`,
-      });
-    }
-
-    // Handle sorting
-    if (sortBy) {
-      const sortMap: { [key: string]: string } = {
+    const options: PaginationOptions = { page, limit, search, sortBy, sortOrder };
+    const queryOptions = {
+      searchFields: ['name'],
+      fuzzyFields: ['name'],
+      relations: ['vendor'],
+      enableFuzzySearch: true,
+      fuzzyThreshold: 0.5,
+      sortMappings: {
         name: 'dj.name',
         vendor: 'vendor.name',
         createdAt: 'dj.createdAt',
-      };
-
-      const dbField = sortMap[sortBy] || 'dj.createdAt';
-      query.orderBy(dbField, sortOrder);
-    } else {
-      query.orderBy('dj.createdAt', 'DESC');
-    }
-
-    const [items, total] = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
-
-    return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      },
+      defaultSort: 'dj.createdAt',
     };
+
+    return this.fuzzyPaginationService.paginateWithFuzzySearch(
+      this.djRepository,
+      'dj',
+      options,
+      queryOptions,
+    );
   }
 
   async getVendors(page = 1, limit = 10, search?: string) {
@@ -476,10 +481,14 @@ export class AdminService {
       .where('vendor.isActive = :vendorActive', { vendorActive: true })
       .groupBy('vendor.id');
 
+    // Apply fuzzy search if search term provided
     if (search) {
-      query.andWhere('vendor.name LIKE :search', {
-        search: `%${search}%`,
-      });
+      this.fuzzyPaginationService.applyFuzzySearch(
+        query,
+        'vendor',
+        ['name'],
+        search,
+      );
     }
 
     const result = await query
@@ -494,14 +503,18 @@ export class AdminService {
       djCount: parseInt(result.raw[index].djCount) || 0,
     }));
 
-    // Get total count separately for pagination
+    // Get total count separately for pagination with fuzzy search
     const totalQuery = this.vendorRepository
       .createQueryBuilder('vendor')
       .where('vendor.isActive = :vendorActive', { vendorActive: true });
+    
     if (search) {
-      totalQuery.andWhere('vendor.name LIKE :search', {
-        search: `%${search}%`,
-      });
+      this.fuzzyPaginationService.applyFuzzySearch(
+        totalQuery,
+        'vendor',
+        ['name'],
+        search,
+      );
     }
     const totalCount = await totalQuery.getCount();
 
@@ -528,13 +541,30 @@ export class AdminService {
       .leftJoinAndSelect('show.venue', 'venue')
       .leftJoinAndSelect('show.submittedByUser', 'submittedBy');
 
+    // Apply fuzzy search across multiple fields
     if (search) {
-      query.where(
-        'venue.name LIKE :search OR dj.name LIKE :search OR vendor.name LIKE :search OR show.description LIKE :search',
-        {
-          search: `%${search}%`,
-        },
-      );
+      const patterns = this.fuzzySearchService.createSqlPatterns(search);
+      const conditions: string[] = [];
+      const parameters: any = {};
+
+      const searchFields = [
+        { field: 'venue.name', alias: 'venue' },
+        { field: 'dj.name', alias: 'dj' },
+        { field: 'vendor.name', alias: 'vendor' },
+        { field: 'show.description', alias: 'show' },
+      ];
+
+      searchFields.forEach(({ field, alias }, fieldIndex) => {
+        patterns.forEach((pattern, patternIndex) => {
+          const paramName = `search_${alias}_${fieldIndex}_${patternIndex}`;
+          conditions.push(`${field} ILIKE :${paramName}`);
+          parameters[paramName] = pattern;
+        });
+      });
+
+      if (conditions.length > 0) {
+        query.andWhere(`(${conditions.join(' OR ')})`, parameters);
+      }
     }
 
     // Handle sorting
@@ -952,11 +982,19 @@ export class AdminService {
     const options: PaginationOptions = { page, limit, search };
     const queryOptions = {
       searchFields: ['subject', 'message', 'email', 'name'],
+      fuzzyFields: ['subject', 'message', 'email', 'name'],
       relations: ['user'],
+      enableFuzzySearch: true,
+      fuzzyThreshold: 0.5,
       defaultSort: 'feedback.createdAt',
     };
 
-    return PaginationService.paginate(this.feedbackRepository, 'feedback', options, queryOptions);
+    return this.fuzzyPaginationService.paginateWithFuzzySearch(
+      this.feedbackRepository,
+      'feedback',
+      options,
+      queryOptions,
+    );
   }
 
   async updateFeedback(id: string, updateData: any) {
@@ -977,21 +1015,72 @@ export class AdminService {
 
   async getShowReviews(page: number = 1, limit: number = 10, search?: string) {
     const options: PaginationOptions = { page, limit, search };
-    const queryOptions = {
-      searchFields: ['djName', 'vendorName', 'venueName', 'comments', 'show.venue'],
-      relations: ['show', 'show.dj', 'show.dj.vendor', 'submittedByUser', 'reviewedByUser'],
-      defaultSort: 'review.createdAt',
-    };
 
-    return PaginationService.paginate(this.showReviewRepository, 'review', options, queryOptions);
+    // Use custom query builder to handle nullable relations properly
+    const query = this.showReviewRepository
+      .createQueryBuilder('review')
+      .leftJoinAndSelect('review.show', 'show')
+      .leftJoinAndSelect('show.dj', 'dj')
+      .leftJoinAndSelect('dj.vendor', 'vendor')
+      .leftJoinAndSelect('review.submittedByUser', 'submittedByUser')
+      .leftJoinAndSelect('review.reviewedByUser', 'reviewedByUser')
+      .orderBy('review.createdAt', 'DESC');
+
+    // Apply fuzzy search if provided
+    if (search) {
+      const patterns = this.fuzzySearchService.createSqlPatterns(search);
+      const conditions: string[] = [];
+      const parameters: any = {};
+
+      const searchFields = [
+        { field: 'review.djName', alias: 'dj' },
+        { field: 'review.vendorName', alias: 'vendor' },
+        { field: 'review.venueName', alias: 'venue' },
+        { field: 'review.comments', alias: 'comments' },
+      ];
+
+      searchFields.forEach(({ field, alias }, fieldIndex) => {
+        patterns.forEach((pattern, patternIndex) => {
+          const paramName = `search_${alias}_${fieldIndex}_${patternIndex}`;
+          conditions.push(`${field} ILIKE :${paramName}`);
+          parameters[paramName] = pattern;
+        });
+      });
+
+      if (conditions.length > 0) {
+        query.andWhere(`(${conditions.join(' OR ')})`, parameters);
+      }
+    }
+
+    // Apply pagination
+    const skip = (page - 1) * limit;
+    query.skip(skip).take(limit);
+
+    const [items, total] = await query.getManyAndCount();
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    };
   }
 
   async updateShowReview(id: string, updateData: any) {
     await this.showReviewRepository.update(id, updateData);
-    return await this.showReviewRepository.findOne({
-      where: { id },
-      relations: ['show', 'show.dj', 'show.dj.vendor', 'submittedByUser', 'reviewedByUser'],
-    });
+    return await this.showReviewRepository
+      .createQueryBuilder('review')
+      .leftJoinAndSelect('review.show', 'show')
+      .leftJoinAndSelect('show.dj', 'dj')
+      .leftJoinAndSelect('dj.vendor', 'vendor')
+      .leftJoinAndSelect('review.submittedByUser', 'submittedByUser')
+      .leftJoinAndSelect('review.reviewedByUser', 'reviewedByUser')
+      .where('review.id = :id', { id })
+      .getOne();
   }
 
   async deleteShowReview(id: string) {

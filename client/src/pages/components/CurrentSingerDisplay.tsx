@@ -1,18 +1,198 @@
-import { faHourglass, faMicrophone, faMusic } from '@fortawesome/free-solid-svg-icons';
+import { faClock, faHourglass, faMicrophone, faMusic } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Avatar, Box, Card, CardContent, Chip, Paper, Typography, useTheme } from '@mui/material';
-import React from 'react';
+import {
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  LinearProgress,
+  Paper,
+  TextField,
+  Typography,
+  useTheme,
+} from '@mui/material';
+import React, { useEffect, useState } from 'react';
 import { QueueEntry } from '../../types/live-show.types';
 // import { LiveShowUtils } from '../../utils/live-show.utils';
+
+// Helper component for song duration display
+interface SongDurationProps {
+  currentSinger: QueueEntry;
+  isDJ?: boolean;
+  onSetSongDuration?: (userId: string, duration: number) => void;
+  onStartSong?: (userId: string) => void;
+}
+
+const SongDurationDisplay: React.FC<SongDurationProps> = ({
+  currentSinger,
+  isDJ = false,
+  onSetSongDuration,
+  onStartSong,
+}) => {
+  const theme = useTheme();
+  const [elapsedTime, setElapsedTime] = useState(0);
+
+  // Update elapsed time every second
+  useEffect(() => {
+    if (!currentSinger.songStartTime) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const start = new Date(currentSinger.songStartTime!);
+      const elapsed = Math.floor((now.getTime() - start.getTime()) / 1000);
+      setElapsedTime(elapsed);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentSinger.songStartTime]);
+
+  // Format time as MM:SS
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Show DJ controls even if no timing info is set yet
+  const hasTimingInfo = currentSinger.songStartTime || currentSinger.songDuration;
+
+  // If no song timing info and not a DJ, return null
+  if (!hasTimingInfo && !isDJ) {
+    return null;
+  }
+
+  const duration = currentSinger.songDuration || 0;
+  const progress = duration > 0 ? Math.min(elapsedTime / duration, 1) : 0;
+  const remainingTime = Math.max(duration - elapsedTime, 0);
+
+  return (
+    <Box sx={{ mb: 2, maxWidth: 400, mx: 'auto' }}>
+      {/* Time Display */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <FontAwesomeIcon
+            icon={faClock}
+            style={{ color: theme.palette.text.secondary, fontSize: '0.9rem' }}
+          />
+          <Typography variant="body2" color="text.secondary" component="span">
+            {formatTime(elapsedTime)}
+          </Typography>
+        </Box>
+        {duration > 0 && (
+          <Typography variant="body2" color="text.secondary" component="span">
+            {formatTime(remainingTime)} remaining
+          </Typography>
+        )}
+      </Box>
+
+      {/* Progress Bar */}
+      {duration > 0 && (
+        <LinearProgress
+          variant="determinate"
+          value={progress * 100}
+          sx={{
+            height: 6,
+            borderRadius: 3,
+            backgroundColor: `${theme.palette.primary.main}20`,
+            '& .MuiLinearProgress-bar': {
+              borderRadius: 3,
+              background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+            },
+          }}
+        />
+      )}
+
+      {/* DJ Controls */}
+      {isDJ && (
+        <DJSongControls
+          currentSinger={currentSinger}
+          onSetSongDuration={onSetSongDuration}
+          onStartSong={onStartSong}
+        />
+      )}
+    </Box>
+  );
+};
+
+// DJ Controls component for managing song timing
+const DJSongControls: React.FC<{
+  currentSinger: QueueEntry;
+  onSetSongDuration?: (userId: string, duration: number) => void;
+  onStartSong?: (userId: string) => void;
+}> = ({ currentSinger, onSetSongDuration, onStartSong }) => {
+  const theme = useTheme();
+  const [durationInput, setDurationInput] = useState('');
+
+  const handleStartSong = () => {
+    if (onStartSong) {
+      onStartSong(currentSinger.userId);
+    }
+  };
+
+  const handleSetDuration = () => {
+    const duration = parseInt(durationInput);
+    if (onSetSongDuration && duration > 0) {
+      onSetSongDuration(currentSinger.userId, duration);
+      setDurationInput('');
+    }
+  };
+
+  return (
+    <Box sx={{ mt: 2, p: 2, backgroundColor: `${theme.palette.warning.main}10`, borderRadius: 2 }}>
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        component="div"
+        sx={{ mb: 1, display: 'block' }}
+      >
+        DJ Controls
+      </Typography>
+
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        {!currentSinger.songStartTime && (
+          <Button size="small" variant="contained" color="success" onClick={handleStartSong}>
+            Start Song
+          </Button>
+        )}
+
+        <TextField
+          size="small"
+          type="number"
+          value={durationInput}
+          onChange={(e) => setDurationInput(e.target.value)}
+          placeholder="Duration (seconds)"
+          sx={{ width: 140 }}
+        />
+
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={handleSetDuration}
+          disabled={!durationInput || parseInt(durationInput) <= 0}
+        >
+          Set Duration
+        </Button>
+      </Box>
+    </Box>
+  );
+};
 
 interface CurrentSingerDisplayProps {
   currentSinger?: QueueEntry;
   nextInQueue?: QueueEntry[];
+  isDJ?: boolean;
+  onSetSongDuration?: (userId: string, duration: number) => void;
+  onStartSong?: (userId: string) => void;
 }
 
 export const CurrentSingerDisplay: React.FC<CurrentSingerDisplayProps> = ({
   currentSinger,
   nextInQueue = [],
+  isDJ = false,
+  onSetSongDuration,
+  onStartSong,
 }) => {
   const theme = useTheme();
 
@@ -38,10 +218,10 @@ export const CurrentSingerDisplay: React.FC<CurrentSingerDisplayProps> = ({
             }}
           />
         </Box>
-        <Typography variant="h5" color="text.secondary" gutterBottom>
+        <Typography variant="h5" color="text.secondary" component="div" gutterBottom>
           No one is singing yet
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" component="div">
           Waiting for the first performer to take the stage
         </Typography>
       </Paper>
@@ -117,14 +297,15 @@ export const CurrentSingerDisplay: React.FC<CurrentSingerDisplayProps> = ({
                   fontSize: '4rem',
                   fontWeight: 800,
                   boxShadow: `0 0 40px ${theme.palette.primary.main}60, 0 0 80px ${theme.palette.primary.main}30`,
-                  background: theme.palette.mode === 'dark' 
-                    ? `linear-gradient(135deg, ${theme.palette.grey[800]}, ${theme.palette.grey[700]})`
-                    : `linear-gradient(135deg, ${theme.palette.grey[200]}, ${theme.palette.grey[300]})`,
+                  background:
+                    theme.palette.mode === 'dark'
+                      ? `linear-gradient(135deg, ${theme.palette.grey[800]}, ${theme.palette.grey[700]})`
+                      : `linear-gradient(135deg, ${theme.palette.grey[200]}, ${theme.palette.grey[300]})`,
                 }}
               >
                 {displayName.charAt(0).toUpperCase()}
               </Avatar>
-              
+
               {/* Spotlight Effect */}
               <Box
                 sx={{
@@ -178,7 +359,8 @@ export const CurrentSingerDisplay: React.FC<CurrentSingerDisplayProps> = ({
                       left: '-100%',
                       width: '100%',
                       height: '100%',
-                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+                      background:
+                        'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
                       animation: 'shine 3s ease-in-out infinite',
                     }}
                   />
@@ -223,9 +405,9 @@ export const CurrentSingerDisplay: React.FC<CurrentSingerDisplayProps> = ({
                 icon={faMusic}
                 style={{ color: theme.palette.secondary.main, fontSize: '1.5rem' }}
               />
-              <Typography 
-                variant="h5" 
-                sx={{ 
+              <Typography
+                variant="h5"
+                sx={{
                   color: theme.palette.text.primary,
                   fontStyle: 'italic',
                   fontWeight: 600,
@@ -236,6 +418,14 @@ export const CurrentSingerDisplay: React.FC<CurrentSingerDisplayProps> = ({
               </Typography>
             </Box>
           )}
+
+          {/* Song Duration and Progress */}
+          <SongDurationDisplay
+            currentSinger={currentSinger}
+            isDJ={isDJ}
+            onSetSongDuration={onSetSongDuration}
+            onStartSong={onStartSong}
+          />
         </Box>
       </Paper>
 
@@ -267,16 +457,16 @@ export const CurrentSingerDisplay: React.FC<CurrentSingerDisplayProps> = ({
                       <Box sx={{ position: 'relative' }}>
                         <Avatar
                           src={singer.avatar?.imageUrl}
-                          sx={{ 
-                            width: 48, 
-                            height: 48, 
+                          sx={{
+                            width: 48,
+                            height: 48,
                             fontSize: '1.2rem',
                             border: `2px solid ${index === 0 ? theme.palette.warning.main : theme.palette.primary.main}`,
                           }}
                         >
                           {nextDisplayName.charAt(0).toUpperCase()}
                         </Avatar>
-                        
+
                         {/* Small Microphone Badge */}
                         {singer.microphone && (
                           <Box
@@ -313,7 +503,9 @@ export const CurrentSingerDisplay: React.FC<CurrentSingerDisplayProps> = ({
                           <Typography variant="body2" fontWeight={600}>
                             #{singer.position}
                           </Typography>
-                          <Typography variant="body1" fontWeight={600}>{nextDisplayName}</Typography>
+                          <Typography variant="body1" fontWeight={600}>
+                            {nextDisplayName}
+                          </Typography>
                           {index === 0 && (
                             <Chip
                               label="Next Up"
@@ -325,13 +517,23 @@ export const CurrentSingerDisplay: React.FC<CurrentSingerDisplayProps> = ({
                         </Box>
 
                         {singer.songRequest && (
-                          <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                          <Typography
+                            variant="caption"
+                            component="div"
+                            color="text.secondary"
+                            sx={{ fontStyle: 'italic' }}
+                          >
                             "{singer.songRequest}"
                           </Typography>
                         )}
-                        
+
                         {singer.microphone && (
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                          <Typography
+                            variant="caption"
+                            component="div"
+                            color="text.secondary"
+                            sx={{ display: 'block', mt: 0.5 }}
+                          >
                             🎤 {singer.microphone.name}
                           </Typography>
                         )}

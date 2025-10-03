@@ -235,4 +235,37 @@ export class UserService {
       subscriptionActive: user.isDjSubscriptionActive,
     };
   }
+
+  /**
+   * Update user's location (city/state)
+   */
+  async updateLocation(userId: string, city: string, state: string): Promise<User> {
+    // Check if user exists
+    const user = await this.findOne(userId);
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // Only update if city/state is not already set or is different
+    if (!user.city || !user.state || user.city !== city || user.state !== state) {
+      await this.userRepository.update(userId, {
+        city: city.trim(),
+        state: state.trim(),
+      });
+    }
+
+    return await this.findOne(userId);
+  }
+
+  /**
+   * Check if user needs location update (city/state not set)
+   */
+  async needsLocationUpdate(userId: string): Promise<boolean> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['city', 'state'],
+    });
+
+    return !user?.city || !user?.state;
+  }
 }

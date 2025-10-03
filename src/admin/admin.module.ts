@@ -26,6 +26,8 @@ import { EnhancedVenueValidationService } from './enhanced-venue-validation.serv
 import { TimeValidationService } from './time-validation.service';
 import { VenueDuplicateDetectionService } from './venue-duplicate-detection.service';
 import { VenueGeocodingValidationService } from './venue-geocoding-validation.service';
+import { FuzzySearchService } from '../common/services/fuzzy-search.service';
+import { FuzzyPaginationService } from '../common/services/fuzzy-pagination.service';
 
 @Module({
   imports: [
@@ -58,6 +60,8 @@ import { VenueGeocodingValidationService } from './venue-geocoding-validation.se
     TimeValidationService,
     VenueDuplicateDetectionService,
     VenueGeocodingValidationService,
+    FuzzySearchService,
+    FuzzyPaginationService,
   ],
   exports: [AdminService, DeduplicationService],
 })

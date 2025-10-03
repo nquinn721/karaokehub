@@ -405,6 +405,96 @@ class LocationService {
   }
 
   /**
+   * Check if user needs location update (city/state not set)
+   */
+  async checkLocationUpdateNeeded(userId: string): Promise<boolean> {
+    try {
+      const response = await apiStore.get(`/location/needs-update/${userId}`);
+      return response.needsUpdate || false;
+    } catch (error) {
+      console.error('Failed to check if location update is needed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Update user location (city/state) based on current coordinates
+   */
+  async updateUserLocation(
+    userId: string,
+  ): Promise<{
+    success: boolean;
+    location?: { city: string; state: string; address: string };
+    error?: string;
+  }> {
+    try {
+      // First get current location
+      const location = await this.getCurrentLocation();
+
+      if (!location) {
+        return { success: false, error: 'Unable to get current location' };
+      }
+
+      // Send coordinates to backend to update user location
+      const response = await apiStore.post('/location/update-user-location', {
+        userId,
+        latitude: location.latitude,
+        longitude: location.longitude,
+      });
+
+      if (response.success) {
+        return {
+          success: true,
+          location: response.location,
+        };
+      } else {
+        return { success: false, error: response.message || 'Failed to update location' };
+      }
+    } catch (error: any) {
+      console.error('Failed to update user location:', error);
+      return {
+        success: false,
+        error: error?.response?.data?.message || 'Network error while updating location',
+      };
+    }
+  }
+
+  /**
+   * Auto-detect and save user location if not already set
+   * Call this on app initialization or user login
+   */
+  async autoUpdateLocationIfNeeded(
+    userId: string,
+  ): Promise<{ updated: boolean; location?: { city: string; state: string }; error?: string }> {
+    try {
+      // Check if user needs location update
+      const needsUpdate = await this.checkLocationUpdateNeeded(userId);
+
+      if (!needsUpdate) {
+        return { updated: false };
+      }
+
+      // Ask for location permission and update
+      const result = await this.updateUserLocation(userId);
+
+      if (result.success && result.location) {
+        return {
+          updated: true,
+          location: {
+            city: result.location.city,
+            state: result.location.state,
+          },
+        };
+      } else {
+        return { updated: false, error: result.error };
+      }
+    } catch (error) {
+      console.error('Auto location update failed:', error);
+      return { updated: false, error: 'Failed to auto-update location' };
+    }
+  }
+
+  /**
    * Cleanup resources
    */
   cleanup(): void {

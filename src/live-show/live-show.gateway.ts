@@ -516,6 +516,131 @@ export class LiveShowGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
   }
 
+  @SubscribeMessage('start-song')
+  async handleStartSong(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() data: { showId: string; userId: string; startTime: Date },
+  ) {
+    try {
+      const { showId, userId, startTime } = data;
+
+      if (!client.userId) {
+        client.emit('error', { message: 'Authentication required' });
+        return;
+      }
+
+      await this.liveShowService.startSong(showId, client.userId, userId, startTime);
+
+      const roomId = LiveShowUtils.generateSocketRoomId(showId);
+
+      // Notify everyone in the show about song start
+      const event: LiveShowEvent = {
+        type: LiveShowEventType.CURRENT_SINGER_CHANGED,
+        showId,
+        data: { userId, songStartTime: startTime },
+        timestamp: new Date(),
+      };
+
+      this.server.to(roomId).emit('show-event', event);
+
+      // Send updated queue
+      const queueResponse = await this.liveShowService.getQueue(showId);
+      this.server.to(roomId).emit('queue-updated', queueResponse);
+
+      this.logger.log(`Song started for user ${userId} by DJ ${client.userName} in show ${showId}`);
+    } catch (error) {
+      this.logger.error(`Error starting song: ${error.message}`);
+      client.emit('error', { message: error.message });
+    }
+  }
+
+  @SubscribeMessage('set-song-duration')
+  async handleSetSongDuration(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody() data: { showId: string; userId: string; duration: number },
+  ) {
+    try {
+      const { showId, userId, duration } = data;
+
+      if (!client.userId) {
+        client.emit('error', { message: 'Authentication required' });
+        return;
+      }
+
+      await this.liveShowService.setSongDuration(showId, client.userId, userId, duration);
+
+      const roomId = LiveShowUtils.generateSocketRoomId(showId);
+
+      // Notify everyone in the show about duration update
+      const event: LiveShowEvent = {
+        type: LiveShowEventType.QUEUE_UPDATED,
+        showId,
+        data: { userId, songDuration: duration },
+        timestamp: new Date(),
+      };
+
+      this.server.to(roomId).emit('show-event', event);
+
+      // Send updated queue
+      const queueResponse = await this.liveShowService.getQueue(showId);
+      this.server.to(roomId).emit('queue-updated', queueResponse);
+
+      this.logger.log(
+        `Song duration set to ${duration}s for user ${userId} by DJ ${client.userName} in show ${showId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Error setting song duration: ${error.message}`);
+      client.emit('error', { message: error.message });
+    }
+  }
+
+  @SubscribeMessage('dj-song-request')
+  async handleDJSongRequest(
+    @ConnectedSocket() client: AuthenticatedSocket,
+    @MessageBody()
+    data: { showId: string; songRequest: string; fromUserId: string; fromUserName: string },
+  ) {
+    try {
+      const { showId, songRequest, fromUserId, fromUserName } = data;
+
+      if (!client.userId) {
+        client.emit('error', { message: 'Authentication required' });
+        return;
+      }
+
+      await this.liveShowService.sendDJSongRequest(showId, fromUserId, fromUserName, songRequest);
+
+      const roomId = LiveShowUtils.generateSocketRoomId(showId);
+
+      // Send message to DJ only
+      const show = await this.liveShowService.getShow(showId);
+      if (show && show.djId) {
+        // Find DJ socket
+        const djSocket = Array.from(this.server.sockets.sockets.values()).find(
+          (s) =>
+            (s as AuthenticatedSocket).userId === show.djId &&
+            (s as AuthenticatedSocket).showId === showId,
+        );
+
+        if (djSocket) {
+          djSocket.emit('dj-song-request-received', {
+            fromUserId,
+            fromUserName,
+            songRequest,
+            timestamp: new Date(),
+          });
+        }
+      }
+
+      this.logger.log(
+        `Song request "${songRequest}" sent to DJ from ${fromUserName} in show ${showId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Error sending DJ song request: ${error.message}`);
+      client.emit('error', { message: error.message });
+    }
+  }
+
   @SubscribeMessage('get-show-details')
   async handleGetShowDetails(
     @ConnectedSocket() client: AuthenticatedSocket,

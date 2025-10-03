@@ -37,35 +37,11 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     profile: any,
     done: VerifyCallback,
   ): Promise<any> {
-    console.log('🟢 [GOOGLE_STRATEGY] Starting OAuth validation');
-    console.log('🔍 [GOOGLE_STRATEGY] Profile data received:', {
-      id: profile?.id,
-      displayName: profile?.displayName,
-      email: profile?.emails?.[0]?.value,
-      firstName: profile?.name?.givenName,
-      lastName: profile?.name?.familyName,
-      photo: profile?.photos?.[0]?.value,
-      provider: profile?.provider,
-      profileRaw: JSON.stringify(profile, null, 2),
-    });
-
     try {
-      console.log('🟢 [GOOGLE_STRATEGY] Calling authService.validateOAuthUser');
       const user = await this.authService.validateOAuthUser(profile, 'google');
-      console.log('🟢 [GOOGLE_STRATEGY] User validation successful:', {
-        userId: user?.id,
-        userEmail: user?.email,
-        userName: user?.name,
-        userProvider: user?.provider,
-      });
       done(null, user);
     } catch (error) {
-      console.error('🔴 [GOOGLE_STRATEGY] OAuth validation error:', {
-        error: error.message,
-        stack: error.stack,
-        profileId: profile?.id,
-        profileEmail: profile?.emails?.[0]?.value,
-      });
+      console.error('Google OAuth validation error:', error.message);
       done(error, false);
     }
   }

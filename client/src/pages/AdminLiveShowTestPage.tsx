@@ -123,8 +123,9 @@ export const AdminLiveShowTestPage: React.FC = observer(() => {
         isAdmin: false,
         coins: 1500,
         isDjSubscriptionActive: true,
-        equippedAvatarId: allAvatars.find(a => a.id === 'avatar_rockstar_1')?.id || allAvatars[0]?.id,
-        equippedMicrophoneId: allMics.find(m => m.id === 'mic_pro_1')?.id || allMics[0]?.id,
+        equippedAvatarId:
+          allAvatars.find((a) => a.id === 'avatar_rockstar_1')?.id || allAvatars[0]?.id,
+        equippedMicrophoneId: allMics.find((m) => m.id === 'mic_pro_1')?.id || allMics[0]?.id,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -138,8 +139,8 @@ export const AdminLiveShowTestPage: React.FC = observer(() => {
         isAdmin: false,
         coins: 800,
         isDjSubscriptionActive: false,
-        equippedAvatarId: allAvatars.find(a => a.id === 'avatar_pop_1')?.id || allAvatars[0]?.id,
-        equippedMicrophoneId: allMics.find(m => m.id === 'mic_wireless_1')?.id || allMics[0]?.id,
+        equippedAvatarId: allAvatars.find((a) => a.id === 'avatar_pop_1')?.id || allAvatars[0]?.id,
+        equippedMicrophoneId: allMics.find((m) => m.id === 'mic_wireless_1')?.id || allMics[0]?.id,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -153,8 +154,9 @@ export const AdminLiveShowTestPage: React.FC = observer(() => {
         isAdmin: false,
         coins: 600,
         isDjSubscriptionActive: false,
-        equippedAvatarId: allAvatars.find(a => a.id === 'avatar_hip_hop_1')?.id || allAvatars[0]?.id,
-        equippedMicrophoneId: allMics.find(m => m.id === 'mic_vintage_1')?.id || allMics[0]?.id,
+        equippedAvatarId:
+          allAvatars.find((a) => a.id === 'avatar_hip_hop_1')?.id || allAvatars[0]?.id,
+        equippedMicrophoneId: allMics.find((m) => m.id === 'mic_vintage_1')?.id || allMics[0]?.id,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -174,7 +176,7 @@ export const AdminLiveShowTestPage: React.FC = observer(() => {
 
     const allAvatars = testDataStore.getAllAvatars();
     const allMics = testDataStore.getAllMicrophones();
-    
+
     // Pick random avatar and microphone for variety
     const randomAvatar = allAvatars[Math.floor(Math.random() * allAvatars.length)];
     const randomMic = allMics[Math.floor(Math.random() * allMics.length)];

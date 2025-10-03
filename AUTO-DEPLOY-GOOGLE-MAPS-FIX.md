@@ -1,7 +1,8 @@
 # GitHub Actions Auto-Deploy: Google Maps API Security Fix
 
 ## ✅ Your Deployment Setup (Confirmed)
-- **Auto-deploy**: GitHub Actions triggers on push to `main` branch  
+
+- **Auto-deploy**: GitHub Actions triggers on push to `main` branch
 - **File**: `.github/workflows/deploy.yml`
 - **Method**: `gcloud run deploy` with `--update-secrets` parameters
 - **No manual YAML**: Cloud Run service is managed through GitHub Actions
@@ -17,6 +18,7 @@
 2. Create these 4 new API keys with restrictions:
 
    **Server Key**: `KaraokeHub-Backend-Server`
+
    ```
    Application restrictions: IP addresses
    - Add your Cloud Run service external IPs
@@ -24,7 +26,8 @@
    API restrictions: Geocoding API, Distance Matrix API
    ```
 
-   **Client Key**: `KaraokeHub-Web-Client`  
+   **Client Key**: `KaraokeHub-Web-Client`
+
    ```
    Application restrictions: HTTP referrers (web sites)
    - https://karaoke-hub.com/*
@@ -33,6 +36,7 @@
    ```
 
    **Android Key**: `KaraokeHub-Android`
+
    ```
    Application restrictions: Android apps
    - Package: com.karaokehub.app
@@ -41,6 +45,7 @@
    ```
 
    **Static Key**: `KaraokeHub-Static-Maps`
+
    ```
    Application restrictions: None (uses digital signatures)
    API restrictions: Maps Static API
@@ -100,10 +105,11 @@ After GitHub Actions completes:
 1. **Check Cloud Run service**: https://console.cloud.google.com/run/detail/us-central1/karaokehub/revisions?project=heroic-footing-460117-k8
 
 2. **Test API endpoints**:
+
    ```bash
    # Test geocoding (should use server key)
    curl "https://karaoke-hub.com/api/geocoding/address?q=1600+Amphitheatre+Parkway"
-   
+
    # Test config endpoint (should serve client key)
    curl "https://karaoke-hub.com/api/config/client"
    ```
@@ -128,6 +134,7 @@ Your GitHub Actions workflow (`.github/workflows/deploy.yml`) includes:
 ```
 
 This means:
+
 - ✅ **Every push to main** will deploy the new secrets
 - ✅ **No manual YAML editing** required
 - ✅ **Automatic rollout** of the security fix
@@ -151,7 +158,7 @@ git push origin main
 ## 🎯 This IS Comprehensive Because:
 
 1. **✅ Backend Security**: Server uses IP-restricted key for geocoding
-2. **✅ Frontend Security**: Client gets domain-restricted key  
+2. **✅ Frontend Security**: Client gets domain-restricted key
 3. **✅ Auto-Deploy Ready**: GitHub Actions will handle deployment
 4. **✅ Backward Compatible**: Fallback to existing key during transition
 5. **✅ Zero Downtime**: Rolling deployment through Cloud Run

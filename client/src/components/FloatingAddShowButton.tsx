@@ -22,6 +22,9 @@ const FloatingAddShowButton: React.FC<FloatingAddShowButtonProps> = ({
   // Check if we're already on the submit show page
   const isSubmitPage = location.pathname === '/submit';
 
+  // Check if we're on a live show page
+  const isLiveShowPage = location.pathname.startsWith('/live-shows/');
+
   // Check if we're on shows page where bottom sheet might interfere
   const isShowsPage = location.pathname === '/shows';
 
@@ -72,8 +75,8 @@ const FloatingAddShowButton: React.FC<FloatingAddShowButtonProps> = ({
     navigate('/submit');
   };
 
-  // Hide the button if we're already on the submit page
-  if (isSubmitPage) {
+  // Hide the button if we're already on the submit page or live show page
+  if (isSubmitPage || isLiveShowPage) {
     return null;
   }
 

@@ -45,6 +45,13 @@ export class User {
   @Column({ nullable: true })
   profileImageUrl: string;
 
+  // Location fields
+  @Column({ nullable: true })
+  city: string;
+
+  @Column({ nullable: true })
+  state: string;
+
   @Column({ default: true })
   isActive: boolean;
 

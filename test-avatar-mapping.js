@@ -1,68 +1,68 @@
 // Test script to verify avatar and microphone mappings
 const avatarMap = {
-  'avatar_default_1': {
+  avatar_default_1: {
     id: 'avatar_default_1',
     name: 'Classic Avatar',
     imageUrl: '/images/avatar/avatar_1.png',
-    category: 'classic'
+    category: 'classic',
   },
-  'avatar_rockstar_2': {
+  avatar_rockstar_2: {
     id: 'avatar_rockstar_2',
     name: 'Rockstar',
     imageUrl: '/images/avatar/avatar_2.png',
-    category: 'rockstar'
+    category: 'rockstar',
   },
-  'avatar_punk_3': {
+  avatar_punk_3: {
     id: 'avatar_punk_3',
     name: 'Punk Rocker',
     imageUrl: '/images/avatar/avatar_3.png',
-    category: 'punk'
+    category: 'punk',
   },
-  'avatar_disco_4': {
+  avatar_disco_4: {
     id: 'avatar_disco_4',
     name: 'Disco Star',
     imageUrl: '/images/avatar/avatar_4.png',
-    category: 'disco'
+    category: 'disco',
   },
-  'avatar_country_5': {
+  avatar_country_5: {
     id: 'avatar_country_5',
     name: 'Country Singer',
     imageUrl: '/images/avatar/avatar_5.png',
-    category: 'country'
-  }
+    category: 'country',
+  },
 };
 
 const microphoneMap = {
-  'mic_default_1': {
+  mic_default_1: {
     id: 'mic_default_1',
     name: 'Classic Microphone',
     imageUrl: '/images/avatar/parts/microphones/mic_1.png',
-    category: 'classic'
+    category: 'classic',
   },
-  'mic_wireless_2': {
+  mic_wireless_2: {
     id: 'mic_wireless_2',
     name: 'Wireless Mic',
     imageUrl: '/images/avatar/parts/microphones/mic_2.png',
-    category: 'modern'
+    category: 'modern',
   },
-  'mic_vintage_3': {
+  mic_vintage_3: {
     id: 'mic_vintage_3',
     name: 'Vintage Microphone',
     imageUrl: '/images/avatar/parts/microphones/mic_3.png',
-    category: 'vintage'
+    category: 'vintage',
   },
-  'mic_studio_4': {
+  mic_studio_4: {
     id: 'mic_studio_4',
     name: 'Studio Microphone',
     imageUrl: '/images/avatar/parts/microphones/mic_4.png',
-    category: 'studio'
+    category: 'studio',
   },
-  'mic_stage_5': {
+  mic_stage_5: {
     id: 'mic_stage_5',
     name: 'Stage Microphone',
     imageUrl: '/images/avatar/parts/microphones/mic_5.png',
-    category: 'stage'
-  }
+    category: 'stage',
+  },
 };
 
 // Test the mappings

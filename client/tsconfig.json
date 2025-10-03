@@ -35,5 +35,6 @@
     "emitDecoratorMetadata": true
   },
   "include": ["src"],
+  "exclude": ["src/stores/AuthStore.backup.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

@@ -1,7 +1,20 @@
-import { Controller, Get, Logger, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Logger,
+  Param,
+  Post,
+  Query,
+  Request,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { GeocodingService } from '../geocoding/geocoding.service';
 import { DayOfWeek } from '../show/show.entity';
 import { ShowService } from '../show/show.service';
+import { UserService } from '../user/user.service';
 
 @Controller('location')
 export class LocationController {
@@ -10,7 +23,74 @@ export class LocationController {
   constructor(
     private readonly showService: ShowService,
     private readonly geocodingService: GeocodingService,
+    private readonly userService: UserService,
   ) {}
+
+  /**
+   * Check if user needs location update
+   */
+  @Get('needs-update/:userId')
+  async needsLocationUpdate(@Param('userId') userId: string) {
+    try {
+      const needsUpdate = await this.userService.needsLocationUpdate(userId);
+      return {
+        needsUpdate,
+        message: needsUpdate ? 'User location needs to be updated' : 'User location is already set',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to check location update status: ${error.message}`);
+      throw new HttpException('Failed to check location status', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  /**
+   * Update user location based on coordinates
+   */
+  @Post('update-user-location')
+  async updateUserLocation(
+    @Body() body: { userId: string; latitude: number; longitude: number },
+    @Request() req: any,
+  ) {
+    const { userId, latitude, longitude } = body;
+
+    // Verify user is updating their own location or is admin
+    const requestingUser = req.user;
+    if (requestingUser?.id !== userId && !requestingUser?.isAdmin) {
+      throw new UnauthorizedException("Cannot update another user's location");
+    }
+
+    try {
+      // Reverse geocode to get address
+      const addressString = await this.geocodingService.reverseGeocode(latitude, longitude);
+
+      if (addressString) {
+        // Extract city/state from address
+        const locationData = this.geocodingService.extractCityStateFromAddress(addressString);
+
+        if (locationData.city && locationData.state) {
+          // Update user's city/state
+          await this.userService.updateLocation(userId, locationData.city, locationData.state);
+
+          return {
+            success: true,
+            location: {
+              city: locationData.city,
+              state: locationData.state,
+              address: addressString,
+            },
+            message: 'Location updated successfully',
+          };
+        } else {
+          throw new Error('Could not extract city/state from address');
+        }
+      } else {
+        throw new Error('Could not geocode coordinates');
+      }
+    } catch (error) {
+      this.logger.error(`Failed to update user location: ${error.message}`);
+      throw new HttpException('Failed to update location', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
 
   /**
    * Calculate distance between two points using Google Maps Distance Matrix API

@@ -43,6 +43,13 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
   const [replyToUser, setReplyToUser] = useState<ShowParticipant | null>(null);
   const [participantMenuAnchor, setParticipantMenuAnchor] = useState<null | HTMLElement>(null);
 
+  // Reset active tab when DJ status changes
+  useEffect(() => {
+    if (isDJ) {
+      setActiveTab(0); // DJs only have one tab (DJ Messages)
+    }
+  }, [isDJ]);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -78,21 +85,23 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
   };
 
   const getFilteredMessages = () => {
-    switch (activeTab) {
-      case 0: // Singer Chat
-        return messages.filter((msg) => msg.type === ChatMessageType.SINGER_CHAT);
-      case 1: // DJ Chat (if DJ) or DJ Messages (if singer)
-        if (isDJ) {
-          return messages.filter((msg) => msg.type === ChatMessageType.DJ_TO_SINGER);
-        } else {
+    if (isDJ) {
+      // DJs only see DJ messages (no Singer Chat tab)
+      return messages.filter((msg) => msg.type === ChatMessageType.DJ_TO_SINGER);
+    } else {
+      // Singers have both tabs
+      switch (activeTab) {
+        case 0: // Singer Chat
+          return messages.filter((msg) => msg.type === ChatMessageType.SINGER_CHAT);
+        case 1: // DJ Messages (for singers)
           return messages.filter(
             (msg) =>
               msg.type === ChatMessageType.DJ_TO_SINGER &&
               (msg.recipientId === currentUserId || !msg.recipientId),
           );
-        }
-      default:
-        return [];
+        default:
+          return [];
+      }
     }
   };
 
@@ -138,10 +147,15 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({
   const filteredMessages = getFilteredMessages();
 
   const tabs = [
-    {
-      label: 'Singer Chat',
-      count: messages.filter((msg) => msg.type === ChatMessageType.SINGER_CHAT).length,
-    },
+    // Only show Singer Chat tab to non-DJ users
+    ...(isDJ
+      ? []
+      : [
+          {
+            label: 'Singer Chat',
+            count: messages.filter((msg) => msg.type === ChatMessageType.SINGER_CHAT).length,
+          },
+        ]),
     {
       label: isDJ ? 'DJ Messages' : 'DJ Chat',
       count: isDJ

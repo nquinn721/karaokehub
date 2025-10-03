@@ -61,6 +61,8 @@ export interface QueueEntry {
   joinedQueueAt: Date;
   songRequest?: string; // Optional song they plan to sing
   isCurrentSinger: boolean;
+  songStartTime?: Date; // When the song started
+  songDuration?: number; // Duration in seconds
 }
 
 export interface ChatMessage {
@@ -190,7 +192,7 @@ export interface UpdateQueueDto {
 export interface AddToQueueDto {
   showId: string;
   userId: string;
-  songRequest?: string;
+  songRequest: string; // Required - user must specify a song to join queue
 }
 
 export interface RemoveFromQueueDto {

@@ -211,6 +211,34 @@ export class LiveShowStore {
       }, announcement.displayDuration * 1000);
     });
 
+    // DJ Song Requests
+    this.socket.on(
+      'dj-song-request-received',
+      (data: {
+        fromUserId: string;
+        fromUserName: string;
+        songRequest: string;
+        timestamp: Date;
+      }) => {
+        if (this.currentUserRole === 'dj') {
+          // Add as a system message visible to DJ
+          runInAction(() => {
+            const message: ChatMessage = {
+              id: `song-request-${Date.now()}`,
+              showId: this.currentShow?.id || '',
+              senderId: 'system',
+              senderName: 'Song Request',
+              message: `🎵 ${data.fromUserName} requests: "${data.songRequest}"`,
+              type: ChatMessageType.SYSTEM,
+              timestamp: new Date(data.timestamp),
+              isVisible: true,
+            };
+            this.chatMessages.push(message);
+          });
+        }
+      },
+    );
+
     // Queue updates
     this.socket.on('queue-updated', (data: { queue: QueueEntry[]; currentSinger?: QueueEntry }) => {
       runInAction(() => {
@@ -420,6 +448,28 @@ export class LiveShowStore {
     });
   }
 
+  reorderSingers(singerOrder: string[]): void {
+    if (!this.socket?.connected || !this.currentShow || !authStore.user) return;
+    if (this.currentUserRole !== 'dj') return;
+
+    // Use API call instead of websocket for singer reordering
+    apiStore
+      .post(`/live-shows/${this.currentShow.id}/singers/reorder`, {
+        singerOrder,
+      })
+      .then((response) => {
+        if (response.success) {
+          console.log('Singer rotation reordered successfully');
+          // The queue will be updated via websocket events
+        } else {
+          console.error('Failed to reorder singer rotation:', response.message);
+        }
+      })
+      .catch((error) => {
+        console.error('Error reordering singer rotation:', error);
+      });
+  }
+
   setCurrentSinger(singerId: string): void {
     if (!this.socket?.connected || !this.currentShow || !authStore.user) return;
     if (this.currentUserRole !== 'dj') return;
@@ -427,6 +477,42 @@ export class LiveShowStore {
     this.socket.emit('set-current-singer', {
       showId: this.currentShow.id,
       singerId,
+    });
+  }
+
+  // Song timing methods
+  startSong(userId: string): void {
+    if (!this.socket?.connected || !this.currentShow || !authStore.user) return;
+    if (this.currentUserRole !== 'dj') return;
+
+    this.socket.emit('start-song', {
+      showId: this.currentShow.id,
+      userId,
+      startTime: new Date(),
+    });
+  }
+
+  setSongDuration(userId: string, duration: number): void {
+    if (!this.socket?.connected || !this.currentShow || !authStore.user) return;
+    if (this.currentUserRole !== 'dj') return;
+
+    this.socket.emit('set-song-duration', {
+      showId: this.currentShow.id,
+      userId,
+      duration,
+    });
+  }
+
+  // Send song request to DJ
+  requestSongFromDJ(songRequest: string): void {
+    if (!this.socket?.connected || !this.currentShow || !authStore.user) return;
+    if (this.currentUserRole === 'dj') return; // DJs don't request songs from themselves
+
+    this.socket.emit('dj-song-request', {
+      showId: this.currentShow.id,
+      songRequest,
+      fromUserId: authStore.user.id,
+      fromUserName: authStore.user.name || authStore.user.stageName,
     });
   }
 
@@ -589,6 +675,10 @@ export class LiveShowStore {
 
   get canSendAnnouncements(): boolean {
     return this.currentUserRole === 'dj';
+  }
+
+  get hasDJ(): boolean {
+    return Boolean(this.currentShow?.djId);
   }
 
   get onlineParticipantCount(): number {

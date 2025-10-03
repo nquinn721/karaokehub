@@ -55,6 +55,8 @@ export interface QueueEntry {
   joinedQueueAt: Date;
   songRequest?: string;
   isCurrentSinger: boolean;
+  songStartTime?: Date;
+  songDuration?: number; // Duration in seconds
 }
 
 export interface ChatMessage {

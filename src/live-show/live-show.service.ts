@@ -432,6 +432,10 @@ export class LiveShowService {
   async addToQueue(addToQueueDto: AddToQueueDto): Promise<QueueEntry> {
     const { showId, userId, songRequest } = addToQueueDto;
 
+    if (!songRequest || songRequest.trim().length === 0) {
+      throw new BadRequestException('Song request is required to join the queue');
+    }
+
     const show = this.shows.get(showId);
     if (!show) {
       throw new NotFoundException('Show not found');
@@ -451,6 +455,7 @@ export class LiveShowService {
       throw new BadRequestException('User already in queue');
     }
 
+    // Create the queue entry with a temporary position
     const queueEntry: QueueEntry = {
       id: LiveShowUtils.generateQueueEntryId(),
       userId,
@@ -458,13 +463,16 @@ export class LiveShowService {
       stageName: participant.stageName,
       avatar: participant.avatar,
       microphone: participant.microphone,
-      position: LiveShowUtils.getNextQueuePosition(show.queue),
+      position: 999999, // Temporary position
       joinedQueueAt: new Date(),
-      songRequest,
+      songRequest: songRequest.trim(),
       isCurrentSinger: false,
     };
 
+    // Add to queue and apply interleaved positioning
     show.queue.push(queueEntry);
+    this.applyInterleavedQueuePositions(show.queue);
+
     participant.queuePosition = queueEntry.position;
     show.updatedAt = new Date();
 
@@ -597,6 +605,90 @@ export class LiveShowService {
   }
 
   /**
+   * Reorder singers by rotation (DJ only)
+   * This changes the order in which unique singers will be called up
+   */
+  async updateSingerRotation(
+    showId: string,
+    djId: string,
+    singerOrder: string[],
+  ): Promise<QueueEntry[]> {
+    const show = this.shows.get(showId);
+    if (!show) {
+      throw new NotFoundException('Show not found');
+    }
+
+    const dj = show.participants.get(djId);
+    if (!dj || !dj.isDJ) {
+      throw new ForbiddenException('Only DJs can reorder singer rotation');
+    }
+
+    // Get unique singers currently in the queue
+    const uniqueSingers = new Set(show.queue.map((entry) => entry.userId));
+
+    // Validate that the singer order contains all unique singers and no extras
+    const orderSet = new Set(singerOrder);
+    if (
+      orderSet.size !== uniqueSingers.size ||
+      !Array.from(uniqueSingers).every((id) => orderSet.has(id))
+    ) {
+      throw new BadRequestException('Invalid singer rotation order');
+    }
+
+    // Group queue entries by singer
+    const singerGroups = new Map<string, QueueEntry[]>();
+    show.queue.forEach((entry) => {
+      if (!singerGroups.has(entry.userId)) {
+        singerGroups.set(entry.userId, []);
+      }
+      singerGroups.get(entry.userId)!.push(entry);
+    });
+
+    // Sort each singer's songs by their join time to maintain relative order
+    singerGroups.forEach((entries) => {
+      entries.sort((a, b) => a.joinedQueueAt.getTime() - b.joinedQueueAt.getTime());
+    });
+
+    // Rebuild queue using the new singer order with interleaved positioning
+    const reorderedQueue: QueueEntry[] = [];
+    const maxSongsPerSinger = Math.max(
+      ...Array.from(singerGroups.values()).map((songs) => songs.length),
+    );
+
+    // Interleave songs based on the new singer order
+    for (let songIndex = 0; songIndex < maxSongsPerSinger; songIndex++) {
+      for (const singerId of singerOrder) {
+        const singerSongs = singerGroups.get(singerId);
+        if (singerSongs && singerSongs[songIndex]) {
+          reorderedQueue.push(singerSongs[songIndex]);
+        }
+      }
+    }
+
+    // Update positions
+    reorderedQueue.forEach((entry, index) => {
+      entry.position = index + 1;
+    });
+
+    // Update the show's queue
+    show.queue = reorderedQueue;
+
+    // Update participant queue positions
+    reorderedQueue.forEach((entry) => {
+      const participant = show.participants.get(entry.userId);
+      if (participant) {
+        participant.queuePosition = entry.position;
+      }
+    });
+
+    show.updatedAt = new Date();
+
+    this.logger.log(`Singer rotation reordered in show ${showId} by DJ ${dj.userName}`);
+
+    return reorderedQueue;
+  }
+
+  /**
    * Set current singer (DJ only)
    */
   async setCurrentSinger(setCurrentDto: SetCurrentSingerDto): Promise<void> {
@@ -628,6 +720,142 @@ export class LiveShowService {
     show.updatedAt = new Date();
 
     this.logger.log(`Current singer set to ${queueEntry.userName} in show ${showId}`);
+  }
+
+  /**
+   * Start song timing (DJ only)
+   */
+  async startSong(showId: string, djId: string, userId: string, startTime: Date): Promise<void> {
+    const show = this.shows.get(showId);
+    if (!show) {
+      throw new NotFoundException('Show not found');
+    }
+
+    const dj = show.participants.get(djId);
+    if (!dj || !dj.isDJ) {
+      throw new ForbiddenException('Only DJs can start song timing');
+    }
+
+    const queueEntry = show.queue.find((entry) => entry.userId === userId);
+    if (!queueEntry) {
+      throw new BadRequestException('User not in queue');
+    }
+
+    queueEntry.songStartTime = startTime;
+    show.updatedAt = new Date();
+
+    this.logger.log(`Song started for ${queueEntry.userName} in show ${showId}`);
+  }
+
+  /**
+   * Set song duration (DJ only)
+   */
+  async setSongDuration(
+    showId: string,
+    djId: string,
+    userId: string,
+    duration: number,
+  ): Promise<void> {
+    const show = this.shows.get(showId);
+    if (!show) {
+      throw new NotFoundException('Show not found');
+    }
+
+    const dj = show.participants.get(djId);
+    if (!dj || !dj.isDJ) {
+      throw new ForbiddenException('Only DJs can set song duration');
+    }
+
+    const queueEntry = show.queue.find((entry) => entry.userId === userId);
+    if (!queueEntry) {
+      throw new BadRequestException('User not in queue');
+    }
+
+    queueEntry.songDuration = duration;
+    show.updatedAt = new Date();
+
+    this.logger.log(
+      `Song duration set to ${duration}s for ${queueEntry.userName} in show ${showId}`,
+    );
+  }
+
+  /**
+   * Send song request to DJ
+   */
+  async sendDJSongRequest(
+    showId: string,
+    fromUserId: string,
+    fromUserName: string,
+    songRequest: string,
+  ): Promise<void> {
+    const show = this.shows.get(showId);
+    if (!show) {
+      throw new NotFoundException('Show not found');
+    }
+
+    if (!show.djId) {
+      throw new BadRequestException('No DJ in this show');
+    }
+
+    const participant = show.participants.get(fromUserId);
+    if (!participant) {
+      throw new BadRequestException('User not in show');
+    }
+
+    // For now, we'll just log it. In a real implementation, you might want to store these requests
+    // in a DJ request queue or as special chat messages
+    this.logger.log(
+      `Song request "${songRequest}" received from ${fromUserName} for DJ in show ${showId}`,
+    );
+  }
+
+  /**
+   * Apply interleaved positioning to the entire queue
+   * This distributes each user's songs evenly throughout the queue
+   */
+  private applyInterleavedQueuePositions(queue: QueueEntry[]): void {
+    if (queue.length === 0) return;
+
+    // Group entries by user, maintaining their relative order within each user
+    const userGroups = new Map<string, QueueEntry[]>();
+
+    // Sort by join time to maintain original order within each user's songs
+    const sortedByJoinTime = queue.sort(
+      (a, b) => a.joinedQueueAt.getTime() - b.joinedQueueAt.getTime(),
+    );
+
+    for (const entry of sortedByJoinTime) {
+      if (!userGroups.has(entry.userId)) {
+        userGroups.set(entry.userId, []);
+      }
+      userGroups.get(entry.userId)!.push(entry);
+    }
+
+    // Create interleaved queue
+    const reorderedQueue: QueueEntry[] = [];
+    const userArrays = Array.from(userGroups.values());
+    const userIndices = new Array(userArrays.length).fill(0);
+
+    let totalAssigned = 0;
+
+    // Round-robin assignment: assign one song per user per round
+    while (totalAssigned < queue.length) {
+      for (let userIdx = 0; userIdx < userArrays.length; userIdx++) {
+        const userSongs = userArrays[userIdx];
+        const songIdx = userIndices[userIdx];
+
+        if (songIdx < userSongs.length) {
+          reorderedQueue.push(userSongs[songIdx]);
+          userIndices[userIdx]++;
+          totalAssigned++;
+        }
+      }
+    }
+
+    // Assign new positions
+    for (let i = 0; i < reorderedQueue.length; i++) {
+      reorderedQueue[i].position = i + 1;
+    }
   }
 
   /**
@@ -727,46 +955,48 @@ export class LiveShowService {
   ): Promise<ParticipantAvatar | undefined> {
     // Map of avatar IDs to avatar data (matching our test data)
     const avatarMap = {
-      'avatar_default_1': {
+      avatar_default_1: {
         id: 'avatar_default_1',
         name: 'Classic Alex',
         imageUrl: '/images/avatar/avatars/alex.png',
       },
-      'avatar_rockstar_1': {
+      avatar_rockstar_1: {
         id: 'avatar_rockstar_1',
         name: 'Rock Star Avatar',
         imageUrl: '/images/avatar/avatar_7.png',
       },
-      'avatar_rockstar_2': {
+      avatar_rockstar_2: {
         id: 'avatar_rockstar_2',
         name: 'Rock Star Avatar',
         imageUrl: '/images/avatar/avatar_7.png',
       },
-      'avatar_pop_1': {
+      avatar_pop_1: {
         id: 'avatar_pop_1',
         name: 'Pop Star Avatar',
         imageUrl: '/images/avatar/avatar_12.png',
       },
-      'avatar_hip_hop_1': {
+      avatar_hip_hop_1: {
         id: 'avatar_hip_hop_1',
         name: 'Hip Hop Avatar',
         imageUrl: '/images/avatar/avatar_15.png',
       },
-      'avatar_country_1': {
+      avatar_country_1: {
         id: 'avatar_country_1',
         name: 'Country Avatar',
         imageUrl: '/images/avatar/avatar_20.png',
       },
     };
 
-    this.logger.log(`Getting avatar for user ${user.id}, equippedAvatarId: ${user.equippedAvatarId}`);
-    
+    this.logger.log(
+      `Getting avatar for user ${user.id}, equippedAvatarId: ${user.equippedAvatarId}`,
+    );
+
     // For test mode, always return a working avatar based on user name or default
     if (user.name === 'NateDogg' || user.name.includes('Nate')) {
       this.logger.log('Returning rockstar avatar for NateDogg');
       return avatarMap['avatar_rockstar_2'] || avatarMap['avatar_default_1'];
     }
-    
+
     // Check if user has equipped avatar and it exists in our map
     if (user.equippedAvatarId && avatarMap[user.equippedAvatarId]) {
       this.logger.log(`Found avatar mapping for ${user.equippedAvatarId}`);
@@ -787,41 +1017,43 @@ export class LiveShowService {
   ): Promise<ParticipantMicrophone | undefined> {
     // Map of microphone IDs to microphone data (matching our test data)
     const microphoneMap = {
-      'mic_default_1': {
+      mic_default_1: {
         id: 'mic_default_1',
         name: 'Basic Mic',
         imageUrl: '/images/avatar/parts/microphones/mic_basic_1.png',
       },
-      'mic_pro_1': {
+      mic_pro_1: {
         id: 'mic_pro_1',
         name: 'Gold Pro Mic',
         imageUrl: '/images/avatar/parts/microphones/mic_gold_1.png',
       },
-      'mic_vintage_1': {
+      mic_vintage_1: {
         id: 'mic_vintage_1',
         name: 'Ruby Vintage Mic',
         imageUrl: '/images/avatar/parts/microphones/mic_ruby_1.png',
       },
-      'mic_wireless_1': {
+      mic_wireless_1: {
         id: 'mic_wireless_1',
         name: 'Emerald Performance Mic',
         imageUrl: '/images/avatar/parts/microphones/mic_emerald_1.png',
       },
-      'mic_gaming_1': {
+      mic_gaming_1: {
         id: 'mic_gaming_1',
         name: 'Diamond Elite Mic',
         imageUrl: '/images/avatar/parts/microphones/mic_diamond_1.png',
       },
     };
 
-    this.logger.log(`Getting microphone for user ${user.id}, equippedMicrophoneId: ${user.equippedMicrophoneId}`);
-    
+    this.logger.log(
+      `Getting microphone for user ${user.id}, equippedMicrophoneId: ${user.equippedMicrophoneId}`,
+    );
+
     // For test mode, return a premium microphone for NateDogg
     if (user.name === 'NateDogg' || user.name.includes('Nate')) {
       this.logger.log('Returning gold pro mic for NateDogg');
       return microphoneMap['mic_pro_1'] || microphoneMap['mic_default_1'];
     }
-    
+
     // Check if user has equipped microphone and it exists in our map
     if (user.equippedMicrophoneId && microphoneMap[user.equippedMicrophoneId]) {
       this.logger.log(`Found microphone mapping for ${user.equippedMicrophoneId}`);
@@ -946,7 +1178,7 @@ export class LiveShowService {
       {
         id: 'test-sarah-star',
         name: 'Sarah Star',
-        avatarId: 'avatar_pop_1', 
+        avatarId: 'avatar_pop_1',
         microphoneId: 'mic_wireless_1',
         isDJ: false,
       },
@@ -964,7 +1196,7 @@ export class LiveShowService {
       if (!show.participants.has(testUser.id)) {
         const avatar = await this.getTestUserAvatar(testUser.avatarId);
         const microphone = await this.getTestUserMicrophone(testUser.microphoneId);
-        
+
         const participant: ShowParticipant = {
           userId: testUser.id,
           userName: testUser.name,
@@ -977,7 +1209,7 @@ export class LiveShowService {
         };
 
         show.participants.set(testUser.id, participant);
-        
+
         // Add singers to queue automatically
         if (!testUser.isDJ) {
           const queueEntry: QueueEntry = {
@@ -997,7 +1229,7 @@ export class LiveShowService {
     }
 
     // Set the first singer as current singer
-    if (show.queue.length > 0 && !show.queue.some(entry => entry.isCurrentSinger)) {
+    if (show.queue.length > 0 && !show.queue.some((entry) => entry.isCurrentSinger)) {
       show.queue[0].isCurrentSinger = true;
     }
 
@@ -1007,21 +1239,57 @@ export class LiveShowService {
 
   private async getTestUserAvatar(avatarId: string): Promise<ParticipantAvatar> {
     const avatarMap = {
-      'avatar_default_1': { id: 'avatar_default_1', name: 'Classic Alex', imageUrl: '/images/avatar/avatars/alex.png' },
-      'avatar_rockstar_1': { id: 'avatar_rockstar_1', name: 'Rock Star Avatar', imageUrl: '/images/avatar/avatar_7.png' },
-      'avatar_pop_1': { id: 'avatar_pop_1', name: 'Pop Star Avatar', imageUrl: '/images/avatar/avatar_12.png' },
-      'avatar_hip_hop_1': { id: 'avatar_hip_hop_1', name: 'Hip Hop Avatar', imageUrl: '/images/avatar/avatar_15.png' },
-      'avatar_country_1': { id: 'avatar_country_1', name: 'Country Avatar', imageUrl: '/images/avatar/avatar_20.png' },
+      avatar_default_1: {
+        id: 'avatar_default_1',
+        name: 'Classic Alex',
+        imageUrl: '/images/avatar/avatars/alex.png',
+      },
+      avatar_rockstar_1: {
+        id: 'avatar_rockstar_1',
+        name: 'Rock Star Avatar',
+        imageUrl: '/images/avatar/avatar_7.png',
+      },
+      avatar_pop_1: {
+        id: 'avatar_pop_1',
+        name: 'Pop Star Avatar',
+        imageUrl: '/images/avatar/avatar_12.png',
+      },
+      avatar_hip_hop_1: {
+        id: 'avatar_hip_hop_1',
+        name: 'Hip Hop Avatar',
+        imageUrl: '/images/avatar/avatar_15.png',
+      },
+      avatar_country_1: {
+        id: 'avatar_country_1',
+        name: 'Country Avatar',
+        imageUrl: '/images/avatar/avatar_20.png',
+      },
     };
     return avatarMap[avatarId] || avatarMap['avatar_default_1'];
   }
 
   private async getTestUserMicrophone(microphoneId: string): Promise<ParticipantMicrophone> {
     const microphoneMap = {
-      'mic_default_1': { id: 'mic_default_1', name: 'Basic Mic', imageUrl: '/images/avatar/parts/microphones/mic_basic_1.png' },
-      'mic_pro_1': { id: 'mic_pro_1', name: 'Gold Pro Mic', imageUrl: '/images/avatar/parts/microphones/mic_gold_1.png' },
-      'mic_vintage_1': { id: 'mic_vintage_1', name: 'Ruby Vintage Mic', imageUrl: '/images/avatar/parts/microphones/mic_ruby_1.png' },
-      'mic_wireless_1': { id: 'mic_wireless_1', name: 'Emerald Performance Mic', imageUrl: '/images/avatar/parts/microphones/mic_emerald_1.png' },
+      mic_default_1: {
+        id: 'mic_default_1',
+        name: 'Basic Mic',
+        imageUrl: '/images/avatar/parts/microphones/mic_basic_1.png',
+      },
+      mic_pro_1: {
+        id: 'mic_pro_1',
+        name: 'Gold Pro Mic',
+        imageUrl: '/images/avatar/parts/microphones/mic_gold_1.png',
+      },
+      mic_vintage_1: {
+        id: 'mic_vintage_1',
+        name: 'Ruby Vintage Mic',
+        imageUrl: '/images/avatar/parts/microphones/mic_ruby_1.png',
+      },
+      mic_wireless_1: {
+        id: 'mic_wireless_1',
+        name: 'Emerald Performance Mic',
+        imageUrl: '/images/avatar/parts/microphones/mic_emerald_1.png',
+      },
     };
     return microphoneMap[microphoneId] || microphoneMap['mic_default_1'];
   }
@@ -1029,7 +1297,11 @@ export class LiveShowService {
   /**
    * Switch user role in a show for testing purposes
    */
-  async switchUserRoleInShow(showId: string, userId: string, newRole: 'dj' | 'singer'): Promise<string> {
+  async switchUserRoleInShow(
+    showId: string,
+    userId: string,
+    newRole: 'dj' | 'singer',
+  ): Promise<string> {
     const show = this.shows.get(showId);
     if (!show) {
       throw new NotFoundException('Show not found');
@@ -1042,13 +1314,13 @@ export class LiveShowService {
 
     // Update participant role
     participant.isDJ = newRole === 'dj';
-    
+
     // If switching to DJ and there's no DJ, make this user the DJ
     if (newRole === 'dj' && !show.djId) {
       show.djId = userId;
       show.djName = participant.userName;
     }
-    
+
     // If switching from DJ to singer and they were the DJ, clear DJ
     if (newRole === 'singer' && show.djId === userId) {
       show.djId = undefined;
@@ -1057,7 +1329,7 @@ export class LiveShowService {
 
     show.updatedAt = new Date();
     this.logger.log(`Switched user ${userId} to role ${newRole} in show ${showId}`);
-    
+
     return newRole;
   }
 

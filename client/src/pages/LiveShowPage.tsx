@@ -31,8 +31,59 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { AnnouncementDisplay } from './components/AnnouncementDisplay';
 import { ChatSystem } from './components/ChatSystem';
 import { CurrentSingerDisplay } from './components/CurrentSingerDisplay';
+import DJRotationManagement from './components/DJRotationManagement';
 import { ParticipantsList } from './components/ParticipantsList';
 import { QueueManagement } from './components/QueueManagement';
+import SongRequestModal from './components/SongRequestModal';
+
+// DJ Song Request Button Component
+const DJSongRequestButton: React.FC<{
+  isDJ: boolean;
+  hasDJ: boolean;
+  onRequestSong: (songRequest: string) => void;
+}> = ({ isDJ, hasDJ, onRequestSong }) => {
+  const theme = useTheme();
+  const [modalOpen, setModalOpen] = useState(false);
+
+  // Don't show if user is DJ or there's no DJ
+  if (isDJ || !hasDJ) {
+    return null;
+  }
+
+  return (
+    <>
+      <Paper sx={{ mt: 2, p: 3 }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography variant="h6" component="div" sx={{ mb: 2 }}>
+            Request Song from DJ
+          </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<FontAwesomeIcon icon={faMusic} />}
+            onClick={() => setModalOpen(true)}
+            sx={{
+              borderColor: theme.palette.secondary.main,
+              color: theme.palette.secondary.main,
+              '&:hover': {
+                borderColor: theme.palette.secondary.dark,
+                backgroundColor: `${theme.palette.secondary.main}10`,
+              },
+            }}
+          >
+            Request Song
+          </Button>
+        </Box>
+      </Paper>
+
+      <SongRequestModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSubmit={onRequestSong}
+        isForQueue={false}
+      />
+    </>
+  );
+};
 
 const LiveShowPage: React.FC = observer(() => {
   const theme = useTheme();
@@ -171,12 +222,13 @@ const LiveShowPage: React.FC = observer(() => {
   const isDJ = currentUserRole === 'dj';
 
   return (
-    <Box 
-      sx={{ 
-        minHeight: '100vh', 
-        background: theme.palette.mode === 'dark'
-          ? `linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.primary.main}05 50%, ${theme.palette.secondary.main}05 100%)`
-          : `linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.primary.main}02 50%, ${theme.palette.secondary.main}02 100%)`,
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background:
+          theme.palette.mode === 'dark'
+            ? `linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.primary.main}05 50%, ${theme.palette.secondary.main}05 100%)`
+            : `linear-gradient(135deg, ${theme.palette.background.default} 0%, ${theme.palette.primary.main}02 50%, ${theme.palette.secondary.main}02 100%)`,
         position: 'relative',
         '&::before': {
           content: '""',
@@ -185,10 +237,11 @@ const LiveShowPage: React.FC = observer(() => {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.02) 1px, transparent 1px), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.02) 1px, transparent 1px)',
+          background:
+            'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.02) 1px, transparent 1px), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.02) 1px, transparent 1px)',
           backgroundSize: '50px 50px',
           pointerEvents: 'none',
-        }
+        },
       }}
     >
       {/* Mobile Header */}
@@ -234,9 +287,9 @@ const LiveShowPage: React.FC = observer(() => {
         />
       )}
 
-      <Container 
-        maxWidth="xl" 
-        sx={{ 
+      <Container
+        maxWidth="xl"
+        sx={{
           py: { xs: 2, md: 4 },
           px: { xs: 1, md: 3 },
           position: 'relative',
@@ -276,13 +329,14 @@ const LiveShowPage: React.FC = observer(() => {
               display: { xs: 'none', md: 'block' },
             }}
           >
-            <Paper 
-              sx={{ 
-                p: 3, 
+            <Paper
+              sx={{
+                p: 3,
                 mb: 2,
-                background: theme.palette.mode === 'dark'
-                  ? `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.primary.main}08 100%)`
-                  : `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.primary.main}03 100%)`,
+                background:
+                  theme.palette.mode === 'dark'
+                    ? `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.primary.main}08 100%)`
+                    : `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.primary.main}03 100%)`,
                 border: `1px solid ${theme.palette.primary.main}20`,
                 borderRadius: 3,
                 boxShadow: `0 8px 32px ${theme.palette.primary.main}15`,
@@ -303,9 +357,9 @@ const LiveShowPage: React.FC = observer(() => {
                 >
                   <FontAwesomeIcon icon={faMusic} style={{ color: 'white', fontSize: '1.2rem' }} />
                 </Box>
-                <Typography 
-                  variant="h5" 
-                  sx={{ 
+                <Typography
+                  variant="h5"
+                  sx={{
                     fontWeight: 700,
                     background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
                     backgroundClip: 'text',
@@ -328,7 +382,7 @@ const LiveShowPage: React.FC = observer(() => {
                       fontWeight: 700,
                       '& .MuiChip-icon': {
                         color: '#000',
-                      }
+                      },
                     }}
                     size="small"
                   />
@@ -342,16 +396,16 @@ const LiveShowPage: React.FC = observer(() => {
                     fontWeight: 600,
                     '& .MuiChip-icon': {
                       color: theme.palette.success.main,
-                    }
+                    },
                   }}
                   size="small"
                 />
               </Box>
 
               {currentShow.description && (
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
+                <Typography
+                  variant="body2"
+                  sx={{
                     mb: 3,
                     p: 2,
                     backgroundColor: `${theme.palette.text.secondary}05`,
@@ -365,10 +419,10 @@ const LiveShowPage: React.FC = observer(() => {
 
               {/* Test Role Switching - Only show for admin/testing */}
               {authStore.user?.isAdmin && (
-                <Button 
-                  variant="outlined" 
-                  color={isDJ ? "warning" : "info"}
-                  fullWidth 
+                <Button
+                  variant="outlined"
+                  color={isDJ ? 'warning' : 'info'}
+                  fullWidth
                   onClick={async () => {
                     try {
                       // First populate the show with test users if needed
@@ -380,9 +434,9 @@ const LiveShowPage: React.FC = observer(() => {
 
                       // Switch role
                       const response = await apiStore.post(`/live-shows/${showId}/switch-role`, {
-                        role: isDJ ? 'singer' : 'dj'
+                        role: isDJ ? 'singer' : 'dj',
                       });
-                      
+
                       if (response.success) {
                         // Refresh the show data to see the new role
                         window.location.reload();
@@ -404,18 +458,18 @@ const LiveShowPage: React.FC = observer(() => {
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  <FontAwesomeIcon 
-                    icon={isDJ ? faMicrophone : faCrown} 
-                    style={{ marginRight: '8px' }} 
+                  <FontAwesomeIcon
+                    icon={isDJ ? faMicrophone : faCrown}
+                    style={{ marginRight: '8px' }}
                   />
                   Switch to {isDJ ? 'Singer' : 'DJ'}
                 </Button>
               )}
 
-              <Button 
-                variant="outlined" 
-                color="error" 
-                fullWidth 
+              <Button
+                variant="outlined"
+                color="error"
+                fullWidth
                 onClick={handleLeaveShow}
                 sx={{
                   py: 1.5,
@@ -442,10 +496,10 @@ const LiveShowPage: React.FC = observer(() => {
 
           {/* Main Content */}
           <Grid item xs={12} md={6}>
-            <Box 
-              sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
                 gap: { xs: 2, md: 4 },
                 position: 'relative',
               }}
@@ -464,12 +518,15 @@ const LiveShowPage: React.FC = observer(() => {
                     height: 4,
                     background: `linear-gradient(90deg, transparent, ${theme.palette.primary.main}40, transparent)`,
                     borderRadius: 2,
-                  }
+                  },
                 }}
               >
                 <CurrentSingerDisplay
                   currentSinger={liveShowStore.currentSinger}
                   nextInQueue={liveShowStore.nextSingers}
+                  isDJ={isDJ}
+                  onSetSongDuration={liveShowStore.setSongDuration.bind(liveShowStore)}
+                  onStartSong={liveShowStore.startSong.bind(liveShowStore)}
                 />
               </Box>
 
@@ -486,13 +543,28 @@ const LiveShowPage: React.FC = observer(() => {
                 onRemoveFromQueue={liveShowStore.removeFromQueue.bind(liveShowStore)}
                 onSetCurrentSinger={liveShowStore.setCurrentSinger.bind(liveShowStore)}
               />
+
+              {/* DJ Rotation Management */}
+              <DJRotationManagement
+                queue={currentShow.queue}
+                isDJ={isDJ}
+                onReorderSingers={liveShowStore.reorderSingers.bind(liveShowStore)}
+                onSetCurrentSinger={liveShowStore.setCurrentSinger.bind(liveShowStore)}
+              />
+
+              {/* DJ Song Request */}
+              <DJSongRequestButton
+                isDJ={isDJ}
+                hasDJ={liveShowStore.hasDJ}
+                onRequestSong={liveShowStore.requestSongFromDJ.bind(liveShowStore)}
+              />
             </Box>
           </Grid>
 
           {/* Chat Sidebar */}
           <Grid item xs={12} md={3}>
             <ChatSystem
-              messages={currentShow.chatMessages}
+              messages={liveShowStore.filteredMessages}
               participants={currentShow.participants}
               currentUserId={authStore.user?.id || ''}
               isDJ={isDJ}

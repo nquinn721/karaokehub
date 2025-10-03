@@ -94,6 +94,10 @@ export interface AdminVenue {
   name: string;
   lat?: number;
   lng?: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
   website?: string;
   description?: string;
   instagram?: string;

@@ -276,14 +276,20 @@ export class LiveShowController {
     @Request() req: any,
   ): Promise<{ success: boolean; newRole: string; message: string }> {
     try {
-      const newRole = await this.liveShowService.switchUserRoleInShow(showId, req.user.id, body.role);
+      const newRole = await this.liveShowService.switchUserRoleInShow(
+        showId,
+        req.user.id,
+        body.role,
+      );
       return {
         success: true,
         newRole,
         message: `Successfully switched to ${newRole} role`,
       };
     } catch (error) {
-      this.logger.error(`Error switching role for user ${req.user.id} in show ${showId}: ${error.message}`);
+      this.logger.error(
+        `Error switching role for user ${req.user.id} in show ${showId}: ${error.message}`,
+      );
       throw new HttpException(
         {
           success: false,
@@ -416,6 +422,35 @@ export class LiveShowController {
       };
     } catch (error) {
       this.logger.error(`Error reordering queue in show ${showId}: ${error.message}`);
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Post(':id/singers/reorder')
+  async reorderSingers(
+    @Param('id') showId: string,
+    @Body() body: { singerOrder: string[] },
+    @Request() req: any,
+  ) {
+    try {
+      const reorderedQueue = await this.liveShowService.updateSingerRotation(
+        showId,
+        req.user.id,
+        body.singerOrder,
+      );
+      return {
+        success: true,
+        queue: reorderedQueue,
+        message: 'Singer rotation reordered successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Error reordering singer rotation in show ${showId}: ${error.message}`);
       throw new HttpException(
         {
           success: false,

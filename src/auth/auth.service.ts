@@ -120,24 +120,8 @@ export class AuthService {
   }
 
   async validateOAuthUser(profile: any, provider: string): Promise<User> {
-    console.log('🟢 [AUTH_SERVICE] Starting OAuth user validation');
-    console.log('🔍 [AUTH_SERVICE] Input parameters:', {
-      provider,
-      profileId: profile?.id,
-      profileDisplayName: profile?.displayName,
-      profileEmails: profile?.emails,
-      profilePhotos: profile?.photos,
-    });
-
     const { id, emails, displayName, photos } = profile;
     const email = emails?.[0]?.value;
-
-    console.log('🔍 [AUTH_SERVICE] Extracted data:', {
-      id,
-      email,
-      displayName,
-      avatar: photos?.[0]?.value,
-    });
 
     // Helper function to check if user has a custom (manually selected) avatar
     const hasCustomAvatar = async (userId: string): Promise<boolean> => {
@@ -185,7 +169,6 @@ export class AuthService {
     let user = null;
 
     if (email) {
-      console.log('🔍 [AUTH_SERVICE] Looking up user by email:', email);
       // Check if user exists by email first
       user = await this.userService.findByEmail(email);
       console.log(
@@ -195,7 +178,6 @@ export class AuthService {
     }
 
     if (!user) {
-      console.log('🔍 [AUTH_SERVICE] Looking up user by provider ID:', { provider, id });
       // Check if user exists by provider ID
       user = await this.userService.findByProvider(provider, id);
       console.log(
@@ -205,7 +187,6 @@ export class AuthService {
     }
 
     if (!user) {
-      console.log('🟢 [AUTH_SERVICE] Creating new user');
       // Create new user
       const userData: any = {
         name: displayName || `${provider}_user_${id}`,
@@ -221,13 +202,8 @@ export class AuthService {
         userData.email = `${provider}_${id}@placeholder.karaoke`;
       }
 
-      console.log('🔍 [AUTH_SERVICE] Creating user with data:', userData);
       try {
         user = await this.userService.create(userData);
-        console.log('🟢 [AUTH_SERVICE] User created successfully:', {
-          id: user.id,
-          email: user.email,
-        });
 
         // Assign basic microphones to new OAuth user
         try {
@@ -248,7 +224,6 @@ export class AuthService {
             await this.userService.update(user.id, {
               profileImageUrl: providerProfileImage,
             });
-            console.log('🟢 [AUTH_SERVICE] Stored profile image from OAuth provider');
           } catch (imageError) {
             console.error('🔴 [AUTH_SERVICE] Failed to store profile image:', imageError);
             // Continue without profile image
@@ -263,8 +238,6 @@ export class AuthService {
         throw error;
       }
     } else {
-      console.log('🟢 [AUTH_SERVICE] User exists, handling provider linking/updates');
-
       // Handle profile image updates for existing users
       const updateData: any = {};
       const providerProfileImage = photos?.[0]?.value;
@@ -308,7 +281,6 @@ export class AuthService {
       if (Object.keys(updateData).length > 0) {
         try {
           user = await this.userService.update(user.id, updateData);
-          console.log('🟢 [AUTH_SERVICE] User profile updated with OAuth data:', updateData);
         } catch (updateError) {
           console.error('� [AUTH_SERVICE] Failed to update user profile:', updateError);
           // Continue with login even if profile update fails
@@ -322,13 +294,6 @@ export class AuthService {
         profileImageUpdated: !!updateData.profileImageUrl,
       });
     }
-
-    console.log('🟢 [AUTH_SERVICE] OAuth user validation completed successfully:', {
-      userId: user.id,
-      userEmail: user.email,
-      userName: user.name,
-      userProvider: user.provider,
-    });
 
     return user;
   }
