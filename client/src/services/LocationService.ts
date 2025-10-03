@@ -409,10 +409,19 @@ class LocationService {
    */
   async checkLocationUpdateNeeded(userId: string): Promise<boolean> {
     try {
+      // Check if user is authenticated before making API call
+      const { authStore } = await import('../stores/AuthStore');
+      if (!authStore.isAuthenticated || authStore.isInitializing || !authStore.user) {
+        return false;
+      }
+
       const response = await apiStore.get(`/location/needs-update/${userId}`);
       return response.needsUpdate || false;
-    } catch (error) {
-      console.error('Failed to check if location update is needed:', error);
+    } catch (error: any) {
+      // Only log non-auth errors
+      if (error?.response?.status !== 401) {
+        console.error('Failed to check if location update is needed:', error);
+      }
       return false;
     }
   }
@@ -428,6 +437,12 @@ class LocationService {
     error?: string;
   }> {
     try {
+      // Check if user is authenticated before making API call
+      const { authStore } = await import('../stores/AuthStore');
+      if (!authStore.isAuthenticated || authStore.isInitializing || !authStore.user) {
+        return { success: false, error: 'User not authenticated' };
+      }
+
       // First get current location
       const location = await this.getCurrentLocation();
 

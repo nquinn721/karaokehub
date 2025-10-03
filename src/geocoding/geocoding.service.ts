@@ -294,6 +294,62 @@ export class GeocodingService {
   }
 
   /**
+   * Reverse geocode coordinates to get structured location data directly from Google API
+   */
+  async reverseGeocodeToLocationData(
+    lat: number,
+    lng: number,
+  ): Promise<{ city?: string; state?: string; address?: string } | null> {
+    if (!this.googleMapsApiKey) {
+      this.logger.warn('Google Maps API key not configured for reverse geocoding');
+      return null;
+    }
+
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${this.googleMapsApiKey}`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status === 'OK' && data.results && data.results.length > 0) {
+        const result = data.results[0];
+        const addressComponents = result.address_components || [];
+        
+        let city = '';
+        let state = '';
+
+        // Extract city and state from Google's structured response
+        for (const component of addressComponents) {
+          const types = component.types;
+
+          if (types.includes('locality')) {
+            city = component.long_name;
+          } else if (types.includes('administrative_area_level_1')) {
+            state = component.short_name; // Use short_name for state abbreviation (e.g., "CA")
+          }
+        }
+
+        return {
+          city: city || undefined,
+          state: state || undefined,
+          address: result.formatted_address,
+        };
+      } else {
+        this.logger.warn(`Reverse geocoding failed with status: ${data.status}`);
+        return null;
+      }
+    } catch (error) {
+      this.logger.error('Error during structured reverse geocoding:', error);
+      return null;
+    }
+  }
+
+  /**
    * Extract city and state from address string using regex patterns
    * Fallback when geocoding is not available
    */

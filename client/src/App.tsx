@@ -163,7 +163,7 @@ const AppContent: React.FC = observer(() => {
 
   // Automatically sync subscription status when app loads and user is authenticated
   useEffect(() => {
-    if (authStore.isAuthenticated && authStore.user) {
+    if (authStore.isAuthenticated && authStore.user && !authStore.isInitializing) {
       // Import subscriptionStore dynamically to avoid circular dependencies
       import('@stores/index').then(({ subscriptionStore }) => {
         // Force sync subscription data from Stripe to ensure it's up to date

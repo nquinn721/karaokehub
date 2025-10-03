@@ -60,31 +60,27 @@ export class LocationController {
     }
 
     try {
-      // Reverse geocode to get address
-      const addressString = await this.geocodingService.reverseGeocode(latitude, longitude);
+      // Use Google API to get structured location data directly
+      const locationData = await this.geocodingService.reverseGeocodeToLocationData(
+        latitude,
+        longitude,
+      );
 
-      if (addressString) {
-        // Extract city/state from address
-        const locationData = this.geocodingService.extractCityStateFromAddress(addressString);
+      if (locationData && locationData.city && locationData.state) {
+        // Update user's city/state
+        await this.userService.updateLocation(userId, locationData.city, locationData.state);
 
-        if (locationData.city && locationData.state) {
-          // Update user's city/state
-          await this.userService.updateLocation(userId, locationData.city, locationData.state);
-
-          return {
-            success: true,
-            location: {
-              city: locationData.city,
-              state: locationData.state,
-              address: addressString,
-            },
-            message: 'Location updated successfully',
-          };
-        } else {
-          throw new Error('Could not extract city/state from address');
-        }
+        return {
+          success: true,
+          location: {
+            city: locationData.city,
+            state: locationData.state,
+            address: locationData.address || 'Address not available',
+          },
+          message: 'Location updated successfully using Google API',
+        };
       } else {
-        throw new Error('Could not geocode coordinates');
+        throw new Error('Could not get city/state from Google API response');
       }
     } catch (error) {
       this.logger.error(`Failed to update user location: ${error.message}`);

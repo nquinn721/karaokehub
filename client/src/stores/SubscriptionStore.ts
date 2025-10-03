@@ -261,6 +261,13 @@ export class SubscriptionStore {
 
   async syncSubscription() {
     try {
+      // Check if auth is ready before making API calls
+      const { authStore } = await import('./AuthStore');
+      if (!authStore.isAuthenticated || authStore.isInitializing || !authStore.user) {
+        console.log('SubscriptionStore: Skipping sync during auth initialization');
+        return { success: false, error: 'Authentication not ready' };
+      }
+
       this.setLoading(true);
       await apiStore.post(apiStore.endpoints.subscription.sync);
 

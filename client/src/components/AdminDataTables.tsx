@@ -506,8 +506,8 @@ const AdminDataTables: React.FC = observer(() => {
         );
         break;
       case 'shows':
-        if (useLocationFilter && userLocation) {
-          // Use location-based fetching for shows
+        if (useLocationFilter && userLocation && !search) {
+          // Use location-based fetching for shows only when no search term
           await adminStore.fetchNearbyShows(
             userLocation.lat,
             userLocation.lng,
@@ -515,7 +515,7 @@ const AdminDataTables: React.FC = observer(() => {
             selectedDay,
           );
         } else {
-          // Use regular admin fetching
+          // Use regular admin fetching when searching or no location filter
           await adminStore.fetchShows(
             page + 1,
             rowsPerPage,
@@ -1386,12 +1386,18 @@ const AdminDataTables: React.FC = observer(() => {
 
         {/* Location Filter Controls */}
         <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          {searchTerms.shows && (
+            <Alert severity="info" sx={{ mr: 2 }}>
+              Location filtering is disabled during search. Clear search to use location filter.
+            </Alert>
+          )}
           <FormControlLabel
             control={
               <Checkbox
-                checked={useLocationFilter}
+                checked={useLocationFilter && !searchTerms.shows}
                 onChange={(e) => handleLocationFilterToggle(e.target.checked)}
                 color="primary"
+                disabled={!!searchTerms.shows}
               />
             }
             label="Show nearby venues only (100 miles)"
@@ -1452,19 +1458,6 @@ const AdminDataTables: React.FC = observer(() => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortBy.shows === 'vendor'}
-                    direction={
-                      sortBy.shows === 'vendor'
-                        ? (sortOrder.shows.toLowerCase() as 'asc' | 'desc')
-                        : 'asc'
-                    }
-                    onClick={() => handleSort('shows', 'vendor')}
-                  >
-                    Vendor
-                  </TableSortLabel>
-                </TableCell>
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.shows === 'venue'}
@@ -1538,29 +1531,26 @@ const AdminDataTables: React.FC = observer(() => {
             <TableBody>
               {adminStore.isLoadingTable ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
+                  <TableCell colSpan={8} align="center">
                     <CircularProgress size={24} />
                   </TableCell>
                 </TableRow>
               ) : (
                 adminStore.shows?.items.map((show: AdminShow) => (
                   <TableRow key={show.id}>
-                    <TableCell>{show.dj?.vendor?.name || 'N/A'}</TableCell>
                     <TableCell>
-                      <Box>
-                        <Typography variant="subtitle2">{getAdminShowVenueName(show)}</Typography>
-                        {show.description && (
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ display: 'block' }}
-                          >
-                            {show.description.length > 30
-                              ? `${show.description.substring(0, 27)}...`
-                              : show.description}
-                          </Typography>
-                        )}
-                      </Box>
+                      <Typography variant="subtitle2">{getAdminShowVenueName(show)}</Typography>
+                      {show.description && (
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ display: 'block' }}
+                        >
+                          {show.description.length > 30
+                            ? `${show.description.substring(0, 27)}...`
+                            : show.description}
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Box>
@@ -3212,6 +3202,18 @@ const AdminDataTables: React.FC = observer(() => {
                     Email
                   </Typography>
                   <Typography variant="body1">{userForDetail.email}</Typography>
+                </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    City
+                  </Typography>
+                  <Typography variant="body1">{userForDetail.city || 'N/A'}</Typography>
+                </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    State
+                  </Typography>
+                  <Typography variant="body1">{userForDetail.state || 'N/A'}</Typography>
                 </Box>
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" color="text.secondary">
