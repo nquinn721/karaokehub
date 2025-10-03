@@ -28,6 +28,7 @@ import React, { useState } from 'react';
 import { QueueEntry } from '../../types/live-show.types';
 import { LiveShowUtils } from '../../utils/live-show.utils';
 import SongRequestModal from './SongRequestModal';
+import { musicStore } from '../../stores/MusicStore';
 
 interface QueueManagementProps {
   queue: QueueEntry[];
@@ -286,6 +287,11 @@ export const QueueManagement: React.FC<QueueManagementProps> = ({
                       {entry.songRequest && (
                         <Typography variant="body2" color="text.secondary">
                           🎵 {entry.songRequest}
+                          {entry.songDuration && (
+                            <span style={{ marginLeft: '8px', opacity: 0.7 }}>
+                              ({musicStore.formatDuration(entry.songDuration)})
+                            </span>
+                          )}
                         </Typography>
                       )}
                       {entry.microphone && (
