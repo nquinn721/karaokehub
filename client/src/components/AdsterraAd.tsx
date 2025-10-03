@@ -342,7 +342,8 @@ export const AdsterraAd: React.FC<AdsterraAdProps> = observer((props) => {
 
   // Automatically disable ads in development if they cause script errors
   const isDevelopment = import.meta.env.DEV;
-  const shouldDisableInDev = isDevelopment && import.meta.env.VITE_DISABLE_ADS === 'true';
+  // In development, we disable ads by default to avoid script issues
+  const shouldDisableInDev = isDevelopment;
 
   return <BaseAdsterraAd {...props} disabled={props.disabled || shouldDisableInDev} />;
 });

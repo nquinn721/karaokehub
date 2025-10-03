@@ -36,9 +36,7 @@
     "data:workflow": "./scripts/example-workflow.sh",
     "data:help": "cat SAFE-DATA-MANAGEMENT.md",
     "migration:create": "npx typeorm migration:create",
-    "migration:run": "npx typeorm migration:run -d data-source.js",
-    "migration:revert": "npx typeorm migration:revert -d data-source.js",
-    "migration:show": "npx typeorm migration:show -d data-source.js",
+    "migration:info": "echo 'Migrations run automatically in production. Check database.config.ts for migration list.'",
     "avatars:export": "node scripts/export-avatar-store-data.js",
     "avatars:import": "node scripts/import-avatar-store-data.js",
     "avatars:import-direct": "node scripts/direct-sql-import.js"

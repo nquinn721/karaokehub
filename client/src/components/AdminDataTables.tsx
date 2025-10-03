@@ -29,6 +29,7 @@ import {
   CircularProgress,
   FormControl,
   FormControlLabel,
+  Grid,
   IconButton,
   InputAdornment,
   InputLabel,
@@ -65,7 +66,7 @@ import type {
 } from '@stores/AdminStore';
 import { adminStore, authStore, uiStore } from '@stores/index';
 import { observer } from 'mobx-react-lite';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import AvatarSelectionModal from './AvatarSelectionModal';
 import CustomModal from './CustomModal';
 import { ShowCleanupResultsModal } from './modals/ShowCleanupResultsModal';
@@ -144,9 +145,11 @@ const IsolatedSearchInput = React.memo(
     onRefresh: (table: string, value: string) => void;
   }) => {
     const [localValue, setLocalValue] = useState('');
+    const inputRef = useRef<HTMLInputElement>(null);
 
     return (
       <TextField
+        ref={inputRef}
         size="small"
         placeholder={placeholder}
         value={localValue}
@@ -178,6 +181,55 @@ const IsolatedSearchInput = React.memo(
       />
     );
   },
+  (prevProps, nextProps) => {
+    // Custom comparison to prevent unnecessary re-renders
+    return prevProps.table === nextProps.table && prevProps.placeholder === nextProps.placeholder;
+  },
+);
+
+// Stable SearchField component outside the main component
+const StableSearchField = React.memo(
+  ({
+    table,
+    placeholder,
+    onSearch,
+    onEnter,
+    onRefresh,
+  }: {
+    table: string;
+    placeholder: string;
+    onSearch: (table: string, value: string) => void;
+    onEnter: (table: string, value: string) => void;
+    onRefresh: (table: string, value: string) => void;
+  }) => (
+    <Box sx={{ position: 'relative', width: 300 }}>
+      <IsolatedSearchInput
+        key={`search-${table}`}
+        table={table}
+        placeholder={`${placeholder} (Fuzzy search enabled)`}
+        onSearch={onSearch}
+        onEnter={onEnter}
+        onRefresh={onRefresh}
+      />
+      <Tooltip title="Fuzzy search is enabled - try searching 'nell' to find 'O'Nelly's'" arrow>
+        <Chip
+          label="Fuzzy"
+          size="small"
+          color="primary"
+          variant="outlined"
+          sx={{
+            position: 'absolute',
+            right: 40,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            height: '20px',
+            fontSize: '10px',
+            pointerEvents: 'none',
+          }}
+        />
+      </Tooltip>
+    </Box>
+  ),
 );
 
 interface TabPanelProps {
@@ -280,6 +332,10 @@ const AdminDataTables: React.FC = observer(() => {
   // Avatar selection modal state
   const [avatarSelectionModalOpen, setAvatarSelectionModalOpen] = useState(false);
   const [userForAvatarChange, setUserForAvatarChange] = useState<AdminUser | null>(null);
+
+  // User detail modal state
+  const [userDetailModalOpen, setUserDetailModalOpen] = useState(false);
+  const [userForDetail, setUserForDetail] = useState<AdminUser | null>(null);
 
   // Deduplication state
   const [dedupeDialogOpen, setDedupeDialogOpen] = useState(false);
@@ -570,10 +626,6 @@ const AdminDataTables: React.FC = observer(() => {
     setViewingFeedback(feedback);
   };
 
-  const handleViewUserImage = (src: string, userName: string) => {
-    setViewingUserImage({ src, userName });
-  };
-
   const handleDeleteFeedback = async (feedback: AdminFeedback) => {
     await handleDelete(feedback, 'feedback');
   };
@@ -591,6 +643,11 @@ const AdminDataTables: React.FC = observer(() => {
   const handleOpenAvatarSelectionModal = (user: AdminUser) => {
     setUserForAvatarChange(user);
     setAvatarSelectionModalOpen(true);
+  };
+
+  const handleOpenUserDetailModal = (user: AdminUser) => {
+    setUserForDetail(user);
+    setUserDetailModalOpen(true);
   };
 
   const handleCloseAvatarSelectionModal = () => {
@@ -756,23 +813,28 @@ const AdminDataTables: React.FC = observer(() => {
   }, [tabValue, rowsPerPage]);
 
   // Create stable search field render function
-  const SearchField = useCallback(
-    ({ table, placeholder }: { table: string; placeholder: string }) => (
-      <IsolatedSearchInput
-        table={table}
-        placeholder={placeholder}
-        onSearch={(table, value) => handleSearch(table, value)}
-        onEnter={(table, value) => {
-          setSearchTerms((prev) => ({ ...prev, [table]: value }));
-          setPages((prev) => ({ ...prev, [table]: 0 }));
-        }}
-        onRefresh={(table, value) => {
-          setSearchTerms((prev) => ({ ...prev, [table]: value }));
-          fetchData(table, pages[table] || 0, value || undefined);
-        }}
-      />
-    ),
-    [handleSearch, fetchData, setSearchTerms, setPages],
+  // Create stable search handlers
+  const stableHandleSearch = useCallback(
+    (table: string, value: string) => {
+      handleSearch(table, value);
+    },
+    [handleSearch],
+  );
+
+  const stableHandleEnter = useCallback(
+    (table: string, value: string) => {
+      setSearchTerms((prev) => ({ ...prev, [table]: value }));
+      setPages((prev) => ({ ...prev, [table]: 0 }));
+    },
+    [setSearchTerms, setPages],
+  );
+
+  const stableHandleRefresh = useCallback(
+    (table: string, value: string) => {
+      setSearchTerms((prev) => ({ ...prev, [table]: value }));
+      fetchData(table, pages[table] || 0, value || undefined);
+    },
+    [fetchData, pages, setSearchTerms],
   );
 
   const DedupeButton = ({
@@ -915,13 +977,24 @@ const AdminDataTables: React.FC = observer(() => {
       <TabPanel value={tabValue} index={0}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Users Management</Typography>
-          <SearchField table="users" placeholder="Search users..." />
         </Box>
+
+        {/* Search field positioned separately above the table */}
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <StableSearchField
+            table="users"
+            placeholder="Search users..."
+            onSearch={stableHandleSearch}
+            onEnter={stableHandleEnter}
+            onRefresh={stableHandleRefresh}
+          />
+        </Box>
+
         <TableContainer>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Profile Image</TableCell>
+                <TableCell>Profile</TableCell>
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.users === 'name'}
@@ -937,20 +1010,6 @@ const AdminDataTables: React.FC = observer(() => {
                 </TableCell>
                 <TableCell>
                   <TableSortLabel
-                    active={sortBy.users === 'stageName'}
-                    direction={
-                      sortBy.users === 'stageName'
-                        ? (sortOrder.users.toLowerCase() as 'asc' | 'desc')
-                        : 'asc'
-                    }
-                    onClick={() => handleSort('users', 'stageName')}
-                  >
-                    Stage Name
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>Avatar</TableCell>
-                <TableCell>
-                  <TableSortLabel
                     active={sortBy.users === 'email'}
                     direction={
                       sortBy.users === 'email'
@@ -964,32 +1023,6 @@ const AdminDataTables: React.FC = observer(() => {
                 </TableCell>
                 <TableCell>
                   <TableSortLabel
-                    active={sortBy.users === 'provider'}
-                    direction={
-                      sortBy.users === 'provider'
-                        ? (sortOrder.users.toLowerCase() as 'asc' | 'desc')
-                        : 'asc'
-                    }
-                    onClick={() => handleSort('users', 'provider')}
-                  >
-                    Provider
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortBy.users === 'isAdmin'}
-                    direction={
-                      sortBy.users === 'isAdmin'
-                        ? (sortOrder.users.toLowerCase() as 'asc' | 'desc')
-                        : 'asc'
-                    }
-                    onClick={() => handleSort('users', 'isAdmin')}
-                  >
-                    Admin
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
                     active={sortBy.users === 'isActive'}
                     direction={
                       sortBy.users === 'isActive'
@@ -999,19 +1032,6 @@ const AdminDataTables: React.FC = observer(() => {
                     onClick={() => handleSort('users', 'isActive')}
                   >
                     Status
-                  </TableSortLabel>
-                </TableCell>
-                <TableCell>
-                  <TableSortLabel
-                    active={sortBy.users === 'createdAt'}
-                    direction={
-                      sortBy.users === 'createdAt'
-                        ? (sortOrder.users.toLowerCase() as 'asc' | 'desc')
-                        : 'asc'
-                    }
-                    onClick={() => handleSort('users', 'createdAt')}
-                  >
-                    Created
                   </TableSortLabel>
                 </TableCell>
                 <TableCell>Actions</TableCell>
@@ -1028,74 +1048,24 @@ const AdminDataTables: React.FC = observer(() => {
                 adminStore.users?.items.map((user: AdminUser) => (
                   <TableRow key={user.id}>
                     <TableCell>
-                      {user.profileImageUrl ? (
-                        <Tooltip title="Click to view larger OAuth profile image">
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        {user.profileImageUrl || user.avatar ? (
                           <Box
                             component="img"
-                            src={user.profileImageUrl}
+                            src={user.profileImageUrl || user.avatar}
                             sx={{
-                              width: 48,
-                              height: 48,
+                              width: 40,
+                              height: 40,
                               borderRadius: '50%',
-                              cursor: 'pointer',
-                              border: `2px solid ${theme.palette.primary.main}`,
-                              transition: 'transform 0.2s ease-in-out',
-                              '&:hover': {
-                                transform: 'scale(1.1)',
-                              },
+                              border: `2px solid ${theme.palette.divider}`,
                             }}
-                            alt="OAuth Profile Image"
-                            onClick={() =>
-                              handleViewUserImage(user.profileImageUrl!, user.name || 'User')
-                            }
+                            alt="Profile Image"
                           />
-                        </Tooltip>
-                      ) : (
-                        <Box
-                          sx={{
-                            width: 48,
-                            height: 48,
-                            borderRadius: '50%',
-                            backgroundColor: theme.palette.grey[200],
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: `2px solid ${theme.palette.divider}`,
-                          }}
-                        >
-                          <FontAwesomeIcon icon={faUser} color={theme.palette.grey[400]} />
-                        </Box>
-                      )}
-                    </TableCell>
-                    <TableCell>{user.name || 'N/A'}</TableCell>
-                    <TableCell>{user.stageName || 'N/A'}</TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {user.avatar ? (
-                          <Tooltip title="Click to view larger avatar image">
-                            <Box
-                              component="img"
-                              src={user.avatar}
-                              sx={{
-                                width: 48,
-                                height: 48,
-                                borderRadius: '50%',
-                                cursor: 'pointer',
-                                border: `2px solid ${theme.palette.divider}`,
-                                transition: 'transform 0.2s ease-in-out',
-                                '&:hover': {
-                                  transform: 'scale(1.1)',
-                                },
-                              }}
-                              alt="Avatar"
-                              onClick={() => handleViewUserImage(user.avatar!, user.name || 'User')}
-                            />
-                          </Tooltip>
                         ) : (
                           <Box
                             sx={{
-                              width: 48,
-                              height: 48,
+                              width: 40,
+                              height: 40,
                               borderRadius: '50%',
                               backgroundColor: theme.palette.grey[200],
                               display: 'flex',
@@ -1107,19 +1077,27 @@ const AdminDataTables: React.FC = observer(() => {
                             <FontAwesomeIcon icon={faUser} color={theme.palette.grey[400]} />
                           </Box>
                         )}
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => handleOpenAvatarSelectionModal(user)}
-                          startIcon={<FontAwesomeIcon icon={faUser} />}
-                        >
-                          Change
-                        </Button>
+                        <Box>
+                          <Typography variant="body2" fontWeight="medium">
+                            {user.name || 'N/A'}
+                          </Typography>
+                          {user.stageName && (
+                            <Typography variant="caption" color="text.secondary">
+                              Stage: {user.stageName}
+                            </Typography>
+                          )}
+                        </Box>
                       </Box>
                     </TableCell>
-                    <TableCell>{user.email}</TableCell>
                     <TableCell>
-                      {user.provider ? (
+                      <Typography variant="body2">{user.name || 'N/A'}</Typography>
+                      {user.isAdmin && (
+                        <Chip label="Admin" size="small" color="warning" sx={{ mt: 0.5 }} />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{user.email}</Typography>
+                      {user.provider && (
                         <Chip
                           label={user.provider}
                           size="small"
@@ -1130,17 +1108,9 @@ const AdminDataTables: React.FC = observer(() => {
                                 ? 'info'
                                 : 'default'
                           }
+                          sx={{ mt: 0.5 }}
                         />
-                      ) : (
-                        'Email'
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={user.isAdmin ? 'Admin' : 'User'}
-                        color={user.isAdmin ? 'warning' : 'default'}
-                        size="small"
-                      />
                     </TableCell>
                     <TableCell>
                       <Chip
@@ -1149,16 +1119,25 @@ const AdminDataTables: React.FC = observer(() => {
                         size="small"
                       />
                     </TableCell>
-                    <TableCell>{formatDate(user.createdAt)}</TableCell>
                     <TableCell>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleOpenUserOverrideModal(user)}
-                        color="primary"
-                        title="Manage Feature Overrides"
-                      >
-                        <FontAwesomeIcon icon={faEdit} style={{ fontSize: '14px' }} />
-                      </IconButton>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => handleOpenUserDetailModal(user)}
+                          startIcon={<FontAwesomeIcon icon={faEye} />}
+                        >
+                          View Details
+                        </Button>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleOpenUserOverrideModal(user)}
+                          color="primary"
+                          title="Manage Feature Overrides"
+                        >
+                          <FontAwesomeIcon icon={faEdit} style={{ fontSize: '14px' }} />
+                        </IconButton>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))
@@ -1172,11 +1151,20 @@ const AdminDataTables: React.FC = observer(() => {
       <TabPanel value={tabValue} index={1}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Venues Management</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <SearchField table="venues" placeholder="Search venues..." />
-            <DedupeButton type="venues" label="Venues" />
-          </Box>
+          <DedupeButton type="venues" label="Venues" />
         </Box>
+
+        {/* Search field positioned separately above the table */}
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <StableSearchField
+            table="venues"
+            placeholder="Search venues..."
+            onSearch={stableHandleSearch}
+            onEnter={stableHandleEnter}
+            onRefresh={stableHandleRefresh}
+          />
+        </Box>
+
         <TableContainer>
           <Table>
             <TableHead>
@@ -1194,7 +1182,7 @@ const AdminDataTables: React.FC = observer(() => {
                     Name
                   </TableSortLabel>
                 </TableCell>
-                <TableCell>Location</TableCell>
+                <TableCell>Address</TableCell>
                 <TableCell>
                   <TableSortLabel
                     active={sortBy.venues === 'website'}
@@ -1268,10 +1256,18 @@ const AdminDataTables: React.FC = observer(() => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      {venue.lat !== null && venue.lng !== null ? (
+                      {venue.address || venue.city || venue.state || venue.zip ? (
                         <Typography variant="body2" component="div">
-                          <div>{Number(venue.lat).toFixed(4)}</div>
-                          <div>{Number(venue.lng).toFixed(4)}</div>
+                          {venue.address && <div>{venue.address}</div>}
+                          {(venue.city || venue.state || venue.zip) && (
+                            <div>
+                              {venue.city && `${venue.city}`}
+                              {venue.city && venue.state && ', '}
+                              {venue.state && `${venue.state}`}
+                              {(venue.city || venue.state) && venue.zip && ' '}
+                              {venue.zip && venue.zip}
+                            </div>
+                          )}
                         </Typography>
                       ) : (
                         'N/A'
@@ -1371,13 +1367,21 @@ const AdminDataTables: React.FC = observer(() => {
       <TabPanel value={tabValue} index={2}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Shows Management</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <SearchField table="shows" placeholder="Search shows..." />
-            <Button variant="outlined" size="small" color="error" onClick={handleShowCleanup}>
-              <FontAwesomeIcon icon={faTrash} style={{ marginRight: '4px' }} />
-              Cleanup
-            </Button>
-          </Box>
+          <Button variant="outlined" size="small" color="error" onClick={handleShowCleanup}>
+            <FontAwesomeIcon icon={faTrash} style={{ marginRight: '4px' }} />
+            Cleanup
+          </Button>
+        </Box>
+
+        {/* Search field positioned separately above the table */}
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <StableSearchField
+            table="shows"
+            placeholder="Search shows..."
+            onSearch={stableHandleSearch}
+            onEnter={stableHandleEnter}
+            onRefresh={stableHandleRefresh}
+          />
         </Box>
 
         {/* Location Filter Controls */}
@@ -1681,11 +1685,20 @@ const AdminDataTables: React.FC = observer(() => {
       <TabPanel value={tabValue} index={3}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">DJs Management</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <SearchField table="djs" placeholder="Search DJs..." />
-            <DedupeButton type="djs" label="DJs" />
-          </Box>
+          <DedupeButton type="djs" label="DJs" />
         </Box>
+
+        {/* Search field positioned separately above the table */}
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <StableSearchField
+            table="djs"
+            placeholder="Search DJs..."
+            onSearch={stableHandleSearch}
+            onEnter={stableHandleEnter}
+            onRefresh={stableHandleRefresh}
+          />
+        </Box>
+
         <TableContainer>
           <Table>
             <TableHead>
@@ -1800,11 +1813,20 @@ const AdminDataTables: React.FC = observer(() => {
       <TabPanel value={tabValue} index={4}>
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6">Vendor Management</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <SearchField table="vendors" placeholder="Search Vendors..." />
-            <DedupeButton type="vendors" label="Vendors" />
-          </Box>
+          <DedupeButton type="vendors" label="Vendors" />
         </Box>
+
+        {/* Search field positioned separately above the table */}
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <StableSearchField
+            table="vendors"
+            placeholder="Search Vendors..."
+            onSearch={stableHandleSearch}
+            onEnter={stableHandleEnter}
+            onRefresh={stableHandleRefresh}
+          />
+        </Box>
+
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -1933,7 +1955,16 @@ const AdminDataTables: React.FC = observer(() => {
           </IconButton>
         </Box>
 
-        <SearchField table="feedback" placeholder="Search feedback..." />
+        {/* Search field positioned separately above the table */}
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <StableSearchField
+            table="feedback"
+            placeholder="Search feedback..."
+            onSearch={stableHandleSearch}
+            onEnter={stableHandleEnter}
+            onRefresh={stableHandleRefresh}
+          />
+        </Box>
 
         <TableContainer component={Paper} sx={{ mt: 2 }}>
           <Table>
@@ -2039,7 +2070,16 @@ const AdminDataTables: React.FC = observer(() => {
           </IconButton>
         </Box>
 
-        <SearchField table="reviews" placeholder="Search reviews..." />
+        {/* Search field positioned separately above the table */}
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <StableSearchField
+            table="reviews"
+            placeholder="Search reviews..."
+            onSearch={stableHandleSearch}
+            onEnter={stableHandleEnter}
+            onRefresh={stableHandleRefresh}
+          />
+        </Box>
 
         <TableContainer component={Paper} sx={{ mt: 2 }}>
           <Table>
@@ -2198,11 +2238,53 @@ const AdminDataTables: React.FC = observer(() => {
               onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
             />
             <TextField
-              label="Location"
+              label="Address"
               fullWidth
               margin="normal"
-              value={editingItem.location || ''}
-              onChange={(e) => setEditingItem({ ...editingItem, location: e.target.value })}
+              value={editingItem.address || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, address: e.target.value })}
+              placeholder="Street address"
+            />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="City"
+                fullWidth
+                margin="normal"
+                value={editingItem.city || ''}
+                onChange={(e) => setEditingItem({ ...editingItem, city: e.target.value })}
+              />
+              <TextField
+                label="State"
+                fullWidth
+                margin="normal"
+                value={editingItem.state || ''}
+                onChange={(e) => setEditingItem({ ...editingItem, state: e.target.value })}
+                placeholder="e.g., CA, NY"
+              />
+              <TextField
+                label="ZIP Code"
+                fullWidth
+                margin="normal"
+                value={editingItem.zip || ''}
+                onChange={(e) => setEditingItem({ ...editingItem, zip: e.target.value })}
+                placeholder="e.g., 12345"
+              />
+            </Box>
+            <TextField
+              label="Phone"
+              fullWidth
+              margin="normal"
+              value={editingItem.phone || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, phone: e.target.value })}
+              placeholder="(555) 123-4567"
+            />
+            <TextField
+              label="Website"
+              fullWidth
+              margin="normal"
+              value={editingItem.website || ''}
+              onChange={(e) => setEditingItem({ ...editingItem, website: e.target.value })}
+              placeholder="https://example.com"
             />
           </Box>
         )}
@@ -2327,7 +2409,12 @@ const AdminDataTables: React.FC = observer(() => {
                   case 'venue':
                     await adminStore.updateVenue(editingItem.id, {
                       name: editingItem.name,
-                      location: editingItem.location,
+                      address: editingItem.address,
+                      city: editingItem.city,
+                      state: editingItem.state,
+                      zip: editingItem.zip,
+                      phone: editingItem.phone,
+                      website: editingItem.website,
                     });
                     break;
                   case 'show':
@@ -3006,6 +3093,241 @@ const AdminDataTables: React.FC = observer(() => {
         onClose={() => setShowCleanupResults(null)}
         result={showCleanupResults}
       />
+
+      {/* User Detail Modal */}
+      <CustomModal
+        open={userDetailModalOpen}
+        onClose={() => setUserDetailModalOpen(false)}
+        title={`User Details: ${userForDetail?.name || 'N/A'}`}
+        icon={<FontAwesomeIcon icon={faUser} />}
+        maxWidth="md"
+      >
+        {userForDetail && (
+          <Box sx={{ p: 2 }}>
+            <Grid container spacing={3}>
+              {/* Profile Images Section */}
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      OAuth Profile Image
+                    </Typography>
+                    {userForDetail.profileImageUrl ? (
+                      <Box
+                        component="img"
+                        src={userForDetail.profileImageUrl}
+                        sx={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: '50%',
+                          border: `2px solid ${theme.palette.primary.main}`,
+                        }}
+                        alt="OAuth Profile"
+                      />
+                    ) : (
+                      <Box
+                        sx={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: '50%',
+                          backgroundColor: theme.palette.grey[200],
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: `2px solid ${theme.palette.divider}`,
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faUser} size="2x" color={theme.palette.grey[400]} />
+                      </Box>
+                    )}
+                  </Box>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Avatar
+                    </Typography>
+                    {userForDetail.avatar ? (
+                      <Box
+                        component="img"
+                        src={userForDetail.avatar}
+                        sx={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: '50%',
+                          border: `2px solid ${theme.palette.divider}`,
+                        }}
+                        alt="Avatar"
+                      />
+                    ) : (
+                      <Box
+                        sx={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: '50%',
+                          backgroundColor: theme.palette.grey[200],
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: `2px solid ${theme.palette.divider}`,
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faUser} size="2x" color={theme.palette.grey[400]} />
+                      </Box>
+                    )}
+                    <Box sx={{ mt: 1 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          setUserDetailModalOpen(false);
+                          handleOpenAvatarSelectionModal(userForDetail);
+                        }}
+                        startIcon={<FontAwesomeIcon icon={faUser} />}
+                      >
+                        Change Avatar
+                      </Button>
+                    </Box>
+                  </Box>
+                </Box>
+              </Grid>
+
+              {/* Basic Information */}
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>
+                  Basic Information
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Full Name
+                  </Typography>
+                  <Typography variant="body1">{userForDetail.name || 'N/A'}</Typography>
+                </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Stage Name
+                  </Typography>
+                  <Typography variant="body1">{userForDetail.stageName || 'N/A'}</Typography>
+                </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Email
+                  </Typography>
+                  <Typography variant="body1">{userForDetail.email}</Typography>
+                </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    User ID
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                    {userForDetail.id}
+                  </Typography>
+                </Box>
+              </Grid>
+
+              {/* Account Information */}
+              <Grid item xs={12} md={6}>
+                <Typography variant="h6" gutterBottom>
+                  Account Information
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Provider
+                  </Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    {userForDetail.provider ? (
+                      <Chip
+                        label={userForDetail.provider}
+                        size="small"
+                        color={
+                          userForDetail.provider === 'google'
+                            ? 'primary'
+                            : userForDetail.provider === 'facebook'
+                              ? 'info'
+                              : 'default'
+                        }
+                      />
+                    ) : (
+                      <Typography variant="body1">Email</Typography>
+                    )}
+                  </Box>
+                </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Provider ID
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                    {userForDetail.providerId || 'N/A'}
+                  </Typography>
+                </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Status
+                  </Typography>
+                  <Box sx={{ mt: 0.5, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Chip
+                      label={userForDetail.isActive ? 'Active' : 'Inactive'}
+                      color={userForDetail.isActive ? 'success' : 'default'}
+                      size="small"
+                    />
+                    <Chip
+                      label={userForDetail.isAdmin ? 'Admin' : 'User'}
+                      color={userForDetail.isAdmin ? 'warning' : 'default'}
+                      size="small"
+                    />
+                  </Box>
+                </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Stripe Customer ID
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                    {userForDetail.stripeCustomerId || 'N/A'}
+                  </Typography>
+                </Box>
+              </Grid>
+
+              {/* Timestamps */}
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  Timestamps
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Created At
+                    </Typography>
+                    <Typography variant="body1">{formatDate(userForDetail.createdAt)}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Updated At
+                    </Typography>
+                    <Typography variant="body1">{formatDate(userForDetail.updatedAt)}</Typography>
+                  </Box>
+                </Box>
+              </Grid>
+            </Grid>
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setUserDetailModalOpen(false);
+                  handleOpenUserOverrideModal(userForDetail);
+                }}
+                startIcon={<FontAwesomeIcon icon={faEdit} />}
+              >
+                Manage Features
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => setUserDetailModalOpen(false)}
+              >
+                Close
+              </Button>
+            </Box>
+          </Box>
+        )}
+      </CustomModal>
 
       {/* Error Dialog */}
       <CustomModal

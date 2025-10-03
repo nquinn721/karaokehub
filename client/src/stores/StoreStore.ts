@@ -1,5 +1,6 @@
 import { makeAutoObservable } from 'mobx';
 import { apiStore } from './ApiStore';
+import { authStore } from './AuthStore';
 
 export interface CoinPackage {
   id: string;
@@ -92,6 +93,11 @@ class StoreStore {
   }
 
   async fetchUserCoins(): Promise<void> {
+    // Only fetch coins if user is authenticated
+    if (!authStore.user) {
+      return;
+    }
+    
     try {
       this.setLoading(true);
       this.setError(null);

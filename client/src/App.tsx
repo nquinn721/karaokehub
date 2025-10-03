@@ -1,5 +1,5 @@
 import { HeaderComponent } from '@components/HeaderComponent';
-import { Box, CircularProgress, CssBaseline } from '@mui/material';
+import { Box, CssBaseline } from '@mui/material';
 import { authStore, showStore, uiStore } from '@stores/index';
 import { ThemeProvider } from '@theme/ThemeProvider';
 import { observer } from 'mobx-react-lite';
@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
 import FeedbackModal from './components/FeedbackModal';
 import FloatingAddShowButton from './components/FloatingAddShowButton';
+import FloatingSongRequestButton from './components/FloatingSongRequestButton';
 import FloatingVolumeControl from './components/FloatingVolumeControl';
 import FooterComponent from './components/FooterComponent';
 import GlobalNotifications from './components/GlobalNotifications';
@@ -43,14 +44,12 @@ import StorePage from './pages/StorePage';
 import SubmitShowPage from './pages/SubmitShowPage';
 
 // Protected Route component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Wait for authentication initialization to complete
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = observer(({ children }) => {
+  const location = useLocation();
+
+  // Wait for initialization to complete before making routing decisions
   if (authStore.isInitializing) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
-    );
+    return <div>Loading...</div>;
   }
 
   // If user is authenticated, show the protected content
@@ -59,22 +58,19 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   // If not authenticated, redirect to login with current path as redirect parameter
-  const currentPath = window.location.pathname;
   const loginPath =
-    currentPath === '/login' ? '/login' : `/login?redirect=${encodeURIComponent(currentPath)}`;
+    location.pathname === '/login'
+      ? '/login'
+      : `/login?redirect=${encodeURIComponent(location.pathname)}`;
 
   return <Navigate to={loginPath} replace />;
-};
+});
 
 // Public Route component (redirect to dashboard if authenticated)
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Wait for authentication initialization to complete
+const PublicRoute: React.FC<{ children: React.ReactNode }> = observer(({ children }) => {
+  // Wait for initialization to complete before making routing decisions
   if (authStore.isInitializing) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
-    );
+    return <div>Loading...</div>;
   }
 
   // If user is not authenticated, show the public content
@@ -82,18 +78,13 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return <>{children}</>;
   }
 
-  // If authenticated, redirect to dashboard (but avoid infinite loops)
-  const currentPath = window.location.pathname;
-  if (currentPath === '/dashboard') {
-    // Prevent redirect loop - if we're already on dashboard, don't redirect again
-    return <>{children}</>;
-  }
-
+  // If authenticated, redirect to dashboard
   return <Navigate to="/dashboard" replace />;
-}; // App content component that has access to location
+}); // App content component that has access to location
 const AppContent: React.FC = observer(() => {
   const location = useLocation();
   const isShowsPage = location.pathname === '/shows';
+  const isLiveShowPage = location.pathname.startsWith('/live-shows/');
 
   // Venue detection state
   const [detectedVenue, setDetectedVenue] = useState<VenueProximity | null>(null);
@@ -189,10 +180,50 @@ const AppContent: React.FC = observer(() => {
     }
   }, [authStore.isAuthenticated, authStore.user]);
 
+  // Automatically detect and update user location when app loads
+  useEffect(() => {
+    if (authStore.isAuthenticated && authStore.user?.id && !authStore.isInitializing) {
+      const userId = authStore.user.id; // Capture the ID to avoid null reference issues
+
+      // Import locationService dynamically to avoid circular dependencies
+      import('./services/LocationService')
+        .then(({ locationService }) => {
+          // Auto-detect location if user needs it
+          locationService
+            .autoUpdateLocationIfNeeded(userId)
+            .then((result) => {
+              if (result.updated && result.location) {
+                console.log('📍 Location auto-detected on app load:', result.location);
+
+                // Update user object with new location
+                import('mobx').then(({ runInAction }) => {
+                  runInAction(() => {
+                    if (authStore.user) {
+                      authStore.user.city = result.location?.city;
+                      authStore.user.state = result.location?.state;
+                    }
+                  });
+                });
+              } else if (result.error) {
+                console.log('📍 Location detection failed on app load:', result.error);
+              } else {
+                console.log('📍 User location already set on app load');
+              }
+            })
+            .catch((error) => {
+              console.error('📍 Location detection error on app load:', error);
+            });
+        })
+        .catch((error) => {
+          console.error('📍 Failed to load LocationService on app load:', error);
+        });
+    }
+  }, [authStore.isAuthenticated, authStore.user?.id, authStore.isInitializing]);
+
   // Refresh subscription when user returns to tab (page becomes visible)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (!document.hidden && authStore.isAuthenticated && authStore.user) {
+      if (!document.hidden && authStore.isAuthenticated && authStore.user && !authStore.isInitializing) {
         // Import subscriptionStore dynamically to avoid circular dependencies
         import('@stores/index').then(({ subscriptionStore }) => {
           // Sync subscription when user returns to the tab
@@ -207,7 +238,7 @@ const AppContent: React.FC = observer(() => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [authStore.isAuthenticated, authStore.user]);
+  }, [authStore.isAuthenticated, authStore.user, authStore.isInitializing]);
 
   // Additional safety check - ensure stage name modal can't be bypassed
   useEffect(() => {
@@ -419,8 +450,8 @@ const AppContent: React.FC = observer(() => {
         </Box>
       </Box>
 
-      {/* Footer - hidden on shows page */}
-      {!isShowsPage && <FooterComponent />}
+      {/* Footer - hidden on shows and live show pages */}
+      {!isShowsPage && !isLiveShowPage && <FooterComponent />}
 
       {/* Venue Detection Modal */}
       {detectedVenue && (
@@ -448,6 +479,9 @@ const App: React.FC = observer(() => {
 
         {/* Floating Add Show Button */}
         <FloatingAddShowButton />
+
+        {/* Floating Song Request Button */}
+        <FloatingSongRequestButton />
 
         {/* Global Notifications */}
         <GlobalNotifications />

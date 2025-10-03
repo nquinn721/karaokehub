@@ -1,17 +1,53 @@
 import { Elements } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
-import React from 'react';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
+import React, { useEffect, useState } from 'react';
+import { observer } from 'mobx-react-lite';
+import { apiStore } from '../stores';
 
-// Make sure to call `loadStripe` outside of a component's render to avoid
-// recreating the `Stripe` object on every render.
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+// Cache for stripe instances to avoid recreating them
+const stripeInstanceCache = new Map<string, Promise<Stripe | null>>();
 
 interface StripeProviderProps {
   children: React.ReactNode;
   clientSecret?: string;
 }
 
-const StripeProvider: React.FC<StripeProviderProps> = ({ children, clientSecret }) => {
+const StripeProvider: React.FC<StripeProviderProps> = observer(({ children, clientSecret }) => {
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+
+  useEffect(() => {
+    const initializeStripe = async () => {
+      // Wait for config to be loaded
+      if (!apiStore.configLoaded) {
+        await apiStore.fetchClientConfig();
+      }
+
+      const publishableKey = apiStore.stripePublishableKey;
+      
+      if (!publishableKey) {
+        console.warn('Stripe publishable key not available from server config');
+        return;
+      }
+
+      // Check cache first
+      if (stripeInstanceCache.has(publishableKey)) {
+        setStripePromise(stripeInstanceCache.get(publishableKey)!);
+        return;
+      }
+
+      // Create new instance and cache it
+      const newStripePromise = loadStripe(publishableKey);
+      stripeInstanceCache.set(publishableKey, newStripePromise);
+      setStripePromise(newStripePromise);
+    };
+
+    initializeStripe().catch(console.error);
+  }, [apiStore.configLoaded, apiStore.stripePublishableKey]);
+
+  // Don't render until we have a stripe instance
+  if (!stripePromise) {
+    return <div>Loading payment system...</div>;
+  }
   const options = {
     clientSecret,
     appearance: {
@@ -33,6 +69,6 @@ const StripeProvider: React.FC<StripeProviderProps> = ({ children, clientSecret 
       {children}
     </Elements>
   );
-};
+});
 
 export default StripeProvider;

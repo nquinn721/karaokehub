@@ -22,6 +22,7 @@ class ApiStore {
   public clientConfig: {
     googleMapsApiKey?: string;
     googleClientId?: string;
+    stripePublishableKey?: string;
     environment?: string;
   } | null = null;
   public configLoaded = false;
@@ -208,10 +209,10 @@ class ApiStore {
               };
             });
 
-            // Handle auth errors
+            // Handle auth errors - let AuthStore handle redirects
             if (error.response?.status === 401) {
               localStorage.removeItem('token');
-              window.location.href = '/login';
+              // Don't redirect here - let AuthStore handle routing
             }
           } catch {
             // Silent fallback
@@ -499,6 +500,11 @@ class ApiStore {
   // Get Google Client ID from config
   get googleClientId(): string | undefined {
     return this.clientConfig?.googleClientId;
+  }
+
+  // Get Stripe publishable key from config
+  get stripePublishableKey(): string | undefined {
+    return this.clientConfig?.stripePublishableKey;
   }
 
   // Get environment from server config, fallback to local detection

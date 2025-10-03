@@ -2,6 +2,7 @@ import { faCoins } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Box, Chip, CircularProgress, Typography, useTheme } from '@mui/material';
 import { storeStore } from '@stores/StoreStore';
+import { authStore } from '@stores/AuthStore';
 import { observer } from 'mobx-react-lite';
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,9 +19,11 @@ export const CoinDisplay: React.FC<CoinDisplayProps> = observer(
     const navigate = useNavigate();
 
     useEffect(() => {
-      // Fetch user coins when component mounts
-      storeStore.fetchUserCoins();
-    }, []);
+      // Only fetch user coins if user is authenticated and initialization is complete
+      if (authStore.user && !authStore.isInitializing) {
+        storeStore.fetchUserCoins();
+      }
+    }, [authStore.user, authStore.isInitializing]);
 
     const handleClick = () => {
       if (onClick) {

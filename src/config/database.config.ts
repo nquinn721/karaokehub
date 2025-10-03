@@ -142,6 +142,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
           'dist/migrations/1737820000000-AddSearchContextToApiRecentCalls.js',
           'dist/migrations/1737825000000-AddDjSubscriptionToUsers.js',
           'dist/migrations/1737830000000-AddDjCancellationTracking.js',
+          'dist/migrations/1728000000000-AddCityStateToUsers.js',
           'dist/migrations/1759250563000-IncreaseAvgResponseTimePrecision.js',
           'dist/migrations/1759300000000-DisableSynchronizationAndFixConstraints.js',
         ]
