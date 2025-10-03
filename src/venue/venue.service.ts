@@ -109,6 +109,8 @@ export class VenueService {
     }
 
     Object.assign(venue, updateVenueDto);
+    // Reset AI validation flag when venue data changes
+    venue.isAIValidated = false;
     return await this.venueRepository.save(venue);
   }
 

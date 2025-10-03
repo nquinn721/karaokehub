@@ -166,6 +166,7 @@ export class VenueGeocodingValidationService {
         await this.venueRepository.update(venue.id, {
           lat: newCoordinates.lat,
           lng: newCoordinates.lng,
+          isAIValidated: false, // Reset validation flag when coordinates change
         });
       }
 

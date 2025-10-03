@@ -830,6 +830,7 @@ export class AdminService {
       description: updateData.description,
       lat: updateData.lat,
       lng: updateData.lng,
+      isAIValidated: false, // Reset validation flag when venue is updated
     });
 
     return { message: 'Venue updated successfully' };
@@ -1797,6 +1798,7 @@ export class AdminService {
 
       // Save changes if any were made
       if (updatedFields.length > 0) {
+        venue.isAIValidated = false; // Reset validation flag when venue data changes
         await this.venueRepository.save(venue);
       }
 
@@ -1880,6 +1882,7 @@ export class AdminService {
                 venue.lng = result.suggestedData.lng;
               }
 
+              venue.isAIValidated = false; // Reset validation flag when venue data changes
               await this.venueRepository.save(venue);
             }
           } catch (error) {

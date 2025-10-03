@@ -71,38 +71,33 @@ export class FuzzySearchService {
   }
 
   /**
-   * Creates a SQL LIKE pattern from fuzzy search results
-   * This helps bridge fuzzy search with database queries
+   * Creates a SQL LIKE pattern from search term
+   * Simple and efficient - no excessive fuzzy matching
    * @param searchTerm The original search term
-   * @returns Array of potential LIKE patterns
+   * @returns Array of LIKE patterns (much more conservative)
    */
   createSqlPatterns(searchTerm: string): string[] {
-    if (!searchTerm) return [];
+    if (!searchTerm || searchTerm.trim().length === 0) return [];
 
+    const cleanTerm = searchTerm.trim().toLowerCase();
     const patterns: string[] = [];
     
-    // Original term with wildcards
-    patterns.push(`%${searchTerm}%`);
+    // Always add the full term
+    patterns.push(`%${cleanTerm}%`);
     
-    // Split the term and create patterns for each word
-    const words = searchTerm.toLowerCase().split(/\s+/).filter(word => word.length > 1);
-    
-    words.forEach(word => {
-      patterns.push(`%${word}%`);
+    // Only split into words if there are multiple words
+    if (cleanTerm.includes(' ')) {
+      const words = cleanTerm.split(/\s+/).filter(word => word.length >= 2);
       
-      // Create character-level patterns for short words (fuzzy matching)
-      if (word.length <= 4) {
-        // Add patterns with single character differences
-        for (let i = 0; i < word.length; i++) {
-          const beforeChar = word.substring(0, i);
-          const afterChar = word.substring(i + 1);
-          patterns.push(`%${beforeChar}_${afterChar}%`); // Single character wildcard
-          patterns.push(`%${beforeChar}%${afterChar}%`); // Skip one character
+      // Add each word individually (only if 2+ characters)
+      words.forEach(word => {
+        if (word.length >= 2) {
+          patterns.push(`%${word}%`);
         }
-      }
-    });
+      });
+    }
 
-    // Remove duplicates and return
+    // Remove duplicates and return (should be max 1-4 patterns now)
     return [...new Set(patterns)];
   }
 }
