@@ -44,7 +44,7 @@ export class FuzzyPaginationService {
     searchFields.forEach((field, fieldIndex) => {
       patterns.forEach((pattern, patternIndex) => {
         const paramName = `search_${fieldIndex}_${patternIndex}`;
-        conditions.push(`${alias}.${field} ILIKE :${paramName}`);
+        conditions.push(`${alias}.${field} LIKE :${paramName}`);
         parameters[paramName] = pattern;
       });
     });
@@ -66,7 +66,7 @@ export class FuzzyPaginationService {
     search?: string,
   ): SelectQueryBuilder<T> {
     if (search && searchFields.length > 0) {
-      const conditions = searchFields.map((field) => `${alias}.${field} ILIKE :search`).join(' OR ');
+      const conditions = searchFields.map((field) => `${alias}.${field} LIKE :search`).join(' OR ');
       query.andWhere(`(${conditions})`, { search: `%${search}%` });
     }
     return query;

@@ -557,7 +557,7 @@ export class AdminService {
       searchFields.forEach(({ field, alias }, fieldIndex) => {
         patterns.forEach((pattern, patternIndex) => {
           const paramName = `search_${alias}_${fieldIndex}_${patternIndex}`;
-          conditions.push(`${field} ILIKE :${paramName}`);
+          conditions.push(`${field} LIKE :${paramName}`);
           parameters[paramName] = pattern;
         });
       });
@@ -1042,7 +1042,7 @@ export class AdminService {
       searchFields.forEach(({ field, alias }, fieldIndex) => {
         patterns.forEach((pattern, patternIndex) => {
           const paramName = `search_${alias}_${fieldIndex}_${patternIndex}`;
-          conditions.push(`${field} ILIKE :${paramName}`);
+          conditions.push(`${field} LIKE :${paramName}`);
           parameters[paramName] = pattern;
         });
       });
@@ -2308,7 +2308,7 @@ If the venue cannot be found or you're not confident in the information, set ven
     // Apply filters
     if (search) {
       queryBuilder.andWhere(
-        '(user.name ILIKE :search OR user.email ILIKE :search OR transaction.description ILIKE :search)',
+        '(user.name LIKE :search OR user.email LIKE :search OR transaction.description LIKE :search)',
         { search: `%${search}%` },
       );
     }
@@ -2556,7 +2556,7 @@ If the venue cannot be found or you're not confident in the information, set ven
     const users = await this.userRepository
       .createQueryBuilder('user')
       .select(['user.id', 'user.name', 'user.email', 'user.coins', 'user.isActive'])
-      .where('user.name ILIKE :search OR user.email ILIKE :search', {
+      .where('user.name LIKE :search OR user.email LIKE :search', {
         search: `%${searchTerm}%`,
       })
       .andWhere('user.isActive = :isActive', { isActive: true })

@@ -80,7 +80,7 @@ export class SongService {
   async search(query: string): Promise<Song[]> {
     return await this.songRepository
       .createQueryBuilder('song')
-      .where('song.title ILIKE :query OR song.artist ILIKE :query OR song.album ILIKE :query', {
+      .where('song.title LIKE :query OR song.artist LIKE :query OR song.album LIKE :query', {
         query: `%${query}%`,
       })
       .orderBy('song.title', 'ASC')
