@@ -8,9 +8,7 @@ import {
   Param,
   Post,
   Query,
-  Request,
 } from '@nestjs/common';
-import { User } from '../entities/user.entity';
 import { GeocodingService } from '../geocoding/geocoding.service';
 import { DayOfWeek } from '../show/show.entity';
 import { ShowService } from '../show/show.service';
@@ -58,9 +56,7 @@ export class LocationController {
    * Update user location based on coordinates
    */
   @Post('update-user-location')
-  async updateUserLocation(
-    @Body() body: { userId: string; latitude: number; longitude: number },
-  ) {
+  async updateUserLocation(@Body() body: { userId: string; latitude: number; longitude: number }) {
     const { userId, latitude, longitude } = body;
 
     // Client should handle authentication check before calling this endpoint
