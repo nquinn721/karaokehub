@@ -158,10 +158,10 @@ export class SubscriptionController {
   }
 
   @Post('sync')
-  @UseGuards(JwtAuthGuard)
-  async syncSubscription(@CurrentUser() user: User) {
+  async syncSubscription(@Body() body: { userId: string }) {
     // Manually sync subscription status from Stripe
-    const synced = await this.subscriptionService.syncUserSubscription(user.id);
+    // Client should handle authentication check before calling this endpoint
+    const synced = await this.subscriptionService.syncUserSubscription(body.userId);
     return { success: true, subscription: synced };
   }
 

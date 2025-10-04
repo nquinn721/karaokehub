@@ -99,6 +99,9 @@ async function bootstrap() {
               'https://www.google.com',
               'https://google.com',
               'https://pagead2.googlesyndication.com',
+              // Stripe payment processing
+              'https://js.stripe.com',
+              'https://*.stripe.com',
               'https://www.highperformanceformat.com',
               'https://highperformanceformat.com',
               'https://wayfarerorthodox.com',
@@ -151,6 +154,9 @@ async function bootstrap() {
               'https://analytics.google.com',
               'https://www.google.com',
               'https://google.com',
+              // Stripe payment processing
+              'https://api.stripe.com',
+              'https://*.stripe.com',
               'https://www.highperformanceformat.com',
               'https://highperformanceformat.com',
               'https://wayfarerorthodox.com',
@@ -204,6 +210,9 @@ async function bootstrap() {
             frameSrc: [
               "'self'",
               'https://accounts.google.com',
+              // Stripe payment processing frames
+              'https://js.stripe.com',
+              'https://*.stripe.com',
               'https://www.highperformanceformat.com',
               'https://highperformanceformat.com',
               'https://wayfarerorthodox.com',

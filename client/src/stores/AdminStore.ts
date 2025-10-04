@@ -72,6 +72,8 @@ export interface AdminUser {
   isActive: boolean;
   isAdmin: boolean;
   stripeCustomerId?: string;
+  city?: string;
+  state?: string;
   createdAt: Date;
   updatedAt: Date;
   featureOverrides?: AdminUserFeatureOverride[];

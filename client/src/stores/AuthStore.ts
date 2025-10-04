@@ -457,6 +457,33 @@ class AuthStore {
       });
     }
   }
+
+  // Debug method to check auth status
+  async debugAuth() {
+    const token = localStorage.getItem('token');
+    console.log('🔍 Auth Debug Info:', {
+      hasToken: !!token,
+      tokenLength: token?.length,
+      tokenPreview: token ? `${token.substring(0, 20)}...` : null,
+      isAuthenticated: this.isAuthenticated,
+      userId: this.user?.id,
+      userEmail: this.user?.email,
+    });
+
+    // Test API call to verify token works
+    try {
+      const response = await apiStore.get('/location/auth-test');
+      console.log('✅ Auth test successful:', response);
+      return { success: true, response };
+    } catch (error: any) {
+      console.log('❌ Auth test failed:', {
+        status: error.response?.status,
+        message: error.response?.data?.message,
+        error: error.message,
+      });
+      return { success: false, error };
+    }
+  }
 }
 
 export const authStore = new AuthStore();
